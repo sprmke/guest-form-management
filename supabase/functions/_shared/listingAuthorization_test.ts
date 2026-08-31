@@ -37,7 +37,7 @@ function ownerWithProof(): ListingAuthorizationState {
   };
 }
 
-Deno.test('Tier 1 needs rights only (proof is Recommended)', () => {
+Deno.test('Tier 1 submit needs rights only (proof files upload in listing modal)', () => {
   const empty = emptyListingAuthorizationState();
   assertFalse(canSubmitBaseListingAuthorization(empty));
 
@@ -94,7 +94,7 @@ Deno.test('Tier 1 blocked while pending or hard rejected, open on changes reques
   assert(canSubmitBaseListingAuthorization(changes));
 });
 
-Deno.test('Tier 2 requires approved Tier 1 plus proof and both additional documents', () => {
+Deno.test('Tier 2 requires approved Tier 1 plus additional proof and Azure PMO', () => {
   const withDocs: ListingAuthorizationState = {
     ...ownerWithProof(),
     assets: {
@@ -110,7 +110,8 @@ Deno.test('Tier 2 requires approved Tier 1 plus proof and both additional docume
   const approved: ListingAuthorizationState = { ...withDocs, baseStatus: 'approved' };
   assert(canSubmitRecommendedListingAuthorization(approved));
 
-  assertFalse(
+  // Primary proof is listing Tier 1 — not required to submit Recommended.
+  assert(
     canSubmitRecommendedListingAuthorization({
       ...approved,
       assets: { ...approved.assets, proofPath: null },
@@ -254,13 +255,9 @@ Deno.test('asset type mapping and apply', () => {
 });
 
 Deno.test('missing docs and table mapping', () => {
-  assertEquals(missingListingDocs(emptyListingAuthorizationState()), [
-    'proof',
-    'rights',
-    'additional_proof',
-    'azure_pmo_confirmation',
-  ]);
-  assertEquals(missingListingDocs(ownerWithProof()), [
+  assertEquals(missingListingDocs(emptyListingAuthorizationState()), ['rights']);
+  assertEquals(missingListingDocs(ownerWithProof()), []);
+  assertEquals(missingListingDocs({ ...ownerWithProof(), recommendedStatus: 'pending' }), [
     'additional_proof',
     'azure_pmo_confirmation',
   ]);

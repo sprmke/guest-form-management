@@ -25,6 +25,7 @@ import {
   isListingAuthorizationChangesRequested,
   isListingAuthorizationHardRejected,
   isListingRenewEligible,
+  listingAuthorizationHasPrimaryProof,
   listingRightsNeedContractEnd,
   readListingAuthorizationSummary,
   type ListingAuthorizationAssetType,
@@ -119,6 +120,95 @@ function VerificationFeedbackAlert({
           {title}
         </p>
         <p className="text-foreground whitespace-pre-wrap text-sm leading-relaxed">{message}</p>
+      </div>
+    </div>
+  );
+}
+
+function ListingTier1ProofUpload({
+  listingKind,
+  sectionKind,
+  rights,
+  proofPreview,
+  proofPath,
+  uploading,
+  showErrors,
+  onUpload,
+}: {
+  listingKind: ListingKind;
+  sectionKind: 'property' | 'parking';
+  rights: OrgVerificationRights | '';
+  proofPreview: string | null;
+  proofPath: string | null;
+  uploading: boolean;
+  showErrors: boolean;
+  onUpload: (assetType: ListingAuthorizationAssetType, file: File) => void;
+}) {
+  return (
+    <OnboardingProofUpload
+      id={`${listingKind}-verification-proof`}
+      label={LISTING_VERIFICATION_DOC_LABELS.proof}
+      help={verificationRightsProofHelp(rights, sectionKind)}
+      file={null}
+      previewUrl={proofPreview}
+      uploading={uploading}
+      error={showErrors && !proofPath ? 'Required' : null}
+      onFileChange={(file) => {
+        if (file) onUpload('proof', file);
+      }}
+    />
+  );
+}
+
+function ListingTier2ProofUploads({
+  listingKind,
+  additionalProofPreview,
+  azurePmoPreview,
+  additionalProofPath,
+  azurePmoPath,
+  uploading,
+  showErrors,
+  onUpload,
+}: {
+  listingKind: ListingKind;
+  additionalProofPreview: string | null;
+  azurePmoPreview: string | null;
+  additionalProofPath: string | null;
+  azurePmoPath: string | null;
+  uploading: boolean;
+  showErrors: boolean;
+  onUpload: (assetType: ListingAuthorizationAssetType, file: File) => void;
+}) {
+  return (
+    <div className="border-border bg-card overflow-hidden rounded-xl border">
+      <div className="border-border border-b px-4 py-2.5">
+        <h4 className="text-foreground text-xs font-semibold">Docs required</h4>
+      </div>
+      <div className="space-y-4 p-4">
+        <OnboardingProofUpload
+          id={`${listingKind}-recommended-additional-proof`}
+          label={LISTING_VERIFICATION_DOC_LABELS.additionalProof}
+          help={LISTING_VERIFICATION_DOC_HELP.additionalProof}
+          file={null}
+          previewUrl={additionalProofPreview}
+          uploading={uploading}
+          error={showErrors && !additionalProofPath ? 'Required' : null}
+          onFileChange={(file) => {
+            if (file) onUpload('additional_proof', file);
+          }}
+        />
+        <OnboardingProofUpload
+          id={`${listingKind}-recommended-azure-pmo`}
+          label={LISTING_VERIFICATION_DOC_LABELS.azurePmoConfirmation}
+          help={LISTING_VERIFICATION_DOC_HELP.azurePmoConfirmation}
+          file={null}
+          previewUrl={azurePmoPreview}
+          uploading={uploading}
+          error={showErrors && !azurePmoPath ? 'Required' : null}
+          onFileChange={(file) => {
+            if (file) onUpload('azure_pmo_confirmation', file);
+          }}
+        />
       </div>
     </div>
   );
@@ -234,9 +324,16 @@ export function ListingVerificationModal({
     [remoteAuthorization, rights, contractEndDate]
   );
 
+  const listingPrimaryProofComplete = listingAuthorizationHasPrimaryProof(draftState);
   const canSubmitBase = renewMode
-    ? canSubmitListingRenewal(draftState) && !contractEndError && Boolean(rights)
-    : canSubmitBaseListingAuthorization(draftState) && !contractEndError && Boolean(rights);
+    ? canSubmitListingRenewal(draftState) &&
+      listingPrimaryProofComplete &&
+      !contractEndError &&
+      Boolean(rights)
+    : canSubmitBaseListingAuthorization(draftState) &&
+      listingPrimaryProofComplete &&
+      !contractEndError &&
+      Boolean(rights);
   const canSubmitRecommended =
     canSubmitRecommendedListingAuthorization(remoteAuthorization) && baseApproved;
 
@@ -352,20 +449,16 @@ export function ListingVerificationModal({
         onContractEndDateChange={setContractEndDate}
         contractEndDateError={contractEndError}
       />
-      {renewMode ? (
-        <OnboardingProofUpload
-          id={`${listingKind}-verification-proof`}
-          label={LISTING_VERIFICATION_DOC_LABELS.proof}
-          help={verificationRightsProofHelp(rights || '', sectionKind)}
-          file={null}
-          previewUrl={previewFor('proof', assetUrls?.proofUrl)}
-          uploading={upload.isPending}
-          error={baseTouched && !draftState.assets.proofPath ? 'Required' : null}
-          onFileChange={(file) => {
-            if (file) void handleUpload('proof', file);
-          }}
-        />
-      ) : null}
+      <ListingTier1ProofUpload
+        listingKind={listingKind}
+        sectionKind={sectionKind}
+        rights={rights || remoteAuthorization.relationship || ''}
+        proofPreview={previewFor('proof', assetUrls?.proofUrl)}
+        proofPath={draftState.assets.proofPath}
+        uploading={upload.isPending}
+        showErrors={baseTouched}
+        onUpload={(assetType, file) => void handleUpload(assetType, file)}
+      />
     </div>
   ) : isListingAuthorizationHardRejected(remoteAuthorization) ? (
     <p className="text-muted-foreground text-sm leading-relaxed">
@@ -397,14 +490,22 @@ export function ListingVerificationModal({
           tier="base"
         />
       ) : null}
+      {isOwner && (basePending || (baseApproved && !listingPrimaryProofComplete)) ? (
+        <ListingTier1ProofUpload
+          listingKind={listingKind}
+          sectionKind={sectionKind}
+          rights={rights || remoteAuthorization.relationship || ''}
+          proofPreview={previewFor('proof', assetUrls?.proofUrl)}
+          proofPath={remoteAuthorization.assets.proofPath}
+          uploading={upload.isPending}
+          showErrors={false}
+          onUpload={(assetType, file) => void handleUpload(assetType, file)}
+        />
+      ) : null}
     </div>
   ) : null;
 
-  const recommendedForm = !baseApproved ? (
-    <p className="text-muted-foreground text-sm leading-relaxed">
-      {LISTING_VERIFICATION_TIER2_PREREQ}
-    </p>
-  ) : recommendedEditable ? (
+  const recommendedForm = recommendedEditable ? (
     <div className="space-y-5">
       <div className="space-y-1">
         <h4 className="text-foreground text-sm font-semibold leading-tight">
@@ -412,6 +513,11 @@ export function ListingVerificationModal({
         </h4>
         <p className="text-muted-foreground text-xs leading-relaxed">{recommendedTier.benefit}</p>
       </div>
+      {!baseApproved ? (
+        <p className="text-muted-foreground text-sm leading-relaxed">
+          {LISTING_VERIFICATION_TIER2_PREREQ}
+        </p>
+      ) : null}
       <div className="border-border bg-card overflow-hidden rounded-xl border">
         <div className="border-border border-b px-4 py-2.5">
           <h4 className="text-foreground text-xs font-semibold">Perks &amp; benefits</h4>
@@ -443,60 +549,16 @@ export function ListingVerificationModal({
           message={remoteAuthorization.recommendedRejectionReason}
         />
       ) : null}
-      <div className="border-border bg-card overflow-hidden rounded-xl border">
-        <div className="border-border border-b px-4 py-2.5">
-          <h4 className="text-foreground text-xs font-semibold">Docs required</h4>
-        </div>
-        <div className="space-y-4 p-4">
-          <OnboardingProofUpload
-            id={`${listingKind}-recommended-proof`}
-            label={LISTING_VERIFICATION_DOC_LABELS.proof}
-            help={verificationRightsProofHelp(
-              rights || remoteAuthorization.relationship || '',
-              sectionKind
-            )}
-            file={null}
-            previewUrl={previewFor('proof', assetUrls?.proofUrl)}
-            uploading={upload.isPending}
-            error={recommendedTouched && !remoteAuthorization.assets.proofPath ? 'Required' : null}
-            onFileChange={(file) => {
-              if (file) void handleUpload('proof', file);
-            }}
-          />
-          <OnboardingProofUpload
-            id={`${listingKind}-recommended-additional-proof`}
-            label={LISTING_VERIFICATION_DOC_LABELS.additionalProof}
-            help={LISTING_VERIFICATION_DOC_HELP.additionalProof}
-            file={null}
-            previewUrl={previewFor('additional_proof', assetUrls?.additionalProofUrl)}
-            uploading={upload.isPending}
-            error={
-              recommendedTouched && !remoteAuthorization.assets.additionalProofPath
-                ? 'Required'
-                : null
-            }
-            onFileChange={(file) => {
-              if (file) void handleUpload('additional_proof', file);
-            }}
-          />
-          <OnboardingProofUpload
-            id={`${listingKind}-recommended-azure-pmo`}
-            label={LISTING_VERIFICATION_DOC_LABELS.azurePmoConfirmation}
-            help={LISTING_VERIFICATION_DOC_HELP.azurePmoConfirmation}
-            file={null}
-            previewUrl={previewFor('azure_pmo_confirmation', assetUrls?.azurePmoConfirmationUrl)}
-            uploading={upload.isPending}
-            error={
-              recommendedTouched && !remoteAuthorization.assets.azurePmoConfirmationPath
-                ? 'Required'
-                : null
-            }
-            onFileChange={(file) => {
-              if (file) void handleUpload('azure_pmo_confirmation', file);
-            }}
-          />
-        </div>
-      </div>
+      <ListingTier2ProofUploads
+        listingKind={listingKind}
+        additionalProofPreview={previewFor('additional_proof', assetUrls?.additionalProofUrl)}
+        azurePmoPreview={previewFor('azure_pmo_confirmation', assetUrls?.azurePmoConfirmationUrl)}
+        additionalProofPath={remoteAuthorization.assets.additionalProofPath}
+        azurePmoPath={remoteAuthorization.assets.azurePmoConfirmationPath}
+        uploading={upload.isPending}
+        showErrors={recommendedTouched}
+        onUpload={(assetType, file) => void handleUpload(assetType, file)}
+      />
     </div>
   ) : (
     <div className="space-y-4">

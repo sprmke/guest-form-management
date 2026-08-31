@@ -14,24 +14,25 @@ export function buildListingChangeDocOptions(
   detail: ListingAuthorizationAssetsPayload,
   tier: ListingApprovalReviewTier
 ): ListingChangeDocOption[] {
-  if (tier === 'recommended') {
+  if (tier === 'base') {
     return [
       {
         id: 'proof',
         label: LISTING_VERIFICATION_DOC_LABELS.proof,
         url: detail.assetUrls.proofUrl,
       },
-      {
-        id: 'additionalProof',
-        label: LISTING_VERIFICATION_DOC_LABELS.additionalProof,
-        url: detail.assetUrls.additionalProofUrl,
-      },
-      {
-        id: 'azurePmoConfirmation',
-        label: LISTING_VERIFICATION_DOC_LABELS.azurePmoConfirmation,
-        url: detail.assetUrls.azurePmoConfirmationUrl,
-      },
     ];
   }
-  return [];
+  return [
+    {
+      id: 'additionalProof',
+      label: LISTING_VERIFICATION_DOC_LABELS.additionalProof,
+      url: detail.assetUrls.additionalProofUrl,
+    },
+    {
+      id: 'azurePmoConfirmation',
+      label: LISTING_VERIFICATION_DOC_LABELS.azurePmoConfirmation,
+      url: detail.assetUrls.azurePmoConfirmationUrl,
+    },
+  ];
 }

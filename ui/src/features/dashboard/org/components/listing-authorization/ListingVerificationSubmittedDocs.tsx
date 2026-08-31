@@ -117,10 +117,11 @@ export function ListingVerificationSubmittedDocs({
 
   if (!enabled) return null;
 
-  const documentItems =
+  const documentItems = (
     tier === 'recommended'
       ? listingRecommendedDocumentChecklistItems(items)
-      : listingBaseDocumentChecklistItems(items);
+      : listingBaseDocumentChecklistItems(items)
+  ).filter((item) => item.complete);
   const assetUrls = data?.assetUrls;
   const hasPreviewItems = documentItems.some((item) => previewUrlForItem(item.id, assetUrls));
 
