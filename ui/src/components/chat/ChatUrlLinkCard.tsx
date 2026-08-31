@@ -1,5 +1,19 @@
-import { CalendarDays, ExternalLink, Link2 } from 'lucide-react';
+import {
+  BookOpen,
+  CalendarDays,
+  Car,
+  ClipboardList,
+  ExternalLink,
+  FileText,
+  Home,
+  Link2,
+  MessageSquare,
+  Sparkles,
+  Star,
+  Wallet,
+} from 'lucide-react';
 
+import type { ChatUrlLinkResourceKind } from '@/lib/chat/parseChatRichBlocks';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -7,11 +21,39 @@ type Props = {
   title: string;
   subtitle?: string;
   variant?: 'calendar' | 'generic';
+  resourceKind?: ChatUrlLinkResourceKind;
   outbound?: boolean;
   className?: string;
   /** When set, renders as a button that calls this instead of navigating to `href`. */
   onActivate?: () => void;
 };
+
+function resourceIcon(kind: ChatUrlLinkResourceKind) {
+  switch (kind) {
+    case 'calendar':
+      return CalendarDays;
+    case 'stayGuide':
+      return BookOpen;
+    case 'document':
+      return FileText;
+    case 'form':
+      return ClipboardList;
+    case 'messages':
+      return MessageSquare;
+    case 'showcase':
+      return Sparkles;
+    case 'property':
+      return Home;
+    case 'parking':
+      return Car;
+    case 'review':
+      return Star;
+    case 'sdForm':
+      return Wallet;
+    default:
+      return Link2;
+  }
+}
 
 /**
  * Compact tap target for https links in chat (Airbnb-style action chip — not a raw URL wrap).
@@ -21,11 +63,12 @@ export function ChatUrlLinkCard({
   title,
   subtitle = 'Open link',
   variant = 'generic',
+  resourceKind,
   outbound = false,
   className,
   onActivate,
 }: Props) {
-  const Icon = variant === 'calendar' ? CalendarDays : Link2;
+  const Icon = resourceIcon(resourceKind ?? (variant === 'calendar' ? 'calendar' : 'generic'));
 
   const cardClass = cn(
     'my-1.5 flex min-h-[44px] w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left no-underline transition-opacity hover:opacity-95',
