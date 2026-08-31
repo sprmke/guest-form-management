@@ -19,7 +19,7 @@ Buckets and MIME types are declared in `supabase/config.toml` (e.g. `payment-rec
 
 Plan: [`docs/workflow/planned/image-video-upload-optimization.md`](../workflow/planned/image-video-upload-optimization.md).
 
-**Client-side compression.** Every image uploader routes the picked file through `prepareImageForUpload` (`ui/src/lib/media/`) before building its request body: it re-encodes/downscales in a Web Worker (`browser-image-compression`, self-hosted worker), then re-validates the result against the ceiling. Quality-first presets (`ui/src/lib/media/imageOptimizationPlan.ts`):
+**Client-side compression.** Every image uploader routes the picked file through `prepareUpload` → `prepareImageForUpload` (`ui/src/lib/media/`) before building its request body: it re-encodes/downscales on a canvas, then re-validates the result against the ceiling. Quality-first presets (`ui/src/lib/media/imageOptimizationPlan.ts`):
 
 | Preset         | Long edge  | Output                                                                      | Used for                                                                          |
 | -------------- | ---------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
