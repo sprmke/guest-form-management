@@ -21,7 +21,9 @@ import {
   resolvePublicPropertyId,
   resolveOrganizationIdForProperty,
 } from '../_shared/propertyScope.ts';
-import { tryGetAuthenticatedUser } from '../_shared/orgAuth.ts';
+import { createServiceClient, tryGetAuthenticatedUser } from '../_shared/orgAuth.ts';
+import { applyVoucherToBooking, assertVoucherEligible } from '../_shared/voucherRedemption.ts';
+import { linkGuestBookingsByEmail } from '../_shared/guestProfileService.ts';
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -232,6 +234,35 @@ serve(async (req) => {
 
     const guestUser = await tryGetAuthenticatedUser(req);
 
+    const appliedVoucherSourceBookingId = (
+      typeof formData.get('appliedVoucherSourceBookingId') === 'string'
+        ? (formData.get('appliedVoucherSourceBookingId') as string)
+        : ''
+    ).trim();
+
+    const guestEmailForVoucher =
+      (typeof formData.get('guestEmail') === 'string'
+        ? (formData.get('guestEmail') as string)
+        : '') ||
+      guestUser?.email ||
+      '';
+
+    // Fail closed before DB write so a bad voucher never leaves an orphan booking.
+    if (isSaveToDatabaseEnabled && appliedVoucherSourceBookingId && propertyId && bookingId) {
+      if (!guestUser?.id) {
+        throw new Error('VOUCHER_AUTH: Sign in to apply a voucher.');
+      }
+      const supabase = createServiceClient();
+      await linkGuestBookingsByEmail(supabase, guestUser);
+      await assertVoucherEligible(supabase, {
+        redeemingBookingId: bookingId,
+        propertyId,
+        guestUserId: guestUser.id,
+        guestEmail: guestEmailForVoucher,
+        sourceBookingId: appliedVoucherSourceBookingId,
+      });
+    }
+
     const { data, submissionData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl } =
       await DatabaseService.processFormData(
         formData,
@@ -242,6 +273,38 @@ serve(async (req) => {
         guestUser?.id,
         revertReadyForCheckinToPendingReview ? guestFormChangedFields : []
       );
+
+    let voucherApplied = false;
+    let voucherWarning: string | null = null;
+
+    if (
+      isSaveToDatabaseEnabled &&
+      appliedVoucherSourceBookingId &&
+      submissionData?.id &&
+      propertyId &&
+      guestUser?.id
+    ) {
+      const supabase = createServiceClient();
+      try {
+        await applyVoucherToBooking(supabase, {
+          redeemingBookingId: String(submissionData.id),
+          propertyId,
+          guestUserId: guestUser.id,
+          guestEmail: guestEmailForVoucher,
+          sourceBookingId: appliedVoucherSourceBookingId,
+        });
+        voucherApplied = true;
+      } catch (voucherErr) {
+        const msg = voucherErr instanceof Error ? voucherErr.message : String(voucherErr);
+        // Rare race after pre-check: keep the booking; guest can rebook without voucher.
+        if (msg.startsWith('VOUCHER_')) {
+          console.error('[submit-form] voucher apply after save failed:', msg);
+          voucherWarning = msg;
+        } else {
+          throw voucherErr;
+        }
+      }
+    }
 
     let notifyBooking = submissionData as GuestSubmission;
 
@@ -340,6 +403,8 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         data: submissionData,
+        voucherApplied,
+        ...(voucherWarning ? { voucherWarning } : {}),
       }),
       {
         headers: {
