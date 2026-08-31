@@ -2,12 +2,30 @@
  * dashboard-assistant-chat — main AI dashboard assistant turn endpoint.
  * Docs: docs/workflow/planned/ai-dashboard-assistant.md §1 (turn flow), §2 (tools), §5 (guardrails).
  *
- * Body: { conversationId?, orgSlug, pageContext: { propertyId?, bookingId? }, attachedContext?: AttachedContextItem[], message, attachments?: [{ name, mimeType, dataBase64 }] }
+ * Body: { conversationId?, orgSlug, pageContext: { propertyId?, bookingId? }, attachedContext?: AttachedContextItem[], message, attachments?: [{ name, mimeType, dataBase64 }], stream?: boolean, regenerate?: boolean }
+ *
+ * `regenerate: true` reuses the last user message in `conversationId`, deletes later assistant
+ * rows, and does not insert a duplicate user message. Attachments are not supported on regenerate.
  *
  * Tier-2 actions are never executed here — a proposal short-circuits the tool loop and returns
  * an `action_confirmation` block with status "proposed"; dashboard-assistant-confirm executes it.
  */
 
+import {
+  prependActivityTimeline,
+  prependTaskPlan,
+  TurnActivityRecorder,
+  TurnTaskPlanRecorder,
+} from '../_shared/dashboardAssistantActivity.ts';
+import {
+  AssistantTurnAbortedError,
+  assistantStreamResponse,
+  createAssistantStreamEmitter,
+  isAssistantTurnAbortedError,
+  streamAssistantTextPreview,
+  wantsAssistantStream,
+  type AssistantStreamEmitter,
+} from '../_shared/dashboardAssistantStreamEvents.ts';
 import {
   attachedContextPromptLines,
   parseAttachedContextInput,
@@ -233,6 +251,7 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
     const orgSlug = String(body.orgSlug ?? '').trim();
     const message = String(body.message ?? '').trim();
     const conversationIdInput = body.conversationId ? String(body.conversationId).trim() : null;
+    const regenerate = body.regenerate === true;
     const incomingAttachments = parseIncomingAttachments(body.attachments);
     const pageContext = {
       propertyId: body.pageContext?.propertyId ? String(body.pageContext.propertyId) : null,
@@ -247,8 +266,14 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
     }
 
     if (!orgSlug) return jsonError(req, 'orgSlug is required', 400);
-    if (!message && incomingAttachments.length === 0) {
+    if (regenerate && !conversationIdInput) {
+      return jsonError(req, 'conversationId is required to regenerate', 400);
+    }
+    if (!regenerate && !message && incomingAttachments.length === 0) {
       return jsonError(req, 'message or attachments required', 400);
+    }
+    if (regenerate && incomingAttachments.length > 0) {
+      return jsonError(req, 'attachments are not supported when regenerating', 400);
     }
 
     const orgCtx = await verifyOrgAccess(req, { orgSlug });
@@ -313,6 +338,11 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
     }
 
     const sb = createServiceClient();
+    const turnAbort = new AbortController();
+    const linkRequestAbort = () => {
+      if (!turnAbort.signal.aborted) turnAbort.abort();
+    };
+    req.signal.addEventListener('abort', linkRequestAbort, { once: true });
 
     let conversationId = conversationIdInput;
     if (conversationId) {
@@ -348,40 +378,88 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
     let storedAttachments: Awaited<ReturnType<typeof persistAssistantAttachments>>['stored'] = [];
     let attachmentParts: Awaited<ReturnType<typeof persistAssistantAttachments>>['geminiParts'] =
       [];
-    try {
-      const persisted = await persistAssistantAttachments({
-        organizationId: orgCtx.org.id,
-        userId: user.id,
-        conversationId,
-        attachments: incomingAttachments,
-      });
-      storedAttachments = persisted.stored;
-      attachmentParts = persisted.geminiParts;
-    } catch (err) {
-      return jsonError(
-        req,
-        err instanceof Error ? err.message : 'Failed to store attachments',
-        400
-      );
-    }
+    let userMessageRow: { id: string };
+    let turnMessage = message;
+    /** True when this request inserted the user row — safe to delete on abort. */
+    let insertedUserMessageThisTurn = false;
 
-    const { data: userMessageRow, error: userMessageError } = await sb
-      .from('ai_dashboard_assistant_messages')
-      .insert({
-        conversation_id: conversationId,
-        role: 'user',
-        content_text: message || null,
-        blocks: [],
-        attachments: storedAttachments,
-      })
-      .select('id')
-      .single();
-    if (userMessageError || !userMessageRow) {
-      return jsonError(
-        req,
-        `Failed to persist message: ${userMessageError?.message ?? 'unknown error'}`,
-        500
-      );
+    if (regenerate) {
+      const { data: recentMessages, error: recentError } = await sb
+        .from('ai_dashboard_assistant_messages')
+        .select('id, role, content_text, attachments, created_at')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (recentError) {
+        return jsonError(req, `Failed to load conversation: ${recentError.message}`, 500);
+      }
+      const lastUser = (recentMessages ?? []).find((row) => row.role === 'user');
+      if (!lastUser) {
+        return jsonError(req, 'No user message to regenerate from', 400);
+      }
+      const assistantIds = (recentMessages ?? [])
+        .filter(
+          (row) => row.role === 'assistant' && String(row.created_at) >= String(lastUser.created_at)
+        )
+        .map((row) => row.id);
+      if (assistantIds.length > 0) {
+        await sb.from('ai_dashboard_assistant_messages').delete().in('id', assistantIds);
+      }
+      await sb
+        .from('ai_dashboard_assistant_pending_actions')
+        .update({ status: 'expired' })
+        .eq('message_id', lastUser.id)
+        .eq('status', 'pending');
+
+      userMessageRow = { id: lastUser.id };
+      turnMessage = String(lastUser.content_text ?? '').trim() || message;
+      storedAttachments = Array.isArray(lastUser.attachments)
+        ? (lastUser.attachments as typeof storedAttachments)
+        : [];
+      if (storedAttachments.length > 0) {
+        return jsonError(req, 'Regenerate is not available for messages with attachments', 400);
+      }
+      if (!turnMessage) {
+        return jsonError(req, 'Cannot regenerate an empty message', 400);
+      }
+    } else {
+      try {
+        const persisted = await persistAssistantAttachments({
+          organizationId: orgCtx.org.id,
+          userId: user.id,
+          conversationId,
+          attachments: incomingAttachments,
+        });
+        storedAttachments = persisted.stored;
+        attachmentParts = persisted.geminiParts;
+      } catch (err) {
+        return jsonError(
+          req,
+          err instanceof Error ? err.message : 'Failed to store attachments',
+          400
+        );
+      }
+
+      const { data: insertedUser, error: userMessageError } = await sb
+        .from('ai_dashboard_assistant_messages')
+        .insert({
+          conversation_id: conversationId,
+          role: 'user',
+          content_text: turnMessage || null,
+          blocks: [],
+          attachments: storedAttachments,
+        })
+        .select('id')
+        .single();
+      if (userMessageError || !insertedUser) {
+        return jsonError(
+          req,
+          `Failed to persist message: ${userMessageError?.message ?? 'unknown error'}`,
+          500
+        );
+      }
+      userMessageRow = insertedUser;
+      insertedUserMessageThisTurn = true;
     }
 
     const facts = await buildHostSafeGroundingFacts(
@@ -398,277 +476,387 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
         : '';
     const systemPrompt = `${SYSTEM_PROMPT_PREFIX}\n\nKnown facts:\n${groundingPrompt}\n\npageContext: ${JSON.stringify(pageContext)}${attachedContextLine}${attachmentLine}`;
 
-    const toolCtx: ToolExecutionContext = {
-      req,
-      organizationId: orgCtx.org.id,
-      userId: user.id,
-      userEmail: user.email ?? '',
-      pageContext,
-      attachedContext,
-      isBulk: false,
+    /** True once the assistant reply + usage increment have been committed. */
+    let turnCommitted = false;
+
+    const assertTurnActive = () => {
+      if (turnAbort.signal.aborted || req.signal.aborted) {
+        throw new AssistantTurnAbortedError();
+      }
     };
 
-    const userTurnText =
-      message || (storedAttachments.length > 0 ? 'Please review the attached file(s).' : '');
-    const history: GeminiContent[] = [
-      { role: 'user', parts: [{ text: userTurnText }, ...attachmentParts] },
-    ];
-    const toolResultsForGrounding: unknown[] = [];
-    let proposedAction: { toolName: string; result: ToolResult } | null = null;
-    let executedActions: Array<{ toolName: string; result: ToolResult }> = [];
-    let finalText = '';
-    let turnCreditsConsumed = 0;
+    const cleanupAbortedTurn = async () => {
+      if (turnCommitted || !insertedUserMessageThisTurn) return;
+      await sb.from('ai_dashboard_assistant_messages').delete().eq('id', userMessageRow.id);
+    };
 
-    for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-      const roundResult = await callGeminiToolCall({
-        feature: 'dashboard_assistant',
+    const runTurn = async (emit?: AssistantStreamEmitter) => {
+      assertTurnActive();
+      const toolCtx: ToolExecutionContext = {
+        req,
         organizationId: orgCtx.org.id,
-        propertyId: effectivePropertyId,
-        systemPrompt,
-        userPrompt: userTurnText,
-        tools: TOOL_DECLARATIONS,
-        toolMode: 'auto',
-        history,
-        cacheDisabled: true,
-        maxOutputTokens: 1024,
-        actorUserId: user.id,
-        actorType: 'staff',
-      });
-      turnCreditsConsumed += roundResult.creditsConsumed;
+        userId: user.id,
+        userEmail: user.email ?? '',
+        pageContext,
+        attachedContext,
+        isBulk: false,
+      };
 
-      if (roundResult.toolCalls.length === 0) {
-        finalText = roundResult.text ?? '';
-        break;
-      }
+      const userTurnText =
+        turnMessage || (storedAttachments.length > 0 ? 'Please review the attached file(s).' : '');
+      const history: GeminiContent[] = [
+        { role: 'user', parts: [{ text: userTurnText }, ...attachmentParts] },
+      ];
+      const toolResultsForGrounding: unknown[] = [];
+      let proposedAction: { toolName: string; result: ToolResult } | null = null;
+      let executedActions: Array<{ toolName: string; result: ToolResult }> = [];
+      let finalText = '';
+      let turnCreditsConsumed = 0;
+      const activity = new TurnActivityRecorder(emit);
+      const taskPlan = new TurnTaskPlanRecorder(emit);
+      activity.recordPhase('understanding', 'Understood your question');
 
-      const writeCallCount = roundResult.toolCalls.filter((tc) =>
-        WRITE_TOOL_NAMES.has(tc.name)
-      ).length;
-      toolCtx.isBulk = writeCallCount > 1;
-
-      history.push({
-        role: 'model',
-        parts: roundResult.toolCalls.map((tc) => ({
-          functionCall: { name: tc.name, args: tc.arguments },
-        })),
-      });
-
-      const responseParts: GeminiContent['parts'] = [];
-      let shortCircuit = false;
-
-      for (const call of roundResult.toolCalls) {
-        const result = await executeTool(call.name, call.arguments, toolCtx);
-        toolResultsForGrounding.push(result.data ?? result.error);
-        responseParts.push({
-          functionResponse: {
-            name: call.name,
-            response: { result: result.data ?? null, error: result.error ?? null },
-          },
-        });
-
-        if (result.proposed) {
-          proposedAction = { toolName: call.name, result };
-          shortCircuit = true;
-        } else if (WRITE_TOOL_NAMES.has(call.name) && result.ok) {
-          executedActions.push({ toolName: call.name, result });
-        }
-      }
-
-      history.push({ role: 'user', parts: responseParts });
-
-      if (shortCircuit) break;
-      if (round === MAX_TOOL_ROUNDS - 1) {
-        finalText =
-          'I gathered some information but need another prompt to finish — could you ask again?';
-      }
-    }
-
-    const blocks: ChatBlock[] = [];
-
-    if (proposedAction) {
-      const { data: pendingRow, error: pendingError } = await sb
-        .from('ai_dashboard_assistant_pending_actions')
-        .insert({
-          conversation_id: conversationId,
-          message_id: userMessageRow.id,
-          user_id: user.id,
-          tool_name: proposedAction.toolName,
-          input_payload: withAssistantScope(
-            (proposedAction.result.data ?? {}) as Record<string, unknown>,
-            { pageContext, attachedContext }
-          ),
-          risk_tier: 'tier2_confirmed',
-        })
-        .select('id')
-        .single();
-      if (pendingError || !pendingRow) {
-        return jsonError(
-          req,
-          `Failed to persist pending action: ${pendingError?.message ?? 'unknown error'}`,
-          500
-        );
-      }
-      const payload = (proposedAction.result.data ?? {}) as Record<string, unknown>;
-      blocks.push({
-        type: 'action_confirmation',
-        actionId: pendingRow.id,
-        toolName: proposedAction.toolName,
-        riskTier: 'tier2_confirmed',
-        summary: String(payload.summary ?? `Confirm ${proposedAction.toolName}`),
-        details: Object.entries(payload)
-          .filter(([k]) => k !== 'summary' && k !== '__assistantScope')
-          .map(([label, value]) => ({ label, value: String(value) })),
-        status: 'proposed',
-        isExternalSend: isExternalSendTool(proposedAction.toolName),
-      });
-    } else {
-      // Final structured block synthesis — reuses the accumulated tool-call history so blocks
-      // are grounded in what actually happened this turn, not a fresh guess.
-      const structured = await callGeminiStructured<{ blocks: ChatBlock[] }>(
-        {
+      for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+        assertTurnActive();
+        const roundResult = await callGeminiToolCall({
           feature: 'dashboard_assistant',
           organizationId: orgCtx.org.id,
           propertyId: effectivePropertyId,
           systemPrompt,
           userPrompt: userTurnText,
-          history:
-            history.length > 0
-              ? [
-                  ...history,
-                  {
-                    role: 'model',
-                    parts: [{ text: finalText || 'Summarize the above as blocks.' }],
-                  },
-                ]
-              : undefined,
+          tools: TOOL_DECLARATIONS,
+          toolMode: 'auto',
+          history,
           cacheDisabled: true,
           maxOutputTokens: 1024,
           actorUserId: user.id,
           actorType: 'staff',
-        },
-        BLOCKS_RESPONSE_SCHEMA
-      );
-      turnCreditsConsumed += structured.creditsConsumed;
-
-      const candidateBlocks = hydrateAssistantBlocksFromTools(
-        sanitizeAssistantChatBlocks(
-          structured.data?.blocks?.length
-            ? structured.data.blocks
-            : [
-                {
-                  type: 'text' as const,
-                  text: finalText || structured.text || "I couldn't generate a response.",
-                },
-              ]
-        ),
-        toolResultsForGrounding,
-        message
-      );
-
-      const groundingText = `${groundingPrompt}\n${JSON.stringify(toolResultsForGrounding)}${attachmentLine}${attachedContextLine}`;
-      const grounded = assertBlocksGrounded(candidateBlocks, groundingText);
-      const safeBlocks = sanitizeAssistantChatBlocks(
-        grounded.ok
-          ? candidateBlocks
-          : candidateBlocks.filter((_, i) => !grounded.rejectedIndexes.includes(i))
-      );
-      if (safeBlocks.length === 0) {
-        safeBlocks.push({
-          type: 'text',
-          text: humanizeStatusCodesInText(
-            finalText || "I couldn't format that answer. Please ask again."
-          ),
         });
-      }
+        turnCreditsConsumed += roundResult.creditsConsumed;
+        assertTurnActive();
 
-      for (const block of executedActions) {
-        const payload = (block.result.data ?? {}) as Record<string, unknown>;
-        safeBlocks.push({
-          type: 'action_confirmation',
-          actionId: crypto.randomUUID(),
-          toolName: block.toolName,
-          riskTier: 'tier1_auto',
-          summary: `Done automatically: ${block.toolName}`,
-          details: Object.entries(payload).map(([label, value]) => ({
-            label,
-            value: String(value),
+        if (roundResult.toolCalls.length === 0) {
+          finalText = roundResult.text ?? '';
+          break;
+        }
+
+        const writeCallCount = roundResult.toolCalls.filter((tc) =>
+          WRITE_TOOL_NAMES.has(tc.name)
+        ).length;
+        toolCtx.isBulk = writeCallCount > 1;
+
+        history.push({
+          role: 'model',
+          parts: roundResult.toolCalls.map((tc) => ({
+            functionCall: { name: tc.name, args: tc.arguments },
           })),
-          status: 'executed',
         });
+
+        const responseParts: GeminiContent['parts'] = [];
+        let shortCircuit = false;
+
+        taskPlan.initFromToolCalls(roundResult.toolCalls, round);
+
+        for (const [callIndex, call] of roundResult.toolCalls.entries()) {
+          assertTurnActive();
+          const stepId = `r${round}-t${callIndex}`;
+          const toolStartedAt = Date.now();
+          activity.recordToolStart(call.name, stepId);
+          taskPlan.markRunning(stepId);
+          const result = await executeTool(call.name, call.arguments, toolCtx);
+          activity.recordToolComplete(call.name, result.ok, toolStartedAt, stepId);
+          taskPlan.markDone(stepId, result.ok);
+          toolResultsForGrounding.push(result.data ?? result.error);
+          responseParts.push({
+            functionResponse: {
+              name: call.name,
+              response: { result: result.data ?? null, error: result.error ?? null },
+            },
+          });
+
+          if (result.proposed) {
+            proposedAction = { toolName: call.name, result };
+            shortCircuit = true;
+          } else if (WRITE_TOOL_NAMES.has(call.name) && result.ok) {
+            executedActions.push({ toolName: call.name, result });
+          }
+        }
+
+        history.push({ role: 'user', parts: responseParts });
+
+        if (shortCircuit) break;
+        if (round === MAX_TOOL_ROUNDS - 1) {
+          finalText =
+            'I gathered some information but need another prompt to finish — could you ask again?';
+        }
       }
 
-      const combinedText = safeBlocks
-        .map((b) => ('text' in b ? b.text : 'summary' in b ? b.summary : ''))
-        .join(' ');
-      const quickScan = quickSafetyScan(combinedText);
-      if (!quickScan.ok) {
+      assertTurnActive();
+      const blocks: ChatBlock[] = [];
+
+      if (proposedAction) {
+        taskPlan.markSynthRunning();
+        activity.recordPhase('synthesizing', 'Prepared action for your review');
+        const { data: pendingRow, error: pendingError } = await sb
+          .from('ai_dashboard_assistant_pending_actions')
+          .insert({
+            conversation_id: conversationId,
+            message_id: userMessageRow.id,
+            user_id: user.id,
+            tool_name: proposedAction.toolName,
+            input_payload: withAssistantScope(
+              (proposedAction.result.data ?? {}) as Record<string, unknown>,
+              { pageContext, attachedContext }
+            ),
+            risk_tier: 'tier2_confirmed',
+          })
+          .select('id')
+          .single();
+        if (pendingError || !pendingRow) {
+          throw new Error(
+            `Failed to persist pending action: ${pendingError?.message ?? 'unknown error'}`
+          );
+        }
+        const payload = (proposedAction.result.data ?? {}) as Record<string, unknown>;
         blocks.push({
-          type: 'text',
-          text: "I can't share that — it touched something outside what I'm allowed to discuss.",
+          type: 'action_confirmation',
+          actionId: pendingRow.id,
+          toolName: proposedAction.toolName,
+          riskTier: 'tier2_confirmed',
+          summary: String(payload.summary ?? `Confirm ${proposedAction.toolName}`),
+          details: Object.entries(payload)
+            .filter(([k]) => k !== 'summary' && k !== '__assistantScope')
+            .map(([label, value]) => ({ label, value: String(value) })),
+          status: 'proposed',
+          isExternalSend: isExternalSendTool(proposedAction.toolName),
         });
+        taskPlan.markSynthDone();
+        const proposedBlocks = prependActivityTimeline(blocks, activity);
+        blocks.length = 0;
+        blocks.push(...prependTaskPlan(proposedBlocks, taskPlan));
       } else {
-        const safetyCheck = await guardDashboardAssistantResponse(
+        taskPlan.markSynthRunning();
+        activity.recordPhase('synthesizing', 'Prepared your answer');
+        // Final structured block synthesis — reuses the accumulated tool-call history so blocks
+        // are grounded in what actually happened this turn, not a fresh guess.
+        const structured = await callGeminiStructured<{ blocks: ChatBlock[] }>(
           {
+            feature: 'dashboard_assistant',
             organizationId: orgCtx.org.id,
             propertyId: effectivePropertyId,
+            systemPrompt,
+            userPrompt: userTurnText,
+            history:
+              history.length > 0
+                ? [
+                    ...history,
+                    {
+                      role: 'model',
+                      parts: [{ text: finalText || 'Summarize the above as blocks.' }],
+                    },
+                  ]
+                : undefined,
+            cacheDisabled: true,
+            maxOutputTokens: 1024,
             actorUserId: user.id,
             actorType: 'staff',
           },
-          combinedText,
-          groundingPrompt
+          BLOCKS_RESPONSE_SCHEMA
         );
-        turnCreditsConsumed += safetyCheck.creditsConsumed;
-        if (!safetyCheck.ok) {
+        turnCreditsConsumed += structured.creditsConsumed;
+        assertTurnActive();
+
+        const candidateBlocks = hydrateAssistantBlocksFromTools(
+          sanitizeAssistantChatBlocks(
+            structured.data?.blocks?.length
+              ? structured.data.blocks
+              : [
+                  {
+                    type: 'text' as const,
+                    text: finalText || structured.text || "I couldn't generate a response.",
+                  },
+                ]
+          ),
+          toolResultsForGrounding,
+          turnMessage
+        );
+
+        const groundingText = `${groundingPrompt}\n${JSON.stringify(toolResultsForGrounding)}${attachmentLine}${attachedContextLine}`;
+        const grounded = assertBlocksGrounded(candidateBlocks, groundingText);
+        const safeBlocks = sanitizeAssistantChatBlocks(
+          grounded.ok
+            ? candidateBlocks
+            : candidateBlocks.filter((_, i) => !grounded.rejectedIndexes.includes(i))
+        );
+        if (safeBlocks.length === 0) {
+          safeBlocks.push({
+            type: 'text',
+            text: humanizeStatusCodesInText(
+              finalText || "I couldn't format that answer. Please ask again."
+            ),
+          });
+        }
+
+        for (const block of executedActions) {
+          const payload = (block.result.data ?? {}) as Record<string, unknown>;
+          safeBlocks.push({
+            type: 'action_confirmation',
+            actionId: crypto.randomUUID(),
+            toolName: block.toolName,
+            riskTier: 'tier1_auto',
+            summary: `Done automatically: ${block.toolName}`,
+            details: Object.entries(payload).map(([label, value]) => ({
+              label,
+              value: String(value),
+            })),
+            status: 'executed',
+          });
+        }
+
+        const combinedText = safeBlocks
+          .map((b) => ('text' in b ? b.text : 'summary' in b ? b.summary : ''))
+          .join(' ');
+        const quickScan = quickSafetyScan(combinedText);
+        if (!quickScan.ok) {
           blocks.push({
             type: 'text',
-            text: "I can't share that response — it didn't pass a safety check.",
+            text: "I can't share that — it touched something outside what I'm allowed to discuss.",
           });
         } else {
-          blocks.push(...safeBlocks);
+          assertTurnActive();
+          const safetyCheck = await guardDashboardAssistantResponse(
+            {
+              organizationId: orgCtx.org.id,
+              propertyId: effectivePropertyId,
+              actorUserId: user.id,
+              actorType: 'staff',
+            },
+            combinedText,
+            groundingPrompt
+          );
+          turnCreditsConsumed += safetyCheck.creditsConsumed;
+          assertTurnActive();
+          if (!safetyCheck.ok) {
+            blocks.push({
+              type: 'text',
+              text: "I can't share that response — it didn't pass a safety check.",
+            });
+          } else {
+            blocks.push(...safeBlocks);
+          }
         }
+        activity.recordPhase('safety', 'Checked response safety');
+        taskPlan.markSynthDone();
+        const withActivity = prependActivityTimeline(blocks, activity);
+        blocks.length = 0;
+        blocks.push(...prependTaskPlan(withActivity, taskPlan));
       }
-    }
 
-    for (const action of executedActions) {
-      await sb.from('ai_dashboard_assistant_action_audit').insert({
-        organization_id: orgCtx.org.id,
-        property_id: action.result.auditPropertyId ?? effectivePropertyId,
-        booking_id: action.result.auditBookingId ?? null,
-        user_id: user.id,
+      assertTurnActive();
+
+      for (const action of executedActions) {
+        await sb.from('ai_dashboard_assistant_action_audit').insert({
+          organization_id: orgCtx.org.id,
+          property_id: action.result.auditPropertyId ?? effectivePropertyId,
+          booking_id: action.result.auditBookingId ?? null,
+          user_id: user.id,
+          conversation_id: conversationId,
+          message_id: userMessageRow.id,
+          tool_name: action.toolName,
+          risk_tier: 'tier1_auto',
+          input_payload: action.result.data ?? {},
+          result_status: action.result.ok ? 'success' : 'failed',
+          result_summary: action.result.error ?? null,
+        });
+      }
+      if (executedActions.length > 0) {
+        await incrementDashboardAssistantUsage(orgCtx.org.id, { writeAction: true });
+      }
+
+      const responseBlocks = nestBookingJourneyStepper(blocks, toolResultsForGrounding);
+
+      await sb.from('ai_dashboard_assistant_messages').insert({
         conversation_id: conversationId,
-        message_id: userMessageRow.id,
-        tool_name: action.toolName,
-        risk_tier: 'tier1_auto',
-        input_payload: action.result.data ?? {},
-        result_status: action.result.ok ? 'success' : 'failed',
-        result_summary: action.result.error ?? null,
+        role: 'assistant',
+        content_text: finalText || null,
+        blocks: responseBlocks,
+        tool_calls: toolResultsForGrounding.length > 0 ? toolResultsForGrounding : [],
       });
+
+      await sb
+        .from('ai_dashboard_assistant_conversations')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('id', conversationId);
+
+      await incrementDashboardAssistantUsage(orgCtx.org.id, {
+        message: true,
+        creditsConsumed: turnCreditsConsumed,
+      });
+
+      turnCommitted = true;
+      return { conversationId, blocks: responseBlocks };
+    };
+
+    if (wantsAssistantStream(req, body as { stream?: boolean })) {
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          const emit = createAssistantStreamEmitter(controller, {
+            isAborted: () => turnAbort.signal.aborted,
+          });
+          void (async () => {
+            try {
+              const result = await runTurn(emit);
+              await streamAssistantTextPreview(emit, result.blocks, {
+                signal: turnAbort.signal,
+              });
+              // Always deliver terminal blocks once the turn is committed, even if the
+              // host cancelled during the text preview delay window.
+              emit({
+                type: 'blocks',
+                conversationId: result.conversationId,
+                blocks: result.blocks,
+              });
+              controller.close();
+            } catch (err) {
+              if (isAssistantTurnAbortedError(err)) {
+                await cleanupAbortedTurn();
+                emit({ type: 'error', message: 'Turn cancelled', aborted: true });
+                try {
+                  controller.close();
+                } catch {
+                  /* already closed */
+                }
+                return;
+              }
+              emit({
+                type: 'error',
+                message: err instanceof Error ? err.message : 'Turn failed',
+              });
+              try {
+                controller.close();
+              } catch {
+                /* already closed */
+              }
+            }
+          })();
+        },
+        cancel() {
+          linkRequestAbort();
+        },
+      });
+      return assistantStreamResponse(req, stream);
     }
-    if (executedActions.length > 0) {
-      await incrementDashboardAssistantUsage(orgCtx.org.id, { writeAction: true });
+
+    try {
+      const result = await runTurn();
+      return jsonSuccess(req, { conversationId: result.conversationId, blocks: result.blocks });
+    } catch (err) {
+      if (isAssistantTurnAbortedError(err)) {
+        await cleanupAbortedTurn();
+        return jsonError(req, 'Turn cancelled', 499);
+      }
+      throw err;
     }
-
-    const responseBlocks = nestBookingJourneyStepper(blocks, toolResultsForGrounding);
-
-    await sb.from('ai_dashboard_assistant_messages').insert({
-      conversation_id: conversationId,
-      role: 'assistant',
-      content_text: finalText || null,
-      blocks: responseBlocks,
-      tool_calls: toolResultsForGrounding.length > 0 ? toolResultsForGrounding : [],
-    });
-
-    await sb
-      .from('ai_dashboard_assistant_conversations')
-      .update({ last_message_at: new Date().toISOString() })
-      .eq('id', conversationId);
-
-    await incrementDashboardAssistantUsage(orgCtx.org.id, {
-      message: true,
-      creditsConsumed: turnCreditsConsumed,
-    });
-
-    return jsonSuccess(req, { conversationId, blocks: responseBlocks });
   } catch (err) {
     if (err instanceof PlanFeatureRequiredError) {
       return jsonUpgradeHook(req, err.message, { feature: err.feature });

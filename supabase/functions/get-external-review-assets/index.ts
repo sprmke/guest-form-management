@@ -84,7 +84,6 @@ serveAuthenticated('get-external-review-assets', async (req) => {
     reviewId,
     imageUrl,
     stayPhotoUrls: resolvedStayPhotoUrls.filter((entry): entry is string => Boolean(entry)),
-    proofUrl: review.proofUrl,
     review,
   });
 });
