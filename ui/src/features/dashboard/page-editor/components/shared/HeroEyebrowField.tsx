@@ -31,7 +31,8 @@ export function HeroEyebrowField({
   label = 'Above heading',
   idPrefix = 'showcase-text-source',
 }: Props) {
-  const source = value?.source ?? 'location';
+  const unsetDefault = developmentAvailable ? 'development' : 'location';
+  const source = value?.source ?? unsetDefault;
   const [customDraft, setCustomDraft] = useState(value?.customText ?? '');
 
   useEffect(() => {
@@ -51,7 +52,7 @@ export function HeroEyebrowField({
           value={effectiveSource}
           onValueChange={(next) => {
             if (next === 'location') {
-              onChange(undefined);
+              onChange({ source: 'location' });
               return;
             }
             if (next === 'development') {
