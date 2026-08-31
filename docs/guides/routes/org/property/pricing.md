@@ -15,15 +15,15 @@ Legacy `/calendar` redirects here.
 
 ## Progress overview
 
-| Section                  | E2E save | Validation | Docs | Notes                                                         |
-| ------------------------ | -------- | ---------- | ---- | ------------------------------------------------------------- |
-| Pricing rates and fees   | Done     | Done       | Done | Weekday/weekend defaults + fee sidebar                        |
-| Per-date rates           | Done     | Done       | Done | Future, available nights only                                 |
-| Booked stays on calendar | Done     | Done       | Done | Spanning pills; click for guest modal                         |
-| Block / unblock dates    | Done     | Done       | Done | Checkout-exclusive ranges                                     |
-| Channel sync (iCal)      | Done     | Done       | Done | Airbnb / OTA feeds + export — Pro+ `calendarSync`             |
-| Guest availability       | Done     | Done       | Done | Blocks are returned as unavailable ranges                     |
-| Permissions              | N/A      | Done       | Done | `pricing:view` / rates + blocks + `pricing.channels:*` leaves |
+| Section                  | E2E save | Validation | Docs | Notes                                                                                  |
+| ------------------------ | -------- | ---------- | ---- | -------------------------------------------------------------------------------------- |
+| Pricing rates and fees   | Done     | Done       | Done | Weekday/weekend defaults + fee sidebar                                                 |
+| Per-date rates           | Done     | Done       | Done | Future, available nights only                                                          |
+| Booked stays on calendar | Done     | Done       | Done | Spanning pills; click for guest modal                                                  |
+| Block / unblock dates    | Done     | Done       | Done | Checkout-exclusive ranges                                                              |
+| Channel sync (iCal)      | Card     | Done       | Done | Card + Pro+ `calendarSync` gate; feeds stay local until `calendar-sync-settings` ships |
+| Guest availability       | Done     | Done       | Done | Blocks are returned as unavailable ranges                                              |
+| Permissions              | N/A      | Done       | Done | `pricing:view` / rates + blocks + `pricing.channels:*` leaves                          |
 
 ---
 
@@ -91,12 +91,12 @@ dates that should not be available to guests.
 
 ## Channel Sync (Airbnb / OTA iCal)
 
-Card on the Pricing page (`ChannelSyncCard`) for **two-way calendar sync**:
+Card on the Pricing page (`ChannelSyncCard`) for **calendar sync**:
 
-- **Import feeds** — paste Airbnb / Booking.com / VRBO `.ics` URLs; cron polls for blocked nights (Phase 1) and, when shipped, reservation ingest (Phase 2 — see `docs/workflow/in-progress/airbnb-calendar-sync.md`).
-- **Export feed** — token-guarded iCal URL for OTAs to import Kame availability.
-- **Plan gate:** `calendarSync` (Pro+). Below Pro: watermark / upgrade modal on the card; server `calendar-sync-settings` + cron require the same feature.
-- **Permissions:** `pricing.channels:view` to see the card; `pricing.channels:edit` to connect, disconnect, or force-sync.
+- **Import feeds** — paste Airbnb / Booking.com / VRBO `.ics` URLs. The card lists them locally; persist + cron polling wait on `calendar-sync-settings` / `calendar-sync-cron` (handlers not in this tree yet — those `config.toml` entries stay commented so local `functions serve` can start).
+- **Export feed** — copyable `ical-export?property_id=` URL for OTAs. Token-guarded live export waits on the same backend.
+- **Plan gate:** `calendarSync` (Pro+). Below Pro: watermark / upgrade modal on the card.
+- **Permissions:** `pricing.channels:view` to see the card; `pricing.channels:edit` to add or remove feeds.
 
 **Host Q&A**
 
