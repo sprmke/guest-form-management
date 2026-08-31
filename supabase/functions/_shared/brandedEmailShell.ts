@@ -48,10 +48,10 @@ export async function renderBrandedEmailShell(input: {
   propertyId?: string | null;
   dateLineBlock?: string;
 }): Promise<string> {
-  const brandName = resolvePublicBrandName(input.brandName) || PLATFORM_BRAND_NAME;
+  const brandName = resolvePublicBrandName(input.brandName) || PLATFORM_BRAND_NAME || 'Property';
   const emailHeaderLogo = await emailHeaderLogoHtml(input.propertyId, brandName);
   const shell = await loadEmailTemplate('fragments/configurable-template-send');
-  const legalFooter = `© ${brandName}. All rights reserved.`;
+  const legalFooter = brandName ? `© ${brandName}. All rights reserved.` : '© All rights reserved.';
 
   return replacePlaceholders(
     shell,

@@ -46,6 +46,7 @@ import {
   sanitizeAttachmentToken,
 } from './propertyEmailBranding.ts';
 import { buildEmailCtaHtml, renderBrandedEmailShell } from './brandedEmailShell.ts';
+import { PLATFORM_BRAND_NAME } from './platformBrand.ts';
 import { escapeHtml } from './renderEmailHtml.ts';
 import { resolvePublicGuestAppOrigin } from './publicAppOrigin.ts';
 
@@ -1257,8 +1258,9 @@ export async function sendSupportTicketNotify(ticket: {
 </table>
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 8px 0;border-collapse:separate;border-spacing:0;"><tr><td style="padding:18px 20px;background-color:#f1f5f9;border:1px solid #e2e8f0;border-radius:16px;font-size:14px;line-height:1.55;color:#333333;white-space:pre-wrap;">${escapeHtml(ticket.bodyPreview)}</td></tr></table>`;
 
+  const supportBrand = PLATFORM_BRAND_NAME || 'Support';
   const html = await renderBrandedEmailShell({
-    brandName: 'Kame Homes',
+    brandName: ticket.organizationName || supportBrand,
     unitLabel: ticket.organizationName,
     emailTitle: 'New support ticket',
     bodyHtml,
@@ -1272,7 +1274,7 @@ export async function sendSupportTicketNotify(ticket: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: `Kame Homes Support <${(Deno.env.get('RESEND_FROM_EMAIL') ?? SUPPORT_TEAM_EMAIL).trim()}>`,
+      from: `${supportBrand} <${(Deno.env.get('RESEND_FROM_EMAIL') ?? SUPPORT_TEAM_EMAIL).trim()}>`,
       to: [SUPPORT_TEAM_EMAIL],
       reply_to: ticket.submittedByEmail,
       subject: `[${categoryLabel}] ${ticket.subject}`,
@@ -1312,8 +1314,9 @@ export async function sendSupportTicketReplyNotify(ticket: {
   const bodyHtml = `<p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#333333;">There's a new reply on your support ticket <strong>${escapeHtml(ticket.subject)}</strong>.</p>
 ${buildEmailCtaHtml('View the ticket', ticketUrl, null)}`;
 
+  const supportBrand = PLATFORM_BRAND_NAME || 'Support';
   const html = await renderBrandedEmailShell({
-    brandName: 'Kame Homes',
+    brandName: supportBrand,
     unitLabel: 'Help & Support',
     emailTitle: 'New reply on your ticket',
     bodyHtml,
@@ -1327,7 +1330,7 @@ ${buildEmailCtaHtml('View the ticket', ticketUrl, null)}`;
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: `Kame Homes Support <${fromEmail}>`,
+      from: `${supportBrand} <${fromEmail}>`,
       to: [ticket.submittedByEmail],
       subject: `Re: ${ticket.subject}`,
       html,
