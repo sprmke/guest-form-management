@@ -498,6 +498,18 @@ export async function insertMessageIfNew(
     if (error.code === '23505') return null;
     throw new Error(error.message);
   }
+
+  void import('./inboxThreadMetrics.ts')
+    .then(({ recordInboxMessageForMetrics }) =>
+      recordInboxMessageForMetrics({
+        organization_id: fields.organization_id,
+        conversation_id: fields.conversation_id,
+        direction: fields.direction,
+        sent_at: fields.sent_at,
+      })
+    )
+    .catch((err) => console.warn('[insertMessageIfNew] superhost metrics:', err));
+
   return null;
 }
 

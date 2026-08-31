@@ -27,6 +27,11 @@ import {
 } from './planPricing.ts';
 import { normalizePermissionIds } from './propertyTeamPermissions.ts';
 import { chunkIds, countInIdChunks, selectInIdChunks } from './postgrestInChunks.ts';
+import {
+  validateOrgPlanDowngradeRequest,
+  subscriptionStatusBlocksFeatureGates,
+} from './orgPlanDowngrade.ts';
+import { sendOrgSubscriptionPlanChangedEmail } from './subscriptionBillingEmail.ts';
 
 export class PlanFeatureRequiredError extends Error {
   readonly upgradeHook = true;
@@ -138,7 +143,7 @@ export async function getDefaultPricingPlan(): Promise<PricingPlanRow> {
   return data as PricingPlanRow;
 }
 
-/** The org's current live subscription (active/trialing/past_due), if any. */
+/** The org's current live subscription (active/trialing/past_due/suspended), if any. */
 export async function getActiveOrgSubscription(
   organizationId: string
 ): Promise<OrgSubscriptionRow | null> {
@@ -160,7 +165,39 @@ export async function getActiveOrgSubscription(
     `
     )
     .eq('organization_id', organizationId)
-    .in('status', ['active', 'trialing', 'past_due'])
+    .in('status', ['active', 'trialing', 'past_due', 'suspended'])
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+
+  const plan = (data as Record<string, unknown>).pricing_plans as PricingPlanRow;
+  const { pricing_plans: _planJoin, ...sub } = data as Record<string, unknown>;
+  return serializeOrgSubscription(sub, plan);
+}
+
+/** Subscription row eligible for self-serve downgrade (includes suspended for cancel-to-Free). */
+export async function getOrgSubscriptionForSelfServeDowngrade(
+  organizationId: string
+): Promise<OrgSubscriptionRow | null> {
+  const sb = db();
+  const { data, error } = await sb
+    .from('org_subscriptions')
+    .select(
+      `
+      id,
+      organization_id,
+      plan_id,
+      pricing_model,
+      price_php_snapshot,
+      status,
+      current_period_start,
+      current_period_end,
+      feature_overrides,
+      pricing_plans!inner (${PLAN_SELECT_FIELDS})
+    `
+    )
+    .eq('organization_id', organizationId)
+    .in('status', ['active', 'trialing', 'past_due', 'suspended'])
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
@@ -201,7 +238,7 @@ export async function getActiveOrgSubscriptionForProperty(
     `
     )
     .eq('id', slot.org_subscription_id as string)
-    .in('status', ['active', 'trialing', 'past_due'])
+    .in('status', ['active', 'trialing', 'past_due', 'suspended'])
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
@@ -289,11 +326,24 @@ export async function resolvePropertyEntitlements(
   };
 }
 
+function assertSubscriptionAllowsPaidFeatures(
+  entitlements: ResolvedPropertyEntitlements,
+  feature: PlanFeatureKey
+): void {
+  if (subscriptionStatusBlocksFeatureGates(entitlements.status)) {
+    throw new PlanFeatureRequiredError(
+      feature,
+      'Subscription suspended — pay from Plans & Billing to restore access'
+    );
+  }
+}
+
 export async function requirePropertyFeature(
   propertyId: string,
   feature: PlanFeatureKey
 ): Promise<ResolvedPropertyEntitlements> {
   const entitlements = await resolvePropertyEntitlements(propertyId);
+  assertSubscriptionAllowsPaidFeatures(entitlements, feature);
   if (!isFeatureEnabled(entitlements, feature)) {
     throw new PlanFeatureRequiredError(feature);
   }
@@ -342,7 +392,6 @@ async function countOrgAdminTeamSlots(organizationId: string, ownerId: string): 
     .select('id', { count: 'exact', head: true })
     .eq('organization_id', organizationId)
     .eq('status', 'active')
-    .eq('role_id', 'ADMIN')
     .neq('user_id', ownerId);
   if (orgAdminError) throw new Error(orgAdminError.message);
 
@@ -735,7 +784,6 @@ export async function reconcileTeamSeatsForProperty(
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId)
       .eq('status', 'active')
-      .eq('role_id', 'ADMIN')
       .neq('user_id', ownerId);
     if (orgAdminError) throw new Error(orgAdminError.message);
     const virtualSlotsUsed = 1 + (orgAdminCount ?? 0);
@@ -906,6 +954,13 @@ export async function requireOrgPropertyFeature(
   orgId: string,
   feature: PlanFeatureKey
 ): Promise<void> {
+  const subscription = await getActiveOrgSubscription(orgId);
+  if (subscription && subscriptionStatusBlocksFeatureGates(subscription.status)) {
+    throw new PlanFeatureRequiredError(
+      feature,
+      'Subscription suspended — pay from Plans & Billing to restore access'
+    );
+  }
   const allowed = await orgHasPropertyWithFeature(orgId, feature);
   if (!allowed) {
     throw new PlanFeatureRequiredError(feature);
@@ -1024,6 +1079,18 @@ function orgSubscriptionTotalForPlan(plan: OrgEligiblePlanRow, propertyCount: nu
       volumeRampAtCount: plan.volume_ramp_at_count,
     }
   );
+}
+
+/** Every property in the org — billing always covers the full count (mirrors checkout). */
+async function listOrganizationPropertyIds(organizationId: string): Promise<string[]> {
+  const sb = db();
+  const { data, error } = await sb
+    .from('properties')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .order('created_at', { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => row.id as string);
 }
 
 /** Creates a new org subscription and slots the given properties into it. No property-count cap
@@ -1441,9 +1508,9 @@ export async function changeOrgSubscription(
 
 /**
  * Host self-serve downgrade — no PayMongo. Paid→paid: `changeOrgSubscription` immediately
- * (period bounds kept; next renewal uses the new total). Paid→Free: cancel the live
- * subscription, unenroll every property (Free via entitlement fallback), claw seats, and
- * reset AI credit allowance. Rejects upgrades and same-tier changes (those stay on checkout).
+ * (period bounds kept; next renewal uses the new total) for every org property. Paid→Free:
+ * unenrolls properties then cancels the subscription row. Only `active` / `trialing` /
+ * `suspended` (Free only) qualify — `past_due` must pay first. Managed is sales-assisted.
  */
 export async function applyOrgPlanDowngrade(
   organizationId: string,
@@ -1452,14 +1519,14 @@ export async function applyOrgPlanDowngrade(
 ): Promise<{ orgSubscriptionId: string | null; toFree: boolean }> {
   const sb = db();
 
-  const live = await getActiveOrgSubscription(organizationId);
+  const live = await getOrgSubscriptionForSelfServeDowngrade(organizationId);
   if (!live) {
     throw new Error('No active subscription to change');
   }
 
   const { data: currentPlan, error: currentPlanError } = await sb
     .from('pricing_plans')
-    .select('id, sort_order, is_default')
+    .select('id, code, sort_order, is_default')
     .eq('id', live.planId)
     .maybeSingle();
   if (currentPlanError) throw new Error(currentPlanError.message);
@@ -1467,7 +1534,7 @@ export async function applyOrgPlanDowngrade(
 
   const { data: targetPlan, error: targetPlanError } = await sb
     .from('pricing_plans')
-    .select('id, code, sort_order, is_default, is_active, pricing_model, features')
+    .select('id, code, name, sort_order, is_default, is_active, pricing_model, features')
     .eq('id', targetPlanId)
     .maybeSingle();
   if (targetPlanError) throw new Error(targetPlanError.message);
@@ -1476,96 +1543,119 @@ export async function applyOrgPlanDowngrade(
     throw new Error('Only subscription plans can be selected');
   }
 
-  const toFree = Boolean(targetPlan.is_default);
-  const currentSort = Number(currentPlan.sort_order ?? 0);
-  const targetSort = Number(targetPlan.sort_order ?? 0);
-
-  if (toFree) {
-    if (currentPlan.is_default) {
-      throw new Error('Already on the Free plan');
-    }
-  } else if (targetPlanId === live.planId || targetSort >= currentSort) {
-    throw new Error('Use checkout to upgrade or update billing');
+  const validation = validateOrgPlanDowngradeRequest({
+    currentPlanId: live.planId,
+    currentPlanCode: String(currentPlan.code),
+    currentPlanSortOrder: Number(currentPlan.sort_order ?? 0),
+    currentPlanIsDefault: Boolean(currentPlan.is_default),
+    subscriptionStatus: live.status,
+    targetPlanId,
+    targetPlanCode: String(targetPlan.code),
+    targetPlanSortOrder: Number(targetPlan.sort_order ?? 0),
+    targetPlanIsDefault: Boolean(targetPlan.is_default),
+  });
+  if (!validation.ok) {
+    throw new Error(validation.message);
   }
+  const toFree = validation.toFree;
 
-  // Drop any pending PayMongo links — the host is leaving the quoted tier.
+  const allOrgPropertyIds = await listOrganizationPropertyIds(organizationId);
+
   await sb
     .from('org_payment_transactions')
     .update({ status: 'expired' })
     .eq('organization_id', organizationId)
     .eq('status', 'pending');
 
+  const fromPlanName = live.planName;
+  const toPlanName = String(targetPlan.name);
+
   if (toFree) {
-    const { data: slots, error: slotsError } = await sb
-      .from('org_subscription_properties')
-      .select('property_id')
-      .eq('org_subscription_id', live.id);
-    if (slotsError) throw new Error(slotsError.message);
-    const propertyIds = (slots ?? []).map((row) => row.property_id as string);
-
-    const previousStatus = live.status;
-    const { error: cancelError } = await sb
-      .from('org_subscriptions')
-      .update({ status: 'canceled', price_php_snapshot: 0 })
-      .eq('id', live.id);
-    if (cancelError) throw new Error(cancelError.message);
-
-    await writeOrgSubscriptionEvent({
+    await cancelOrgSubscriptionToFree({
       orgSubscriptionId: live.id,
-      eventType: 'status_changed',
-      previousPlanId: live.planId,
-      newPlanId: targetPlanId,
-      previousStatus,
-      newStatus: 'canceled',
-      note: 'Host downgraded to Free',
-      createdBy: changedBy,
-    });
-
-    for (const chunk of chunkIds(propertyIds)) {
-      const { error: deleteError } = await sb
-        .from('org_subscription_properties')
-        .delete()
-        .eq('org_subscription_id', live.id)
-        .in('property_id', chunk);
-      if (deleteError) throw new Error(deleteError.message);
-      const { error: eventsError } = await sb.from('org_subscription_events').insert(
-        chunk.map((propertyId) => ({
-          org_subscription_id: live.id,
-          event_type: 'property_removed',
-          property_id: propertyId,
-          created_by: changedBy,
-        }))
-      );
-      if (eventsError) throw new Error(eventsError.message);
-    }
-
-    const freeFeatures = parsePlanFeatures(targetPlan.features);
-    await syncAiCreditsFromPlan(
       organizationId,
-      String(targetPlan.code),
-      freeFeatures.aiMonthlyCreditAllowance,
-      changedBy ?? 'system'
-    );
-
-    for (const propertyId of propertyIds) {
-      await reconcileTeamSeatsForProperty(propertyId);
-    }
-
+      previousPlanId: live.planId,
+      targetPlanId,
+      previousStatus: live.status,
+      targetPlanFeatures: targetPlan.features,
+      targetPlanCode: String(targetPlan.code),
+      allOrgPropertyIds,
+      changedBy,
+    });
+    await notifyOrgPlanDowngradeEmail({
+      organizationId,
+      fromPlanName,
+      toPlanName,
+      toFree: true,
+    });
     return { orgSubscriptionId: live.id, toFree: true };
   }
 
-  const { data: slots, error: slotsError } = await sb
-    .from('org_subscription_properties')
-    .select('property_id')
-    .eq('org_subscription_id', live.id);
-  if (slotsError) throw new Error(slotsError.message);
-  const propertyIds = (slots ?? []).map((row) => row.property_id as string);
-  if (propertyIds.length === 0) {
-    throw new Error('Subscription has no enrolled properties');
+  if (allOrgPropertyIds.length === 0) {
+    throw new Error('Add at least one property to your organization before changing plans');
   }
 
-  await changeOrgSubscription(live.id, targetPlanId, propertyIds, changedBy);
+  await changeOrgSubscription(live.id, targetPlanId, allOrgPropertyIds, changedBy);
+  await notifyOrgPlanDowngradeEmail({
+    organizationId,
+    fromPlanName,
+    toPlanName,
+    toFree: false,
+  });
   return { orgSubscriptionId: live.id, toFree: false };
+}
+
+async function cancelOrgSubscriptionToFree(input: {
+  orgSubscriptionId: string;
+  organizationId: string;
+  previousPlanId: string;
+  targetPlanId: string;
+  previousStatus: string;
+  targetPlanFeatures: unknown;
+  targetPlanCode: string;
+  allOrgPropertyIds: string[];
+  changedBy: string | null;
+}): Promise<void> {
+  const sb = db();
+
+  const { error: rpcError } = await sb.rpc('cancel_org_subscription_to_free', {
+    p_org_subscription_id: input.orgSubscriptionId,
+    p_target_plan_id: input.targetPlanId,
+    p_previous_status: input.previousStatus,
+    p_changed_by: input.changedBy,
+  });
+  if (rpcError) throw new Error(rpcError.message);
+
+  const freeFeatures = parsePlanFeatures(input.targetPlanFeatures);
+  await syncAiCreditsFromPlan(
+    input.organizationId,
+    input.targetPlanCode,
+    freeFeatures.aiMonthlyCreditAllowance,
+    input.changedBy ?? 'system'
+  );
+
+  for (const propertyId of input.allOrgPropertyIds) {
+    await reconcileTeamSeatsForProperty(propertyId);
+  }
+}
+
+async function notifyOrgPlanDowngradeEmail(input: {
+  organizationId: string;
+  fromPlanName: string;
+  toPlanName: string;
+  toFree: boolean;
+}): Promise<void> {
+  try {
+    await sendOrgSubscriptionPlanChangedEmail({
+      supabase: db(),
+      organizationId: input.organizationId,
+      fromPlanName: input.fromPlanName,
+      toPlanName: input.toPlanName,
+      toFree: input.toFree,
+    });
+  } catch (err) {
+    console.error('[planEntitlements] downgrade email failed', err);
+  }
 }
 
 export async function countMarketingPublications(propertyId: string): Promise<number> {

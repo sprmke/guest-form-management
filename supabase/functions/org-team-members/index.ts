@@ -59,7 +59,7 @@ serveAuthenticated('org-team-members', async (req) => {
   if (req.method === 'DELETE') {
     requireHttpMethod(req, 'DELETE');
     const ctx = await requireOrgTeamContext(req, orgId, orgSlug, {
-      requireManage: true,
+      requireMemberDelete: true,
     });
     const memberId =
       typeof body.memberId === 'string'

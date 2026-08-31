@@ -23,10 +23,8 @@ import {
   sortPublicGuestReviewsNewestFirst,
   type PublicGuestReviewDto,
 } from './guestReviewService.ts';
-import {
-  listApprovedPublicExternalReviews,
-  normalizeSuperhostStatus,
-} from './propertyExternalReviews.ts';
+import { listApprovedPublicExternalReviews } from './propertyExternalReviews.ts';
+import { isOrgSuperhostEarned } from './orgSuperhost.ts';
 import { loadGuestFacingContactInfo } from './guestContactInfo.ts';
 import { resolveAppSettings } from './appSettings.ts';
 import { isOrgVerifiedBadge, readOrgVerificationFromSettings } from './orgVerification.ts';
@@ -344,7 +342,7 @@ export async function loadPublicPropertyById(
     resolveAppSettings(propertyId),
     supabase
       .from('app_settings')
-      .select('external_reviews, superhost_status')
+      .select('external_reviews')
       .eq('property_id', propertyId)
       .maybeSingle(),
   ]);
@@ -354,8 +352,6 @@ export async function loadPublicPropertyById(
   );
   const mergedReviews = sortPublicGuestReviewsNewestFirst([...guestReviews, ...externalReviews]);
   const reviewRating = averageGuestReviewRating(mergedReviews);
-  const isSuperhost =
-    normalizeSuperhostStatus(appSettingsRowResult.data?.superhost_status) === 'approved';
 
   const contact = await loadGuestFacingContactInfo(propertyId, appSettings);
 
@@ -364,6 +360,7 @@ export async function loadPublicPropertyById(
     org?.settings && typeof org.settings === 'object' && !Array.isArray(org.settings)
       ? (org.settings as Record<string, unknown>)
       : {};
+  const isSuperhost = isOrgSuperhostEarned(orgSettings);
   const verifiedBadge = isOrgVerifiedBadge(readOrgVerificationFromSettings(orgSettings));
   const recommendedBadge = isListingRecommendedBadge(
     resolveListingAuthorization(settings, orgSettings, 'property')

@@ -1,5 +1,5 @@
 -- AI Credit Limits — Phase 3 of the AI usage metering plan
--- (docs/workflow/in-progress/ai-usage-metering-credits-foundation.md).
+-- (docs/workflow/done/ai-usage-metering-credits-foundation.md).
 --
 -- Adds a credit-based quota layered on top of the existing call/cost quotas, and wires the
 -- Phase 1 org credit wallet into enforcement. The default limits below are set high enough

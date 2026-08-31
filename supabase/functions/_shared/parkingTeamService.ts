@@ -185,7 +185,6 @@ async function isActiveOrgAdmin(
     .eq('organization_id', orgId)
     .eq('user_id', userId)
     .eq('status', 'active')
-    .eq('role_id', 'ADMIN')
     .maybeSingle();
   return Boolean(data?.id);
 }
@@ -258,8 +257,7 @@ async function emailHasOrgLevelParkingAccess(
     .from('organization_members')
     .select('user_id')
     .eq('organization_id', orgId)
-    .eq('status', 'active')
-    .eq('role_id', 'ADMIN');
+    .eq('status', 'active');
 
   for (const row of orgAdmins ?? []) {
     const profile = await getAuthProfile(supabase, row.user_id as string);
@@ -319,10 +317,10 @@ export async function listParkingTeamMembers(
 
   const { data: orgAdminRows, error: orgAdminError } = await supabase
     .from('organization_members')
-    .select('user_id, assigned_at, display_name, contact_phone')
+    .select('user_id, assigned_at, display_name, contact_phone, all_listings')
     .eq('organization_id', orgId)
     .eq('status', 'active')
-    .eq('role_id', 'ADMIN')
+    .eq('all_listings', true)
     .order('assigned_at', { ascending: true });
 
   if (orgAdminError) {
@@ -352,7 +350,9 @@ export async function listParkingTeamMembers(
     const assignedBy = row.invited_by
       ? (await getAuthProfile(supabase, row.invited_by as string)).name
       : 'System';
-    parkingMembers.push(serializeMemberRow(row, profile, assignedBy, false));
+    parkingMembers.push(
+      serializeMemberRow(row, profile, assignedBy, row.assigned_via_org === true)
+    );
   }
 
   const virtualMembers: SerializedParkingTeamMember[] = [];
@@ -690,6 +690,9 @@ export async function updateParkingTeamMember(
   if (findError || !existing) {
     throw new Error('Member not found');
   }
+  if (existing.assigned_via_org === true) {
+    throw new Error('Org-assigned members cannot be edited at parking level');
+  }
   await assertNotOrgManagedMember(
     supabase,
     ctx.org.id,
@@ -771,7 +774,7 @@ export async function updateParkingTeamMember(
     ? (await getAuthProfile(supabase, data.invited_by as string)).name
     : 'System';
 
-  return serializeMemberRow(data, profile, assignedBy, false);
+  return serializeMemberRow(data, profile, assignedBy, data.assigned_via_org === true);
 }
 
 export async function removeParkingTeamMember(
@@ -785,7 +788,7 @@ export async function removeParkingTeamMember(
   const supabase = createServiceClient();
   const { data: existing, error: findError } = await supabase
     .from('parking_members')
-    .select('user_id')
+    .select('user_id, assigned_via_org')
     .eq('id', memberId)
     .eq('parking_id', ctx.parking.id)
     .maybeSingle();
@@ -795,6 +798,9 @@ export async function removeParkingTeamMember(
   }
   if (!existing) {
     throw new Error('Member not found');
+  }
+  if (existing.assigned_via_org === true) {
+    throw new Error('Org-assigned members cannot be removed at parking level');
   }
   if (existing.user_id === ctx.user.id) {
     throw new Error('You cannot remove your own account');

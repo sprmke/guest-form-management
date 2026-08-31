@@ -19,7 +19,7 @@ function resolveRoleLabel(
   customRolesById: Map<string, PropertyCustomRoleRow>
 ): string {
   if (isPropertyAdminRoleId(roleId)) {
-    return 'Admin';
+    return 'Custom';
   }
   return customRolesById.get(roleId)?.name ?? 'Custom';
 }

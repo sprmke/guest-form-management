@@ -14,8 +14,6 @@ export type ExternalReviewSource = 'facebook' | 'airbnb';
 
 export type ExternalReviewModerationStatus = 'pending' | 'approved' | 'rejected';
 
-export type SuperhostStatus = 'none' | 'pending' | 'approved' | 'rejected';
-
 export type PropertyExternalReview = {
   id: string;
   source: ExternalReviewSource;
@@ -292,14 +290,6 @@ export function listApprovedPublicExternalReviews(raw: unknown): PublicGuestRevi
       createdAt: review.createdAt,
     }));
 }
-
-export function normalizeSuperhostStatus(raw: unknown): SuperhostStatus {
-  const value = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
-  if (value === 'pending' || value === 'approved' || value === 'rejected') return value;
-  return 'none';
-}
-
-export type ExternalReviewModerationDecision = 'approved' | 'rejected';
 
 /** Super-admin: set moderation status on one review; throws if missing or not pending. */
 export function updateExternalReviewModerationStatus(

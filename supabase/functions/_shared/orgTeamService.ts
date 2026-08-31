@@ -20,8 +20,16 @@ import {
 } from './orgTeamPermissions.ts';
 import {
   parseListingAssignmentsFromBody,
+  parseListingAssignmentsPayload,
   syncOrgListingMemberships,
+  type ParsedOrgListingAssignments,
 } from './orgTeamListingAssignment.ts';
+import {
+  findOrgTemplateIdByName,
+  isSeededOrgTemplateName,
+  seedOrgTeamTemplates,
+  SEEDED_ORG_TEMPLATE_NAMES,
+} from './orgTeamTemplates.ts';
 import { readOrgIdFromUrl, readOrgSlugFromUrl } from './propertyScope.ts';
 import { sendOrgTeamInviteEmail } from './orgTeamInviteEmail.ts';
 import { assertAllowedTeamInviteEmail } from './teamInviteEmail.ts';
@@ -38,6 +46,8 @@ export type SerializedOrgCustomRole = {
   id: string;
   name: string;
   permissions: string[];
+  allListings: boolean;
+  listingAssignments: ReturnType<typeof parseOrgListingAssignments>;
 };
 
 export type SerializedOrgTeamMember = {
@@ -95,7 +105,7 @@ export async function requireOrgTeamContext(
   req: Request,
   orgId: string,
   orgSlug: string | null,
-  options?: { requireManage?: boolean; requireInvite?: boolean }
+  options?: { requireManage?: boolean; requireInvite?: boolean; requireMemberDelete?: boolean }
 ): Promise<OrgTeamAccessContext> {
   if (orgId) {
     return verifyOrgTeamAccess(req, { orgId }, options);
@@ -195,7 +205,8 @@ function serializeMemberRow(
 function serializeVirtualOwnerMember(
   org: OrgRow,
   profile: AuthProfile,
-  contactRow: Record<string, unknown> | null
+  contactRow: Record<string, unknown> | null,
+  displayRoleId: string
 ): SerializedOrgTeamMember {
   const displayName =
     contactRow && typeof contactRow.display_name === 'string' && contactRow.display_name.trim()
@@ -213,7 +224,7 @@ function serializeVirtualOwnerMember(
     avatar: profile.avatar,
     displayName,
     contactPhone,
-    role: 'OWNER',
+    role: displayRoleId,
     permissions: normalizeOrgPermissionIds([...ORG_ROLE_PERMISSIONS.OWNER]),
     allListings: true,
     listingAssignments: null,
@@ -259,6 +270,7 @@ export async function listOrgTeamMembers(
 ): Promise<SerializedOrgTeamMember[]> {
   const supabase = createServiceClient();
   const organizationId = ctx.org.id;
+  const fullAccessRoleId = await resolveOrgFullAccessRoleId(supabase, organizationId);
 
   const { data: rows, error } = await supabase
     .from('organization_members')
@@ -281,7 +293,12 @@ export async function listOrgTeamMembers(
     const assignedBy = row.invited_by
       ? (await getAuthProfile(supabase, row.invited_by as string)).name
       : 'System';
-    members.push(serializeMemberRow(row, profile, assignedBy, row.user_id === ctx.org.owner_id));
+    const isOwner = row.user_id === ctx.org.owner_id;
+    const member = serializeMemberRow(row, profile, assignedBy, isOwner);
+    if (isOwner && fullAccessRoleId) {
+      member.role = fullAccessRoleId;
+    }
+    members.push(member);
   }
 
   if (!ownerIncluded) {
@@ -296,7 +313,8 @@ export async function listOrgTeamMembers(
       serializeVirtualOwnerMember(
         ctx.org,
         ownerProfile,
-        ownerMemberRow as Record<string, unknown> | null
+        ownerMemberRow as Record<string, unknown> | null,
+        fullAccessRoleId ?? 'OWNER'
       )
     );
   }
@@ -402,6 +420,29 @@ async function getFirstPropertyIdForOrg(
   return (data?.id as string | undefined) ?? null;
 }
 
+async function loadOrgTemplateNameRows(
+  supabase: SupabaseClient,
+  organizationId: string
+): Promise<Array<{ id: string; name: string }>> {
+  const { data, error } = await supabase
+    .from('organization_custom_roles')
+    .select('id, name')
+    .eq('organization_id', organizationId);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    name: row.name as string,
+  }));
+}
+
+async function resolveOrgFullAccessRoleId(
+  supabase: SupabaseClient,
+  organizationId: string
+): Promise<string | null> {
+  const rows = await loadOrgTemplateNameRows(supabase, organizationId);
+  return findOrgTemplateIdByName(rows, SEEDED_ORG_TEMPLATE_NAMES.FULL_ACCESS) ?? null;
+}
+
 async function loadOrgCustomRolesMap(
   supabase: SupabaseClient,
   organizationId: string
@@ -451,6 +492,17 @@ export async function createOrgInvitation(
 
   const supabase = createServiceClient();
   const organizationId = ctx.org.id;
+  if (roleId !== 'ADMIN') {
+    const { data: roleRow } = await supabase
+      .from('organization_custom_roles')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .eq('id', roleId)
+      .maybeSingle();
+    if (!roleRow?.id) {
+      throw new Error('Selected org role template was not found');
+    }
+  }
   const contact = parseTeamInviteContactFields(body);
   const customRoles = await loadOrgCustomRolesMap(supabase, organizationId);
   const permissions = resolveOrgInvitePermissions(body, roleId, customRoles);
@@ -845,21 +897,46 @@ export async function updateOrgTeamMember(
     }
     savedRow = data as Record<string, unknown>;
 
-    if (hasListingPatch || body.status === 'active') {
-      const allListings = savedRow.all_listings === true;
-      const assignments = parseListingAssignmentsFromBody({
-        listingAssignments: savedRow.listing_assignments,
-      }).assignments;
-      await syncOrgListingMemberships({
-        supabase,
-        organizationId: ctx.org.id,
-        userId: targetUserId,
-        invitedBy: ctx.user.id,
-        allListings,
-        assignments,
-        contactPhone:
-          typeof savedRow.contact_phone === 'string' ? savedRow.contact_phone.trim() : null,
-      });
+    if (hasListingPatch || body.status === 'active' || body.status === 'inactive') {
+      if (body.status === 'inactive') {
+        await supabase
+          .from('property_members')
+          .update({ status: 'inactive', plan_limited: false })
+          .eq('user_id', targetUserId)
+          .eq('assigned_via_org', true)
+          .in(
+            'property_id',
+            (
+              await supabase.from('properties').select('id').eq('organization_id', ctx.org.id)
+            ).data?.map((row) => row.id as string) ?? []
+          );
+        await supabase
+          .from('parking_members')
+          .update({ status: 'inactive', plan_limited: false })
+          .eq('user_id', targetUserId)
+          .eq('assigned_via_org', true)
+          .in(
+            'parking_id',
+            (
+              await supabase.from('parkings').select('id').eq('organization_id', ctx.org.id)
+            ).data?.map((row) => row.id as string) ?? []
+          );
+      } else {
+        const allListings = savedRow.all_listings === true;
+        const assignments = parseListingAssignmentsFromBody({
+          listingAssignments: savedRow.listing_assignments,
+        }).assignments;
+        await syncOrgListingMemberships({
+          supabase,
+          organizationId: ctx.org.id,
+          userId: targetUserId,
+          invitedBy: ctx.user.id,
+          allListings,
+          assignments,
+          contactPhone:
+            typeof savedRow.contact_phone === 'string' ? savedRow.contact_phone.trim() : null,
+        });
+      }
     }
   } else {
     throw new Error('Member not found');
@@ -1060,18 +1137,47 @@ export async function isActiveOrgAdmin(
     .eq('organization_id', organizationId)
     .eq('user_id', userId)
     .eq('status', 'active')
-    .eq('role_id', 'ADMIN')
     .maybeSingle();
   return Boolean(data?.id);
+}
+
+function serializeOrgCustomRoleRow(row: Record<string, unknown>): SerializedOrgCustomRole {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    permissions: normalizeOrgPermissionIds(row.permissions as string[]),
+    allListings: row.all_listings === true,
+    listingAssignments: parseOrgListingAssignments(row.listing_assignments),
+  };
+}
+
+function parseOrgRoleListingFromBody(body: Record<string, unknown>): {
+  allListings?: boolean;
+  listingAssignments?: ParsedOrgListingAssignments;
+} {
+  const patch: {
+    allListings?: boolean;
+    listingAssignments?: ParsedOrgListingAssignments;
+  } = {};
+  if (body.allListings !== undefined) {
+    patch.allListings = body.allListings === true;
+  }
+  if (body.listingAssignments !== undefined || body.listing_assignments !== undefined) {
+    patch.listingAssignments = parseListingAssignmentsPayload(
+      body.listingAssignments ?? body.listing_assignments
+    );
+  }
+  return patch;
 }
 
 export async function listOrgCustomRoles(
   organizationId: string
 ): Promise<SerializedOrgCustomRole[]> {
   const supabase = createServiceClient();
+  await seedOrgTeamTemplates(supabase, organizationId);
   const { data, error } = await supabase
     .from('organization_custom_roles')
-    .select('id, name, permissions')
+    .select('id, name, permissions, all_listings, listing_assignments')
     .eq('organization_id', organizationId)
     .order('name', { ascending: true });
 
@@ -1079,11 +1185,7 @@ export async function listOrgCustomRoles(
     throw new Error(`Failed to list custom roles: ${error.message}`);
   }
 
-  return (data ?? []).map((row) => ({
-    id: row.id as string,
-    name: row.name as string,
-    permissions: normalizeOrgPermissionIds(row.permissions as string[]),
-  }));
+  return (data ?? []).map((row) => serializeOrgCustomRoleRow(row as Record<string, unknown>));
 }
 
 export async function createOrgCustomRole(
@@ -1103,6 +1205,22 @@ export async function createOrgCustomRole(
     throw new Error('At least one permission is required');
   }
 
+  const listingPatch = parseOrgRoleListingFromBody(body);
+  if (
+    listingPatch.allListings === false &&
+    listingPatch.listingAssignments &&
+    listingPatch.listingAssignments.properties.length === 0 &&
+    listingPatch.listingAssignments.parkings.length === 0
+  ) {
+    // Allow empty selected scope on role templates (org hub only until invite overrides).
+  } else if (listingPatch.listingAssignments) {
+    await assertListingAssignmentsInOrg(
+      createServiceClient(),
+      ctx.org.id,
+      listingPatch.listingAssignments
+    );
+  }
+
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from('organization_custom_roles')
@@ -1110,8 +1228,12 @@ export async function createOrgCustomRole(
       organization_id: ctx.org.id,
       name,
       permissions,
+      all_listings: listingPatch.allListings ?? false,
+      listing_assignments: listingPatch.allListings
+        ? null
+        : (listingPatch.listingAssignments ?? { properties: [], parkings: [] }),
     })
-    .select('id, name, permissions')
+    .select('id, name, permissions, all_listings, listing_assignments')
     .single();
 
   if (error) {
@@ -1121,11 +1243,30 @@ export async function createOrgCustomRole(
     throw new Error(error.message);
   }
 
-  return {
-    id: data.id as string,
-    name: data.name as string,
-    permissions: normalizeOrgPermissionIds(data.permissions as string[]),
-  };
+  return serializeOrgCustomRoleRow(data as Record<string, unknown>);
+}
+
+function sortedPermissionKey(permissions: unknown): string {
+  const ids = normalizeOrgPermissionIds(
+    Array.isArray(permissions)
+      ? permissions.filter((item): item is string => typeof item === 'string')
+      : []
+  );
+  return [...ids].sort().join('\0');
+}
+
+function listingScopeKey(allListings: boolean, listingAssignments: unknown): string {
+  if (allListings) return 'all';
+  const parsed = parseListingAssignmentsPayload(listingAssignments);
+  const properties = [...parsed.properties]
+    .map((entry) => `${entry.propertyId}:${entry.roleId}`)
+    .sort()
+    .join(',');
+  const parkings = [...parsed.parkings]
+    .map((entry) => `${entry.parkingId}:${entry.roleId}`)
+    .sort()
+    .join(',');
+  return `selected|${properties}|${parkings}`;
 }
 
 export async function updateOrgCustomRole(
@@ -1137,12 +1278,29 @@ export async function updateOrgCustomRole(
 
   const supabase = createServiceClient();
   const organizationId = ctx.org.id;
+
+  const { data: existingRole, error: existingError } = await supabase
+    .from('organization_custom_roles')
+    .select('id, name, permissions, all_listings, listing_assignments')
+    .eq('id', roleId)
+    .eq('organization_id', organizationId)
+    .maybeSingle();
+  if (existingError || !existingRole) {
+    throw new Error('Custom role not found');
+  }
+
   const patch: Record<string, unknown> = {};
 
   if (typeof body.name === 'string') {
     const name = body.name.trim();
     if (name.length < 2 || name.length > 60) {
       throw new Error('Role name must be 2–60 characters');
+    }
+    if (
+      isSeededOrgTemplateName(existingRole.name as string) &&
+      name.toLowerCase() !== String(existingRole.name).trim().toLowerCase()
+    ) {
+      throw new Error('Default role names cannot be changed');
     }
     patch.name = name;
   }
@@ -1158,16 +1316,37 @@ export async function updateOrgCustomRole(
     patch.permissions = permissions;
   }
 
+  const listingPatch = parseOrgRoleListingFromBody(body);
+  if (listingPatch.allListings !== undefined) {
+    patch.all_listings = listingPatch.allListings;
+    if (listingPatch.allListings) {
+      patch.listing_assignments = null;
+    }
+  }
+  if (listingPatch.listingAssignments !== undefined && listingPatch.allListings !== true) {
+    await assertListingAssignmentsInOrg(supabase, organizationId, listingPatch.listingAssignments);
+    patch.listing_assignments = listingPatch.listingAssignments;
+    if (listingPatch.allListings === undefined && patch.all_listings === undefined) {
+      patch.all_listings = false;
+    }
+  }
+
   if (Object.keys(patch).length === 0) {
     throw new Error('No valid fields to update');
   }
+
+  const previousPermissionKey = sortedPermissionKey(existingRole.permissions);
+  const previousListingKey = listingScopeKey(
+    existingRole.all_listings === true,
+    existingRole.listing_assignments
+  );
 
   const { data, error } = await supabase
     .from('organization_custom_roles')
     .update(patch)
     .eq('id', roleId)
     .eq('organization_id', organizationId)
-    .select('id, name, permissions')
+    .select('id, name, permissions, all_listings, listing_assignments')
     .single();
 
   if (error) {
@@ -1178,26 +1357,122 @@ export async function updateOrgCustomRole(
   }
 
   if (patch.permissions) {
-    await supabase
+    const { data: members } = await supabase
       .from('organization_members')
-      .update({ permissions: patch.permissions })
+      .select('id, permissions')
+      .eq('organization_id', organizationId)
+      .eq('role_id', roleId)
+      .eq('status', 'active');
+    const matchingMemberIds = (members ?? [])
+      .filter((row) => sortedPermissionKey(row.permissions) === previousPermissionKey)
+      .map((row) => row.id as string);
+    if (matchingMemberIds.length > 0) {
+      await supabase
+        .from('organization_members')
+        .update({ permissions: patch.permissions })
+        .in('id', matchingMemberIds);
+    }
+
+    const { data: invites } = await supabase
+      .from('organization_invitations')
+      .select('id, permissions')
+      .eq('organization_id', organizationId)
+      .eq('role_id', roleId)
+      .eq('status', 'pending');
+    const matchingInviteIds = (invites ?? [])
+      .filter((row) => sortedPermissionKey(row.permissions) === previousPermissionKey)
+      .map((row) => row.id as string);
+    if (matchingInviteIds.length > 0) {
+      await supabase
+        .from('organization_invitations')
+        .update({ permissions: patch.permissions })
+        .in('id', matchingInviteIds);
+    }
+  }
+
+  if (patch.all_listings !== undefined || patch.listing_assignments !== undefined) {
+    const nextAllListings = data.all_listings === true;
+    const nextAssignments = parseListingAssignmentsPayload(data.listing_assignments);
+    const { data: members } = await supabase
+      .from('organization_members')
+      .select('id, user_id, all_listings, listing_assignments, contact_phone')
       .eq('organization_id', organizationId)
       .eq('role_id', roleId)
       .eq('status', 'active');
 
-    await supabase
+    for (const row of members ?? []) {
+      const matchesPrevious =
+        listingScopeKey(row.all_listings === true, row.listing_assignments) === previousListingKey;
+      if (!matchesPrevious) continue;
+
+      await supabase
+        .from('organization_members')
+        .update({
+          all_listings: nextAllListings,
+          listing_assignments: nextAllListings ? null : nextAssignments,
+        })
+        .eq('id', row.id as string);
+
+      await syncOrgListingMemberships({
+        supabase,
+        organizationId,
+        userId: row.user_id as string,
+        invitedBy: ctx.user.id,
+        allListings: nextAllListings,
+        assignments: nextAssignments,
+        contactPhone: typeof row.contact_phone === 'string' ? row.contact_phone.trim() : null,
+      });
+    }
+
+    const { data: invites } = await supabase
       .from('organization_invitations')
-      .update({ permissions: patch.permissions })
+      .select('id, all_listings, listing_assignments')
       .eq('organization_id', organizationId)
       .eq('role_id', roleId)
       .eq('status', 'pending');
+    const matchingInviteIds = (invites ?? [])
+      .filter(
+        (row) =>
+          listingScopeKey(row.all_listings === true, row.listing_assignments) === previousListingKey
+      )
+      .map((row) => row.id as string);
+    if (matchingInviteIds.length > 0) {
+      await supabase
+        .from('organization_invitations')
+        .update({
+          all_listings: nextAllListings,
+          listing_assignments: nextAllListings ? null : nextAssignments,
+        })
+        .in('id', matchingInviteIds);
+    }
   }
 
-  return {
-    id: data.id as string,
-    name: data.name as string,
-    permissions: normalizeOrgPermissionIds(data.permissions as string[]),
-  };
+  return serializeOrgCustomRoleRow(data as Record<string, unknown>);
+}
+
+async function assertListingAssignmentsInOrg(
+  supabase: SupabaseClient,
+  organizationId: string,
+  assignments: ParsedOrgListingAssignments
+): Promise<void> {
+  for (const entry of assignments.properties) {
+    const { data } = await supabase
+      .from('properties')
+      .select('id')
+      .eq('id', entry.propertyId)
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+    if (!data?.id) throw new Error('Invalid property assignment');
+  }
+  for (const entry of assignments.parkings) {
+    const { data } = await supabase
+      .from('parkings')
+      .select('id')
+      .eq('id', entry.parkingId)
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+    if (!data?.id) throw new Error('Invalid parking assignment');
+  }
 }
 
 export async function deleteOrgCustomRole(
@@ -1206,6 +1481,19 @@ export async function deleteOrgCustomRole(
 ): Promise<void> {
   const supabase = createServiceClient();
   const organizationId = ctx.org.id;
+
+  const { data: existingRole, error: existingError } = await supabase
+    .from('organization_custom_roles')
+    .select('id, name')
+    .eq('id', roleId)
+    .eq('organization_id', organizationId)
+    .maybeSingle();
+  if (existingError || !existingRole) {
+    throw new Error('Custom role not found');
+  }
+  if (isSeededOrgTemplateName(existingRole.name as string)) {
+    throw new Error('Default roles cannot be deleted');
+  }
 
   const { count: memberCount } = await supabase
     .from('organization_members')

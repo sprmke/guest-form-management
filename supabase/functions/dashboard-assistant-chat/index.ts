@@ -2,7 +2,11 @@
  * dashboard-assistant-chat — main AI dashboard assistant turn endpoint.
  * Docs: docs/workflow/planned/ai-dashboard-assistant.md §1 (turn flow), §2 (tools), §5 (guardrails).
  *
- * Body: { conversationId?, orgSlug, pageContext: { propertyId?, bookingId? }, attachedContext?: AttachedContextItem[], message, attachments?: [{ name, mimeType, dataBase64 }], stream?: boolean, regenerate?: boolean }
+ * Body: { conversationId?, orgSlug, pageContext: { propertyId?, bookingId? }, attachedContext?: AttachedContextItem[], message, displayMessage?, attachments?: [{ name, mimeType, dataBase64 }], stream?: boolean, regenerate?: boolean }
+ *
+ * `displayMessage` (optional) is the host-facing text stored on the user row / shown in History.
+ * `message` is what the model receives for this turn (may include richer chip guidance).
+ * Never persist tool-name / system-instruction prompts as the visible user bubble.
  *
  * `regenerate: true` reuses the last user message in `conversationId`, deletes later assistant
  * rows, and does not insert a duplicate user message. Attachments are not supported on regenerate.
@@ -11,6 +15,11 @@
  * an `action_confirmation` block with status "proposed"; dashboard-assistant-confirm executes it.
  */
 
+import {
+  commitDeferredTier1Writes,
+  type AssistantAppliedEffect,
+  type DeferredToolCall,
+} from '../_shared/dashboardAssistantDeferredWrites.ts';
 import {
   prependActivityTimeline,
   prependTaskPlan,
@@ -50,11 +59,24 @@ import {
 } from '../_shared/dashboardAssistantRiskClassifier.ts';
 import { isAiPlatformDisabledError, isAiQuotaError } from '../_shared/aiUsageService.ts';
 import {
+  buildActionConfirmationDetails,
+  buildTier1ActionSummary,
+  humanizeActionConfirmationSummary,
+  isBookingJourneyRecord,
+} from '../_shared/dashboardAssistantActionDisplay.ts';
+import {
   humanizeStatusCodesInText,
+  finalizeAssistantBlocksForHost,
   hydrateAssistantBlocksFromTools,
   nestBookingJourneyStepper,
   sanitizeAssistantChatBlocks,
+  buildBookingJourneyData,
+  wrapBlocksWithJourneyGuidance,
 } from '../_shared/dashboardAssistantBlocks.ts';
+import {
+  conversationContextPromptSection,
+  loadConversationContext,
+} from '../_shared/dashboardAssistantConversationContext.ts';
 import {
   assertBlocksGrounded,
   guardDashboardAssistantResponse,
@@ -91,6 +113,7 @@ import {
   requirePropertyFeature,
 } from '../_shared/planEntitlements.ts';
 import { createServiceClient, verifyOrgAccess, verifyPropertyAccess } from '../_shared/orgAuth.ts';
+import { DatabaseService } from '../_shared/databaseService.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 const MAX_TOOL_ROUNDS = 4;
@@ -187,20 +210,39 @@ const BLOCKS_RESPONSE_SCHEMA = {
   required: ['blocks'],
 };
 
-const SYSTEM_PROMPT_PREFIX = `You are the AI dashboard assistant for Kame Homes hosts. Answer only from the Known facts and tool results below — never invent booking data, amounts, or guest names. Never claim an action succeeded unless a tool call actually returned success. When you need live data, call a tool instead of guessing. Financially-sensitive, destructive, or override actions require host confirmation — you do not need to warn about this, the platform handles it. Respond with a short set of typed blocks (text/booking_card/stat_list/data_table/link_list/file_list/image/quick_actions) — never HTML or markdown tables.
+const SYSTEM_PROMPT_PREFIX = `You are the AI dashboard assistant for property hosts. Answer only from the Known facts, Conversation so far, and tool results below — never invent booking data, amounts, guest names, inbox threads, maintenance items, team members, or marketing assets. Never claim an action succeeded unless a tool call actually returned success. When you need live data, call a tool instead of guessing. Financially-sensitive, destructive, or override actions require host confirmation — you do not need to warn about this, the platform handles it. Respond with a short set of typed blocks (text/booking_card/stat_list/data_table/link_list/file_list/image/quick_actions) — never HTML or markdown tables.
+
+Accuracy & tone (all modules — non-negotiable):
+- Never tell the host a booking, guest, file, inbox thread, maintenance item, team member, parking booking, finance row, marketing template, or other record "doesn't exist" / "I don't see it" if it appeared earlier in this conversation (Conversation so far), in attachedContext, or in any tool result this turn — including when it is the wrong status for their requested action.
+- "Can't do X yet" ≠ "missing". If the host asks to complete, cancel, refund, publish, send, reply, invite, or mark done and the target exists but is blocked, say so clearly: name the entity (use hostLabel), current status/state, why the action is blocked, what is still pending, and the next valid step.
+- Prefer short, direct, confident copy. No apologetic filler. No inventing absences.
+- Continuity: reuse names, statuses, and choices from Conversation so far. If the host says "that one", "this guest", "the thread", or "same as before", resolve from prior turns + attachedContext before asking again.
+
+Bookings-specific:
+- When the host picks a suggested stay by guest name, look it up with list_bookings(guestName=…) without a status filter first (or get_booking if you already have bookingId from tools). Do not filter list_bookings to READY_FOR_CHECKOUT / COMPLETED just because they said "complete".
+- When the host asks to guide them through a booking's remaining steps, call plan_booking_journey. Do not invent a stepper — the platform renders it from that tool.
+- When the host asks to complete, advance, finish, or mark a booking done and no booking is pinned / named, call list_bookings first (no status filter). Reply with a short text asking which stay, a data_table of guest + dates + status, and quick_actions whose labels copy hostLabel. Never invent booking numbers or "Booking 1234" chips.
+- Booking status changes are multi-step. Before propose_transition_booking, call plan_booking_journey or get_available_transitions. Only propose the immediate next valid transition — never skip stages (e.g. Pending Review → Completed). If they asked to "complete" a stay that is still early in the pipeline, say it is not ready for Completed yet, show the journey, and offer to advance to the next status.
+- Pending tasks and SD refund amounts come from get_booking (pendingTasks, sdRefundAmount) — copy those, do not invent an empty list.
+- For booked or available dates, call get_available_dates and use bookedStays / availableRanges.
+- When the host asks to see, provide, open, or show a booking file (approved GAF, pet form, receipt, ID, parking endorsement), call get_booking_documents (kinds: gaf/pet/receipt/id/parking) and emit a file_list using the exact url values from the tool. Never invent URLs. If documents is empty, say the file is not on this booking. Do not answer a file request with only a booking_card.
+
+Other modules (same intelligence):
+- Inbox: list/get threads with list_inbox_threads / get_inbox_thread; use hostLabel (participant · platform). After opening a thread, suggest next moves (Reply, Mark read, Show older messages) — never re-offer the same thread chip the host just picked.
+- Maintenance: list items with list_maintenance_items; use hostLabel (title · state). After selecting one, suggest useful next actions (Mark complete, Edit notes, Show due this week) — not the same item chip again.
+- Team: list members/invites with list_team_members / list_property_team_members; chips use hostLabel (name · role). Follow-ups are invite/remove/role actions, not re-picking the same person.
+- Parking: list_parking_bookings / list_parkings use hostLabel the same way as property bookings.
+- Marketing: list_marketing_templates / publish history — chips use template/platform hostLabel; after pick, offer preview/publish/history — not the same template chip.
+- Finance / profit questions: call get_finance_summary (defaults to this calendar month for the current property). Answer with (1) a short text block naming the property and date range, plus a one-line plain-language breakdown, and (2) a stat_list using display.* values (₱) for Total Income, Total Expenses, and Net Profit. Use netProfit — never "Grand Net", never raw unformatted numbers.
 
 Host-facing rules:
 - Always use human status labels from tool results (statusLabel), never raw codes like READY_FOR_CHECKOUT.
 - Never emit an empty stat_list, data_table, link_list, or file_list. If a list is empty, say so in a text block.
-- For data_table, every row must include cells[] in the same order as columns. Example: columns ["Guest","Check-in","Check-out"], rows [{cells:["Jane","2026-08-19","2026-08-20"]}].
-- Pending tasks and SD refund amounts come from get_booking (pendingTasks, sdRefundAmount) — copy those, do not invent an empty list.
-- For booked or available dates, call get_available_dates and use bookedStays / availableRanges.
-- When the host asks to see, provide, open, or show a booking file (approved GAF, pet form, receipt, ID, parking endorsement), call get_booking_documents (kinds: gaf/pet/receipt/id/parking) and emit a file_list using the exact url values from the tool. Never invent URLs. If documents is empty, say the file is not on this booking. Do not answer a file request with only a booking_card.
+- For data_table, every row must include cells[] in the same order as columns. Example: columns ["Guest","Check-in","Check-out","Status"], rows [{cells:["Jane","Aug 19","Aug 20","Pending Review"]}]. Prefer including Status when listing bookings.
 - For photos or design previews, emit an image block using the exact url from a tool result (never invent URLs).
-- quick_actions are short follow-up chips: label + prompt only, no URLs. Tapping fills the host's message box; do not treat them as executed actions.
-- When the host asks to guide them through a booking's remaining steps, call plan_booking_journey. Do not invent a stepper — the platform renders it from that tool.
-- Scope: when pageContext.propertyId is set, answer for that property only unless the host clearly asks about another property or the whole organization. Prefer omitting propertyId on tools so the platform uses pageContext.
-- Finance / profit questions: call get_finance_summary (defaults to this calendar month for the current property). Answer with (1) a short text block naming the property and date range, plus a one-line plain-language breakdown, and (2) a stat_list using display.* values (₱) for Total Income, Total Expenses, and Net Profit. Use netProfit — never "Grand Net", never raw unformatted numbers.`;
+- quick_actions are short follow-up chips: label (host-facing) + prompt (sent to the assistant). Tapping a chip sends immediately — do not treat them as already executed. Copy hostLabel from tool results for entity-specific chips — never use bookingId, internal numbers, UUIDs, property IDs, or raw status codes in labels. Prompts may name the entity in plain language so the next turn can find it.
+- After the host selects an entity (any module), emit quick_actions that are the next useful moves — never re-offer the same hostLabel chip they just selected or typed.
+- Scope: when pageContext.propertyId is set, answer for that property only unless the host clearly asks about another property or the whole organization. Prefer omitting propertyId on tools so the platform uses pageContext.`;
 
 async function resolveEffectivePermissions(
   req: Request,
@@ -250,6 +292,7 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
     const body = await readJsonBody(req);
     const orgSlug = String(body.orgSlug ?? '').trim();
     const message = String(body.message ?? '').trim();
+    const displayMessage = String(body.displayMessage ?? body.displayText ?? '').trim();
     const conversationIdInput = body.conversationId ? String(body.conversationId).trim() : null;
     const regenerate = body.regenerate === true;
     const incomingAttachments = parseIncomingAttachments(body.attachments);
@@ -380,6 +423,8 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
       [];
     let userMessageRow: { id: string };
     let turnMessage = message;
+    /** Host-facing text stored in the thread — never persist tool/instruction prompts as the bubble. */
+    let persistedUserText = displayMessage || message;
     /** True when this request inserted the user row — safe to delete on abort. */
     let insertedUserMessageThisTurn = false;
 
@@ -445,7 +490,7 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
         .insert({
           conversation_id: conversationId,
           role: 'user',
-          content_text: turnMessage || null,
+          content_text: persistedUserText || null,
           blocks: [],
           attachments: storedAttachments,
         })
@@ -474,24 +519,87 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
       storedAttachments.length > 0
         ? `\nThe host attached ${storedAttachments.length} file(s): ${storedAttachments.map((a) => `${a.name} (${a.mimeType})`).join(', ')}. Use the file content. For payment receipts, call run_receipt_validation when they ask to check the receipt against a booking.`
         : '';
-    const systemPrompt = `${SYSTEM_PROMPT_PREFIX}\n\nKnown facts:\n${groundingPrompt}\n\npageContext: ${JSON.stringify(pageContext)}${attachedContextLine}${attachmentLine}`;
+
+    let conversationSummary = '';
+    let priorHistory: GeminiContent[] = [];
+    try {
+      const loaded = await loadConversationContext(sb, conversationId!, {
+        excludeMessageId: userMessageRow.id,
+      });
+      conversationSummary = loaded.summary;
+      priorHistory = loaded.priorHistory;
+    } catch (err) {
+      console.warn(
+        'dashboard-assistant-chat: conversation context load failed',
+        err instanceof Error ? err.message : err
+      );
+    }
+
+    const systemPrompt = `${SYSTEM_PROMPT_PREFIX}\n\nKnown facts:\n${groundingPrompt}\n\npageContext: ${JSON.stringify(pageContext)}${attachedContextLine}${attachmentLine}${conversationContextPromptSection(conversationSummary)}`;
 
     /** True once the assistant reply + usage increment have been committed. */
     let turnCommitted = false;
+    /** Tier-1 writes applied before abort during end-of-turn commit (partial cancel). */
+    let partialAppliedEffects: AssistantAppliedEffect[] = [];
 
     const assertTurnActive = () => {
       if (turnAbort.signal.aborted || req.signal.aborted) {
-        throw new AssistantTurnAbortedError();
+        throw new AssistantTurnAbortedError(undefined, partialAppliedEffects);
       }
     };
 
     const cleanupAbortedTurn = async () => {
       if (turnCommitted || !insertedUserMessageThisTurn) return;
+      if (partialAppliedEffects.length > 0) return;
       await sb.from('ai_dashboard_assistant_messages').delete().eq('id', userMessageRow.id);
     };
 
+    const auditExecutedActions = async (
+      actions: Array<{ toolName: string; result: ToolResult }>
+    ) => {
+      for (const action of actions) {
+        await sb.from('ai_dashboard_assistant_action_audit').insert({
+          organization_id: orgCtx.org.id,
+          property_id: action.result.auditPropertyId ?? effectivePropertyId,
+          booking_id: action.result.auditBookingId ?? null,
+          user_id: user.id,
+          conversation_id: conversationId,
+          message_id: userMessageRow.id,
+          tool_name: action.toolName,
+          risk_tier: 'tier1_auto',
+          input_payload: action.result.data ?? {},
+          result_status: action.result.ok ? 'success' : 'failed',
+          result_summary: action.result.error ?? null,
+        });
+      }
+      if (actions.length > 0) {
+        await incrementDashboardAssistantUsage(orgCtx.org.id, { writeAction: true });
+      }
+    };
+
+    const tier1ConfirmationBlocks = (
+      actions: Array<{ toolName: string; result: ToolResult }>
+    ): ChatBlock[] =>
+      actions.map((block) => {
+        const payload = (block.result.data ?? {}) as Record<string, unknown>;
+        return {
+          type: 'action_confirmation' as const,
+          actionId: crypto.randomUUID(),
+          toolName: block.toolName,
+          riskTier: 'tier1_auto' as const,
+          summary: humanizeActionConfirmationSummary(
+            block.toolName,
+            String(payload.summary ?? buildTier1ActionSummary(block.toolName)),
+            payload
+          ),
+          details: buildActionConfirmationDetails(block.toolName, payload),
+          status: 'executed' as const,
+        };
+      });
+
     const runTurn = async (emit?: AssistantStreamEmitter) => {
       assertTurnActive();
+      const deferredWrites: DeferredToolCall[] = [];
       const toolCtx: ToolExecutionContext = {
         req,
         organizationId: orgCtx.org.id,
@@ -500,16 +608,20 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
         pageContext,
         attachedContext,
         isBulk: false,
+        deferWritesUntilCommit: true,
+        deferredWrites,
       };
 
       const userTurnText =
         turnMessage || (storedAttachments.length > 0 ? 'Please review the attached file(s).' : '');
       const history: GeminiContent[] = [
+        ...priorHistory,
         { role: 'user', parts: [{ text: userTurnText }, ...attachmentParts] },
       ];
       const toolResultsForGrounding: unknown[] = [];
       let proposedAction: { toolName: string; result: ToolResult } | null = null;
       let executedActions: Array<{ toolName: string; result: ToolResult }> = [];
+      let journeyGuidanceIntro: string | null = null;
       let finalText = '';
       let turnCreditsConsumed = 0;
       const activity = new TurnActivityRecorder(emit);
@@ -543,7 +655,8 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
         const writeCallCount = roundResult.toolCalls.filter((tc) =>
           WRITE_TOOL_NAMES.has(tc.name)
         ).length;
-        toolCtx.isBulk = writeCallCount > 1;
+        toolCtx.isBulk =
+          writeCallCount > 1 || (roundResult.toolCalls.length >= 2 && writeCallCount >= 1);
 
         history.push({
           role: 'model',
@@ -574,10 +687,17 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
             },
           });
 
+          if (!result.ok && result.data && isBookingJourneyRecord(result.data) && result.error) {
+            journeyGuidanceIntro = result.error;
+            if (!toolResultsForGrounding.some(isBookingJourneyRecord)) {
+              toolResultsForGrounding.push(result.data);
+            }
+          }
+
           if (result.proposed) {
             proposedAction = { toolName: call.name, result };
             shortCircuit = true;
-          } else if (WRITE_TOOL_NAMES.has(call.name) && result.ok) {
+          } else if (WRITE_TOOL_NAMES.has(call.name) && result.ok && !result.deferred) {
             executedActions.push({ toolName: call.name, result });
           }
         }
@@ -623,13 +743,28 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
           actionId: pendingRow.id,
           toolName: proposedAction.toolName,
           riskTier: 'tier2_confirmed',
-          summary: String(payload.summary ?? `Confirm ${proposedAction.toolName}`),
-          details: Object.entries(payload)
-            .filter(([k]) => k !== 'summary' && k !== '__assistantScope')
-            .map(([label, value]) => ({ label, value: String(value) })),
+          summary: humanizeActionConfirmationSummary(
+            proposedAction.toolName,
+            String(payload.summary ?? ''),
+            payload
+          ),
+          details: buildActionConfirmationDetails(proposedAction.toolName, payload),
           status: 'proposed',
           isExternalSend: isExternalSendTool(proposedAction.toolName),
         });
+
+        if (proposedAction.toolName === 'propose_transition_booking') {
+          const bookingId = String(payload.bookingId ?? '').trim();
+          if (bookingId && !toolResultsForGrounding.some(isBookingJourneyRecord)) {
+            const booking = await DatabaseService.getBookingById(bookingId);
+            if (booking) {
+              toolResultsForGrounding.push(
+                buildBookingJourneyData(booking as Record<string, unknown>)
+              );
+            }
+          }
+        }
+
         taskPlan.markSynthDone();
         const proposedBlocks = prependActivityTimeline(blocks, activity);
         blocks.length = 0;
@@ -678,7 +813,8 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
                 ]
           ),
           toolResultsForGrounding,
-          turnMessage
+          turnMessage,
+          { attachedContext }
         );
 
         const groundingText = `${groundingPrompt}\n${JSON.stringify(toolResultsForGrounding)}${attachmentLine}${attachedContextLine}`;
@@ -697,26 +833,11 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
           });
         }
 
-        for (const block of executedActions) {
-          const payload = (block.result.data ?? {}) as Record<string, unknown>;
-          safeBlocks.push({
-            type: 'action_confirmation',
-            actionId: crypto.randomUUID(),
-            toolName: block.toolName,
-            riskTier: 'tier1_auto',
-            summary: `Done automatically: ${block.toolName}`,
-            details: Object.entries(payload).map(([label, value]) => ({
-              label,
-              value: String(value),
-            })),
-            status: 'executed',
-          });
-        }
-
         const combinedText = safeBlocks
           .map((b) => ('text' in b ? b.text : 'summary' in b ? b.summary : ''))
           .join(' ');
         const quickScan = quickSafetyScan(combinedText);
+        let safetyApproved = false;
         if (!quickScan.ok) {
           blocks.push({
             type: 'text',
@@ -743,10 +864,32 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
             });
           } else {
             blocks.push(...safeBlocks);
+            safetyApproved = true;
           }
         }
         activity.recordPhase('safety', 'Checked response safety');
         taskPlan.markSynthDone();
+
+        if (safetyApproved && deferredWrites.length > 0) {
+          activity.recordPhase('executing', 'Applying changes');
+          emit?.({ type: 'phase', phase: 'executing', label: 'Applying changes' });
+          const commitResult = await commitDeferredTier1Writes({
+            ctx: toolCtx,
+            deferredWrites,
+            writeToolNames: WRITE_TOOL_NAMES,
+            isAborted: () => turnAbort.signal.aborted || req.signal.aborted,
+            onToolStart: (toolName) => activity.recordToolStart(toolName),
+            onToolDone: (toolName, ok) => activity.recordToolComplete(toolName, ok, Date.now()),
+          });
+          executedActions.push(...commitResult.executed);
+          partialAppliedEffects = commitResult.appliedEffects;
+          if (commitResult.abortedMidCommit) {
+            await auditExecutedActions(commitResult.executed);
+            throw new AssistantTurnAbortedError(undefined, commitResult.appliedEffects);
+          }
+          blocks.push(...tier1ConfirmationBlocks(commitResult.executed));
+        }
+
         const withActivity = prependActivityTimeline(blocks, activity);
         blocks.length = 0;
         blocks.push(...prependTaskPlan(withActivity, taskPlan));
@@ -754,26 +897,18 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
 
       assertTurnActive();
 
-      for (const action of executedActions) {
-        await sb.from('ai_dashboard_assistant_action_audit').insert({
-          organization_id: orgCtx.org.id,
-          property_id: action.result.auditPropertyId ?? effectivePropertyId,
-          booking_id: action.result.auditBookingId ?? null,
-          user_id: user.id,
-          conversation_id: conversationId,
-          message_id: userMessageRow.id,
-          tool_name: action.toolName,
-          risk_tier: 'tier1_auto',
-          input_payload: action.result.data ?? {},
-          result_status: action.result.ok ? 'success' : 'failed',
-          result_summary: action.result.error ?? null,
-        });
-      }
-      if (executedActions.length > 0) {
-        await incrementDashboardAssistantUsage(orgCtx.org.id, { writeAction: true });
-      }
+      await auditExecutedActions(executedActions);
 
-      const responseBlocks = nestBookingJourneyStepper(blocks, toolResultsForGrounding);
+      const responseBlocks = finalizeAssistantBlocksForHost(
+        wrapBlocksWithJourneyGuidance(
+          nestBookingJourneyStepper(blocks, toolResultsForGrounding, attachedContext),
+          toolResultsForGrounding,
+          { introText: journeyGuidanceIntro, userMessage: turnMessage }
+        ),
+        toolResultsForGrounding,
+        attachedContext,
+        { userMessage: turnMessage }
+      );
 
       await sb.from('ai_dashboard_assistant_messages').insert({
         conversation_id: conversationId,
@@ -805,6 +940,9 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
           });
           void (async () => {
             try {
+              // Emit early so the client can recover via regenerate if the stream is cut
+              // (e.g. local functions serve hot-reload → ERR_INCOMPLETE_CHUNKED_ENCODING).
+              emit({ type: 'turn_started', conversationId: conversationId! });
               const result = await runTurn(emit);
               await streamAssistantTextPreview(emit, result.blocks, {
                 signal: turnAbort.signal,
@@ -820,7 +958,14 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
             } catch (err) {
               if (isAssistantTurnAbortedError(err)) {
                 await cleanupAbortedTurn();
-                emit({ type: 'error', message: 'Turn cancelled', aborted: true });
+                const appliedEffects =
+                  err instanceof AssistantTurnAbortedError ? err.appliedEffects : undefined;
+                emit({
+                  type: 'error',
+                  message: 'Turn cancelled',
+                  aborted: true,
+                  appliedEffects,
+                });
                 try {
                   controller.close();
                 } catch {

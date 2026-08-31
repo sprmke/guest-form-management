@@ -220,7 +220,7 @@ const BUILTIN_TEMPLATES: PropertyTemplateDefinition[] = [
     category: 'email',
     previewTemplateSlug: 'sd-refund-form-request',
     defaultContent: `<p>Hi <strong>{{guest_facebook_name}}</strong>,</p>
-<p>Thank you for staying with us Ka-Homies! We hope you had a wonderful stay! Please follow the check-out instructions below. After that, please open and fill out the SD refund form so that we can process your refund.</p>
+<p>Thank you for staying with us! We hope you had a wonderful stay! Please follow the check-out instructions below. After that, please open and fill out the SD refund form so that we can process your refund.</p>
 <p>{{sd_refund_checklist_section}}</p>
 <p>{{sd_refund_details_section}}</p>`,
   },

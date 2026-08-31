@@ -24,6 +24,7 @@ import {
   toLocationSlug,
 } from '../_shared/listingPlace.ts';
 import { loadPublicListingRows } from '../_shared/publicListingRows.ts';
+import { batchLoadIsSuperhostByPropertyId } from '../_shared/orgSuperhost.ts';
 import {
   mapDevelopmentSearchSummary,
   mapParkingSearchSummary,
@@ -178,29 +179,11 @@ servePublic('list-public-place-groups', async (req) => {
     const previewById = new Map<string, Record<string, unknown>>();
 
     if (family === 'properties') {
-      const [priceById, reviewById, superhostRows] = await Promise.all([
+      const [priceById, reviewById, superhostById] = await Promise.all([
         batchLoadPropertyPricing(previewIds),
         batchLoadReviewStats(previewIds),
-        previewIds.length === 0
-          ? Promise.resolve({
-              data: [] as Array<{ property_id: string; superhost_status: string }>,
-            })
-          : supabase
-              .from('app_settings')
-              .select('property_id, superhost_status')
-              .in('property_id', previewIds),
+        batchLoadIsSuperhostByPropertyId(supabase, previewIds),
       ]);
-      const superhostById = new Map<string, boolean>();
-      for (const row of superhostRows.data ?? []) {
-        const propertyId = (row.property_id as string | null) ?? null;
-        if (!propertyId) continue;
-        superhostById.set(
-          propertyId,
-          String(row.superhost_status ?? '')
-            .trim()
-            .toLowerCase() === 'approved'
-        );
-      }
       const residenceNames = [
         ...new Set(
           previewRows

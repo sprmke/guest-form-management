@@ -39,6 +39,17 @@ function db() {
   return createClient(url, key);
 }
 
+async function assertOrgPaymentTransactionPending(transactionId: string): Promise<boolean> {
+  const sb = db();
+  const { data, error } = await sb
+    .from('org_payment_transactions')
+    .select('status')
+    .eq('id', transactionId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.status === 'pending';
+}
+
 function addOneMonth(from: Date): Date {
   const end = new Date(from);
   end.setMonth(end.getMonth() + 1);
@@ -135,6 +146,7 @@ export async function fulfillOrgSubscriptionPayment(input: {
   if (txnError) throw new Error(txnError.message);
   if (!txn) throw new Error('Org payment transaction not found');
   if (txn.status === 'paid') return;
+  if (txn.status !== 'pending') return;
 
   const organizationId = txn.organization_id as string;
   const planId = txn.plan_id as string;
@@ -146,6 +158,9 @@ export async function fulfillOrgSubscriptionPayment(input: {
   // leave the transaction stuck `pending` forever (indistinguishable from "webhook hasn't arrived
   // yet"). Mark it `failed` with the real reason so it surfaces for manual reconciliation instead.
   try {
+    const stillPending = await assertOrgPaymentTransactionPending(input.transactionId);
+    if (!stillPending) return;
+
     const { data: existingSub, error: existingSubError } = await sb
       .from('org_subscriptions')
       .select('id, plan_id, current_period_end, status')
@@ -200,7 +215,7 @@ export async function fulfillOrgSubscriptionPayment(input: {
     if (subUpdateError) throw new Error(subUpdateError.message);
 
     const paidAt = input.paidAt ?? new Date().toISOString();
-    const { error: txnUpdateError } = await sb
+    const { data: paidRow, error: txnUpdateError } = await sb
       .from('org_payment_transactions')
       .update({
         status: 'paid',
@@ -210,8 +225,12 @@ export async function fulfillOrgSubscriptionPayment(input: {
         paid_at: paidAt,
         raw_webhook_payload: input.rawPayload ?? null,
       })
-      .eq('id', input.transactionId);
+      .eq('id', input.transactionId)
+      .eq('status', 'pending')
+      .select('id')
+      .maybeSingle();
     if (txnUpdateError) throw new Error(txnUpdateError.message);
+    if (!paidRow) return;
 
     try {
       const { data: planRow } = await sb
@@ -326,7 +345,7 @@ export async function handlePaymongoWebhookEvent(
         : new Date().toISOString();
 
     const orgTxn = await resolveOrgTransactionFromWebhookPayload(payload);
-    if (!orgTxn || orgTxn.status === 'paid') return { handled: false };
+    if (!orgTxn || orgTxn.status !== 'pending') return { handled: false };
 
     await fulfillOrgSubscriptionPayment({
       transactionId: orgTxn.id,

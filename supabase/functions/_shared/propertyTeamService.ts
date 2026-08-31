@@ -23,6 +23,7 @@ import {
   type PropertyCustomRoleRow,
   type TeamPermissionId,
 } from './propertyTeamPermissions.ts';
+import { isSeededTemplateName, seedPropertyTeamTemplates } from './propertyTeamTemplates.ts';
 import { readPropertyIdFromUrl } from './propertyScope.ts';
 import { sendPropertyTeamInviteEmail } from './propertyTeamInviteEmail.ts';
 import { assertAllowedTeamInviteEmail } from './teamInviteEmail.ts';
@@ -201,7 +202,6 @@ async function isActiveOrgAdmin(
     .eq('organization_id', orgId)
     .eq('user_id', userId)
     .eq('status', 'active')
-    .eq('role_id', 'ADMIN')
     .maybeSingle();
   return Boolean(data?.id);
 }
@@ -274,8 +274,7 @@ async function emailHasOrgLevelPropertyAccess(
     .from('organization_members')
     .select('user_id')
     .eq('organization_id', orgId)
-    .eq('status', 'active')
-    .eq('role_id', 'ADMIN');
+    .eq('status', 'active');
 
   for (const row of orgAdmins ?? []) {
     const profile = await getAuthProfile(supabase, row.user_id as string);
@@ -364,10 +363,10 @@ export async function listPropertyTeamMembers(
 
   const { data: orgAdminRows, error: orgAdminError } = await supabase
     .from('organization_members')
-    .select('user_id, assigned_at, display_name, contact_phone')
+    .select('user_id, assigned_at, display_name, contact_phone, all_listings')
     .eq('organization_id', orgId)
     .eq('status', 'active')
-    .eq('role_id', 'ADMIN')
+    .eq('all_listings', true)
     .order('assigned_at', { ascending: true });
 
   if (orgAdminError) {
@@ -397,7 +396,9 @@ export async function listPropertyTeamMembers(
     const assignedBy = row.invited_by
       ? (await getAuthProfile(supabase, row.invited_by as string)).name
       : 'System';
-    propertyMembers.push(serializeMemberRow(row, profile, assignedBy, false));
+    propertyMembers.push(
+      serializeMemberRow(row, profile, assignedBy, row.assigned_via_org === true)
+    );
   }
 
   const virtualMembers: SerializedTeamMember[] = [];
@@ -507,6 +508,7 @@ export async function listPropertyTeamInvitations(
 
 export async function listPropertyCustomRoles(propertyId: string): Promise<SerializedCustomRole[]> {
   const supabase = createServiceClient();
+  await seedPropertyTeamTemplates(supabase, propertyId);
   const { data, error } = await supabase
     .from('property_custom_roles')
     .select('id, name, permissions')
@@ -756,6 +758,9 @@ export async function updatePropertyTeamMember(
   if (findError || !existing) {
     throw new Error('Member not found');
   }
+  if (existing.assigned_via_org === true) {
+    throw new Error('Org-assigned members cannot be edited at property level');
+  }
   await assertNotOrgManagedMember(
     supabase,
     ctx.org.id,
@@ -846,7 +851,7 @@ export async function updatePropertyTeamMember(
     ? (await getAuthProfile(supabase, data.invited_by as string)).name
     : 'System';
 
-  return serializeMemberRow(data, profile, assignedBy, false);
+  return serializeMemberRow(data, profile, assignedBy, data.assigned_via_org === true);
 }
 
 export async function removePropertyTeamMember(
@@ -860,7 +865,7 @@ export async function removePropertyTeamMember(
   const supabase = createServiceClient();
   const { data: existing, error: findError } = await supabase
     .from('property_members')
-    .select('user_id')
+    .select('user_id, assigned_via_org')
     .eq('id', memberId)
     .eq('property_id', ctx.property.id)
     .maybeSingle();
@@ -870,6 +875,9 @@ export async function removePropertyTeamMember(
   }
   if (!existing) {
     throw new Error('Member not found');
+  }
+  if (existing.assigned_via_org === true) {
+    throw new Error('Org-assigned members cannot be removed at property level');
   }
   if (existing.user_id === ctx.user.id) {
     throw new Error('You cannot remove your own account');
@@ -942,11 +950,27 @@ export async function updatePropertyCustomRole(
   const supabase = createServiceClient();
   const propertyId = ctx.property.id;
 
+  const { data: existingRole, error: existingError } = await supabase
+    .from('property_custom_roles')
+    .select('id, name, permissions')
+    .eq('id', roleId)
+    .eq('property_id', propertyId)
+    .maybeSingle();
+  if (existingError || !existingRole) {
+    throw new Error('Custom role not found');
+  }
+
   const patch: Record<string, unknown> = {};
   if (typeof body.name === 'string') {
     const name = body.name.trim();
     if (name.length < 2 || name.length > 60) {
       throw new Error('Role name must be 2–60 characters');
+    }
+    if (
+      isSeededTemplateName(existingRole.name as string) &&
+      name.toLowerCase() !== String(existingRole.name).trim().toLowerCase()
+    ) {
+      throw new Error('Default role names cannot be changed');
     }
     patch.name = name;
   }
@@ -961,6 +985,10 @@ export async function updatePropertyCustomRole(
   if (Object.keys(patch).length === 0) {
     throw new Error('No valid fields to update');
   }
+
+  const previousPermissionKey = [...normalizePermissionIds(existingRole.permissions)]
+    .sort()
+    .join('\0');
 
   const { data, error } = await supabase
     .from('property_custom_roles')
@@ -978,19 +1006,44 @@ export async function updatePropertyCustomRole(
   }
 
   if (patch.permissions) {
-    await supabase
+    const { data: members } = await supabase
       .from('property_members')
-      .update({ permissions: patch.permissions })
+      .select('id, permissions')
       .eq('property_id', propertyId)
       .eq('role_id', roleId)
-      .eq('status', 'active');
+      .eq('status', 'active')
+      .eq('assigned_via_org', false);
+    const matchingMemberIds = (members ?? [])
+      .filter(
+        (row) =>
+          [...normalizePermissionIds(row.permissions)].sort().join('\0') === previousPermissionKey
+      )
+      .map((row) => row.id as string);
+    if (matchingMemberIds.length > 0) {
+      await supabase
+        .from('property_members')
+        .update({ permissions: patch.permissions })
+        .in('id', matchingMemberIds);
+    }
 
-    await supabase
+    const { data: invites } = await supabase
       .from('property_invitations')
-      .update({ permissions: patch.permissions })
+      .select('id, permissions')
       .eq('property_id', propertyId)
       .eq('role_id', roleId)
       .eq('status', 'pending');
+    const matchingInviteIds = (invites ?? [])
+      .filter(
+        (row) =>
+          [...normalizePermissionIds(row.permissions)].sort().join('\0') === previousPermissionKey
+      )
+      .map((row) => row.id as string);
+    if (matchingInviteIds.length > 0) {
+      await supabase
+        .from('property_invitations')
+        .update({ permissions: patch.permissions })
+        .in('id', matchingInviteIds);
+    }
   }
 
   return {
@@ -1006,6 +1059,19 @@ export async function deletePropertyCustomRole(
 ): Promise<void> {
   const supabase = createServiceClient();
   const propertyId = ctx.property.id;
+
+  const { data: existingRole, error: existingError } = await supabase
+    .from('property_custom_roles')
+    .select('id, name')
+    .eq('id', roleId)
+    .eq('property_id', propertyId)
+    .maybeSingle();
+  if (existingError || !existingRole) {
+    throw new Error('Custom role not found');
+  }
+  if (isSeededTemplateName(existingRole.name as string)) {
+    throw new Error('Default roles cannot be deleted');
+  }
 
   const { count: memberCount } = await supabase
     .from('property_members')

@@ -1,8 +1,9 @@
 /**
- * Import access — org ↔ property permission pairing (mirrors inboxAccess.ts).
+ * Import access — property-scoped only.
  *
- * org:import:manage ↔ bookings.import:add (Phase 3 rename of import:manage)
- * Property-scoped endpoints require property_id; verifyPropertyAccess layers org owner/admin.
+ * Booking CSV/Excel import lives on the property bookings list and is gated by
+ * `bookings.import:add` (+ plan feature `bookingImport`). There is no org-hub
+ * import UI; `property_id` is required on every `import-*` endpoint.
  */
 
 import {
@@ -10,12 +11,10 @@ import {
   verifyPropertyAccess,
   type PropertyAccessContext,
 } from './orgAuth.ts';
-import type { OrgPermissionId } from './orgTeamPermissions.ts';
 import { catchPlanFeatureError, requirePropertyFeature } from './planEntitlements.ts';
 import type { TeamPermissionId } from './propertyTeamPermissions.ts';
 import { readPropertyIdFromUrl } from './propertyScope.ts';
 
-const ORG_PERM: OrgPermissionId = 'org:import:manage';
 const SCOPE_PERM: TeamPermissionId = 'bookings.import:add';
 
 export type ImportAccessContext = PropertyAccessContext & {
@@ -23,9 +22,8 @@ export type ImportAccessContext = PropertyAccessContext & {
   propertyId: string;
 };
 
-/** @internal Documents org↔property permission pairing for import endpoints. */
+/** @internal Documents the property permission used by import endpoints. */
 export const IMPORT_ACCESS_PERMISSIONS = {
-  org: ORG_PERM,
   property: SCOPE_PERM,
 } as const;
 

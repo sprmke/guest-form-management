@@ -148,6 +148,11 @@ export type TransitionResult = {
      */
     automationSkippedByPlan: string[];
     /**
+     * Workflow emails skipped because the property owner turned the toggle off (not plan-blocked).
+     * Client may surface a settings hint — distinct from `automationSkippedByPlan`.
+     */
+    automationSkippedByHost: string[];
+    /**
      * True when every guest-facing side effect (acknowledgement / ready-for-check-in /
      * SD-refund-form emails, stay-guide token, guest bell notifications) was skipped because
      * this is an OTA-ingested booking with no guest contact yet — see calendar sync Phase 2.
@@ -855,6 +860,7 @@ export class WorkflowOrchestrator {
     // 8. Emails — based on side-effect matrix in booking-workflow.mdc §3
     const emailsSent: string[] = [];
     const automationSkippedByPlan: string[] = [];
+    const automationSkippedByHost: string[] = [];
     let externalSuppressed = false;
     if (suppressGuestSideEffects) {
       console.log(
@@ -865,15 +871,15 @@ export class WorkflowOrchestrator {
     const propertyEmailAllowed = async (key: PropertyAutomationToggleKey): Promise<boolean> =>
       propertyAutomationEnabled(propertyId, key);
     const planBlockedKeys = new Set(await planBlockedAutomationToggleKeys(propertyId));
-    const recordIfPlanBlocked = (key: PropertyAutomationToggleKey, sideEffectName: string) => {
+    const recordIfEmailSkipped = (key: PropertyAutomationToggleKey, sideEffectName: string) => {
       if (planBlockedKeys.has(key)) automationSkippedByPlan.push(sideEffectName);
+      else automationSkippedByHost.push(sideEffectName);
     };
 
     // PENDING_REVIEW → PENDING_GAF | PENDING_DOCUMENTS | READY_FOR_CHECKIN (D2 skip), same bundle:
     // - GAF request to Azure (only when "gaf" is in the resolved requirements)
     // - Booking acknowledgement to guest (always)
     // - Pet request to Azure (only when has_pets AND "pet" is in the resolved requirements)
-    // - Parking broadcast (if parking) — parking stays outside documentRequirements
     if (isReviewProceedAttempt) {
       const formData = buildGuestFormData(updatedBooking);
 
@@ -895,7 +901,7 @@ export class WorkflowOrchestrator {
         flag(devControls, 'sendGafRequestEmail')
       ) {
         console.log('[orchestrator] GAF request email skipped (org automation off)');
-        recordIfPlanBlocked('emailGafRequest', 'gaf_request');
+        recordIfEmailSkipped('emailGafRequest', 'gaf_request');
       }
 
       if (suppressGuestSideEffects && flag(devControls, 'sendBookingAcknowledgementEmail')) {
@@ -915,7 +921,7 @@ export class WorkflowOrchestrator {
         }
       } else if (flag(devControls, 'sendBookingAcknowledgementEmail')) {
         console.log('[orchestrator] Booking acknowledgement email skipped (org automation off)');
-        recordIfPlanBlocked('emailBookingAcknowledgement', 'booking_acknowledgement');
+        recordIfEmailSkipped('emailBookingAcknowledgement', 'booking_acknowledgement');
       }
 
       if (
@@ -945,13 +951,11 @@ export class WorkflowOrchestrator {
         flag(devControls, 'sendPetRequestEmail')
       ) {
         console.log('[orchestrator] Pet request email skipped (org automation off)');
-        recordIfPlanBlocked('emailPetRequest', 'pet_request');
+        recordIfEmailSkipped('emailPetRequest', 'pet_request');
       }
 
-      // Phase 7: retired — a new need_parking signal no longer triggers the legacy env-list
-      // broadcast email. Guests self-serve through the marketplace instead (see
-      // guestFormSteps.ts / parkingPropertyLink.ts). parking-broadcast-email/index.ts (manual
-      // admin resend) and this booking's own historical broadcast state, if any, are untouched.
+      // Phase 7: retired — property bookings no longer send legacy BCC parking-owner emails.
+      // Hosts use Find parking / marketplace linkStay; marketplace host fan-out is separate.
     }
 
     // Issue stay-guide token whenever booking reaches READY_FOR_CHECKIN.
@@ -1003,7 +1007,7 @@ export class WorkflowOrchestrator {
       flag(devControls, 'sendReadyForCheckinEmail')
     ) {
       console.log('[orchestrator] Ready-for-check-in email skipped (org automation off)');
-      recordIfPlanBlocked('emailReadyForCheckin', 'ready_for_checkin');
+      recordIfEmailSkipped('emailReadyForCheckin', 'ready_for_checkin');
     }
 
     const sdAmount = Number(updatedBooking.security_deposit ?? 0);
@@ -1050,17 +1054,12 @@ export class WorkflowOrchestrator {
       sdAmount > 0
     ) {
       console.log('[orchestrator] SD refund form email skipped (org automation off)');
-      recordIfPlanBlocked('emailSdRefundCheckout', 'sd_refund_form_request');
+      recordIfEmailSkipped('emailSdRefundCheckout', 'sd_refund_form_request');
     }
 
-    // Notification Center — fires alongside the guest-facing emails above, for the
-    // 3 confirmed v1 transitions. Dedupe key guards retries of the same transition.
-    if (
-      toStatus === 'READY_FOR_CHECKIN' &&
-      isForwardToReady &&
-      flag(devControls, 'sendReadyForCheckinEmail') &&
-      (await propertyEmailAllowed('emailReadyForCheckin'))
-    ) {
+    // Notification Center — status transitions; not gated on workflow email sends so Free
+    // hosts still get bell alerts when emails are plan-skipped (manual send via Automation Triggers).
+    if (toStatus === 'READY_FOR_CHECKIN' && isForwardToReady && !suppressGuestSideEffects) {
       const organizationId = await resolveNotificationOrgId();
       if (organizationId) {
         await createNotification({
@@ -1079,9 +1078,8 @@ export class WorkflowOrchestrator {
     if (
       fromStatus === 'READY_FOR_CHECKIN' &&
       toStatus === 'READY_FOR_CHECKOUT' &&
-      flag(devControls, 'sendSdRefundFormEmail') &&
       sdAmount > 0 &&
-      (await propertyEmailAllowed('emailSdRefundCheckout'))
+      !suppressGuestSideEffects
     ) {
       const organizationId = await resolveNotificationOrgId();
       if (organizationId) {
@@ -1133,6 +1131,7 @@ export class WorkflowOrchestrator {
       sideEffects: {
         emails: emailsSent,
         automationSkippedByPlan,
+        automationSkippedByHost,
         ...(externalSuppressed ? { externalSuppressed: true } : {}),
       },
     };

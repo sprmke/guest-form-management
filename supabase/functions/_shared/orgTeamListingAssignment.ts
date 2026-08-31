@@ -78,11 +78,31 @@ async function loadParkingCustomRolesMap(
   return map;
 }
 
+function resolvePropertyListingRoleId(
+  roleId: string,
+  customRoles: Map<string, PropertyCustomRoleRow>
+): string {
+  const trimmed = roleId.trim();
+  const legacyToTemplateName: Record<string, string> = {
+    ADMIN: 'Full Access',
+    MANAGER: 'Full Access',
+    STAFF: 'Operations',
+    VIEWER: 'Read Only',
+  };
+  const targetName = legacyToTemplateName[trimmed] ?? trimmed;
+  for (const row of customRoles.values()) {
+    if (row.name.trim().toLowerCase() === targetName.toLowerCase()) {
+      return row.id;
+    }
+  }
+  return trimmed;
+}
+
 function resolvePropertyAssignmentPermissions(
   assignment: OrgListingPropertyAssignment,
   customRoles: Map<string, PropertyCustomRoleRow>
 ): { roleId: string; permissions: string[] } {
-  const roleId = assignment.roleId.trim();
+  const roleId = resolvePropertyListingRoleId(assignment.roleId, customRoles);
   assertValidPropertyRoleId(roleId);
   const explicit = normalizePermissionIds(assignment.permissions);
   const permissions =

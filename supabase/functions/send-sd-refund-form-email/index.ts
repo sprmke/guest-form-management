@@ -3,7 +3,7 @@
  *
  * POST { bookingId }
  * Status must be READY_FOR_CHECKIN (after automated email may run) or READY_FOR_CHECKOUT.
- * Does not change status; updates sd_refund_form_emailed_at.
+ * Does not change status; updates sd_refund_form_emailed_at (+ Free-tier manual-send map).
  */
 
 import { DatabaseService } from '../_shared/databaseService.ts';
@@ -20,6 +20,16 @@ import {
   verifyBookingBelongsToProperty,
 } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import {
+  formatWorkflowEmailResendWait,
+  lastWorkflowEmailManualSentAt,
+  mergeWorkflowEmailManualSentAt,
+  parseWorkflowEmailManualSentAt,
+  propertyHasAutomatedBookingFlow,
+  workflowEmailManualCooldownRemainingMs,
+} from '../_shared/workflowEmailManualSendCooldown.ts';
+
+const SD_KIND = 'sd_refund_form_request';
 
 serveAuthenticated('send-sd-refund-form-email', async (req) => {
   requireHttpMethod(req, 'POST');
@@ -54,9 +64,31 @@ serveAuthenticated('send-sd-refund-form-email', async (req) => {
     );
   }
 
+  const sentMap = parseWorkflowEmailManualSentAt(
+    (booking as Record<string, unknown>).workflow_email_manual_sent_at
+  );
+  const hasAutomatedFlow = await propertyHasAutomatedBookingFlow(propertyId);
+  if (!hasAutomatedFlow) {
+    const lastSent = lastWorkflowEmailManualSentAt(
+      sentMap,
+      SD_KIND,
+      (booking as { sd_refund_form_emailed_at?: string | null }).sd_refund_form_emailed_at
+    );
+    const remainingMs = workflowEmailManualCooldownRemainingMs(lastSent);
+    if (remainingMs > 0) {
+      return jsonError(req, formatWorkflowEmailResendWait(remainingMs), 429);
+    }
+  }
+
+  const sentAtIso = new Date().toISOString();
   await sendSdRefundFormRequest(booking);
   await DatabaseService.setWorkflowFields(bookingId, {
-    sd_refund_form_emailed_at: new Date().toISOString(),
+    sd_refund_form_emailed_at: sentAtIso,
+    workflow_email_manual_sent_at: mergeWorkflowEmailManualSentAt(
+      (booking as Record<string, unknown>).workflow_email_manual_sent_at,
+      SD_KIND,
+      sentAtIso
+    ),
   });
 
   return jsonResponse(req, { success: true, bookingId });

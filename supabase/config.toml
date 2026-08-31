@@ -473,6 +473,24 @@ static_files = [
 # Cloud-only schedule (Manila ~09:00 → 01:00 UTC):
 # schedule = "0 1 * * *"   ← set via pg_cron snippet, NOT here
 
+[functions.get-org-superhost-progress]
+verify_jwt = false
+
+[functions.reassess-org-superhost]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+
+[functions.superhost-assessment-cron]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+# Cloud-only schedule — see supabase/snippets/superhost-assessment-cron.sql
+
 [functions.upload-listing-authorization-asset]
 verify_jwt = false
 

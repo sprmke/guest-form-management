@@ -4,6 +4,7 @@
 
 import { loadAuthUserProfile } from './authUserProfile.ts';
 import { createServiceClient } from './orgAuth.ts';
+import { isOrgSuperhostEarned } from './orgSuperhost.ts';
 import { isOrgVerifiedBadge, readOrgVerificationFromSettings } from './orgVerification.ts';
 import { isListingRecommendedBadge, resolveListingAuthorization } from './listingAuthorization.ts';
 import { resolveOrgSettings } from './orgSettings.ts';
@@ -59,6 +60,8 @@ export type PublicHostProfileDto = {
   ownerAvatarUrl: string | null;
   /** Host-wide Recommended badge (org Tier 2). Listings carry their own `recommendedBadge`. */
   verifiedBadge: boolean;
+  /** Earned Superhost badge (org performance criteria). */
+  isSuperhost: boolean;
   socialLinks: PublicHostSocialLinksDto;
   properties: PublicHostPropertyCardDto[];
   parkings: PublicHostParkingCardDto[];
@@ -283,6 +286,7 @@ export async function loadPublicHostByOrgSlug(
     ownerName,
     ownerAvatarUrl,
     verifiedBadge: isOrgVerifiedBadge(readOrgVerificationFromSettings(orgSettings)),
+    isSuperhost: isOrgSuperhostEarned(orgSettings),
     socialLinks: {
       facebookUrl: nullableSocialUrl(orgSettingsResolved.facebookPageUrl),
       airbnbUrl: nullableSocialUrl(orgSettingsResolved.airbnbUrl),

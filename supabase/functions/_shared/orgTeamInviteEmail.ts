@@ -9,8 +9,20 @@ import { escapeHtml, withEmailShellStyleVars } from './renderEmailHtml.ts';
 import { createServiceClient } from './orgAuth.ts';
 
 const ORG_ROLE_LABELS: Record<string, string> = {
-  ADMIN: 'Admin',
+  ADMIN: 'Full Access',
 };
+
+async function loadOrgRoleLabel(organizationId: string, roleId: string): Promise<string> {
+  if (ORG_ROLE_LABELS[roleId]) return ORG_ROLE_LABELS[roleId]!;
+  const supabase = createServiceClient();
+  const { data } = await supabase
+    .from('organization_custom_roles')
+    .select('name')
+    .eq('id', roleId)
+    .eq('organization_id', organizationId)
+    .maybeSingle();
+  return (data?.name as string | undefined) ?? 'Team member';
+}
 
 function buildAcceptInviteCtaHtml(acceptUrl: string, brandColor: string): string {
   if (!acceptUrl.trim()) return '';
@@ -64,7 +76,7 @@ export async function sendOrgTeamInviteEmail(input: {
     .maybeSingle();
 
   const orgName = (org?.name as string | undefined) ?? 'Organization';
-  const roleLabel = ORG_ROLE_LABELS[input.roleId] ?? 'Admin';
+  const roleLabel = await loadOrgRoleLabel(input.organizationId, input.roleId);
 
   const settings = await resolveAppSettings(brandingPropertyId);
   const branding = await loadPropertyEmailBranding(brandingPropertyId);

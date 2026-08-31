@@ -47,7 +47,6 @@ import { resolvePublicGuestAppOrigin } from '../_shared/publicAppOrigin.ts';
 import { ensurePropertySettings } from '../_shared/propertySettingsSeed.ts';
 import {
   normalizeExternalReviewsDraft,
-  normalizeSuperhostStatus,
   serializeExternalReviewsForOwnerPatch,
 } from '../_shared/propertyExternalReviews.ts';
 import { normalizeVoucherPrizes } from '../_shared/voucher.ts';
@@ -365,36 +364,6 @@ serveAuthenticated('app-settings', async (req, user) => {
         return jsonError(req, 'Invalid voucher reveal style');
       }
       patch.voucher_reveal_style = body.voucherRevealStyle;
-    }
-
-    let superhostFieldsTouched = false;
-    if (typeof body.superhostVerificationUrl === 'string') {
-      const trimmed = body.superhostVerificationUrl.trim();
-      if (trimmed) {
-        const err = validateOptionalUrl(trimmed, 'Superhost verification URL');
-        if (err) return jsonError(req, err);
-        patch.superhost_verification_url = trimmed;
-      } else {
-        patch.superhost_verification_url = null;
-      }
-      superhostFieldsTouched = true;
-    }
-    if (typeof body.superhostProofImageUrl === 'string') {
-      const trimmed = body.superhostProofImageUrl.trim();
-      if (trimmed) {
-        return jsonError(
-          req,
-          'Superhost proof image can only be updated via upload-app-settings-asset'
-        );
-      }
-      patch.superhost_proof_image_url = null;
-      superhostFieldsTouched = true;
-    }
-    if (superhostFieldsTouched) {
-      const currentStatus = normalizeSuperhostStatus(currentRow?.superhost_status);
-      if (currentStatus !== 'approved') {
-        patch.superhost_status = 'pending';
-      }
     }
 
     const automationPatch = parsePropertyAutomationTogglesPatch(body.automationToggles);

@@ -10,13 +10,25 @@ import { isPropertyAdminRoleId } from './propertyTeamPermissions.ts';
 import { isBuiltinParkingRole, type BuiltinParkingRole } from './parkingTeamPermissions.ts';
 
 const ORG_ROLE_LABELS: Record<string, string> = {
-  ADMIN: 'Admin',
+  ADMIN: 'Full Access',
 };
 
+async function loadOrgRoleLabel(organizationId: string, roleId: string): Promise<string> {
+  if (ORG_ROLE_LABELS[roleId]) return ORG_ROLE_LABELS[roleId]!;
+  const supabase = createServiceClient();
+  const { data } = await supabase
+    .from('organization_custom_roles')
+    .select('name')
+    .eq('id', roleId)
+    .eq('organization_id', organizationId)
+    .maybeSingle();
+  return (data?.name as string | undefined) ?? 'Team member';
+}
+
 const BUILTIN_PARKING_ROLE_LABELS: Record<BuiltinParkingRole, string> = {
-  MANAGER: 'Manager',
-  STAFF: 'Staff',
-  VIEWER: 'Viewer',
+  MANAGER: 'Full Access',
+  STAFF: 'Operations',
+  VIEWER: 'Read Only',
 };
 
 export type OrgTeamInvitePreview = {
@@ -78,7 +90,7 @@ async function resolveLogoUrl(propertyId: string | null): Promise<string> {
 
 async function loadPropertyRoleLabel(propertyId: string, roleId: string): Promise<string> {
   if (isPropertyAdminRoleId(roleId)) {
-    return 'Admin';
+    return 'Custom';
   }
   const supabase = createServiceClient();
   const { data } = await supabase
@@ -127,7 +139,7 @@ async function previewOrgInvite(token: string): Promise<OrgTeamInvitePreview> {
     orgName: (org?.name as string | undefined) ?? 'Organization',
     logoUrl,
     inviteEmail: invite.email as string,
-    roleLabel: ORG_ROLE_LABELS[invite.role_id as string] ?? 'Admin',
+    roleLabel: await loadOrgRoleLabel(organizationId, invite.role_id as string),
   };
 }
 

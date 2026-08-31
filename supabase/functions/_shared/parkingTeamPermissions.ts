@@ -35,9 +35,9 @@ const PARKING_PERMISSION_ID_SET = new Set<string>(PARKING_TEAM_PERMISSION_IDS);
 
 export const BUILTIN_PARKING_ROLE_EMAIL_DESCRIPTIONS: Record<BuiltinParkingRole, string> = {
   MANAGER:
-    'Managers have full access to this parking slot, including bookings, finance, settings, and team management.',
-  STAFF: 'Staff can manage parking bookings, pricing, and notifications for this slot.',
-  VIEWER: 'Viewers have read-only access to this parking slot.',
+    'Full Access includes bookings, finance, settings, and team management for this parking slot.',
+  STAFF: 'Operations can manage parking bookings, pricing, and notifications for this slot.',
+  VIEWER: 'Read Only has view access to this parking slot.',
 };
 
 export const BUILTIN_PARKING_ROLE_PERMISSIONS: Record<

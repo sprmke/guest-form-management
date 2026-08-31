@@ -40,6 +40,7 @@ import {
 } from '../_shared/publicListingFacets.ts';
 import { propertyPlaceLabel, toLocationSlug } from '../_shared/listingPlace.ts';
 import { loadPublicListingRows } from '../_shared/publicListingRows.ts';
+import { batchLoadIsSuperhostByPropertyId } from '../_shared/orgSuperhost.ts';
 import { mapPropertySearchSummary, postgrestOrIlikeValue } from '../_shared/publicSearch.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
 
@@ -416,27 +417,10 @@ servePublic('list-public-properties', async (req) => {
     const pageRows = working.slice(start, start + effectivePageSize);
     const pageIds = pageRows.map((row) => row.id);
 
-    const [pageReviewById, pageSuperhostRows] = await Promise.all([
+    const [pageReviewById, superhostById] = await Promise.all([
       needsReviewsForSort ? Promise.resolve(reviewById) : batchLoadReviewStats(pageIds),
-      pageIds.length === 0
-        ? Promise.resolve({ data: [] as Array<{ property_id: string; superhost_status: string }> })
-        : supabase
-            .from('app_settings')
-            .select('property_id, superhost_status')
-            .in('property_id', pageIds),
+      batchLoadIsSuperhostByPropertyId(supabase, pageIds),
     ]);
-
-    const superhostById = new Map<string, boolean>();
-    for (const row of pageSuperhostRows.data ?? []) {
-      const id = row.property_id as string | null;
-      if (!id) continue;
-      superhostById.set(
-        id,
-        String(row.superhost_status ?? '')
-          .trim()
-          .toLowerCase() === 'approved'
-      );
-    }
 
     const data = pageRows.map((row) => {
       const pageReviews = pageReviewById.get(row.id) ?? {

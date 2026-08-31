@@ -6,6 +6,7 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4
 
 import { buildEmailCtaHtml, renderBrandedEmailShell } from './brandedEmailShell.ts';
 import { loadAuthUserProfile } from './authUserProfile.ts';
+import { PLATFORM_BRAND_NAME } from './platformBrand.ts';
 import { escapeHtml } from './renderEmailHtml.ts';
 import { resolvePublicGuestAppOrigin } from './publicAppOrigin.ts';
 
@@ -37,7 +38,7 @@ async function sendOwnerBillingEmail(opts: {
     return false;
   }
 
-  const brandName = opts.brandName?.trim() || 'Kame Homes';
+  const brandName = opts.brandName?.trim() || PLATFORM_BRAND_NAME || 'Billing';
   const ctaBlock =
     opts.ctaUrl && opts.ctaLabel ? buildEmailCtaHtml(opts.ctaLabel, opts.ctaUrl, null) : '';
 
@@ -60,7 +61,7 @@ ${ctaBlock}`;
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: `Kame Homes <${fromEmail}>`,
+      from: `${brandName} <${fromEmail}>`,
       to: [owner.email.trim()],
       subject: opts.subject,
       html,
@@ -277,5 +278,42 @@ export async function sendOrgSubscriptionPaymentFailedEmail(opts: {
     ctaUrl: opts.plansUrl,
     brandName: opts.orgName,
     unitLabel: opts.orgName,
+  });
+}
+
+export async function sendOrgSubscriptionPlanChangedEmail(opts: {
+  supabase: SupabaseClient;
+  organizationId: string;
+  fromPlanName: string;
+  toPlanName: string;
+  toFree: boolean;
+}): Promise<void> {
+  const { data: org, error } = await opts.supabase
+    .from('organizations')
+    .select('owner_id, slug, name')
+    .eq('id', opts.organizationId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!org?.owner_id) return;
+
+  const appOrigin = resolvePublicGuestAppOrigin(null);
+  const plansUrl = `${appOrigin}/org/${String(org.slug ?? '')}/plans`;
+  const orgName = String(org.name ?? 'Organization');
+  const body = opts.toFree
+    ? `${orgName} is now on the Free plan. Paid features are turned off immediately.`
+    : `${orgName} moved from ${opts.fromPlanName} to ${opts.toPlanName}. The change is effective immediately; your next renewal uses the new rate.`;
+
+  await sendOwnerBillingEmail({
+    supabase: opts.supabase,
+    ownerId: org.owner_id as string,
+    subject: opts.toFree
+      ? `${orgName} — moved to Free`
+      : `${orgName} — plan changed to ${opts.toPlanName}`,
+    headline: opts.toFree ? 'Subscription canceled' : 'Plan updated',
+    body,
+    ctaLabel: 'View plan',
+    ctaUrl: plansUrl,
+    brandName: orgName,
+    unitLabel: orgName,
   });
 }

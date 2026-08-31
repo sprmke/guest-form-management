@@ -1,5 +1,5 @@
 /**
- * Credit conversion + org credit wallet — docs/workflow/in-progress/ai-usage-metering-credits-foundation.md.
+ * Credit conversion + org credit wallet — docs/workflow/done/ai-usage-metering-credits-foundation.md.
  *
  * Credits are derived from estimated_cost_usd, not tracked independently, so the
  * existing $-based quota/cost accounting in aiUsageService.ts stays the source of truth.

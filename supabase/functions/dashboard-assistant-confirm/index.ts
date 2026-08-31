@@ -9,6 +9,7 @@
 
 import { incrementDashboardAssistantUsage } from '../_shared/dashboardAssistantSettings.ts';
 import { stripAssistantScopeFromPayload } from '../_shared/dashboardAssistantAttachedContext.ts';
+import { humanizeTransitionError } from '../_shared/dashboardAssistantActionDisplay.ts';
 import {
   executeConfirmedAction,
   type ToolExecutionContext,
@@ -25,16 +26,50 @@ import { createServiceClient } from '../_shared/orgAuth.ts';
 import { PlanFeatureRequiredError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
-function updateActionBlockStatus(blocks: unknown, actionId: string, status: string) {
+function updateActionBlockStatus(
+  blocks: unknown,
+  actionId: string,
+  status: string,
+  errorMessage?: string | null
+) {
   if (!Array.isArray(blocks)) return blocks;
-  return blocks.map((block) =>
-    block &&
-    typeof block === 'object' &&
-    block.type === 'action_confirmation' &&
-    block.actionId === actionId
-      ? { ...block, status }
-      : block
-  );
+  return blocks.map((block) => {
+    if (
+      block &&
+      typeof block === 'object' &&
+      block.type === 'action_confirmation' &&
+      block.actionId === actionId
+    ) {
+      return {
+        ...block,
+        status,
+        ...(errorMessage ? { errorMessage: humanizeTransitionError(errorMessage) } : {}),
+      };
+    }
+    if (
+      block &&
+      typeof block === 'object' &&
+      block.type === 'stepper' &&
+      Array.isArray(block.steps)
+    ) {
+      return {
+        ...block,
+        steps: block.steps.map((step: { actionBlock?: { actionId?: string } }) =>
+          step.actionBlock?.actionId === actionId
+            ? {
+                ...step,
+                actionBlock: {
+                  ...step.actionBlock,
+                  status,
+                  ...(errorMessage ? { errorMessage: humanizeTransitionError(errorMessage) } : {}),
+                },
+              }
+            : step
+        ),
+      };
+    }
+    return block;
+  });
 }
 
 serveAuthenticated('dashboard-assistant-confirm', async (req, user) => {
@@ -159,7 +194,7 @@ serveAuthenticated('dashboard-assistant-confirm', async (req, user) => {
     if (msg) {
       await sb
         .from('ai_dashboard_assistant_messages')
-        .update({ blocks: updateActionBlockStatus(msg.blocks, actionId, newStatus) })
+        .update({ blocks: updateActionBlockStatus(msg.blocks, actionId, newStatus, result.error) })
         .eq('id', msg.id);
     }
 

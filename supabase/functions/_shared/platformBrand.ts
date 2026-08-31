@@ -1,12 +1,8 @@
 /** Platform product brand — not a specific host org or residence. */
 const envAppName = Deno.env.get('PLATFORM_APP_NAME')?.trim();
-const envContactEmail = Deno.env.get('PLATFORM_CONTACT_EMAIL')?.trim();
 
 /** Optional operator/product name for email shells and public chrome. */
 export const PLATFORM_BRAND_NAME = envAppName || '';
-
-/** Support / legal contact — falls back to a placeholder when unset. */
-export const PLATFORM_CONTACT_EMAIL = envContactEmail || 'support@example.com';
 
 /** True when a label is the old single-tenant brand (optionally with Azure North). */
 export function isLegacyKameHomeBrand(label: string | null | undefined): boolean {

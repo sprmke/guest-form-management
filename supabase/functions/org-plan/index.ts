@@ -89,7 +89,7 @@ serveAuthenticated('org-plan', async (req) => {
     `
     )
     .eq('organization_id', organizationId)
-    .in('status', ['active', 'trialing', 'past_due'])
+    .in('status', ['active', 'trialing', 'past_due', 'suspended'])
     .maybeSingle();
   if (orgSubError) return jsonError(req, orgSubError.message, 500);
 

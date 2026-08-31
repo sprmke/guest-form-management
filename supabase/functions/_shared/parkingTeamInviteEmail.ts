@@ -14,9 +14,9 @@ import { escapeHtml, withEmailShellStyleVars } from './renderEmailHtml.ts';
 import { createServiceClient, type ParkingRow } from './orgAuth.ts';
 
 const BUILTIN_ROLE_LABELS: Record<BuiltinParkingRole, string> = {
-  MANAGER: 'Manager',
-  STAFF: 'Staff',
-  VIEWER: 'Viewer',
+  MANAGER: 'Full Access',
+  STAFF: 'Operations',
+  VIEWER: 'Read Only',
 };
 
 function buildAcceptInviteCtaHtml(acceptUrl: string, brandColor: string): string {

@@ -7,6 +7,7 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4
 import { buildEmailCtaHtml, renderBrandedEmailShell } from './brandedEmailShell.ts';
 import { loadAuthUserProfile } from './authUserProfile.ts';
 import { resolvePublicGuestAppOrigin } from './publicAppOrigin.ts';
+import { PLATFORM_BRAND_NAME } from './platformBrand.ts';
 import { escapeHtml, loadEmailTemplate, replacePlaceholders } from './renderEmailHtml.ts';
 
 const RESEND_API = 'https://api.resend.com/emails';
@@ -47,7 +48,7 @@ export async function sendOrgVerificationRejectedEmail(opts: {
   });
 
   const html = await renderBrandedEmailShell({
-    brandName: 'Kame Homes',
+    brandName: PLATFORM_BRAND_NAME || opts.organizationName,
     unitLabel: opts.organizationName,
     emailTitle: 'Host verification declined',
     bodyHtml,

@@ -225,7 +225,6 @@ export async function resolveParkingHostRecipients(
     .select('user_id')
     .eq('organization_id', parking.organization_id)
     .eq('status', 'active')
-    .eq('role_id', 'ADMIN');
   for (const row of orgAdmins ?? []) userIds.add(String(row.user_id));
 
   const { data: members } = await supabase

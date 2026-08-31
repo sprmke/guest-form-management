@@ -158,7 +158,7 @@ export async function fetchRemoteAudioBytes(
   const res = await fetch(trimmed, {
     redirect: 'follow',
     headers: {
-      'User-Agent': 'KameHomes-Marketing/1.0',
+      'User-Agent': 'PropertyMarketing/1.0',
       Accept: 'audio/*,application/octet-stream,*/*;q=0.8',
     },
   });

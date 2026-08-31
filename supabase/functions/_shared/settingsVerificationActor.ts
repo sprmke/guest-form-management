@@ -9,9 +9,9 @@ import { isCustomRoleId, isPropertyAdminRoleId } from './propertyTeamPermissions
 import { isBuiltinParkingRole, type BuiltinParkingRole } from './parkingTeamPermissions.ts';
 
 const PARKING_ROLE_LABELS: Record<BuiltinParkingRole, string> = {
-  MANAGER: 'Manager',
-  STAFF: 'Staff',
-  VIEWER: 'Viewer',
+  MANAGER: 'Full Access',
+  STAFF: 'Operations',
+  VIEWER: 'Read Only',
 };
 
 export type SettingsChangeActor = {
@@ -44,8 +44,20 @@ export async function resolveSettingsChangeActor(opts: {
     .eq('status', 'active')
     .maybeSingle();
 
-  if (orgMember?.role_id === 'ADMIN') {
-    return { name, email, roleLabel: 'Admin' };
+  if (orgMember) {
+    const roleId = (orgMember.role_id as string | undefined)?.trim() ?? '';
+    if (roleId && roleId !== 'ADMIN') {
+      const { data: orgRole } = await opts.supabase
+        .from('organization_custom_roles')
+        .select('name')
+        .eq('id', roleId)
+        .eq('organization_id', opts.organizationId)
+        .maybeSingle();
+      if (typeof orgRole?.name === 'string' && orgRole.name.trim()) {
+        return { name, email, roleLabel: orgRole.name.trim() };
+      }
+    }
+    return { name, email, roleLabel: 'Full Access' };
   }
 
   if (opts.propertyId) {

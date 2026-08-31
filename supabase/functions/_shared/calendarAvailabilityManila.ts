@@ -10,6 +10,11 @@ export function manilaTodayYmd(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: MANILA_TZ });
 }
 
+/** Stable ISO timestamp on today's Manila calendar date (noon +08:00). Use for Superhost rolling windows. */
+export function manilaNowIso(): string {
+  return `${manilaTodayYmd()}T12:00:00+08:00`;
+}
+
 /** Normalize DB date string (MM-DD-YYYY or YYYY-MM-DD) to YYYY-MM-DD. */
 export function normalizeBookingDateToYmd(dateStr: string): string | null {
   if (!dateStr) return null;

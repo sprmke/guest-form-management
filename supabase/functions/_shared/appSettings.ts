@@ -40,9 +40,6 @@ type AppSettingsRow = {
   tiktok_url: string | null;
   payment_methods: unknown;
   external_reviews: unknown;
-  superhost_verification_url: string | null;
-  superhost_proof_image_url: string | null;
-  superhost_status: string | null;
   vouchers_enabled: boolean | null;
   voucher_prizes: unknown;
   voucher_reveal_style: string | null;
@@ -154,9 +151,7 @@ import {
 } from './paymentMethods.ts';
 import {
   normalizeExternalReviewsDraft,
-  normalizeSuperhostStatus,
   type PropertyExternalReview,
-  type SuperhostStatus,
 } from './propertyExternalReviews.ts';
 import { normalizeVoucherPrizes, type VoucherPrize } from './voucher.ts';
 import { normalizeVoucherRevealStyle, type VoucherRevealStyle } from './voucherRevealStyle.ts';
@@ -180,9 +175,6 @@ export type AppSettingsDto = AppSettingsResolved & {
   voucherPrizes: VoucherPrize[];
   /** Guest award animation on SD form / guest-review. */
   voucherRevealStyle: VoucherRevealStyle;
-  superhostVerificationUrl: string;
-  superhostProofImageUrl: string;
-  superhostStatus: SuperhostStatus;
   /** Raw stored override — `null` means "inherit residence default"; `[]` is a valid explicit empty override (D2). */
   documentRequirementsOverride: DocumentRequirement[] | null;
   /** Override → residence-type default → `DEFAULT_DOCUMENT_REQUIREMENTS`, fully resolved for display. */
@@ -591,9 +583,6 @@ export async function serializeAppSettingsForAdmin(
     vouchersEnabled: row?.vouchers_enabled !== false,
     voucherPrizes: normalizeVoucherPrizes(row?.voucher_prizes),
     voucherRevealStyle: normalizeVoucherRevealStyle(row?.voucher_reveal_style),
-    superhostVerificationUrl: (row?.superhost_verification_url ?? '').trim(),
-    superhostProofImageUrl: (row?.superhost_proof_image_url ?? '').trim(),
-    superhostStatus: normalizeSuperhostStatus(row?.superhost_status),
     documentRequirementsOverride: Array.isArray(row?.document_requirements_override)
       ? parseDocumentRequirements(row.document_requirements_override)
       : null,

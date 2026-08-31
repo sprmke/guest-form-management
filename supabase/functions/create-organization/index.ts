@@ -44,6 +44,7 @@ import {
 import { seedParkingSettings } from '../_shared/parkingSettingsSeed.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { seedOrgSettings } from '../_shared/orgSettingsSeed.ts';
+import { seedOrgTeamTemplates } from '../_shared/orgTeamTemplates.ts';
 import { seedPropertySettings } from '../_shared/propertySettingsSeed.ts';
 import { seedPropertyTeamTemplates } from '../_shared/propertyTeamTemplates.ts';
 
@@ -184,6 +185,7 @@ serveAuthenticated('create-organization', async (req, user) => {
 
   try {
     await seedOrgSettings(org.id as string);
+    await seedOrgTeamTemplates(supabase, org.id as string);
   } catch (e) {
     console.error('[create-organization] org settings seed:', e);
     await rollbackOrg();

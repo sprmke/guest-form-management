@@ -24,7 +24,6 @@ type AssetConfig = {
   column?: string;
   storagePrefix: string;
   allowedMime?: Set<string>;
-  persistStatusPending?: boolean;
 };
 
 const ASSET_CONFIG = {
@@ -42,11 +41,6 @@ const ASSET_CONFIG = {
   },
   external_review_stay_photo: {
     storagePrefix: 'external-review-stay',
-  },
-  superhost_proof: {
-    column: 'superhost_proof_image_url',
-    storagePrefix: 'superhost-proof',
-    persistStatusPending: true,
   },
 } as const satisfies Record<string, AssetConfig>;
 
@@ -163,9 +157,6 @@ serve(async (req) => {
       const patch: Record<string, string> = {
         [config.column]: persistedUrl,
       };
-      if (config.persistStatusPending) {
-        patch.superhost_status = 'pending';
-      }
       await DatabaseService.updateAppSettings(patch, propertyId);
       invalidateAppSettingsCache(propertyId);
     } else if (

@@ -39,7 +39,6 @@ export const ORG_PERMISSION_IDS = [
   'org.team.roles:add',
   'org.team.roles:edit',
   'org.team.roles:delete',
-  'org.import:manage',
 ] as const;
 
 /** Legacy coarse ids — expanded at read time; do not grant org:delete to members. */
@@ -57,7 +56,6 @@ export const LEGACY_ORG_PERMISSION_IDS = [
   'org:team:view',
   'org:team:invite',
   'org:team:manage',
-  'org:import:manage',
 ] as const;
 
 export type OrgPermissionId = (typeof ORG_PERMISSION_IDS)[number];
@@ -85,7 +83,6 @@ export const ORG_ROLE_PERMISSIONS: Record<BuiltinOrgRole, OrgPermissionId[]> = {
     'org.team.invitations:delete',
     'org.team.members:edit',
     'org.team.members:delete',
-    'org.import:manage',
   ],
 };
 
@@ -158,6 +155,16 @@ export function assertValidOrgRoleId(roleId: string): void {
   if (roleId !== ORG_ADMIN_ROLE_ID && !UUID_RE.test(roleId)) {
     throw new Error('Invalid org role');
   }
+}
+
+/**
+ * True for legacy `ADMIN` or a template UUID on `organization_members.role_id`.
+ * After org template migration, invited org members use UUIDs — do not gate on `ADMIN` alone.
+ */
+export function isOrgHubMemberRoleId(roleId: string | null | undefined): boolean {
+  if (!roleId || typeof roleId !== 'string') return false;
+  const trimmed = roleId.trim();
+  return trimmed === ORG_ADMIN_ROLE_ID || UUID_RE.test(trimmed);
 }
 
 export function parseOrgListingAssignments(raw: unknown): OrgListingAssignments | null {

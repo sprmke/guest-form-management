@@ -15,6 +15,7 @@ import {
   allOrgPermissions,
   effectiveOrgMemberPermissions,
   hasOrgPermission,
+  isOrgHubMemberRoleId,
   ORG_PROPERTY_MEMBER_PERMISSIONS,
   type OrgPermissionId,
 } from './orgTeamPermissions.ts';
@@ -349,7 +350,7 @@ export async function verifyPropertyAccess(
     orgAdminMember &&
     orgAdminMember.status === 'inactive' &&
     orgAdminMember.plan_limited === true &&
-    orgAdminMember.role_id === 'ADMIN'
+    isOrgHubMemberRoleId(orgAdminMember.role_id as string)
   ) {
     // Soft-allow for property-access / gates only — permissioned callers still 403.
     if (requiredPermission) {
@@ -366,7 +367,12 @@ export async function verifyPropertyAccess(
     };
   }
 
-  if (orgAdminMember && orgAdminMember.status === 'active' && orgAdminMember.role_id === 'ADMIN') {
+  if (orgAdminMember && orgAdminMember.status !== 'active') {
+    // Deactivated org members must not keep access via stale assigned_via_org rows.
+    throw forbiddenResponse('Access restricted');
+  }
+
+  if (orgAdminMember && isOrgHubMemberRoleId(orgAdminMember.role_id as string)) {
     if (orgAdminMember.all_listings === true) {
       const ctx: PropertyAccessContext = {
         user,
@@ -549,7 +555,7 @@ export async function verifyParkingTeamAccess(
     orgAdminMember &&
     orgAdminMember.status === 'inactive' &&
     orgAdminMember.plan_limited === true &&
-    orgAdminMember.role_id === 'ADMIN'
+    isOrgHubMemberRoleId(orgAdminMember.role_id as string)
   ) {
     if (requiredPermission) {
       throw forbiddenResponse('Access restricted');
@@ -564,7 +570,11 @@ export async function verifyParkingTeamAccess(
     };
   }
 
-  if (orgAdminMember && orgAdminMember.status === 'active' && orgAdminMember.role_id === 'ADMIN') {
+  if (orgAdminMember && orgAdminMember.status !== 'active') {
+    throw forbiddenResponse('Access restricted');
+  }
+
+  if (orgAdminMember && isOrgHubMemberRoleId(orgAdminMember.role_id as string)) {
     if (orgAdminMember.all_listings === true) {
       const ctx: ParkingTeamAccessContext = {
         user,
@@ -682,7 +692,11 @@ export async function verifyOrgListAccess(
   if (orgAdminError) {
     throw forbiddenResponse('Could not verify organization access');
   }
-  if (orgAdminMember && orgAdminMember.status === 'active' && orgAdminMember.role_id === 'ADMIN') {
+  if (
+    orgAdminMember &&
+    orgAdminMember.status === 'active' &&
+    isOrgHubMemberRoleId(orgAdminMember.role_id as string)
+  ) {
     return { user, org, canListAllProperties: orgAdminMember.all_listings === true };
   }
   // Plan-limited inactive org admins may list (empty property set) so /org home does not 403.
@@ -690,7 +704,7 @@ export async function verifyOrgListAccess(
     orgAdminMember &&
     orgAdminMember.status === 'inactive' &&
     orgAdminMember.plan_limited === true &&
-    orgAdminMember.role_id === 'ADMIN'
+    isOrgHubMemberRoleId(orgAdminMember.role_id as string)
   ) {
     return { user, org, canListAllProperties: false };
   }
@@ -824,7 +838,7 @@ export async function verifyOrgAccess(
     orgAdminMember &&
     orgAdminMember.status === 'inactive' &&
     orgAdminMember.plan_limited === true &&
-    orgAdminMember.role_id === 'ADMIN'
+    isOrgHubMemberRoleId(orgAdminMember.role_id as string)
   ) {
     // Soft-allow for org-access / gates only — permissioned callers still 403.
     if (requiredPermission) {
@@ -841,7 +855,11 @@ export async function verifyOrgAccess(
     };
   }
 
-  if (orgAdminMember && orgAdminMember.status === 'active' && orgAdminMember.role_id === 'ADMIN') {
+  if (
+    orgAdminMember &&
+    orgAdminMember.status === 'active' &&
+    isOrgHubMemberRoleId(orgAdminMember.role_id as string)
+  ) {
     return enforce({
       user,
       org,
@@ -972,6 +990,10 @@ export function hasOrgTeamInvitePermission(granted: readonly string[]): boolean 
   );
 }
 
+export function hasOrgTeamMemberDeletePermission(granted: readonly string[]): boolean {
+  return hasOrgPermission(granted, 'org.team.members:delete');
+}
+
 /**
  * JWT + org team access for owner, platform admin, or active org ADMIN member.
  * Property-only members cannot access org team routes.
@@ -979,7 +1001,11 @@ export function hasOrgTeamInvitePermission(granted: readonly string[]): boolean 
 export async function verifyOrgTeamAccess(
   req: Request,
   scope: { orgId?: string; orgSlug?: string },
-  options?: { requireManage?: boolean; requireInvite?: boolean }
+  options?: {
+    requireManage?: boolean;
+    requireInvite?: boolean;
+    requireMemberDelete?: boolean;
+  }
 ): Promise<OrgTeamAccessContext> {
   const ctx = await verifyOrgAccess(req, scope, 'org.team:view');
 
@@ -988,6 +1014,10 @@ export async function verifyOrgTeamAccess(
   }
 
   if (options?.requireInvite && !hasOrgTeamInvitePermission(ctx.permissions)) {
+    throw forbiddenResponse('Access restricted');
+  }
+
+  if (options?.requireMemberDelete && !hasOrgTeamMemberDeletePermission(ctx.permissions)) {
     throw forbiddenResponse('Access restricted');
   }
 

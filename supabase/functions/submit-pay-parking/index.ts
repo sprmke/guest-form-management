@@ -1,10 +1,10 @@
 /**
- * submit-pay-parking — Public POST to save pay-parking vehicle details and broadcast
- * to parking owners (same email as workflow parking broadcast).
+ * submit-pay-parking — Public POST to save pay-parking vehicle details on a property booking.
  *
- * Body: { bookingId, carPlateNumber, carBrandModel, carColor, sendParkingBroadcast?, parkingOwnerEmail? }
- * sendParkingBroadcast defaults true; set false for admin update-only (no owner email).
- * parkingOwnerEmail — when set, sends the parking broadcast template to that address only (no BCC list).
+ * Legacy guest pay-parking URLs redirect into the marketplace; this endpoint remains for
+ * backward-compatible vehicle-field updates only — it does not send parking owner emails.
+ *
+ * Body: { bookingId, carPlateNumber, carBrandModel, carColor }
  * Parking rate is read from the database only (set by admin before sharing the link).
  * Does not change booking workflow status.
  */
@@ -12,8 +12,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
-import { sendParkingBroadcast } from '../_shared/emailService.ts';
-import { propertyAutomationEnabled } from '../_shared/propertyAutomationToggles.ts';
 import { isBookingStatus, isPostPendingDocumentsStatus } from '../_shared/statusMachine.ts';
 
 type SubmitBody = {
@@ -21,10 +19,6 @@ type SubmitBody = {
   carPlateNumber?: string;
   carBrandModel?: string;
   carColor?: string;
-  /** When false, skip parking owner broadcast (admin update-only). Default true. */
-  sendParkingBroadcast?: boolean;
-  /** When set, send parking email to this address only (ignores PARKING_OWNER_EMAILS). */
-  parkingOwnerEmail?: string;
 };
 
 function resolveParkingRateGuest(row: Record<string, unknown>): number {
@@ -87,56 +81,16 @@ serve(async (req) => {
       patch.parking_completed_at = null;
     }
 
-    const updated = await DatabaseService.setWorkflowFields(bookingId, patch);
-
-    const shouldSendBroadcast = body!.sendParkingBroadcast !== false;
-    const parkingOwnerEmail = (body!.parkingOwnerEmail ?? '').trim();
-
-    const hadParkingVehicle = Boolean(
-      existing.need_parking &&
-      (String(existing.car_plate_number ?? '').trim() ||
-        String(existing.car_brand_model ?? '').trim() ||
-        String(existing.car_color ?? '').trim())
-    );
-
-    let broadcastResult: unknown = null;
-    let broadcastSent = false;
-    let sentToOwnerEmail: string | null = null;
-    const propertyId = typeof updated.property_id === 'string' ? updated.property_id.trim() : '';
-    const broadcastAllowed = propertyId
-      ? await propertyAutomationEnabled(propertyId, 'emailParkingBroadcast')
-      : true;
-    try {
-      if (!broadcastAllowed) {
-        console.log('[submit-pay-parking] Parking broadcast skipped (org automation off)');
-      } else if (parkingOwnerEmail) {
-        broadcastResult = await sendParkingBroadcast(updated, {
-          to: parkingOwnerEmail,
-          isUpdate: hadParkingVehicle,
-        });
-        broadcastSent = broadcastResult !== null;
-        sentToOwnerEmail = broadcastSent ? parkingOwnerEmail : null;
-      } else if (shouldSendBroadcast) {
-        broadcastResult = await sendParkingBroadcast(updated, {
-          isUpdate: hadParkingVehicle,
-        });
-        broadcastSent = broadcastResult !== null;
-      }
-    } catch (broadcastErr) {
-      console.error('[submit-pay-parking] Parking broadcast failed:', broadcastErr);
-      throw new Error(
-        'Parking details were saved but the owner broadcast email failed. Please ask your host to resend from the admin dashboard.'
-      );
-    }
+    await DatabaseService.setWorkflowFields(bookingId, patch);
 
     return new Response(
       JSON.stringify({
         success: true,
         data: {
           bookingId,
-          broadcastSent,
-          sentToOwnerEmail,
-          broadcastResult,
+          broadcastSent: false,
+          sentToOwnerEmail: null,
+          broadcastResult: null,
         },
       }),
       {
