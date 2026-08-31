@@ -104,7 +104,7 @@ import {
 } from '@/lib/availabilityCheckState';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
 import { prepareUpload } from '@/lib/media/prepareUpload';
-import { usePageTitle } from '@/lib/pageTitle';
+import { appPageTitle, usePageTitle } from '@/lib/pageTitle';
 import { cn } from '@/lib/utils';
 import {
   validateFullPersonName,
@@ -196,7 +196,7 @@ function HostModeOption({
 }
 
 export function OnboardingPage() {
-  usePageTitle('Kame Homes - Onboarding');
+  usePageTitle(appPageTitle('Onboarding'));
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { email, name, session } = useAdminSession();

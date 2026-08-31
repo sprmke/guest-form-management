@@ -54,7 +54,7 @@ export function HostDashboardTourPlayer({
   chapterNavigation,
   expandablePreview,
   className,
-  regionLabel = 'Interactive Kame Homes dashboard tour',
+  regionLabel = 'Interactive dashboard tour',
 }: HostDashboardTourPlayerProps) {
   const inlinePlayerRef = useRef<PlayerRef>(null);
   const modalPlayerRef = useRef<PlayerRef>(null);
@@ -509,8 +509,7 @@ export function HostDashboardTourPlayer({
               </DialogClose>
             </div>
             <DialogDescription className="sr-only">
-              Larger preview of the Kame Homes dashboard tour. Playback stays in sync with the
-              inline player.
+              Larger preview of the dashboard tour. Playback stays in sync with the inline player.
             </DialogDescription>
             <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden sm:gap-5">
               {previewOpen

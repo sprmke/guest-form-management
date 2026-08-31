@@ -16,6 +16,7 @@ import {
   resolveBrandTransitionGradientStops,
   resolveBrandWordmarkTextColors,
 } from '@/lib/theme/brandColor';
+import { platformWordmarkParts } from '@/lib/platformBranding';
 import { cn } from '@/lib/utils';
 
 // Curtain close/open duration must match the `.mode-transition-curtain` transition in index.css.
@@ -77,6 +78,7 @@ function ModeTransitionOverlay({
     () => textColors ?? resolveBrandWordmarkTextColors(null, isDark),
     [textColors, isDark]
   );
+  const wordmark = platformWordmarkParts();
 
   return (
     <div
@@ -93,23 +95,27 @@ function ModeTransitionOverlay({
         }}
         aria-hidden
       />
-      <div
-        className="pointer-events-none absolute inset-0 flex items-center justify-center gap-[0.15em] text-2xl font-extrabold tracking-tight sm:text-3xl"
-        aria-hidden
-      >
-        <span
-          className="mode-transition-word mode-transition-word--kame"
-          style={{ color: wordmarkColors.primary }}
+      {wordmark ? (
+        <div
+          className="pointer-events-none absolute inset-0 flex items-center justify-center gap-[0.15em] text-2xl font-extrabold tracking-tight sm:text-3xl"
+          aria-hidden
         >
-          Kame
-        </span>
-        <span
-          className="mode-transition-word mode-transition-word--homes"
-          style={{ color: wordmarkColors.accent }}
-        >
-          Homes
-        </span>
-      </div>
+          <span
+            className="mode-transition-word mode-transition-word--kame"
+            style={{ color: wordmarkColors.primary }}
+          >
+            {wordmark.primary}
+          </span>
+          {wordmark.accent ? (
+            <span
+              className="mode-transition-word mode-transition-word--homes"
+              style={{ color: wordmarkColors.accent }}
+            >
+              {wordmark.accent}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

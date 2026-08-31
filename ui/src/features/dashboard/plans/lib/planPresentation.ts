@@ -493,6 +493,24 @@ export function isManagedSalesPlan(code: string): boolean {
   return code === MANAGED_PLAN_CODE;
 }
 
+/** UI gate for self-serve downgrade confirm — mirrors server `validateOrgPlanDowngradeRequest`. */
+export function resolveDowngradeBlockedReason(input: {
+  subscriptionStatus?: string | null;
+  currentPlanCode?: string | null;
+  targetPlan: OrgBundlePlanDto;
+}): string | null {
+  if (input.currentPlanCode === MANAGED_PLAN_CODE) {
+    return 'Contact support to change your Managed plan.';
+  }
+  if (input.subscriptionStatus === 'past_due') {
+    return 'Pay the overdue balance from Billing before downgrading.';
+  }
+  if (input.subscriptionStatus === 'suspended' && !input.targetPlan.isDefault) {
+    return 'Pay to restore access before switching to a different paid plan.';
+  }
+  return null;
+}
+
 /** Free tier row — every org is on this plan when there is no live org subscription. */
 export function resolveDefaultPlan(plans: OrgBundlePlanDto[]): OrgBundlePlanDto | null {
   return plans.find((plan) => plan.isDefault) ?? plans.find((plan) => plan.code === 'free') ?? null;
@@ -823,7 +841,7 @@ export const PLAN_FAQ_ITEMS: PlanFaqItem[] = [
   {
     question: 'How does monthly billing work?',
     answer:
-      'Paid plans renew every month. Before each renewal you’ll get a payment link by email and on the Billing tab. Pay with QRPH, Maya, or online banking through PayMongo — we never store card or bank details on Kame Homes.',
+      'Paid plans renew every month. Before each renewal you’ll get a payment link by email and on the Billing tab. Pay with QRPH, Maya, or online banking through PayMongo — we never store card or bank details on our platform.',
   },
   {
     question: 'What happens if I miss a renewal payment?',
@@ -833,7 +851,7 @@ export const PLAN_FAQ_ITEMS: PlanFaqItem[] = [
   {
     question: 'What happens when I downgrade or remove a property?',
     answer:
-      'Downgrades take effect immediately — no payment step. Features above your new tier turn off org-wide (team seats, marketing publishes, search placement, AI tools, and other limits). Removing a property credits its remaining value toward your next bill; unused time on a downgrade is not refunded as cash.',
+      'Downgrades take effect immediately while your subscription is active or in trial — not while past due (pay from Billing first). If suspended, you can move to Free to cancel; other downgrades require paying to restore access first. Features above your new tier turn off org-wide. Removing a property credits its remaining value toward your next bill; unused time on a downgrade is not refunded as cash.',
   },
   {
     question: 'How do AI credits work?',

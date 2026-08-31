@@ -39,7 +39,21 @@ import {
   hostTourChapters,
 } from '@/features/guest/marketing/for-hosts/data/hostTourChapters';
 
+import {
+  PLATFORM_APP_NAME,
+  platformMarkInitial,
+  platformWordmarkParts,
+} from '@/lib/platformBranding';
 import { cn } from '@/lib/utils';
+
+const filmWordmark = platformWordmarkParts();
+const filmMarkInitial = platformMarkInitial();
+const filmPublishLabel = PLATFORM_APP_NAME || 'Your brand';
+const filmAlertsLabel = PLATFORM_APP_NAME ? `${PLATFORM_APP_NAME} · Alerts` : 'Alerts';
+const filmAutomationTagline = PLATFORM_APP_NAME
+  ? `You approve the decisions. ${PLATFORM_APP_NAME} handles the repetition.`
+  : 'You approve the decisions. The platform handles the repetition.';
+
 
 const sidebarItems = [
   { label: 'Dashboard', icon: LayoutDashboard },
@@ -63,15 +77,24 @@ function FilmShell({ activeLabel, children }: FilmShellProps) {
         <aside className="flex w-[218px] shrink-0 flex-col border-r border-slate-200 bg-white px-4 py-5">
           <div className="mb-8 flex items-center gap-3 px-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-600 text-lg font-black text-white shadow-lg shadow-teal-600/20">
-              K
+              {filmMarkInitial || '·'}
             </div>
             <div>
-              <p className="text-[17px] font-extrabold tracking-tight">
-                Kame<span className="text-teal-600">Homes</span>
-              </p>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                Host workspace
-              </p>
+              {filmWordmark ? (
+                <p className="text-[17px] font-extrabold tracking-tight">
+                  {filmWordmark.primary}
+                  {filmWordmark.accent ? (
+                    <span className="text-teal-600">{filmWordmark.accent}</span>
+                  ) : null}
+                </p>
+              ) : (
+                <p className="text-[17px] font-extrabold tracking-tight">Host workspace</p>
+              )}
+              {filmWordmark ? (
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                  Host workspace
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -807,7 +830,7 @@ function MarketingScene() {
               <div className="mb-3 flex items-center gap-2">
                 <div className="h-7 w-7 rounded-full bg-teal-500" />
                 <div>
-                  <p className="text-[10px] font-bold">Kame Homes</p>
+                  <p className="text-[10px] font-bold">{filmPublishLabel}</p>
                   <p className="text-[8px] text-slate-500">Property post</p>
                 </div>
               </div>
@@ -976,7 +999,7 @@ function NotificationsScene() {
           >
             <div className="mx-auto mb-5 h-4 w-20 rounded-full bg-slate-900" />
             <p className="px-2 text-[9px] font-bold uppercase tracking-wider text-slate-500">
-              Kame Homes · Alerts
+              {filmAlertsLabel}
             </p>
             <div className="mt-3 space-y-3">
               {[
@@ -1094,7 +1117,7 @@ function AiScene() {
           className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/5 px-4 py-2 text-[9px] font-semibold text-slate-400"
           style={reveal(frame, 150, 8)}
         >
-          You approve the decisions. Kame Homes handles the repetition.
+          {filmAutomationTagline}
         </div>
       </div>
     </FilmShell>

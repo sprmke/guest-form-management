@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { OtpCodeInput } from '@/features/guest/auth/components/OtpCodeInput';
 
+import { platformLegalSubject } from '@/lib/platformBranding';
+
 import {
   useSettingsVerification,
   type SettingsVerificationScope,
@@ -153,8 +155,8 @@ export function SensitiveSettingsOtpDialog({
           ) : null}
 
           <p className="text-muted-foreground text-xs leading-relaxed">
-            By saving, you confirm payment details are accurate. Kame Homes is not liable for losses
-            from incorrect payment information.
+            By saving, you confirm payment details are accurate. {platformLegalSubject()} is not
+            liable for losses from incorrect payment information.
           </p>
         </div>
 

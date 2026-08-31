@@ -11,6 +11,7 @@ import { MarketingPublicPageContent } from '@/features/guest/marketing/shared/co
 import { MarketingPublicPageHero } from '@/features/guest/marketing/shared/components/MarketingPublicPageHero';
 
 import { Button } from '@/components/ui/button';
+import { PLATFORM_CONTACT_EMAIL } from '@/lib/platformBranding';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 const guestFaqs: MarketingPublicFaqItem[] = [
@@ -35,8 +36,11 @@ const guestFaqs: MarketingPublicFaqItem[] = [
       <>
         If the property offers guest messaging, use the stay or property message link you were
         given. Otherwise email{' '}
-        <a href="mailto:hello@kamehomes.com" className="text-primary font-medium hover:underline">
-          hello@kamehomes.com
+        <a
+          href={`mailto:${PLATFORM_CONTACT_EMAIL}`}
+          className="text-primary font-medium hover:underline"
+        >
+          {PLATFORM_CONTACT_EMAIL}
         </a>{' '}
         with your booking ID.
       </>
@@ -111,10 +115,10 @@ export function SupportPage() {
             <>
               Email{' '}
               <a
-                href="mailto:hello@kamehomes.com"
+                href={`mailto:${PLATFORM_CONTACT_EMAIL}`}
                 className="text-primary font-medium hover:underline"
               >
-                hello@kamehomes.com
+                {PLATFORM_CONTACT_EMAIL}
               </a>{' '}
               or use the contact page.
             </>

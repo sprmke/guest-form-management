@@ -36,7 +36,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { usePageTitle } from '@/lib/pageTitle';
+import { appPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 function formatPhp(value: number): string {
   return `₱${value.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -343,7 +343,7 @@ function PayoutsLedger() {
 }
 
 export function SuperAdminParkingPayoutsPage() {
-  usePageTitle('Kame Homes - Parking payouts');
+  usePageTitle(appPageTitle('Parking payouts'));
 
   return (
     <div className="space-y-4">

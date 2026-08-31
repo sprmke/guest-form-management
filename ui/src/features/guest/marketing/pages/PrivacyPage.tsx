@@ -1,18 +1,25 @@
 import { LegalSimplePage } from '@/features/guest/marketing/legal/components/LegalSimplePage';
 
+import { PLATFORM_APP_NAME, PLATFORM_CONTACT_EMAIL } from '@/lib/platformBranding';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
+
+const platformScopeLabel = PLATFORM_APP_NAME ? `${PLATFORM_APP_NAME} ` : '';
 
 export function PrivacyPage() {
   usePageTitle(publicPageTitle('Privacy'));
   return (
     <LegalSimplePage
       title="Privacy Policy"
-      description="How Kame Homes collects, uses, and shares personal information for guests, hosts, and team members."
+      description={
+        PLATFORM_APP_NAME
+          ? `How ${PLATFORM_APP_NAME} collects, uses, and shares personal information for guests, hosts, and team members.`
+          : 'How we collect, use, and share personal information for guests, hosts, and team members.'
+      }
       sections={[
         {
           title: 'Scope',
           paragraphs: [
-            'This policy covers the Kame Homes marketing site, guest booking and operational flows, guest portal, and host dashboards. Contact: hello@kamehomes.com · Manila, Philippines.',
+            `This policy covers the ${platformScopeLabel}marketing site, guest booking and operational flows, guest portal, and host dashboards. Contact: ${PLATFORM_CONTACT_EMAIL} · Manila, Philippines.`,
             'Property-specific messages or house rules may add stay instructions; they do not replace this policy for how the platform processes data.',
           ],
         },
@@ -34,7 +41,7 @@ export function PrivacyPage() {
         {
           title: 'Processors and sharing',
           paragraphs: [
-            'We share data with service providers that help run Kame Homes: Supabase (database, storage, auth, edge functions); Resend (transactional email and inbound document approvals); Google (OAuth sign-in, Maps/Places); Google Gemini and Groq (AI features described above); Meta (guest inbox OAuth/webhooks and marketing publishing where connected); Telegram (internal staff notifications about bookings—not a guest-facing messaging channel); and Jamendo (royalty-free music in the video editor; not used to process guest PII).',
+            `We share data with service providers that help run ${PLATFORM_APP_NAME || 'the platform'}: Supabase (database, storage, auth, edge functions); Resend (transactional email and inbound document approvals); Google (OAuth sign-in, Maps/Places); Google Gemini and Groq (AI features described above); Meta (guest inbox OAuth/webhooks and marketing publishing where connected); Telegram (internal staff notifications about bookings—not a guest-facing messaging channel); and Jamendo (royalty-free music in the video editor; not used to process guest PII).`,
             'Hosts and authorized team members see guest and booking data needed to operate their properties. We may disclose information when required by law or to protect rights, safety, and the integrity of the service.',
           ],
         },
@@ -54,7 +61,7 @@ export function PrivacyPage() {
         {
           title: 'Your rights and choices',
           paragraphs: [
-            'Subject to applicable Philippine law, you may request access, correction, or deletion of personal information we hold about you by emailing hello@kamehomes.com. We may need to verify your identity and retain certain records when the law requires it.',
+            `Subject to applicable Philippine law, you may request access, correction, or deletion of personal information we hold about you by emailing ${PLATFORM_CONTACT_EMAIL}. We may need to verify your identity and retain certain records when the law requires it.`,
             'Cookie and local-storage practices are described in our Cookie Policy.',
           ],
         },
@@ -67,7 +74,8 @@ export function PrivacyPage() {
         {
           title: 'Changes',
           paragraphs: [
-            'We may update this policy by posting a revised version on this page. Material changes will be dated in the page content when we publish them. Questions: hello@kamehomes.com.',
+            'We may update this policy by posting a revised version on this page. Material changes will be dated in the page content when we publish them. ' +
+              `Questions: ${PLATFORM_CONTACT_EMAIL}.`,
           ],
         },
       ]}

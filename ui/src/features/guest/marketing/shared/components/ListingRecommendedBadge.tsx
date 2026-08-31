@@ -4,7 +4,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils';
 
 /** Guest-facing; keep local so dashboard copy does not import into marketing. */
-const GUEST_RECOMMENDED_TOOLTIP = 'Identity, ownership, and Azure records checked by Kame Homes.';
+const GUEST_RECOMMENDED_TOOLTIP =
+  'Identity, ownership, and Azure records verified by the platform.';
 
 type Props = {
   className?: string;

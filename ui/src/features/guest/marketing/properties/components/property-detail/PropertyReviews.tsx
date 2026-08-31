@@ -36,7 +36,7 @@ const reviewSourceLabel = (source?: PropertyReviewItem['source']) => {
     case 'facebook':
       return 'Facebook';
     case 'kame':
-      return 'Kame guest';
+      return 'Guest review';
     default:
       return null;
   }

@@ -21,6 +21,10 @@ import {
 } from '@/features/dashboard/super-admin/components/super-admin-pricing/SuperAdminOrgSubscriptionsToolbar';
 import { useRunPlatformBillingCron } from '@/features/dashboard/super-admin/hooks/usePlatformPaymentSettings';
 import {
+  useReassessOrgSuperhost,
+  useRunSuperhostAssessmentCron,
+} from '@/features/dashboard/super-admin/hooks/useSuperhostAdmin';
+import {
   useAssignOrgPlan,
   useOrgSubscriptionsAdmin,
   useOrgSubscriptionsSummary,
@@ -35,7 +39,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useAdminMobileGridViewGuard } from '@/hooks/useAdminMobileGridViewGuard';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
-import { usePageTitle } from '@/lib/pageTitle';
+import { appPageTitle, usePageTitle } from '@/lib/pageTitle';
 import {
   ADMIN_DEFAULT_PAGE_SIZE,
   buildPageItems,
@@ -43,7 +47,7 @@ import {
 } from '@/lib/table/pagination';
 
 export function SuperAdminOrgSubscriptionsPage() {
-  usePageTitle('Kame Homes - Org subscriptions');
+  usePageTitle(appPageTitle('Org subscriptions'));
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Number(searchParams.get('page') ?? '1');
   const limit = normalizeAdminPageLimit(
@@ -75,6 +79,8 @@ export function SuperAdminOrgSubscriptionsPage() {
   const { summary } = useOrgSubscriptionsSummary();
   const assignPlan = useAssignOrgPlan();
   const billingCron = useRunPlatformBillingCron();
+  const superhostCron = useRunSuperhostAssessmentCron();
+  const reassessSuperhost = useReassessOrgSuperhost();
 
   const planOptions = useMemo(() => plans.filter((plan) => plan.isActive), [plans]);
   // Filtering (search/planCode) is already applied server-side by the edge
@@ -143,15 +149,26 @@ export function SuperAdminOrgSubscriptionsPage() {
             title="Org subscriptions"
             subtitle="Assign plans to organizations across the platform — covers every property they own."
             actions={
-              <Button
-                type="button"
-                variant="outline"
-                className="min-h-[44px]"
-                disabled={billingCron.isPending}
-                onClick={() => billingCron.mutate()}
-              >
-                Run billing cron
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-[44px]"
+                  disabled={superhostCron.isPending}
+                  onClick={() => superhostCron.mutate()}
+                >
+                  Run Superhost cron
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-[44px]"
+                  disabled={billingCron.isPending}
+                  onClick={() => billingCron.mutate()}
+                >
+                  Run billing cron
+                </Button>
+              </div>
             }
           />
 
@@ -176,6 +193,10 @@ export function SuperAdminOrgSubscriptionsPage() {
                 plans={planOptions}
                 onAssign={handleAssign}
                 isAssigning={assignPlan.isPending}
+                onReassessSuperhost={(orgId) => reassessSuperhost.mutate(orgId)}
+                reassessingOrgId={
+                  reassessSuperhost.isPending ? (reassessSuperhost.variables ?? null) : null
+                }
               />
             ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">

@@ -974,7 +974,7 @@ export const CALENDAR_PRESET_STYLES: Record<string, Partial<CalendarStyles>> = {
     watermark: {
       ...d().watermark,
       show: true,
-      text: 'Kame Homes',
+      text: 'Your brand',
       color: '#e3a488',
       opacity: 0.3,
       position: 'bottom-right',
@@ -1574,7 +1574,7 @@ export const CALENDAR_PRESET_STYLES: Record<string, Partial<CalendarStyles>> = {
     watermark: {
       ...d().watermark,
       show: true,
-      text: 'Kame Homes',
+      text: 'Your brand',
       color: '#c98a80',
       opacity: 0.35,
       position: 'bottom-right',
@@ -1869,7 +1869,7 @@ export const CALENDAR_PRESET_STYLES: Record<string, Partial<CalendarStyles>> = {
     watermark: {
       ...d().watermark,
       show: true,
-      text: 'Kame Homes',
+      text: 'Your brand',
       color: '#c96a45',
       opacity: 0.32,
       position: 'bottom-right',

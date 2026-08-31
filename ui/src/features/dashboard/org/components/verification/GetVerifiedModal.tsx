@@ -79,6 +79,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { PLATFORM_APP_NAME, platformProductLabel } from '@/lib/platformBranding';
 import { prepareUpload } from '@/lib/media/prepareUpload';
 import { cn } from '@/lib/utils';
 
@@ -333,7 +334,11 @@ function VerifiedTierStepPanel({
       )}
 
       {approved ? (
-        <p className="text-muted-foreground text-xs leading-relaxed">You can host on Kame Homes.</p>
+        <p className="text-muted-foreground text-xs leading-relaxed">
+          {PLATFORM_APP_NAME
+            ? `You can host on ${platformProductLabel()}.`
+            : 'You can start hosting.'}
+        </p>
       ) : null}
 
       {rejected && rejectionReason ? (

@@ -17,6 +17,7 @@ import { MarketingPublicPageHero } from '@/features/guest/marketing/shared/compo
 import { MarketingPublicSectionHeading } from '@/features/guest/marketing/shared/components/MarketingPublicSectionHeading';
 
 import { Button } from '@/components/ui/button';
+import { PLATFORM_APP_NAME, PLATFORM_CONTACT_EMAIL } from '@/lib/platformBranding';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 const capabilities = [
@@ -59,7 +60,7 @@ export function AboutPage() {
       <MarketingPublicPageHero
         eyebrow="About"
         title="Philippine stays, one operating system"
-        description="Kame Homes connects guest booking, host operations, messaging, marketing, finance, and parking—so every stay has a clear path from calendar to check-out."
+        description="Connect guest booking, host operations, messaging, marketing, finance, and parking—so every stay has a clear path from calendar to check-out."
         blobPosition="right"
       >
         <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -98,13 +99,15 @@ export function AboutPage() {
         title="Based in Manila"
         body={
           <>
-            Kame Homes is built and operated from Manila, Philippines. For product questions, host
-            onboarding, or guest stay issues, email{' '}
+            {PLATFORM_APP_NAME
+              ? `${PLATFORM_APP_NAME} is built and operated from Manila, Philippines.`
+              : 'Built and operated from Manila, Philippines.'}{' '}
+            For product questions, host onboarding, or guest stay issues, email{' '}
             <a
-              href="mailto:hello@kamehomes.com"
+              href={`mailto:${PLATFORM_CONTACT_EMAIL}`}
               className="text-primary font-medium hover:underline"
             >
-              hello@kamehomes.com
+              {PLATFORM_CONTACT_EMAIL}
             </a>{' '}
             or use{' '}
             <Link to="/contact" className="text-primary font-medium hover:underline">

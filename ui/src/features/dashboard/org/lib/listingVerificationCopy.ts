@@ -15,8 +15,9 @@ export const LISTING_VERIFICATION_TIER2_BENEFIT =
 export const LISTING_VERIFICATION_REVIEW_TIMELINE =
   'Review usually takes a few hours up to 3 days.';
 
-export const LISTING_VERIFICATION_TIER1_APPROVED_PROPERTY = 'This property is live on Kame Homes.';
-export const LISTING_VERIFICATION_TIER1_APPROVED_PARKING = 'This parking is live on Kame Homes.';
+export const LISTING_VERIFICATION_TIER1_APPROVED_PROPERTY =
+  'This property is live on the platform.';
+export const LISTING_VERIFICATION_TIER1_APPROVED_PARKING = 'This parking is live on the platform.';
 
 export const LISTING_VERIFICATION_TIER2_APPROVED =
   'Recommended badge is live on this listing’s page.';

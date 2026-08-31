@@ -10,12 +10,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { usePageTitle } from '@/lib/pageTitle';
+import { appPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 const RAIL_OPTIONS = ['qrph', 'paymaya', 'dob'] as const;
 
 export function SuperAdminPaymentSettingsPage() {
-  usePageTitle('Kame Homes - Payment settings');
+  usePageTitle(appPageTitle('Payment settings'));
   const { data, isLoading, error } = usePlatformPaymentSettings();
   const save = useUpdatePlatformPaymentSettings();
   const [methods, setMethods] = useState<string[]>([]);
