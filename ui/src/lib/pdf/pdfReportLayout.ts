@@ -41,7 +41,7 @@ function pdfTableHeadStyles(): Partial<UserOptions['headStyles']> {
     fontSize: PDF_TYPE.table,
     halign: 'left',
     valign: 'middle',
-    overflow: 'ellipsize',
+    overflow: 'visible',
     cellPadding: { top: 3.2, right: 2.6, bottom: 3.2, left: 2.6 },
   };
 }
@@ -81,7 +81,7 @@ export function applyPdfTableFootCell(
 
 export const PDF_TABLE_MONEY_COLUMN = {
   halign: 'right' as const,
-  overflow: 'ellipsize' as const,
+  overflow: 'visible' as const,
   fontSize: PDF_TYPE.table,
   cellPadding: { top: 3.2, right: 2.4, bottom: 3.2, left: 1.8 },
 };

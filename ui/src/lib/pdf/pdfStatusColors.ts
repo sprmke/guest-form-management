@@ -1,26 +1,49 @@
 import { statusTone, type StatusTone } from '@/features/dashboard/bookings/lib/bookingStatus';
 
-import type { PdfRgb } from '@/lib/pdf/pdfTheme';
+import { parseHexRgb } from '@/lib/theme/colorConvert';
+import { STATUS_TONE_HEX } from '@/lib/statusToneColors';
 
-/** Badge text colors aligned with `StatusBadge` / `STATUS_TONE_STYLES` (print on white). */
-const STATUS_TONE_PDF_TEXT: Record<StatusTone, PdfRgb> = {
-  red: [159, 18, 57],
-  yellow: [113, 63, 18],
-  green: [19, 78, 74],
-  amber: [120, 53, 15],
-  orange: [154, 52, 18],
-  blue: [12, 74, 110],
-  purple: [91, 33, 182],
-  neutral: [51, 65, 85],
-};
+import type { PdfRgb } from '@/lib/pdf/pdfTheme';
+import { PDF_COLORS } from '@/lib/pdf/pdfTheme';
+
+/** Darken a 500-level tone hex for readable body text on white (matches badge -800 intent). */
+function darkenToneRgb(hex: string, factor = 0.62): PdfRgb {
+  const parsed = parseHexRgb(hex);
+  if (!parsed) return [...PDF_COLORS.foreground];
+  return [
+    Math.round(parsed.r * factor),
+    Math.round(parsed.g * factor),
+    Math.round(parsed.b * factor),
+  ];
+}
+
+/** Status-tone text RGB aligned with `STATUS_TONE_HEX` / `StatusBadge` dots. */
+export function pdfToneTextColor(tone: StatusTone): PdfRgb {
+  return darkenToneRgb(STATUS_TONE_HEX[tone]);
+}
 
 export function pdfStatusTextColor(status: string): PdfRgb {
-  return STATUS_TONE_PDF_TEXT[statusTone(status)];
+  return pdfToneTextColor(statusTone(status));
+}
+
+/** Income / positive money — same green tone as ledger income. */
+export function pdfIncomeTextColor(): PdfRgb {
+  return pdfToneTextColor('green');
+}
+
+/** Expense / negative money — same red tone as ledger expenses. */
+export function pdfExpenseTextColor(): PdfRgb {
+  return pdfToneTextColor('red');
+}
+
+/** Pipeline / estimate figures — amber tone (in-progress stays). */
+export function pdfEstimateTextColor(): PdfRgb {
+  return pdfToneTextColor('amber');
 }
 
 /** Maintenance reminder row status labels from exportPdf. */
 export function pdfMaintenanceStatusColor(label: string): PdfRgb {
-  if (label === 'Done') return STATUS_TONE_PDF_TEXT.green;
-  if (label === 'Pending') return STATUS_TONE_PDF_TEXT.amber;
-  return STATUS_TONE_PDF_TEXT.neutral;
+  if (label === 'Done') return pdfToneTextColor('green');
+  if (label === 'Pending') return pdfToneTextColor('amber');
+  return [...PDF_COLORS.foreground];
 }

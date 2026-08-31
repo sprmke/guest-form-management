@@ -40,8 +40,13 @@ import {
   paintPageBackground,
   type PdfKpiItem,
 } from '@/lib/pdf/pdfReportLayout';
-import { pdfStatusTextColor } from '@/lib/pdf/pdfStatusColors';
-import { PDF_COLORS, PDF_LAYOUT, beginPdfTheme } from '@/lib/pdf/pdfTheme';
+import {
+  pdfStatusTextColor,
+  pdfEstimateTextColor,
+  pdfIncomeTextColor,
+  pdfExpenseTextColor,
+} from '@/lib/pdf/pdfStatusColors';
+import { PDF_COLORS, PDF_LAYOUT, beginPdfTheme, type PdfRgb } from '@/lib/pdf/pdfTheme';
 
 const REPORT_TYPE_LABEL: Record<FinanceExportType, string> = {
   combined: 'Finance report',
@@ -50,12 +55,9 @@ const REPORT_TYPE_LABEL: Record<FinanceExportType, string> = {
   operating: 'Transactions report',
 };
 
-function netColumnTextColor(
-  isCompleted: boolean,
-  net: number | null | undefined
-): [number, number, number] {
-  if (!isCompleted) return [...PDF_COLORS.warning];
-  return (net ?? 0) >= 0 ? [...PDF_COLORS.success] : [...PDF_COLORS.destructive];
+function netColumnTextColor(isCompleted: boolean, net: number | null | undefined): PdfRgb {
+  if (!isCompleted) return pdfEstimateTextColor();
+  return (net ?? 0) >= 0 ? pdfIncomeTextColor() : pdfExpenseTextColor();
 }
 
 function buildFinanceHeaderMeta(query: FinanceQuery): string[] {
@@ -168,17 +170,17 @@ function appendStaysSection(doc: jsPDF, y: number, payload: FinancePdfPayload): 
       ],
     ],
     columnStyles: {
-      0: { cellWidth: tableW * 0.24, overflow: 'linebreak' },
-      1: { cellWidth: tableW * 0.09, halign: 'center', overflow: 'ellipsize' },
-      2: { cellWidth: tableW * 0.09, halign: 'center', overflow: 'ellipsize' },
-      3: { cellWidth: tableW * 0.2, overflow: 'linebreak' },
-      4: { ...PDF_TABLE_MONEY_COLUMN, cellWidth: tableW * 0.13 },
-      5: { ...PDF_TABLE_MONEY_COLUMN, cellWidth: tableW * 0.12 },
-      6: { ...PDF_TABLE_MONEY_COLUMN, cellWidth: tableW * 0.13, fontStyle: 'bold' },
+      0: { cellWidth: tableW * 0.21, overflow: 'linebreak' },
+      1: { cellWidth: tableW * 0.08, halign: 'center', overflow: 'visible' },
+      2: { cellWidth: tableW * 0.08, halign: 'center', overflow: 'visible' },
+      3: { cellWidth: tableW * 0.17, overflow: 'linebreak' },
+      4: { ...PDF_TABLE_MONEY_COLUMN, cellWidth: tableW * 0.12 },
+      5: { ...PDF_TABLE_MONEY_COLUMN, cellWidth: tableW * 0.11 },
+      6: { ...PDF_TABLE_MONEY_COLUMN, cellWidth: tableW * 0.15 },
     },
     didParseCell: (data) => {
       if (data.section === 'head') {
-        data.cell.styles.overflow = 'ellipsize';
+        data.cell.styles.overflow = 'visible';
         data.cell.styles.halign =
           data.column.index >= 4
             ? 'right'
@@ -191,20 +193,14 @@ function appendStaysSection(doc: jsPDF, y: number, payload: FinancePdfPayload): 
       applyPdfTableFootCell(data);
 
       if (data.section === 'foot') {
-        if (data.column.index === 4) {
-          data.cell.styles.textColor =
-            stayTotals.bookingRate > 0 ? PDF_COLORS.success : PDF_COLORS.foreground;
-        } else if (data.column.index === 5) {
-          data.cell.styles.textColor =
-            stayTotals.otherFees > 0 ? PDF_COLORS.success : PDF_COLORS.foreground;
-        } else if (data.column.index === 6) {
+        if (data.column.index === 6) {
           const total = stayHostNetFootTotal(stayTotals.completedNet, stayTotals.pipelineNet);
           if (stayHostNetFootIsEstimate(stayTotals.completedNet, stayTotals.pipelineNet)) {
             data.cell.styles.textColor = netColumnTextColor(false, total);
           } else {
             data.cell.styles.textColor = netColumnTextColor(true, stayTotals.completedNet);
           }
-          data.cell.styles.overflow = 'ellipsize';
+          data.cell.styles.overflow = 'visible';
         }
         return;
       }
@@ -216,6 +212,7 @@ function appendStaysSection(doc: jsPDF, y: number, payload: FinancePdfPayload): 
 
       if (data.column.index === 3) {
         data.cell.styles.textColor = pdfStatusTextColor(row.status);
+        data.cell.styles.fontStyle = 'normal';
         return;
       }
 
@@ -223,22 +220,16 @@ function appendStaysSection(doc: jsPDF, y: number, payload: FinancePdfPayload): 
       if (!moneyCol) return;
 
       data.cell.styles.halign = 'right';
-
-      const fin = row.financials;
-
-      if (data.column.index === 4 && (fin.bookingRate ?? 0) > 0) {
-        data.cell.styles.textColor = PDF_COLORS.success;
-        return;
-      }
-
-      if (data.column.index === 5 && (fin.otherFees ?? 0) > 0) {
-        data.cell.styles.textColor = PDF_COLORS.success;
-        return;
-      }
+      data.cell.styles.overflow = 'visible';
+      data.cell.styles.fontStyle = 'normal';
 
       if (data.column.index !== 6) return;
+
+      const fin = row.financials;
       const net = stayRowDisplayNet(fin);
-      data.cell.styles.fontStyle = fin.isCompleted ? 'bold' : 'normal';
+      if (fin.isCompleted) {
+        data.cell.styles.fontStyle = 'bold';
+      }
       data.cell.styles.textColor = netColumnTextColor(fin.isCompleted, net);
     },
   });
@@ -310,14 +301,21 @@ function appendOperatingSection(doc: jsPDF, y: number, payload: FinancePdfPayloa
       1: { cellWidth: tableW * 0.12 },
       2: { cellWidth: tableW * 0.28, overflow: 'linebreak' },
       3: { cellWidth: tableW * 0.24, overflow: 'linebreak', halign: 'left' },
-      4: { ...PDF_TABLE_MONEY_COLUMN, cellWidth: tableW * 0.2, fontStyle: 'bold' },
+      4: { ...PDF_TABLE_MONEY_COLUMN, cellWidth: tableW * 0.2, fontStyle: 'normal' },
     },
     didParseCell: (data) => {
       applyPdfTableFootCell(data, 4);
 
+      if (data.section === 'head' && data.column.index === 4) {
+        data.cell.styles.overflow = 'visible';
+        data.cell.styles.halign = 'right';
+        return;
+      }
+
       if (data.section === 'foot' && data.column.index === 4) {
         data.cell.styles.textColor =
-          operatingNet >= 0 ? PDF_COLORS.success : PDF_COLORS.destructive;
+          operatingNet >= 0 ? pdfIncomeTextColor() : pdfExpenseTextColor();
+        data.cell.styles.overflow = 'visible';
         return;
       }
 
@@ -326,19 +324,22 @@ function appendOperatingSection(doc: jsPDF, y: number, payload: FinancePdfPayloa
       if (data.column.index === 1) {
         const kind = String(data.cell.raw);
         if (kind === 'Income') {
-          data.cell.styles.textColor = PDF_COLORS.success;
+          data.cell.styles.textColor = pdfIncomeTextColor();
         } else if (kind === 'Expense') {
-          data.cell.styles.textColor = PDF_COLORS.destructive;
+          data.cell.styles.textColor = pdfExpenseTextColor();
         }
         return;
       }
 
       if (data.column.index === 4) {
+        data.cell.styles.overflow = 'visible';
+        data.cell.styles.halign = 'right';
+        data.cell.styles.fontStyle = 'normal';
         const raw = String(data.cell.raw);
         if (raw.startsWith('+')) {
-          data.cell.styles.textColor = PDF_COLORS.success;
+          data.cell.styles.textColor = pdfIncomeTextColor();
         } else if (raw.startsWith('-')) {
-          data.cell.styles.textColor = PDF_COLORS.destructive;
+          data.cell.styles.textColor = pdfExpenseTextColor();
         }
       }
     },

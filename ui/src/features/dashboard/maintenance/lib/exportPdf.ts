@@ -162,9 +162,7 @@ function appendRemindersSection(doc: jsPDF, y: number, items: MaintenanceItem[])
       if (data.section !== 'body' || data.column.index !== 3) return;
       const status = String(data.cell.raw);
       data.cell.styles.textColor = pdfMaintenanceStatusColor(status);
-      if (status === 'Done') {
-        data.cell.styles.fontStyle = 'bold';
-      }
+      data.cell.styles.fontStyle = 'normal';
     },
   });
 
