@@ -7,7 +7,7 @@ updated: 2026-08-27
 
 # Guest account — Tickets
 
-Route: `/account/tickets` (+ `/new`, `/:ticketId`)
+Route: `/account/tickets` (+ `?compose=1`, legacy `/new`, `/:ticketId`)
 
 > **Status:** Documented — explore-mode tickets (same UI as dashboard Help & Support Tickets).
 
@@ -45,14 +45,14 @@ Guests can message Kame from the public Contact page after signing in with their
 
 - Auth: `RequireGuestSession` (same as Profile / Stays / Favorites).
 - Scope: `SupportTicketScopeProvider` with `channel: 'guest'` (no org/property/parking).
-- UI: `TicketsWorkspacePage` with `basePathOverride=/account`.
+- UI: `TicketsWorkspacePage` with `basePathOverride={GUEST_ACCOUNT_PATH}` (`/account`). **New** sets `?compose=1` on the tickets URL; legacy `/account/tickets/new` redirects to the same.
 - APIs: `list-support-tickets`, `get-support-ticket`, `submit-support-ticket`, `reply-support-ticket`, `upload-support-ticket-attachment` (guest channel when no org params).
 - DB: `support_tickets.channel = 'guest'`, `organization_id` null; messages `sender_type = 'guest'`.
 
 ### Contact (`/contact`)
 
 1. Guest picks Broken / Idea / Question / Business.
-2. If signed out → explore sign-in (`/for-guests/login?redirect=/contact?category=…`).
+2. If signed out → **`GuestAuthModal`** (same as Reserve / Contact host on listings).
 3. If signed in → same **`NewTicketModal`** / **`TicketComposeForm`** as dashboard.
 4. After submit → `/account/tickets/:ticketId`.
 
@@ -60,13 +60,13 @@ Guests can message Kame from the public Contact page after signing in with their
 
 ## Implementation map
 
-| Concern        | Path                                                                                      |
-| -------------- | ----------------------------------------------------------------------------------------- |
-| Page           | `ui/src/features/guest/account/pages/GuestTicketsPage.tsx`                                |
-| Nav            | `guestAccountNav.ts` · `GuestAccountMenu` · `GuestAccountSidebar`                         |
-| Contact        | `ui/src/features/guest/marketing/pages/ContactPage.tsx` · `PublicContactSignInDialog.tsx` |
-| Shared tickets | `ui/src/features/dashboard/help-support/pages/TicketsWorkspacePage.tsx`                   |
-| Migration      | `supabase/migrations/20261204120000_guest_support_tickets.sql`                            |
+| Concern        | Path                                                                         |
+| -------------- | ---------------------------------------------------------------------------- |
+| Page           | `ui/src/features/guest/account/pages/GuestTicketsPage.tsx`                   |
+| Nav            | `guestAccountNav.ts` · `GuestAccountMenu` · `GuestAccountSidebar`            |
+| Contact        | `ui/src/features/guest/marketing/pages/ContactPage.tsx` · `GuestAuthContext` |
+| Shared tickets | `ui/src/features/dashboard/help-support/pages/TicketsWorkspacePage.tsx`      |
+| Migration      | `supabase/migrations/20261204120000_guest_support_tickets.sql`               |
 
 ---
 

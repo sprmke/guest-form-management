@@ -1,5 +1,5 @@
 import { GuestAccountContentCard } from '@/features/guest/account/components/GuestAccountContentCard';
-import { GUEST_ACCOUNT_TICKETS_PATH } from '@/features/guest/account/lib/guestAccountPaths';
+import { GUEST_ACCOUNT_PATH } from '@/features/guest/account/lib/guestAccountPaths';
 
 import { SupportTicketScopeProvider } from '@/features/dashboard/help-support/context/SupportTicketScopeContext';
 import { TicketsWorkspacePage } from '@/features/dashboard/help-support/pages/TicketsWorkspacePage';
@@ -23,7 +23,7 @@ export function GuestTicketsPage() {
       bodyClassName="flex min-h-0 flex-1 flex-col p-0 sm:p-0"
     >
       <SupportTicketScopeProvider scope={GUEST_TICKET_SCOPE}>
-        <TicketsWorkspacePage basePathOverride={GUEST_ACCOUNT_TICKETS_PATH} />
+        <TicketsWorkspacePage basePathOverride={GUEST_ACCOUNT_PATH} />
       </SupportTicketScopeProvider>
     </GuestAccountContentCard>
   );
