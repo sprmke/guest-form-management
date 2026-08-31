@@ -17,6 +17,13 @@ import {
   type ShowcaseMobileMenuMotion,
 } from '@/features/guest/marketing/showcase/lib/showcaseMobileMenuConfig';
 import {
+  showcaseMobileMenuEyebrowClass,
+  showcaseMobileMenuIndexClass,
+  showcaseMobileMenuItemPadClass,
+  showcaseMobileMenuItemSizeByVariant,
+  showcaseMobileMenuTitleSizeByVariant,
+} from '@/features/guest/marketing/showcase/lib/showcaseMobileMenuTypography';
+import {
   readShowcaseScopeTheme,
   resolveShowcaseScrollRoot,
   type ShowcaseScopeThemeSnapshot,
@@ -26,7 +33,7 @@ import type { ShowcaseData } from '@/features/guest/marketing/showcase/types/sho
 import { cn } from '@/lib/utils';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
-const MENU_Z = 200;
+const MENU_Z = 220;
 const SCROLL_LOCK_ATTR = 'data-showcase-scroll-lock';
 
 type Props = {
@@ -253,7 +260,7 @@ export function ShowcaseMobileMenu({
     containedChrome,
     data.embed
   );
-  const portaledTheme = usePortaledShowcaseTheme(open, needsContainedOverlay);
+  const portaledTheme = usePortaledShowcaseTheme(open, true);
   const canShow = open && compactNav && (!needsContainedOverlay || frameStyle != null);
 
   useEffect(() => {
@@ -285,14 +292,14 @@ export function ShowcaseMobileMenu({
 
   const frameClassName = cn(
     // Clip root: panel slide/curtain % translates must stay inside the preview.
-    'overflow-hidden',
+    'showcase-scope overflow-hidden',
     needsContainedOverlay ? null : 'fixed inset-0'
   );
 
   const frameMotionStyle: CSSProperties = {
     zIndex: MENU_Z,
     ...(needsContainedOverlay && frameStyle ? frameStyle : null),
-    ...(needsContainedOverlay && portaledTheme ? portaledTheme.style : null),
+    ...(portaledTheme ? portaledTheme.style : null),
     overflow: 'hidden',
   };
 
@@ -303,9 +310,7 @@ export function ShowcaseMobileMenu({
           key="showcase-mobile-menu"
           className={frameClassName}
           style={frameMotionStyle}
-          data-showcase-surface={
-            needsContainedOverlay && portaledTheme?.surface ? portaledTheme.surface : undefined
-          }
+          data-showcase-surface={portaledTheme?.surface ?? undefined}
           role="dialog"
           aria-modal="true"
           aria-label="Page sections"
@@ -329,7 +334,7 @@ export function ShowcaseMobileMenu({
             className={cn(
               panelLayout(config.motion),
               config.panel,
-              'flex flex-col overflow-hidden will-change-transform'
+              '@container flex flex-col overflow-hidden will-change-transform'
             )}
             {...motionProps}
           >
@@ -340,11 +345,17 @@ export function ShowcaseMobileMenu({
               />
             ) : null}
             <div className={cn('flex shrink-0 items-center justify-between gap-3', config.header)}>
-              <div className="min-w-0">
-                <p className={cn('truncate text-xs uppercase tracking-[0.2em]', config.eyebrow)}>
+              <div className="min-w-0 flex-1 pr-2">
+                <p className={cn('truncate', showcaseMobileMenuEyebrowClass, config.eyebrow)}>
                   {config.uppercase ? 'Sections' : 'Explore'}
                 </p>
-                <p className={cn('truncate text-base font-medium', config.title)}>
+                <p
+                  className={cn(
+                    'truncate',
+                    showcaseMobileMenuTitleSizeByVariant[variant],
+                    config.title
+                  )}
+                >
                   {data.propertyName}
                 </p>
               </div>
@@ -362,7 +373,7 @@ export function ShowcaseMobileMenu({
             </div>
 
             <motion.nav
-              className="@sm:px-6 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain px-4 py-4"
+              className="@sm:px-5 @sm:py-4 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain px-4 py-3"
               aria-label="Showcase sections"
               variants={reduced ? undefined : navVariants}
               initial={reduced ? false : 'hidden'}
@@ -378,14 +389,18 @@ export function ShowcaseMobileMenu({
                     onClick={() => goTo(section.id)}
                     className={cn(
                       'flex w-full cursor-pointer items-center text-left',
+                      showcaseMobileMenuItemSizeByVariant[variant],
+                      showcaseMobileMenuItemPadClass,
                       config.item,
                       active ? config.itemActive : config.itemIdle
                     )}
                   >
                     {config.showIndices ? (
-                      <span className={config.index}>{String(index + 1).padStart(2, '0')}</span>
+                      <span className={cn(showcaseMobileMenuIndexClass, config.index)}>
+                        {String(index + 1).padStart(2, '0')}
+                      </span>
                     ) : null}
-                    <span className="min-w-0 flex-1">{section.heading}</span>
+                    <span className="min-w-0 flex-1 break-words">{section.heading}</span>
                   </motion.button>
                 );
               })}
@@ -396,9 +411,8 @@ export function ShowcaseMobileMenu({
     </AnimatePresence>
   );
 
-  // Fixed-to-frame overlay must live on document.body so it is not clipped /
-  // scrolled with the preview scrollport content.
-  if (needsContainedOverlay) {
+  // Always portal so z-index stacks above the pinned header (also portaled to body).
+  if (typeof document !== 'undefined') {
     return createPortal(overlay, document.body);
   }
 

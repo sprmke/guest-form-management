@@ -24,7 +24,9 @@ export function normalizeShowcaseTextSource(raw: unknown): ShowcaseTextSourceCon
   if (!source) return undefined;
   const customText =
     typeof obj.customText === 'string' ? obj.customText.trim().slice(0, 120) : undefined;
-  if (source === 'location' && !customText) return undefined;
+  if (source === 'location') {
+    return customText ? { source: 'location', customText } : { source: 'location' };
+  }
   if (source === 'custom') {
     return { source: 'custom', customText: customText || undefined };
   }
@@ -35,6 +37,15 @@ export function normalizeShowcaseTextSource(raw: unknown): ShowcaseTextSourceCon
 /** @deprecated Use normalizeShowcaseTextSource */
 export const normalizeShowcaseHeroEyebrow = normalizeShowcaseTextSource;
 
+/** Default text source when the section config leaves `source` unset. */
+export function defaultShowcaseTextSource(property: {
+  type?: string | null;
+  residenceName?: string | null;
+  developmentSlug?: string | null;
+}): ShowcaseTextSourceConfig['source'] {
+  return showcasePropertyHasDevelopment(property) ? 'development' : 'location';
+}
+
 /**
  * Resolve a location / development / custom line.
  * `locationFallback` is the default when source is location (or when other sources are missing).
@@ -44,7 +55,7 @@ export function resolveShowcaseTextSource(
   locationFallback: string,
   config: ShowcaseTextSourceConfig | undefined
 ): string {
-  const source = config?.source ?? 'location';
+  const source = config?.source ?? defaultShowcaseTextSource(property);
   const location = locationFallback.trim();
 
   if (source === 'custom') {

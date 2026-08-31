@@ -10,6 +10,7 @@ import { ShowcasePreviewMockBanner } from '@/features/guest/marketing/showcase/c
 import { ShowcaseSectionHeading } from '@/features/guest/marketing/showcase/components/ShowcaseSectionHeading';
 import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
 import { useShowcaseContainedChrome } from '@/features/guest/marketing/showcase/lib/showcaseChrome';
+import { showcaseHeroTopAlignedSectionClass } from '@/features/guest/marketing/showcase/lib/showcaseHeroLayout';
 import {
   parseShowcaseHighlight,
   resolveShowcaseGridColsClass,
@@ -83,7 +84,7 @@ function HavenHero({ data, section }: { data: ShowcaseData; section: ShowcaseRes
       data-page-editor-anchor={section.id}
       className={cn(
         '@md:px-8 relative scroll-mt-24 overflow-hidden px-5',
-        containedChrome ? 'pb-10 pt-6' : '@md:pb-20 @md:pt-32 pb-14 pt-24'
+        showcaseHeroTopAlignedSectionClass(containedChrome, 'haven')
       )}
     >
       <div

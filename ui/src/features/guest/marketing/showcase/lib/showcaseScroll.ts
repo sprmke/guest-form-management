@@ -33,6 +33,8 @@ const SHOWCASE_SCOPE_CSS_VARS = [
   '--showcase-border-strong',
   '--showcase-accent',
   '--showcase-on-accent',
+  '--showcase-display-scale',
+  '--showcase-body-scale',
 ] as const;
 
 export type ShowcaseScopeThemeSnapshot = {

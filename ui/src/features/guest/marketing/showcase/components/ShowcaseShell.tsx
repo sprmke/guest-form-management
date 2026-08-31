@@ -322,7 +322,7 @@ function ShowcaseNav({
         chrome.shell,
         overlayHeader && 'border-transparent',
         !floatingPanel && surface,
-        menuOpen && 'opacity-40'
+        menuOpen && 'pointer-events-none invisible'
       )}
     >
       <div className="@container w-full min-w-0">
@@ -378,7 +378,7 @@ function ShowcaseNav({
               <button
                 type="button"
                 className={cn(
-                  'relative z-[210] flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center',
+                  'flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center',
                   chrome.iconButton,
                   tokens.themeToggleHover,
                   headerOnHero && 'text-inherit hover:bg-white/10'
@@ -484,7 +484,7 @@ function ShowcaseShellInner({
         className={cn(
           // No `@container` / warm-tint `filter` here — both create a containing
           // block that traps `position: sticky|fixed` so the header scrolls away.
-          'showcase-scope relative isolate w-full min-w-0',
+          'showcase-scope @sm:scroll-pt-36 relative isolate w-full min-w-0 scroll-pt-32',
           scopeDisplayFont,
           headingScaleClass,
           bodyScaleClass,

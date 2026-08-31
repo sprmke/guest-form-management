@@ -17,6 +17,7 @@ import { ShowcaseSectionIntro } from '@/features/guest/marketing/showcase/compon
 import { useShowcaseStyle } from '@/features/guest/marketing/showcase/components/ShowcaseStyleProvider';
 import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
 import { useShowcaseContainedChrome } from '@/features/guest/marketing/showcase/lib/showcaseChrome';
+import { showcaseHeroTopAlignedSectionClass } from '@/features/guest/marketing/showcase/lib/showcaseHeroLayout';
 import {
   resolveShowcaseCssColumnsClass,
   resolveShowcaseGridColsClass,
@@ -68,7 +69,7 @@ function EditorialHero({
       data-page-editor-anchor={section.id}
       className={cn(
         '@sm:px-6 @lg:px-8 relative scroll-mt-20 overflow-hidden px-4',
-        containedChrome ? 'pb-12 pt-4' : '@sm:pb-20 @sm:pt-28 pb-14 pt-24'
+        showcaseHeroTopAlignedSectionClass(containedChrome, 'editorial')
       )}
     >
       <ShowcaseCanvas variant="grain" paused={canvasOff} className="opacity-30" />
