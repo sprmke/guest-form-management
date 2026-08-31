@@ -145,6 +145,8 @@ export function ContactHostSheet({
     Boolean(conversationId) &&
     (messages.length > 0 || isReturningGuest || Boolean(localConversationId));
 
+  const stayGuideUrl = resumeQuery.data?.stayGuideUrl ?? startQuery.data?.stayGuideUrl ?? null;
+
   const threadSearch = useChatThreadSearch(showThread ? messages : []);
 
   useEffect(() => {
@@ -397,7 +399,7 @@ export function ContactHostSheet({
             ) : showThread && conversationId ? (
               <GuestChatThread
                 conversationId={conversationId}
-                propertySlug={listingSlug}
+                propertySlug={propertySlug}
                 propertyName={propertyName}
                 messages={messages}
                 isLoading={messagesLoading}
@@ -425,6 +427,10 @@ export function ContactHostSheet({
                   await unsend.mutateAsync(messageId);
                 }}
                 unsending={unsend.isPending}
+                hasInquiryDates={Boolean(checkIn && checkOut)}
+                inquiryCheckIn={displayCheckInDate || undefined}
+                inquiryCheckOut={displayCheckOutDate || undefined}
+                stayGuideUrl={stayGuideUrl}
               />
             ) : (
               <div className="flex min-h-0 flex-1 flex-col">
@@ -432,6 +438,7 @@ export function ContactHostSheet({
                   <GuestChatFaqSuggestions
                     onPick={handlePickFaq}
                     disabled={sendingFirst || send.isPending}
+                    hasInquiryDates={Boolean(checkIn && checkOut)}
                   />
                 </div>
                 <div className="border-border shrink-0 border-t px-5 py-4 pb-[max(env(safe-area-inset-bottom,0px),1rem)]">
