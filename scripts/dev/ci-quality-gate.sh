@@ -35,7 +35,10 @@ run_step() {
 run_step "type-check" bun run type-check
 run_step "lint (ESLint errors block CD — warnings OK)" bun run lint
 run_step "check:filenames" bun run check:filenames
+run_step "unit tests (Vitest)" bun run test
 run_step "build UI" bun run build
+run_step "assert image optimizer stays lazy (plan §10.6)" \
+  node scripts/media/assert-lazy-optimizer.mjs
 
 echo ""
 echo "OK — quality gate passed (safe to push for CI/CD quality job)."
