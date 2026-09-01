@@ -78,6 +78,7 @@ Before every AI call, `suggestInboxReply` builds a guest-safe facts bundle via *
 - Payment methods with account name and number (same as guest form / property settings)
 - Weekday/weekend rates, security deposit, pet fee, parking rate, holiday % rules
 - Amenities, house rules, cancellation policy (title + description)
+- **Development/residence facts** (when property `residence_name` matches a development): development name, amenities, pool fee, pool schedule, guest requirements, guide entries, document requirement labels, other important info — via `_shared/developmentGuestInfo.ts`
 - Today/tomorrow availability, next open check-in dates, blocked stay date ranges
 - Inquiry-date availability + estimated stay total when thread has inquiry dates
 - Booking form URL, calendar URL

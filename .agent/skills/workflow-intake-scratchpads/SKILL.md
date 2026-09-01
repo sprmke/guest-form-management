@@ -23,16 +23,17 @@ Each item block starts with `===`, then a **title line** with exactly one leadin
 | ----- | ---------------------------------------- | ------------------------------------------------------------------------------ |
 | ❌    | Cancelled / won't do — explicit decision | Matching doc in `docs/workflow/wont-do/` or scratchpad-only with reason        |
 | ✅    | Shipped — plan fully complete            | Parent plan in `docs/workflow/done/` (or route guide shipped without a plan)   |
+| 🧪    | For testing — manual QA pending          | Parent plan in `docs/workflow/for-testing/` (implementation complete)          |
 | 📋    | Planned — plan written, not started yet  | Plan in `docs/workflow/planned/` only                                          |
 | 🚧    | In progress — work started, plan open    | Parent plan in `docs/workflow/in-progress/` (even if a v1 slice is in `done/`) |
 | 🔵    | Pending / open — no plan yet             | No matching plan; backlog idea only                                            |
 
-**Scratchpad sort order:** ❌ → ✅ → 📋 → 🚧 → 🔵 (matches legend line — won't do and shipped first, open backlog last).
+**Scratchpad sort order:** ❌ → ✅ → 🧪 → 📋 → 🚧 → 🔵
 
 **Legend line** (both files, after frontmatter — order matches scratchpad sort):
 
 ```markdown
-**Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
+**Status legend:** ❌ cancelled / won't do · ✅ done · 🧪 for testing · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
 ```
 
 Bump frontmatter `updated:` to today when you change either scratchpad.
@@ -42,6 +43,7 @@ Bump frontmatter `updated:` to today when you change either scratchpad.
 | Event                                       | Scratchpad action                                                             |
 | ------------------------------------------- | ----------------------------------------------------------------------------- |
 | `/workflow-start` or move to `in-progress/` | Find matching item → **🚧**; add `→ **In progress:** [../in-progress/…](…)`   |
+| Move to `for-testing/` (QA only remaining)  | Find matching item → **🧪**; add `→ **For testing:** [../for-testing/…](…)`   |
 | `/workflow-done` or move to `done/`         | Find matching item → **✅**; add `→ **Done:** [../done/…](…)`                 |
 | `/workflow-wont-do` or move to `wont-do/`   | Find matching item → **❌**; add `→ **Won't do:** [../wont-do/…](…)` + reason |
 | New plan saved to `planned/`                | **📋** + link to plan                                                         |
@@ -54,7 +56,7 @@ Do this **in the same session** as the workflow move or doc change — not as a 
 
 1. Grep scratchpads for keywords from the plan title / slug.
 2. Cross-check `docs/workflow/planned/README.md`, `in-progress/README.md`, `done/README.md`, `wont-do/README.md`.
-3. If `wont-do/` link → **❌**. If parent plan in `done/` (fully complete) → **✅**. If parent plan in `in-progress/` → **🚧**. If only `planned/` (not started) → **📋**. If none → **🔵** unless user said won't do → **❌**.
+3. If `wont-do/` link → **❌**. If parent plan in `done/` (fully complete) → **✅**. If parent plan in `for-testing/` → **🧪**. If parent plan in `in-progress/` → **🚧**. If only `planned/` (not started) → **📋**. If none → **🔵** unless user said won't do → **❌**.
 
 **Partial ship:** v1 slice or phase doc in `done/` while parent plan remains open → parent stays **`in-progress/`**, scratchpad **🚧** (not ✅). Note phase in the `→` link line.
 
