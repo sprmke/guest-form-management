@@ -9,6 +9,7 @@ export const superAdminPaths = {
   approvals: '/admin/approvals',
   support: '/admin/support',
   supportFaqs: '/admin/support/faqs',
+  announcements: '/admin/announcements',
   hosts: '/admin/hosts',
   settings: '/admin/settings',
   properties: '/admin/properties',

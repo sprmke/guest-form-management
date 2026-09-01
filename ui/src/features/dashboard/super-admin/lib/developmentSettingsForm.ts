@@ -18,6 +18,17 @@ import {
   normalizeDevelopmentParkingLevels,
   readDevelopmentParkingLevels,
 } from '@/features/dashboard/super-admin/lib/developmentParking';
+import {
+  mergeDevelopmentPoolSettings,
+  parseGuestGuides,
+  validateGuestGuides,
+  type DevelopmentGuestGuide,
+} from '@/features/dashboard/super-admin/lib/developmentGuestInfo';
+import {
+  parseHostAnnouncementDrafts,
+  validateHostAnnouncements,
+  type HostAnnouncementDraft,
+} from '@/features/dashboard/announcements/lib/hostAnnouncementTypes';
 import type { Development } from '@/features/dashboard/super-admin/types/development';
 
 function readStringArray(settings: Record<string, unknown>, key: string): string[] {
@@ -65,6 +76,12 @@ export type DevelopmentProfileDraft = {
   pmoEmail: string;
   documentRequirements: DocumentRequirement[];
   unitTypes: DevelopmentUnitType[];
+  poolFee: number | null;
+  poolSchedule: string;
+  guestRequirements: string;
+  guestGuides: DevelopmentGuestGuide[];
+  importantInfo: string;
+  announcements: HostAnnouncementDraft[];
 };
 
 export function developmentProfileDraftFromDevelopment(
@@ -106,6 +123,15 @@ export function developmentProfileDraftFromDevelopment(
     pmoEmail: readString(settings, 'pmoEmail'),
     documentRequirements: mergeDocumentRequirements(workflowDefaults?.documentRequirements),
     unitTypes: mergeUnitTypes(settings.unitTypes, development.name),
+    ...mergeDevelopmentPoolSettings(
+      development.name,
+      readNumber(settings, 'poolFee'),
+      readString(settings, 'poolSchedule')
+    ),
+    guestRequirements: readString(settings, 'guestRequirements'),
+    guestGuides: parseGuestGuides(settings.guestGuides),
+    importantInfo: readString(settings, 'importantInfo'),
+    announcements: parseHostAnnouncementDrafts(settings.announcements),
   };
 }
 
@@ -145,6 +171,12 @@ export function buildDevelopmentUpdatePayload(draft: DevelopmentProfileDraft) {
     pmoEmail: draft.pmoEmail.trim() || null,
     documentRequirements: draft.documentRequirements,
     unitTypes: draft.unitTypes,
+    poolFee: draft.poolFee,
+    poolSchedule: draft.poolSchedule.trim() || null,
+    guestRequirements: draft.guestRequirements.trim() || null,
+    guestGuides: draft.guestGuides,
+    importantInfo: draft.importantInfo.trim() || null,
+    announcements: draft.announcements,
   };
 }
 
@@ -157,6 +189,11 @@ export function validateDevelopmentProfileDraft(draft: DevelopmentProfileDraft):
   if (firstLabelError) return firstLabelError;
   const unitTypeError = validateUnitTypes(draft.unitTypes);
   if (unitTypeError) return unitTypeError;
+  const guideError = validateGuestGuides(draft.guestGuides);
+  if (guideError) return guideError;
+  const announcementError = validateHostAnnouncements(draft.announcements);
+  if (announcementError) return announcementError;
+  if (draft.poolFee != null && draft.poolFee < 0) return 'Pool fee cannot be negative';
   return null;
 }
 

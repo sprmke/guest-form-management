@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { Loader2, Paperclip, SendHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 
-import type { SupportTicketMessage } from '@/features/dashboard/help-support/lib/supportTicketApi';
+import { TicketMessageBubble } from '@/features/dashboard/help-support/components/TicketMessageBubble';
+import { TicketReplyComposer } from '@/features/dashboard/help-support/components/TicketReplyComposer';
+import { TicketStatusBanner } from '@/features/dashboard/help-support/components/TicketStatusBanner';
 import { SUPPORT_TICKET_CATEGORY_LABELS } from '@/features/dashboard/help-support/lib/supportTicketSchema';
+import {
+  adminReplyPlaceholder,
+  canAdminReply,
+} from '@/features/dashboard/help-support/lib/supportTicketStatus';
 import {
   superAdminApprovalDialogBodyClass,
   superAdminApprovalDialogContentClass,
@@ -36,89 +41,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Textarea } from '@/components/ui/textarea';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
 import { cn } from '@/lib/utils';
 
 const STATUS_OPTIONS = ['open', 'in_progress', 'resolved', 'closed'] as const;
 const PRIORITY_OPTIONS = ['low', 'medium', 'high'] as const;
-
-function formatMessageTime(iso: string): string {
-  return new Date(iso).toLocaleString('en-PH', {
-    timeZone: 'Asia/Manila',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
-
-function AdminMessageBubble({ message }: { message: SupportTicketMessage }) {
-  const isAdmin = message.sender_type === 'admin';
-  return (
-    <div className={cn('flex min-w-0 flex-col gap-1', isAdmin ? 'items-end' : 'items-start')}>
-      <div
-        className={cn(
-          'max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed [overflow-wrap:anywhere]',
-          isAdmin ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
-        )}
-      >
-        <p className="whitespace-pre-wrap">{message.body}</p>
-        {message.attachments.length > 0 ? (
-          <div className="mt-2 grid grid-cols-2 gap-1.5">
-            {message.attachments.map((attachment) => {
-              if (attachment.url && attachment.mimeType.startsWith('image/')) {
-                return (
-                  <a
-                    key={attachment.path}
-                    href={attachment.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block"
-                  >
-                    <img
-                      src={attachment.url}
-                      alt={attachment.name}
-                      className="aspect-square rounded-md object-cover"
-                    />
-                  </a>
-                );
-              }
-              if (attachment.url && attachment.mimeType.startsWith('video/')) {
-                return (
-                  <video
-                    key={attachment.path}
-                    src={attachment.url}
-                    controls
-                    className="aspect-square rounded-md object-cover"
-                  />
-                );
-              }
-              return (
-                <a
-                  key={attachment.path}
-                  href={attachment.url ?? undefined}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={cn(
-                    'flex min-h-[44px] items-center gap-1.5 rounded-md px-2 py-1.5 text-xs',
-                    isAdmin ? 'bg-primary-foreground/15' : 'bg-background/80'
-                  )}
-                >
-                  <Paperclip className="size-3.5 shrink-0" aria-hidden />
-                  <span className="truncate">{attachment.name}</span>
-                </a>
-              );
-            })}
-          </div>
-        ) : null}
-      </div>
-      <p className="text-muted-foreground px-1 text-[11px]">
-        {message.sender_name} · {formatMessageTime(message.created_at)}
-      </p>
-    </div>
-  );
-}
 
 export function SuperAdminTicketDetailDialog({
   ticketId,
@@ -139,9 +66,11 @@ export function SuperAdminTicketDetailDialog({
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ block: 'end' });
-  }, [data?.messages.length, ticketId]);
+  }, [data?.messages.length, ticketId, data?.ticket.status]);
 
-  const canSend = draft.trim().length > 0 && !replyMutation.isPending && Boolean(data);
+  const ticket = data?.ticket;
+  const channel = ticket?.channel ?? (ticket?.organizationSlug ? 'host' : 'guest');
+  const replyEnabled = ticket ? canAdminReply(ticket.status) : false;
 
   const handleSend = async () => {
     const trimmed = draft.trim();
@@ -175,21 +104,20 @@ export function SuperAdminTicketDetailDialog({
       <ResponsiveModalContent className={superAdminApprovalDialogContentClass} sheetLayout="split">
         <ResponsiveModalHeader className={superAdminApprovalDialogHeaderClass}>
           <ResponsiveModalTitle className="pr-8 [overflow-wrap:anywhere]">
-            {data?.ticket.subject ?? 'Ticket'}
+            {ticket?.subject ?? 'Ticket'}
           </ResponsiveModalTitle>
-          {data ? (
+          {ticket ? (
             <div className="space-y-3">
               <p className="text-muted-foreground min-w-0 truncate text-xs">
-                {data.ticket.organizationName} ·{' '}
-                {SUPPORT_TICKET_CATEGORY_LABELS[data.ticket.category]}
+                {ticket.organizationName} · {SUPPORT_TICKET_CATEGORY_LABELS[ticket.category]}
               </p>
               <p className="text-muted-foreground min-w-0 truncate text-xs">
-                {data.ticket.submitted_by_name}
-                {data.ticket.submitted_by_email ? ` · ${data.ticket.submitted_by_email}` : ''}
+                {ticket.submitted_by_name}
+                {ticket.submitted_by_email ? ` · ${ticket.submitted_by_email}` : ''}
               </p>
               <div className="flex flex-wrap gap-2">
                 <Select
-                  value={data.ticket.status}
+                  value={ticket.status}
                   onValueChange={(value) => void handleStatusChange(value)}
                   disabled={statusMutation.isPending}
                 >
@@ -206,7 +134,7 @@ export function SuperAdminTicketDetailDialog({
                 </Select>
 
                 <Select
-                  value={data.ticket.priority ?? 'none'}
+                  value={ticket.priority ?? 'none'}
                   onValueChange={(value) => void handlePriorityChange(value)}
                   disabled={statusMutation.isPending}
                 >
@@ -226,6 +154,14 @@ export function SuperAdminTicketDetailDialog({
             </div>
           ) : null}
         </ResponsiveModalHeader>
+
+        {ticket ? (
+          <TicketStatusBanner
+            status={ticket.status}
+            variant="admin"
+            className="mx-0 rounded-none"
+          />
+        ) : null}
 
         <div className={cn(superAdminApprovalDialogBodyClass, 'flex min-h-0 flex-1 flex-col')}>
           {isPending || (!data && !isError) ? (
@@ -248,56 +184,27 @@ export function SuperAdminTicketDetailDialog({
           ) : (
             <div className="flex min-h-0 flex-1 flex-col gap-4">
               {data.messages.map((message) => (
-                <AdminMessageBubble key={message.id} message={message} />
+                <TicketMessageBubble key={message.id} message={message} perspective="admin" />
               ))}
               <div ref={messagesEndRef} />
             </div>
           )}
         </div>
 
-        {data ? (
+        {ticket && replyEnabled ? (
           <div className={cn(superAdminApprovalDialogFooterClass, 'sm:flex-col')}>
-            <div
-              className={cn(
-                'border-border/80 bg-background w-full overflow-hidden rounded-xl border shadow-sm',
-                'focus-within:border-primary/40 focus-within:ring-primary/10 focus-within:ring-2'
-              )}
-            >
-              <Textarea
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-                placeholder="Reply to the host…"
-                rows={2}
-                maxLength={5000}
-                aria-label="Reply"
-                className="min-h-[72px] resize-none border-0 bg-transparent px-3.5 py-3 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                onKeyDown={(event) => {
-                  if (event.nativeEvent.isComposing) return;
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault();
-                    if (canSend) void handleSend();
-                  }
-                }}
-              />
-              <div className="border-border/60 flex items-center justify-end border-t px-2 py-1.5">
-                <Button
-                  type="button"
-                  size="sm"
-                  className="h-9 min-h-[36px] gap-1.5 rounded-lg px-3"
-                  disabled={!canSend}
-                  onClick={() => void handleSend()}
-                >
-                  {replyMutation.isPending ? (
-                    <Loader2 className="size-4 animate-spin" aria-hidden />
-                  ) : (
-                    <>
-                      Send
-                      <SendHorizontal className="size-4" aria-hidden />
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
+            <TicketReplyComposer
+              draft={draft}
+              onDraftChange={setDraft}
+              attachments={[]}
+              onAttachmentsChange={() => {}}
+              onSend={() => void handleSend()}
+              sending={replyMutation.isPending}
+              placeholder={adminReplyPlaceholder(channel)}
+              showAttachments={false}
+              inputId="admin-ticket-reply"
+              className="w-full"
+            />
           </div>
         ) : null}
       </ResponsiveModalContent>

@@ -10,7 +10,7 @@ import type { PropertySection } from '@/features/dashboard/team/lib/propertyPerm
 import { RouteGuardSkeleton } from '@/components/skeletons/AdminSkeletons';
 
 /** Suspended orgs keep Plans & Billing + Help reachable so hosts can pay or get support. */
-const ALLOWED_WHEN_SUSPENDED: PropertySection[] = ['help-support', 'plans'];
+const ALLOWED_WHEN_SUSPENDED: PropertySection[] = ['announcements', 'help-support', 'plans'];
 
 type Props = {
   section: PropertySection;

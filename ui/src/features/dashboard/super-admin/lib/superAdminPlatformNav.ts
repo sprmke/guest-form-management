@@ -7,6 +7,7 @@ import {
   HelpCircle,
   Landmark,
   LifeBuoy,
+  Megaphone,
   Sparkles,
   Users,
   Wallet,
@@ -44,5 +45,6 @@ export const SUPER_ADMIN_PLATFORM_DESTINATIONS: SuperAdminPlatformNavItem[] = [
   { label: 'Parking payouts', href: superAdminPaths.parkingPayouts, Icon: Wallet },
   { label: 'Support tickets', href: superAdminPaths.support, Icon: LifeBuoy },
   { label: 'FAQs', href: superAdminPaths.supportFaqs, Icon: HelpCircle },
+  { label: 'Announcements', href: superAdminPaths.announcements, Icon: Megaphone },
   { label: 'AI Management', href: superAdminPaths.settings, Icon: Sparkles },
 ];

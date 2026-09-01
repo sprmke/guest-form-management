@@ -77,7 +77,9 @@ export function StatCard({
             </p>
             <p
               className={cn(
-                'truncate text-lg font-bold tabular-nums tracking-tight sm:text-2xl',
+                valueClassName?.includes('line-clamp')
+                  ? 'font-bold tracking-tight'
+                  : 'truncate text-lg font-bold tabular-nums tracking-tight sm:text-2xl',
                 valueClassName ?? 'text-foreground'
               )}
             >

@@ -81,6 +81,7 @@ export function useUpdateDevelopment(slug: string) {
       await Promise.all([
         qc.invalidateQueries({ queryKey: DEVELOPMENTS_QUERY_KEY }),
         qc.invalidateQueries({ queryKey: developmentQueryKey(slug) }),
+        qc.invalidateQueries({ queryKey: ['host-announcements'] }),
         qc.setQueryData(developmentQueryKey(development.slug), development),
       ]);
     },

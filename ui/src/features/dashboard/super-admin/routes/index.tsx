@@ -4,6 +4,7 @@ import { Navigate, Route } from 'react-router-dom';
 
 import { SuperAdminHostShell } from '@/features/dashboard/super-admin/components/super-admin-hosts/SuperAdminHostShell';
 import { SuperAdminShell } from '@/features/dashboard/super-admin/components/SuperAdminShell';
+import { SuperAdminAnnouncementsPage } from '@/features/dashboard/super-admin/pages/SuperAdminAnnouncementsPage';
 import { SuperAdminApprovalsPage } from '@/features/dashboard/super-admin/pages/SuperAdminApprovalsPage';
 import { SuperAdminDevelopmentDetailPage } from '@/features/dashboard/super-admin/pages/SuperAdminDevelopmentDetailPage';
 import { SuperAdminDevelopmentsPage } from '@/features/dashboard/super-admin/pages/SuperAdminDevelopmentsPage';
@@ -29,6 +30,7 @@ export const superAdminRoutes: ReactNode = (
     <Route path="approvals" element={<SuperAdminApprovalsPage />} />
     <Route path="support" element={<SuperAdminSupportPage />} />
     <Route path="support/faqs" element={<SuperAdminHelpFaqsPage />} />
+    <Route path="announcements" element={<SuperAdminAnnouncementsPage />} />
     <Route path="hosts" element={<SuperAdminHostsPage />} />
     <Route path="settings" element={<SuperAdminSettingsPage />} />
     <Route path="pricing/plans" element={<SuperAdminPricingPlansPage />} />

@@ -40,8 +40,8 @@ export function RequirePropertyPermission({ section, children }: Props) {
     );
   }
 
-  // Help & Support is baseline access for every active property member (plan intent).
-  if (section === 'help-support' && data && !data.planLimited) {
+  // Help & Support and Announcements are baseline access for every active property member (plan intent).
+  if ((section === 'help-support' || section === 'announcements') && data && !data.planLimited) {
     return children;
   }
 

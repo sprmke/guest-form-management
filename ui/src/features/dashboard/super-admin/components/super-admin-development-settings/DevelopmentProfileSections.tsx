@@ -18,7 +18,9 @@ import { PropertyMediaUpload } from '@/features/dashboard/org/components/propert
 import { SettingsField } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import type { PropertyLocationFields } from '@/features/dashboard/org/lib/propertyLocation';
 import type { PropertyMediaItem } from '@/features/dashboard/org/lib/propertySettingsConstants';
+import { DevelopmentAnnouncementsSection } from '@/features/dashboard/super-admin/components/super-admin-development-settings/DevelopmentAnnouncementsSection';
 import { DevelopmentDocumentRequirementsSection } from '@/features/dashboard/super-admin/components/super-admin-development-settings/DevelopmentDocumentRequirementsSection';
+import { DevelopmentGuestInfoSection } from '@/features/dashboard/super-admin/components/super-admin-development-settings/DevelopmentGuestInfoSection';
 import { DevelopmentUnitTypesSection } from '@/features/dashboard/super-admin/components/super-admin-development-settings/DevelopmentUnitTypesSection';
 import {
   shouldAutoUpdateDevelopmentLocationLine,
@@ -295,6 +297,14 @@ export function DevelopmentProfileSections({
         list={draft.unitTypes}
         disabled={disabled}
         onChange={(next) => onChange('unitTypes', next)}
+      />
+
+      <DevelopmentGuestInfoSection draft={draft} disabled={disabled} onChange={onChange} />
+
+      <DevelopmentAnnouncementsSection
+        announcements={draft.announcements}
+        disabled={disabled}
+        onChange={(next) => onChange('announcements', next)}
       />
 
       <AdminSection id="amenities" title="Amenities" icon={Sparkles}>

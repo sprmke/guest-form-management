@@ -4,7 +4,9 @@ import { useNavigate } from 'react-router-dom';
 
 import {
   AlertTriangle,
+  BookOpen,
   Building2,
+  Megaphone,
   FileCheck2,
   Home,
   Image as ImageIcon,
@@ -13,6 +15,7 @@ import {
   MapPin,
   Save,
   Sparkles,
+  Waves,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -56,6 +59,9 @@ const SETTINGS_SECTIONS: AdminSectionNavItem[] = [
   { id: 'email', label: 'Email automations', icon: Mail },
   { id: 'document-requirements', label: 'Document Requirements', icon: FileCheck2 },
   { id: 'unit-types', label: 'Unit types', icon: Home },
+  { id: 'pool', label: 'Pool', icon: Waves },
+  { id: 'guest-info', label: 'Guest information', icon: BookOpen },
+  { id: 'announcements', label: 'Announcements', icon: Megaphone },
   { id: 'amenities', label: 'Amenities', icon: Sparkles },
   { id: 'location', label: 'Location', icon: MapPin },
   { id: 'towers', label: 'Towers & Parking', icon: Building2 },
