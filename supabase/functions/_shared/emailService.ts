@@ -49,6 +49,7 @@ import { buildEmailCtaHtml, renderBrandedEmailShell } from './brandedEmailShell.
 import { PLATFORM_BRAND_NAME } from './platformBrand.ts';
 import { escapeHtml } from './renderEmailHtml.ts';
 import { resolvePublicGuestAppOrigin } from './publicAppOrigin.ts';
+import { buildSupportTicketThreadUrl } from './supportTicketStatus.ts';
 
 /** Resolve property scope for operator settings (email routing, GCash, logos, etc.). */
 export function resolveEmailPropertyId(
@@ -1292,10 +1293,13 @@ export async function sendSupportTicketNotify(ticket: {
   return await res.json();
 }
 
-/** Admin reply on a ticket → notifies the host who submitted it. */
+/** Admin reply on a ticket → notifies the submitter (host or explore guest). */
 export async function sendSupportTicketReplyNotify(ticket: {
   id: string;
-  orgSlug: string;
+  channel: 'host' | 'guest';
+  orgSlug: string | null;
+  propertySlug?: string | null;
+  parkingSlug?: string | null;
   subject: string;
   submittedByEmail: string;
 }) {
@@ -1308,8 +1312,13 @@ export async function sendSupportTicketReplyNotify(ticket: {
     return;
   }
 
-  const appOrigin = resolvePublicGuestAppOrigin(null);
-  const ticketUrl = `${appOrigin}/org/${ticket.orgSlug}/help-support/tickets/${ticket.id}`;
+  const ticketUrl = buildSupportTicketThreadUrl({
+    channel: ticket.channel,
+    ticketId: ticket.id,
+    orgSlug: ticket.orgSlug,
+    propertySlug: ticket.propertySlug,
+    parkingSlug: ticket.parkingSlug,
+  });
 
   const bodyHtml = `<p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#333333;">There's a new reply on your support ticket <strong>${escapeHtml(ticket.subject)}</strong>.</p>
 ${buildEmailCtaHtml('View the ticket', ticketUrl, null)}`;
@@ -1341,6 +1350,136 @@ ${buildEmailCtaHtml('View the ticket', ticketUrl, null)}`;
     const body = await res.text().catch(() => '');
     throw new Error(
       `Failed to send support ticket reply notify (${res.status})${body ? `: ${body.slice(0, 200)}` : ''}`
+    );
+  }
+
+  return await res.json();
+}
+
+/** Submitter follow-up reply → notifies the support team inbox. */
+export async function sendSupportTicketSubmitterReplyNotify(ticket: {
+  ticketId: string;
+  subject: string;
+  category: string;
+  submittedByName: string;
+  submittedByEmail: string;
+  bodyPreview: string;
+  organizationName: string;
+  propertyName: string | null;
+  parkingName: string | null;
+}) {
+  const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+  const SUPPORT_TEAM_EMAIL = Deno.env.get('SUPPORT_TEAM_EMAIL');
+  if (!RESEND_API_KEY) throw new Error('Missing RESEND_API_KEY environment variable');
+  if (!SUPPORT_TEAM_EMAIL) throw new Error('Missing SUPPORT_TEAM_EMAIL environment variable');
+
+  const scopeLabel = ticket.parkingName
+    ? `Parking — ${ticket.parkingName}`
+    : ticket.propertyName
+      ? `Property — ${ticket.propertyName}`
+      : ticket.organizationName === 'Explore guest'
+        ? 'Explore (guest)'
+        : 'Organization-level';
+  const categoryLabel = SUPPORT_TICKET_CATEGORY_LABELS[ticket.category] ?? ticket.category;
+
+  const bodyHtml = `<p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#333333;">New reply on ticket <strong>${escapeHtml(ticket.subject)}</strong> from ${escapeHtml(ticket.submittedByName)} (${escapeHtml(scopeLabel)}).</p>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 8px 0;border-collapse:separate;border-spacing:0;"><tr><td style="padding:18px 20px;background-color:#f1f5f9;border:1px solid #e2e8f0;border-radius:16px;font-size:14px;line-height:1.55;color:#333333;white-space:pre-wrap;">${escapeHtml(ticket.bodyPreview)}</td></tr></table>`;
+
+  const supportBrand = PLATFORM_BRAND_NAME || 'Support';
+  const html = await renderBrandedEmailShell({
+    brandName: supportBrand,
+    unitLabel: 'Help & Support',
+    emailTitle: 'Ticket reply',
+    bodyHtml,
+    brandColor: null,
+  });
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: `${supportBrand} <${(Deno.env.get('RESEND_FROM_EMAIL') ?? SUPPORT_TEAM_EMAIL).trim()}>`,
+      to: [SUPPORT_TEAM_EMAIL],
+      reply_to: ticket.submittedByEmail,
+      subject: `Re: [${categoryLabel}] ${ticket.subject}`,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(
+      `Failed to send submitter reply notify (${res.status})${body ? `: ${body.slice(0, 200)}` : ''}`
+    );
+  }
+
+  return await res.json();
+}
+
+/** Status set to resolved or closed → notifies the submitter. */
+export async function sendSupportTicketStatusNotify(ticket: {
+  id: string;
+  channel: 'host' | 'guest';
+  orgSlug: string | null;
+  propertySlug?: string | null;
+  parkingSlug?: string | null;
+  subject: string;
+  status: 'resolved' | 'closed';
+  submittedByEmail: string;
+}) {
+  const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+  const fromEmail = Deno.env.get('RESEND_FROM_EMAIL')?.trim();
+  if (!RESEND_API_KEY || !fromEmail) {
+    console.warn('[sendSupportTicketStatusNotify] email env missing — skip');
+    return;
+  }
+
+  const ticketUrl = buildSupportTicketThreadUrl({
+    channel: ticket.channel,
+    ticketId: ticket.id,
+    orgSlug: ticket.orgSlug,
+    propertySlug: ticket.propertySlug,
+    parkingSlug: ticket.parkingSlug,
+  });
+
+  const statusLabel = ticket.status === 'resolved' ? 'resolved' : 'closed';
+  const bodyHtml =
+    ticket.status === 'resolved'
+      ? `<p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#333333;">Your support ticket <strong>${escapeHtml(ticket.subject)}</strong> was marked <strong>resolved</strong>. Reply in the thread if you still need help.</p>
+${buildEmailCtaHtml('View the ticket', ticketUrl, null)}`
+      : `<p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#333333;">Your support ticket <strong>${escapeHtml(ticket.subject)}</strong> was <strong>closed</strong>. Reopen it from the thread if you need more help.</p>
+${buildEmailCtaHtml('View the ticket', ticketUrl, null)}`;
+
+  const supportBrand = PLATFORM_BRAND_NAME || 'Support';
+  const html = await renderBrandedEmailShell({
+    brandName: supportBrand,
+    unitLabel: 'Help & Support',
+    emailTitle: `Ticket ${statusLabel}`,
+    bodyHtml,
+    brandColor: null,
+  });
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: `${supportBrand} <${fromEmail}>`,
+      to: [ticket.submittedByEmail],
+      subject: `[${statusLabel}] ${ticket.subject}`,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(
+      `Failed to send support ticket status notify (${res.status})${body ? `: ${body.slice(0, 200)}` : ''}`
     );
   }
 
