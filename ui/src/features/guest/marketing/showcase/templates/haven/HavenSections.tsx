@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { Link } from 'react-router-dom';
+import { ShowcaseSectionLink } from '@/features/guest/marketing/showcase/components/ShowcaseSectionLink';
 
 import { Sparkles } from 'lucide-react';
 
@@ -16,6 +16,7 @@ import {
   resolveShowcaseGridColsClass,
   resolveShowcasePrimaryCtaHref,
   resolveShowcaseSecondaryCtaHref,
+  resolveShowcaseSecondaryCtaLabel,
   shouldRenderShowcaseSection,
   showcaseCtaInnerPyClass,
   showcaseCtaSectionPyClass,
@@ -113,7 +114,7 @@ function HavenHero({ data, section }: { data: ShowcaseData; section: ShowcaseRes
             </p>
           ) : null}
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Link
+            <ShowcaseSectionLink
               to={resolveShowcasePrimaryCtaHref(section.ctaTarget, data)}
               className={cn(
                 'inline-flex h-12 min-w-[11rem] items-center justify-center px-8 text-sm font-semibold',
@@ -121,16 +122,16 @@ function HavenHero({ data, section }: { data: ShowcaseData; section: ShowcaseRes
               )}
             >
               {section.ctaLabel || 'Request stay'}
-            </Link>
-            <Link
+            </ShowcaseSectionLink>
+            <ShowcaseSectionLink
               to={resolveShowcaseSecondaryCtaHref(data)}
               className={cn(
                 'inline-flex h-12 min-w-[11rem] items-center justify-center border px-8 text-sm font-semibold',
                 tokens.secondaryBtn
               )}
             >
-              Check dates
-            </Link>
+              {resolveShowcaseSecondaryCtaLabel(data)}
+            </ShowcaseSectionLink>
           </div>
         </ShowcaseReveal>
 
@@ -296,7 +297,7 @@ export function HavenSections({ data }: { data: ShowcaseData }) {
                     {sec.usesPreviewMock ? <ShowcasePreviewMockBanner /> : null}
                   </div>
                   <div className="mt-8 flex flex-wrap justify-center gap-3">
-                    <Link
+                    <ShowcaseSectionLink
                       to={resolveShowcasePrimaryCtaHref(sec.ctaTarget, data)}
                       className={cn(
                         'inline-flex h-12 min-w-[11rem] items-center justify-center px-8 text-sm font-semibold',
@@ -304,16 +305,16 @@ export function HavenSections({ data }: { data: ShowcaseData }) {
                       )}
                     >
                       {sec.ctaLabel || 'Book now'}
-                    </Link>
-                    <Link
+                    </ShowcaseSectionLink>
+                    <ShowcaseSectionLink
                       to={resolveShowcaseSecondaryCtaHref(data)}
                       className={cn(
                         'inline-flex h-12 min-w-[11rem] items-center justify-center border px-8 text-sm font-semibold',
                         tokens.secondaryBtn
                       )}
                     >
-                      View calendar
-                    </Link>
+                      {resolveShowcaseSecondaryCtaLabel(data)}
+                    </ShowcaseSectionLink>
                   </div>
                 </div>
               </ShowcaseReveal>

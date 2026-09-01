@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { ShowcaseSectionLink } from '@/features/guest/marketing/showcase/components/ShowcaseSectionLink';
 
 import { motion } from 'framer-motion';
 
@@ -23,6 +23,7 @@ import {
   resolveShowcaseGridColsClass,
   resolveShowcasePrimaryCtaHref,
   resolveShowcaseSecondaryCtaHref,
+  resolveShowcaseSecondaryCtaLabel,
   showcaseCtaSectionPyClass,
   showcaseSectionPyClass,
   shouldRenderShowcaseSection,
@@ -92,18 +93,18 @@ function EditorialHero({
               </p>
             ) : null}
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link
+              <ShowcaseSectionLink
                 to={resolveShowcasePrimaryCtaHref(section.ctaTarget, data)}
                 className={cn(showcaseCtaBaseClass, primaryButtonClass('editorial', mode))}
               >
                 {section.ctaLabel || 'Request stay'}
-              </Link>
-              <Link
+              </ShowcaseSectionLink>
+              <ShowcaseSectionLink
                 to={resolveShowcaseSecondaryCtaHref(data)}
                 className={cn(showcaseCtaBaseClass, secondaryButtonClass('editorial', mode))}
               >
-                Check dates
-              </Link>
+                {resolveShowcaseSecondaryCtaLabel(data)}
+              </ShowcaseSectionLink>
             </div>
           </ShowcaseReveal>
         </div>
@@ -278,7 +279,6 @@ export function EditorialSections({ data }: { data: ShowcaseData }) {
                       ctaLabel={section.ctaLabel}
                       ctaTarget={section.ctaTarget}
                       primaryLabel="Book now"
-                      secondaryLabel="View calendar"
                       className="mt-6"
                     />
                   </ShowcaseReveal>

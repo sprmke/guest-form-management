@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 
-import { Link } from 'react-router-dom';
+import { ShowcaseSectionLink } from '@/features/guest/marketing/showcase/components/ShowcaseSectionLink';
 
 import { motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
@@ -30,6 +30,7 @@ import {
   resolveShowcaseGridColsClass,
   resolveShowcasePrimaryCtaHref,
   resolveShowcaseSecondaryCtaHref,
+  resolveShowcaseSecondaryCtaLabel,
   showcaseCtaInnerPyClass,
   showcaseCtaSectionPyClass,
   showcaseSectionPyClass,
@@ -236,18 +237,18 @@ function AuroraHero({ data, section }: { data: ShowcaseData; section: ShowcaseRe
             heroEnter ? { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } } : undefined
           }
         >
-          <Link
+          <ShowcaseSectionLink
             to={resolveShowcasePrimaryCtaHref(section.ctaTarget, data)}
             className={cn(showcaseCtaBaseClass, primaryButtonClass('aurora', mode))}
           >
             {section.ctaLabel || 'Request stay'}
-          </Link>
-          <Link
+          </ShowcaseSectionLink>
+          <ShowcaseSectionLink
             to={resolveShowcaseSecondaryCtaHref(data)}
             className={cn(showcaseCtaBaseClass, 'rounded-full', tokens.heroSecondaryBtn)}
           >
-            Check dates
-          </Link>
+            {resolveShowcaseSecondaryCtaLabel(data)}
+          </ShowcaseSectionLink>
         </motion.div>
       </motion.div>
       <motion.div
@@ -483,7 +484,6 @@ export function AuroraSections({ data }: { data: ShowcaseData }) {
                         ctaLabel={section.ctaLabel}
                         ctaTarget={section.ctaTarget}
                         primaryLabel="Book now"
-                        secondaryLabel="View calendar"
                         className="mt-6"
                       />
                     </AuroraParallaxReveal>

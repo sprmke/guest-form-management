@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
-import { Link } from 'react-router-dom';
+import { ShowcaseSectionLink } from '@/features/guest/marketing/showcase/components/ShowcaseSectionLink';
 
 import { motion, useTransform } from 'framer-motion';
 
@@ -19,6 +19,7 @@ import {
   parseShowcaseHighlight,
   resolveShowcasePrimaryCtaHref,
   resolveShowcaseSecondaryCtaHref,
+  resolveShowcaseSecondaryCtaLabel,
   shouldRenderShowcaseSection,
   showcaseChapterSectionPyClass,
   showcaseCtaSectionPyClass,
@@ -158,7 +159,7 @@ function VersoHero({ data, section }: { data: ShowcaseData; section: ShowcaseRes
             {section.ctaLabel || 'Request stay'}
           </SweepLink>
           <SweepLink to={resolveShowcaseSecondaryCtaHref(data)} onImage={onImage}>
-            Check dates
+            {resolveShowcaseSecondaryCtaLabel(data)}
           </SweepLink>
         </motion.div>
       </div>
@@ -202,7 +203,7 @@ function SweepLink({
     mode === 'dark' ? 'group-hover:text-[#f4f4f2]' : 'group-hover:text-[#0b0b0c]';
 
   return (
-    <Link
+    <ShowcaseSectionLink
       to={to}
       className={cn(
         'group relative inline-flex h-14 min-w-[13rem] items-center justify-center overflow-hidden border px-9',
@@ -240,7 +241,7 @@ function SweepLink({
       >
         {children}
       </span>
-    </Link>
+    </ShowcaseSectionLink>
   );
 }
 
@@ -620,7 +621,7 @@ export function VersoSections({ data }: { data: ShowcaseData }) {
                     {section.ctaLabel || 'Book now'}
                   </SweepLink>
                   <SweepLink to={resolveShowcaseSecondaryCtaHref(data)} onCta>
-                    View calendar
+                    {resolveShowcaseSecondaryCtaLabel(data)}
                   </SweepLink>
                 </div>
               </div>

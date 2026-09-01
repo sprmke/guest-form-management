@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { Link } from 'react-router-dom';
+import { ShowcaseSectionLink } from '@/features/guest/marketing/showcase/components/ShowcaseSectionLink';
 
 import { motion } from 'framer-motion';
 
@@ -34,6 +34,7 @@ import {
   resolveShowcaseGridColsClass,
   resolveShowcasePrimaryCtaHref,
   resolveShowcaseSecondaryCtaHref,
+  resolveShowcaseSecondaryCtaLabel,
   showcaseCtaSectionPyClass,
   showcaseSectionPyClass,
   shouldRenderShowcaseSection,
@@ -154,13 +155,13 @@ function SpotlightHero({
           </p>
         ) : null}
         <div className="mt-8 flex flex-wrap gap-3">
-          <Link
+          <ShowcaseSectionLink
             to={resolveShowcasePrimaryCtaHref(section.ctaTarget, data)}
             className={cn(showcaseCtaBaseClass, primaryButtonClass(variant, themeMode))}
           >
             {section.ctaLabel || 'Request stay'}
-          </Link>
-          <Link
+          </ShowcaseSectionLink>
+          <ShowcaseSectionLink
             to={resolveShowcaseSecondaryCtaHref(data)}
             className={cn(
               showcaseCtaBaseClass,
@@ -169,8 +170,8 @@ function SpotlightHero({
                 : secondaryButtonClass(variant, themeMode)
             )}
           >
-            Check dates
-          </Link>
+            {resolveShowcaseSecondaryCtaLabel(data)}
+          </ShowcaseSectionLink>
         </div>
       </div>
       {data.amenities.length > 0 ? (
@@ -353,7 +354,6 @@ export function MonolithSections({ data }: { data: ShowcaseData }) {
                       ctaLabel={section.ctaLabel}
                       ctaTarget={section.ctaTarget}
                       primaryLabel="Book now"
-                      secondaryLabel="View calendar"
                       className="mt-6"
                     />
                   </ShowcaseReveal>

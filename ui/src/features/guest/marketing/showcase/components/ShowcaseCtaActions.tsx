@@ -1,9 +1,9 @@
-import { Link } from 'react-router-dom';
-
+import { ShowcaseSectionLink } from '@/features/guest/marketing/showcase/components/ShowcaseSectionLink';
 import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
 import {
   resolveShowcasePrimaryCtaHref,
   resolveShowcaseSecondaryCtaHref,
+  resolveShowcaseSecondaryCtaLabel,
 } from '@/features/guest/marketing/showcase/lib/showcaseSectionLayout';
 import type { ShowcaseVariant } from '@/features/guest/marketing/showcase/lib/showcaseThemeTokens';
 import type { ShowcaseData } from '@/features/guest/marketing/showcase/types/showcase';
@@ -75,7 +75,7 @@ export function ShowcaseCtaActions({
 }: Props) {
   const { variant, mode } = useShowcaseTheme();
   const primary = ctaLabel || primaryLabel || 'Request stay';
-  const secondary = secondaryLabel || 'Check dates';
+  const secondary = secondaryLabel || resolveShowcaseSecondaryCtaLabel(data);
 
   return (
     <div
@@ -87,18 +87,18 @@ export function ShowcaseCtaActions({
         className
       )}
     >
-      <Link
+      <ShowcaseSectionLink
         to={resolveShowcasePrimaryCtaHref(ctaTarget, data)}
         className={cn(baseBtn, primaryButtonClass(variant, mode))}
       >
         {primary}
-      </Link>
-      <Link
+      </ShowcaseSectionLink>
+      <ShowcaseSectionLink
         to={resolveShowcaseSecondaryCtaHref(data)}
         className={cn(baseBtn, secondaryButtonClass(variant, mode))}
       >
         {secondary}
-      </Link>
+      </ShowcaseSectionLink>
     </div>
   );
 }

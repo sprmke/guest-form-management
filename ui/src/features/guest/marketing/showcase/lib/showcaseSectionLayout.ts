@@ -72,6 +72,10 @@ export function resolveShowcasePrimaryCtaHref(
     return data.formPath;
   }
   if (target === CTA_TARGET_CALENDAR) return data.calendarPath;
+  if (target.startsWith('#')) {
+    const id = target.slice(1).trim();
+    return id ? `#${id}` : data.formPath;
+  }
   if (target.startsWith('/') || target.startsWith('http://') || target.startsWith('https://')) {
     return target;
   }
@@ -79,7 +83,13 @@ export function resolveShowcasePrimaryCtaHref(
 }
 
 export function resolveShowcaseSecondaryCtaHref(data: ShowcaseData): string {
+  if (data.pageKind === 'stay-guide') return '#host';
   return data.calendarPath;
+}
+
+/** Secondary hero CTA label — Stay Guide scrolls to host contact, Showcase defaults to calendar. */
+export function resolveShowcaseSecondaryCtaLabel(data: ShowcaseData): string {
+  return data.pageKind === 'stay-guide' ? 'Contact host' : 'Check dates';
 }
 
 export { CTA_TARGET_CALENDAR, CTA_TARGET_CUSTOM_DRAFT, CTA_TARGET_FORM };

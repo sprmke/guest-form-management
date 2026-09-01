@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { Link } from 'react-router-dom';
+import { ShowcaseSectionLink } from '@/features/guest/marketing/showcase/components/ShowcaseSectionLink';
 
 import { ArrowUpRight, Mail, MessageCircle, Phone } from 'lucide-react';
 
@@ -113,15 +113,15 @@ function HostActions({
         </a>
       ) : null}
       {hostPublicPath ? (
-        <Link to={hostPublicPath} className={cn(chip, primaryClass)}>
+        <ShowcaseSectionLink to={hostPublicPath} className={cn(chip, primaryClass)}>
           {primaryLabel}
           {layout === 'row' ? <ArrowUpRight className="size-4" aria-hidden /> : null}
-        </Link>
+        </ShowcaseSectionLink>
       ) : null}
-      <Link to={contactPath} className={cn(chip, secondaryClass)}>
+      <ShowcaseSectionLink to={contactPath} className={cn(chip, secondaryClass)}>
         {layout === 'pills' ? <MessageCircle className="size-4 shrink-0" aria-hidden /> : null}
         {contactLabel}
-      </Link>
+      </ShowcaseSectionLink>
     </div>
   );
 }

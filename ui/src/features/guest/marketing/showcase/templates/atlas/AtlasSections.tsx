@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
-import { Link } from 'react-router-dom';
+import { ShowcaseSectionLink } from '@/features/guest/marketing/showcase/components/ShowcaseSectionLink';
 
 import { motion, useTransform } from 'framer-motion';
 import { ChevronDown, Compass, Navigation } from 'lucide-react';
@@ -28,6 +28,7 @@ import {
   parseShowcaseHighlight,
   resolveShowcasePrimaryCtaHref,
   resolveShowcaseSecondaryCtaHref,
+  resolveShowcaseSecondaryCtaLabel,
   shouldRenderShowcaseSection,
   showcaseChapterSectionPyClass,
   showcaseCtaSectionPyClass,
@@ -258,7 +259,7 @@ function AtlasHero({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.5 }}
         >
-          <Link
+          <ShowcaseSectionLink
             to={resolveShowcasePrimaryCtaHref(hero.ctaTarget, data)}
             className={cn(
               'inline-flex h-12 min-w-[10.5rem] items-center justify-center rounded-lg px-7 text-sm font-medium',
@@ -266,8 +267,8 @@ function AtlasHero({
             )}
           >
             {hero.ctaLabel || 'Request stay'}
-          </Link>
-          <Link
+          </ShowcaseSectionLink>
+          <ShowcaseSectionLink
             to={resolveShowcaseSecondaryCtaHref(data)}
             className={cn(
               'inline-flex h-12 min-w-[10.5rem] items-center justify-center rounded-lg border px-7 text-sm font-medium backdrop-blur',
@@ -276,8 +277,8 @@ function AtlasHero({
                 : tokens.secondaryBtn
             )}
           >
-            Check dates
-          </Link>
+            {resolveShowcaseSecondaryCtaLabel(data)}
+          </ShowcaseSectionLink>
         </motion.div>
 
         {/* glass HUD */}
@@ -608,7 +609,7 @@ export function AtlasSections({ data }: { data: ShowcaseData }) {
                   {sec.usesPreviewMock ? <ShowcasePreviewMockBanner /> : null}
                 </div>
                 <div className="mt-8 flex flex-wrap justify-center gap-3">
-                  <Link
+                  <ShowcaseSectionLink
                     to={resolveShowcasePrimaryCtaHref(sec.ctaTarget, data)}
                     className={cn(
                       'inline-flex h-12 min-w-[10.5rem] items-center justify-center rounded-lg px-7 text-sm font-medium',
@@ -616,16 +617,16 @@ export function AtlasSections({ data }: { data: ShowcaseData }) {
                     )}
                   >
                     {sec.ctaLabel || 'Book now'}
-                  </Link>
-                  <Link
+                  </ShowcaseSectionLink>
+                  <ShowcaseSectionLink
                     to={resolveShowcaseSecondaryCtaHref(data)}
                     className={cn(
                       'inline-flex h-12 min-w-[10.5rem] items-center justify-center rounded-lg border px-7 text-sm font-medium',
                       tokens.secondaryBtn
                     )}
                   >
-                    View calendar
-                  </Link>
+                    {resolveShowcaseSecondaryCtaLabel(data)}
+                  </ShowcaseSectionLink>
                 </div>
               </div>
             </section>
