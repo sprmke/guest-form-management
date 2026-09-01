@@ -116,6 +116,7 @@ const PARKING_SECTIONS = new Set<ParkingSection>([
   'team',
   'settings',
   'inbox',
+  'announcements',
   'help-support',
 ]);
 
@@ -211,6 +212,12 @@ export const CONTEXT_PICKER_REGISTRY: Record<ContextPickerModuleId, ContextPicke
     plural: 'conversations',
   },
   'help-support': {
+    picker: 'ticket',
+    entityTypes: ['ticket'],
+    singular: 'ticket',
+    plural: 'tickets',
+  },
+  announcements: {
     picker: 'ticket',
     entityTypes: ['ticket'],
     singular: 'ticket',
