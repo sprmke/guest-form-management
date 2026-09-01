@@ -16,9 +16,11 @@ import {
 
 import { HostDashboardFilm } from '@/features/guest/marketing/for-hosts/components/HostDashboardFilm';
 import {
-  HOST_TOUR_CHAPTER_FRAMES,
+  HOST_TOUR_CHAPTER_DURATIONS,
+  HOST_TOUR_CHAPTER_STARTS,
   HOST_TOUR_DURATION_IN_FRAMES,
   HOST_TOUR_FPS,
+  hostTourChapterIndexAtFrame,
   hostTourChapters,
 } from '@/features/guest/marketing/for-hosts/data/hostTourChapters';
 
@@ -34,8 +36,22 @@ import { usePrefersReducedMotion } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
 
 function formatTourTime(frame: number) {
-  const seconds = Math.floor(frame / HOST_TOUR_FPS);
-  return `0:${String(seconds).padStart(2, '0')}`;
+  const totalSeconds = Math.max(0, Math.round(frame / HOST_TOUR_FPS));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+const HOST_TOUR_TOTAL_LABEL = formatTourTime(HOST_TOUR_DURATION_IN_FRAMES);
+
+/**
+ * Hold frame used for a chapter when reduced motion disables playback. Sits well inside the
+ * chapter (past its intro reveals, before the next chapter's overlapping transition start).
+ */
+function reducedMotionHoldFrame(index: number) {
+  const start = HOST_TOUR_CHAPTER_STARTS[index] ?? 0;
+  const duration = HOST_TOUR_CHAPTER_DURATIONS[index] ?? 1;
+  return start + Math.max(1, Math.round(duration - 40));
 }
 
 export type HostDashboardTourVariant = 'marketing' | 'compact';
@@ -63,9 +79,7 @@ export function HostDashboardTourPlayer({
   const [modalStartFrame, setModalStartFrame] = useState(0);
   const [modalAutoPlay, setModalAutoPlay] = useState(false);
   const [modalPlayerReady, setModalPlayerReady] = useState(false);
-  const [inlineStartFrame] = useState(() =>
-    prefersReducedMotion ? HOST_TOUR_CHAPTER_FRAMES - 1 : 0
-  );
+  const [inlineStartFrame] = useState(() => (prefersReducedMotion ? reducedMotionHoldFrame(0) : 0));
   const [currentFrame, setCurrentFrame] = useState(inlineStartFrame);
   const [isPlaying, setIsPlaying] = useState(false);
   const [narrationMuted, setNarrationMuted] = useState(true);
@@ -79,10 +93,7 @@ export function HostDashboardTourPlayer({
     [previewOpen]
   );
 
-  const activeChapterIndex = Math.min(
-    hostTourChapters.length - 1,
-    Math.floor(currentFrame / HOST_TOUR_CHAPTER_FRAMES)
-  );
+  const activeChapterIndex = hostTourChapterIndexAtFrame(currentFrame);
   const activeChapter = hostTourChapters[activeChapterIndex];
 
   useEffect(() => {
@@ -192,7 +203,9 @@ export function HostDashboardTourPlayer({
     (index: number) => {
       const player = getActivePlayer();
       if (!player) return;
-      const target = index * HOST_TOUR_CHAPTER_FRAMES + (prefersReducedMotion ? 70 : 0);
+      const target = prefersReducedMotion
+        ? reducedMotionHoldFrame(index)
+        : (HOST_TOUR_CHAPTER_STARTS[index] ?? 0);
       player.seekTo(target);
       setCurrentFrame(target);
       if (!prefersReducedMotion) void player.play();
@@ -223,9 +236,10 @@ export function HostDashboardTourPlayer({
   }, [getActivePlayer, prefersReducedMotion]);
 
   const chapterProgress = useMemo(() => {
-    const chapterFrame = currentFrame % HOST_TOUR_CHAPTER_FRAMES;
-    return Math.min(100, (chapterFrame / HOST_TOUR_CHAPTER_FRAMES) * 100);
-  }, [currentFrame]);
+    const start = HOST_TOUR_CHAPTER_STARTS[activeChapterIndex] ?? 0;
+    const duration = HOST_TOUR_CHAPTER_DURATIONS[activeChapterIndex] ?? 1;
+    return Math.min(100, Math.max(0, ((currentFrame - start) / duration) * 100));
+  }, [currentFrame, activeChapterIndex]);
 
   const tourProgress = useMemo(
     () => Math.min(100, (currentFrame / HOST_TOUR_DURATION_IN_FRAMES) * 100),
@@ -384,7 +398,7 @@ export function HostDashboardTourPlayer({
         </div>
         {!compact ? (
           <span className="text-muted-foreground hidden text-xs tabular-nums sm:block">
-            {formatTourTime(currentFrame)} / 0:54
+            {formatTourTime(currentFrame)} / {HOST_TOUR_TOTAL_LABEL}
           </span>
         ) : null}
         {chapterNav === 'minimal' ? (

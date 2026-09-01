@@ -1,5 +1,5 @@
 const capabilities = [
-  { value: '9', label: 'connected modules' },
+  { value: '14', label: 'connected modules' },
   { value: '1', label: 'booking workflow' },
   { value: 'AI', label: 'assisted review' },
   { value: '24/7', label: 'background automation' },

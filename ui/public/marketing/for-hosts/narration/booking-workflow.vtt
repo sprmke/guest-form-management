@@ -1,4 +1,8 @@
 1
-00:00:00,100 --> 00:00:04,482
-Watch each booking move from review to ready for check-in, automatically.
+00:00:00,100 --> 00:00:03,279
+Every booking moves down one visible pipeline.
+
+2
+00:00:03,229 --> 00:00:09,884
+Documents, receipt checks, calendar updates, and guest emails happen automatically as it advances.
 
