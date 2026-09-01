@@ -1,6 +1,5 @@
 /**
- * reply-support-ticket-admin — POST super-admin reply to a ticket, notifies the host.
- * Docs: docs/workflow/in-progress/help-support-center.md, Module 3.
+ * reply-support-ticket-admin — POST super-admin reply to a ticket, notifies the submitter.
  */
 
 import { loadAuthUserProfile } from '../_shared/authUserProfile.ts';
@@ -13,22 +12,11 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
-
-type IncomingAttachment = { name: string; mimeType: string; size: number; path: string };
-
-function parseAttachments(raw: unknown): IncomingAttachment[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
-    .slice(0, 3)
-    .map((item) => ({
-      name: String(item.name ?? 'file').slice(0, 120),
-      mimeType: String(item.mimeType ?? 'application/octet-stream'),
-      size: typeof item.size === 'number' ? item.size : 0,
-      path: String(item.path ?? ''),
-    }))
-    .filter((item) => item.path);
-}
+import {
+  loadSupportTicketNotifyContext,
+  touchSupportTicketActivity,
+} from '../_shared/supportTicketAccess.ts';
+import { statusAfterAdminReply } from '../_shared/supportTicketStatus.ts';
 
 serveSuperAdmin('reply-support-ticket-admin', async (req, adminUser) => {
   requireHttpMethod(req, 'POST');
@@ -45,16 +33,14 @@ serveSuperAdmin('reply-support-ticket-admin', async (req, adminUser) => {
 
   const { data: ticket, error: ticketError } = await sb
     .from('support_tickets')
-    .select('id, subject, submitted_by_email, status, organizations!inner(slug)')
+    .select('id, subject, submitted_by_email, status, channel')
     .eq('id', ticketId)
     .maybeSingle();
 
   if (ticketError) throw new Error(ticketError.message);
   if (!ticket) return jsonError(req, 'Ticket not found', 404);
 
-  const org = ticket.organizations as unknown as { slug: string };
   const profile = await loadAuthUserProfile(sb, adminUser.id);
-  const attachments = parseAttachments(body.attachments);
 
   const { data: created, error: insertError } = await sb
     .from('support_ticket_messages')
@@ -64,7 +50,7 @@ serveSuperAdmin('reply-support-ticket-admin', async (req, adminUser) => {
       sender_user_id: adminUser.id,
       sender_name: profile.name || 'Support',
       body: message,
-      attachments,
+      attachments: [],
     })
     .select('*')
     .single();
@@ -73,17 +59,22 @@ serveSuperAdmin('reply-support-ticket-admin', async (req, adminUser) => {
     return jsonError(req, `Failed to save reply: ${insertError?.message ?? 'unknown error'}`, 500);
   }
 
-  if (ticket.status === 'open') {
-    await sb.from('support_tickets').update({ status: 'in_progress' }).eq('id', ticketId);
-  }
+  const nextStatus = statusAfterAdminReply(ticket.status);
+  await touchSupportTicketActivity(sb, ticketId, nextStatus ?? undefined);
 
   try {
-    await sendSupportTicketReplyNotify({
-      id: ticketId,
-      orgSlug: org.slug,
-      subject: ticket.subject,
-      submittedByEmail: ticket.submitted_by_email,
-    });
+    const notifyCtx = await loadSupportTicketNotifyContext(sb, ticketId);
+    if (notifyCtx) {
+      await sendSupportTicketReplyNotify({
+        id: notifyCtx.id,
+        channel: notifyCtx.channel,
+        orgSlug: notifyCtx.organizationSlug,
+        propertySlug: notifyCtx.propertySlug,
+        parkingSlug: notifyCtx.parkingSlug,
+        subject: notifyCtx.subject,
+        submittedByEmail: notifyCtx.submitted_by_email,
+      });
+    }
   } catch (notifyErr) {
     console.error('[reply-support-ticket-admin] notify email failed (non-fatal):', notifyErr);
   }

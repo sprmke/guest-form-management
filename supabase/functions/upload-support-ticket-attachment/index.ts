@@ -9,15 +9,9 @@ import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { resolveSupportTicketScope } from '../_shared/supportTicketScope.ts';
 import { assertWithinUploadLimit } from '../_shared/uploadLimits.ts';
+import { SUPPORT_TICKET_ATTACHMENT_MIME } from '../_shared/supportTicketAttachments.ts';
 
 const BUCKET = 'support-ticket-attachments';
-const ALLOWED_MIME = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'video/mp4',
-  'video/quicktime',
-]);
 
 serveAuthenticated('upload-support-ticket-attachment', async (req) => {
   if (req.method !== 'POST') {
@@ -31,8 +25,8 @@ serveAuthenticated('upload-support-ticket-attachment', async (req) => {
   }
 
   const mime = (file.type || '').toLowerCase();
-  if (!ALLOWED_MIME.has(mime)) {
-    return jsonError(req, 'File must be JPEG, PNG, WebP, MP4, or MOV', 400);
+  if (!SUPPORT_TICKET_ATTACHMENT_MIME.has(mime)) {
+    return jsonError(req, 'File must be JPEG, PNG, WebP, HEIC, MP4, or MOV', 400);
   }
   assertWithinUploadLimit(file, mime.startsWith('video/') ? 'video' : 'image');
 

@@ -22,7 +22,8 @@ export type SupportTicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed'
 
 export type SupportTicket = {
   id: string;
-  organization_id: string;
+  channel?: 'host' | 'guest';
+  organization_id: string | null;
   property_id: string | null;
   parking_id: string | null;
   submitted_by_user_id: string;
@@ -102,6 +103,16 @@ export function replySupportTicket(
   return callEdgeFunction('reply-support-ticket', {
     method: 'POST',
     body: JSON.stringify({ ...scope, ticketId, message, attachments }),
+  });
+}
+
+export function reopenSupportTicket(
+  scope: SupportTicketScopeParams,
+  ticketId: string
+): Promise<{ ticket: SupportTicket }> {
+  return callEdgeFunction('reopen-support-ticket', {
+    method: 'POST',
+    body: JSON.stringify({ ...scope, ticketId }),
   });
 }
 

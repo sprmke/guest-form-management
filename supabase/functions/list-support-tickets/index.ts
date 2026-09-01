@@ -24,7 +24,7 @@ serveAuthenticated('list-support-tickets', async (req) => {
     .from('support_tickets')
     .select('*')
     .eq('submitted_by_user_id', scope.user.id)
-    .order('created_at', { ascending: false })
+    .order('updated_at', { ascending: false })
     .limit(200);
 
   if (scope.channel === 'guest') {

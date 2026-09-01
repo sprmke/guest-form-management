@@ -4,6 +4,7 @@
 
 import { loadAuthUserProfile } from '../_shared/authUserProfile.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
+import { sendSupportTicketSubmitterReplyNotify } from '../_shared/emailService.ts';
 import {
   jsonError,
   jsonSuccess,
@@ -11,23 +12,10 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { touchSupportTicketActivity } from '../_shared/supportTicketAccess.ts';
+import { validateSupportTicketAttachments } from '../_shared/supportTicketAttachments.ts';
 import { resolveSupportTicketScope } from '../_shared/supportTicketScope.ts';
-
-type IncomingAttachment = { name: string; mimeType: string; size: number; path: string };
-
-function parseAttachments(raw: unknown): IncomingAttachment[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
-    .slice(0, 3)
-    .map((item) => ({
-      name: String(item.name ?? 'file').slice(0, 120),
-      mimeType: String(item.mimeType ?? 'application/octet-stream'),
-      size: typeof item.size === 'number' ? item.size : 0,
-      path: String(item.path ?? ''),
-    }))
-    .filter((item) => item.path);
-}
+import { canSubmitterReply, statusAfterSubmitterReply } from '../_shared/supportTicketStatus.ts';
 
 serveAuthenticated('reply-support-ticket', async (req) => {
   requireHttpMethod(req, 'POST');
@@ -47,11 +35,22 @@ serveAuthenticated('reply-support-ticket', async (req) => {
     parkingId: typeof body.parkingId === 'string' ? body.parkingId : null,
   });
 
+  let attachments;
+  try {
+    attachments = validateSupportTicketAttachments(body.attachments, scope);
+  } catch {
+    return jsonError(req, 'Invalid attachment path', 400);
+  }
+
   const sb = createServiceClient();
 
-  let ticketQuery = sb.from('support_tickets').select('id, status').eq('id', ticketId);
+  let ticketQuery = sb
+    .from('support_tickets')
+    .select('id, status, subject, category')
+    .eq('id', ticketId)
+    .eq('submitted_by_user_id', scope.user.id);
   if (scope.channel === 'guest') {
-    ticketQuery = ticketQuery.eq('channel', 'guest').eq('submitted_by_user_id', scope.user.id);
+    ticketQuery = ticketQuery.eq('channel', 'guest');
   } else if (scope.org) {
     ticketQuery = ticketQuery.eq('organization_id', scope.org.id).eq('channel', 'host');
   }
@@ -61,8 +60,11 @@ serveAuthenticated('reply-support-ticket', async (req) => {
   if (ticketError) throw new Error(ticketError.message);
   if (!ticket) return jsonError(req, 'Ticket not found', 404);
 
+  if (!canSubmitterReply(ticket.status)) {
+    return jsonError(req, 'This ticket is closed. Reopen it before sending a reply.', 409);
+  }
+
   const profile = await loadAuthUserProfile(sb, scope.user.id);
-  const attachments = parseAttachments(body.attachments);
   const senderType = scope.channel === 'guest' ? 'guest' : 'host';
 
   const { data: created, error: insertError } = await sb
@@ -82,8 +84,23 @@ serveAuthenticated('reply-support-ticket', async (req) => {
     return jsonError(req, `Failed to save reply: ${insertError?.message ?? 'unknown error'}`, 500);
   }
 
-  if (ticket.status === 'resolved' || ticket.status === 'closed') {
-    await sb.from('support_tickets').update({ status: 'in_progress' }).eq('id', ticketId);
+  const nextStatus = statusAfterSubmitterReply(ticket.status);
+  await touchSupportTicketActivity(sb, ticketId, nextStatus ?? undefined);
+
+  try {
+    await sendSupportTicketSubmitterReplyNotify({
+      ticketId,
+      subject: ticket.subject,
+      category: ticket.category,
+      submittedByName: profile.name,
+      submittedByEmail: profile.email || scope.user.email,
+      bodyPreview: message,
+      organizationName: scope.org?.name ?? 'Explore guest',
+      propertyName: scope.propertyName,
+      parkingName: scope.parkingName,
+    });
+  } catch (notifyErr) {
+    console.error('[reply-support-ticket] team notify failed (non-fatal):', notifyErr);
   }
 
   return jsonSuccess(req, { message: created });

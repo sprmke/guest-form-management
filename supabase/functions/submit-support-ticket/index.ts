@@ -14,25 +14,10 @@ import {
 } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { resolveSupportTicketScope } from '../_shared/supportTicketScope.ts';
+import { validateSupportTicketAttachments } from '../_shared/supportTicketAttachments.ts';
 
 const CATEGORIES = ['bug_report', 'feature_suggestion', 'general_inquiry', 'business_inquiry'];
 const SEVERITIES = ['low', 'medium', 'high'];
-
-type IncomingAttachment = { name: string; mimeType: string; size: number; path: string };
-
-function parseAttachments(raw: unknown): IncomingAttachment[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
-    .slice(0, 3)
-    .map((item) => ({
-      name: String(item.name ?? 'file').slice(0, 120),
-      mimeType: String(item.mimeType ?? 'application/octet-stream'),
-      size: typeof item.size === 'number' ? item.size : 0,
-      path: String(item.path ?? ''),
-    }))
-    .filter((item) => item.path);
-}
 
 serveAuthenticated('submit-support-ticket', async (req) => {
   requireHttpMethod(req, 'POST');
@@ -88,7 +73,14 @@ serveAuthenticated('submit-support-ticket', async (req) => {
     categoryFields.contact_preference = contactPreference;
   }
 
-  const attachments = parseAttachments(body.attachments);
+  const attachments = (() => {
+    try {
+      return validateSupportTicketAttachments(body.attachments, scope);
+    } catch {
+      return null;
+    }
+  })();
+  if (attachments === null) return jsonError(req, 'Invalid attachment path', 400);
 
   const sb = createServiceClient();
   const profile = await loadAuthUserProfile(sb, scope.user.id);
@@ -133,6 +125,7 @@ serveAuthenticated('submit-support-ticket', async (req) => {
     .single();
 
   if (messageError || !message) {
+    await sb.from('support_tickets').delete().eq('id', ticket.id);
     return jsonError(
       req,
       `Failed to save ticket message: ${messageError?.message ?? 'unknown error'}`,

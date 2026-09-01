@@ -1,9 +1,9 @@
 /**
  * update-support-ticket-status — POST super-admin status/priority update.
- * Docs: docs/workflow/in-progress/help-support-center.md, Module 3.
  */
 
 import { createServiceClient } from '../_shared/orgAuth.ts';
+import { sendSupportTicketStatusNotify } from '../_shared/emailService.ts';
 import {
   jsonError,
   jsonSuccess,
@@ -11,6 +11,7 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
+import { loadSupportTicketNotifyContext } from '../_shared/supportTicketAccess.ts';
 
 const STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
 const PRIORITIES = ['low', 'medium', 'high'];
@@ -46,6 +47,16 @@ serveSuperAdmin('update-support-ticket-status', async (req) => {
   }
 
   const sb = createServiceClient();
+
+  const { data: before, error: beforeError } = await sb
+    .from('support_tickets')
+    .select('status')
+    .eq('id', ticketId)
+    .maybeSingle();
+
+  if (beforeError) throw new Error(beforeError.message);
+  if (!before) return jsonError(req, 'Ticket not found', 404);
+
   const { data, error } = await sb
     .from('support_tickets')
     .update(updates)
@@ -55,6 +66,31 @@ serveSuperAdmin('update-support-ticket-status', async (req) => {
 
   if (error) throw new Error(error.message);
   if (!data) return jsonError(req, 'Ticket not found', 404);
+
+  const newStatus = typeof updates.status === 'string' ? updates.status : null;
+  if (
+    newStatus &&
+    newStatus !== before.status &&
+    (newStatus === 'resolved' || newStatus === 'closed')
+  ) {
+    try {
+      const notifyCtx = await loadSupportTicketNotifyContext(sb, ticketId);
+      if (notifyCtx) {
+        await sendSupportTicketStatusNotify({
+          id: notifyCtx.id,
+          channel: notifyCtx.channel,
+          orgSlug: notifyCtx.organizationSlug,
+          propertySlug: notifyCtx.propertySlug,
+          parkingSlug: notifyCtx.parkingSlug,
+          subject: notifyCtx.subject,
+          status: newStatus,
+          submittedByEmail: notifyCtx.submitted_by_email,
+        });
+      }
+    } catch (notifyErr) {
+      console.error('[update-support-ticket-status] status notify failed (non-fatal):', notifyErr);
+    }
+  }
 
   return jsonSuccess(req, { ticket: data });
 });

@@ -1,6 +1,5 @@
 /**
- * get-support-ticket — GET a single ticket + reply thread.
- * Host: any org member. Guest: submitter only (channel=guest).
+ * get-support-ticket — GET a single ticket + reply thread (submitter only).
  */
 
 import { createServiceClient } from '../_shared/orgAuth.ts';
@@ -9,9 +8,25 @@ import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { resolveSupportTicketScope } from '../_shared/supportTicketScope.ts';
 
 const BUCKET = 'support-ticket-attachments';
-const SIGNED_URL_TTL_SEC = 60 * 30;
+const SIGNED_URL_TTL_SEC = 60 * 60 * 2;
 
 type StoredAttachment = { name: string; mimeType: string; size: number; path: string };
+
+function scopedTicketQuery(
+  sb: ReturnType<typeof createServiceClient>,
+  ticketId: string,
+  scope: Awaited<ReturnType<typeof resolveSupportTicketScope>>
+) {
+  let query = sb.from('support_tickets').select('*').eq('id', ticketId);
+  query = query.eq('submitted_by_user_id', scope.user.id);
+  if (scope.channel === 'guest') {
+    return query.eq('channel', 'guest');
+  }
+  if (scope.org) {
+    return query.eq('organization_id', scope.org.id).eq('channel', 'host');
+  }
+  return query;
+}
 
 serveAuthenticated('get-support-ticket', async (req) => {
   requireHttpMethod(req, 'GET');
@@ -27,15 +42,11 @@ serveAuthenticated('get-support-ticket', async (req) => {
   });
 
   const sb = createServiceClient();
-
-  let ticketQuery = sb.from('support_tickets').select('*').eq('id', ticketId);
-  if (scope.channel === 'guest') {
-    ticketQuery = ticketQuery.eq('channel', 'guest').eq('submitted_by_user_id', scope.user.id);
-  } else if (scope.org) {
-    ticketQuery = ticketQuery.eq('organization_id', scope.org.id).eq('channel', 'host');
-  }
-
-  const { data: ticket, error: ticketError } = await ticketQuery.maybeSingle();
+  const { data: ticket, error: ticketError } = await scopedTicketQuery(
+    sb,
+    ticketId,
+    scope
+  ).maybeSingle();
 
   if (ticketError) throw new Error(ticketError.message);
   if (!ticket) return jsonError(req, 'Ticket not found', 404);
