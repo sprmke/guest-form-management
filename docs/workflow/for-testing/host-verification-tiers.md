@@ -1,12 +1,14 @@
 ---
 title: 'Host verification tiers'
-stage: in-progress
-status: in-progress
-updated: 2026-08-31
-tags: [workflow, in-progress, verification, onboarding]
+stage: for-testing
+status: for-testing
+updated: 2026-09-01
+tags: [workflow, for-testing, verification, onboarding]
 ---
 
 # Host verification tiers
+
+> **Stage:** [`for-testing`](./README.md) — Phases 1–2 + admin queue priority shipped. Remaining: manual QA (§ Phase 3 testing checklist). Explore/search boost **deferred** (not blocking). Move to [`../done/`](../done/) after checklist passes.
 
 **Status: Phase 1–2 shipped (2026-08-04). Phase 3 partial — admin queue priority shipped; browse search boost deferred until public property listings API.**
 

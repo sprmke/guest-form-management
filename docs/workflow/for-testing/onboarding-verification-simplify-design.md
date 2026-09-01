@@ -1,12 +1,12 @@
 ---
-stage: intake
+stage: for-testing
 title: 'Onboarding verification simplify — design'
 status: approved
 tags: [onboarding, verification, design]
-updated: 2026-08-31
+updated: 2026-09-01
 related:
-  - docs/workflow/planned/onboarding-verification-simplify.md
-  - docs/workflow/in-progress/host-verification-tiers.md
+  - docs/workflow/for-testing/onboarding-verification-simplify.md
+  - docs/workflow/for-testing/host-verification-tiers.md
   - docs/workflow/done/verification-scope-split.md
 ---
 

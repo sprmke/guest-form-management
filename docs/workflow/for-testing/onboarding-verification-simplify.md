@@ -1,16 +1,18 @@
 ---
-stage: in-progress
+stage: for-testing
 title: 'Onboarding verification simplify'
-status: planned
-tags: [workflow, planned, onboarding, verification]
-updated: 2026-08-31
+status: for-testing
+tags: [workflow, for-testing, onboarding, verification]
+updated: 2026-09-01
 ---
 
 # Onboarding verification simplify
 
+> **Stage:** [`for-testing`](./README.md) — implementation complete. Remaining: manual verification (§ Verify below). Move to [`../done/`](../done/) after checklist passes.
+
 **Goal:** Step 2 collects Property Rights (Parking Rights when parking-only) from existing `ORG_VERIFICATION_RIGHTS`; Step 3 requires **Valid ID + Facebook Page screenshot** only. Listing **Verified** collects proof of ownership or authorization. Listing **Recommended** collects additional proof + Azure PMO. None of those listing files are on onboarding. Listing go-live stays on listing base approve (rights-only submit from onboarding). Listing Recommended **submit** still waits for listing Verified approve + plan.
 
-**Spec:** [`../intake/onboarding-verification-simplify-design.md`](../intake/onboarding-verification-simplify-design.md)
+**Spec:** [`onboarding-verification-simplify-design.md`](./onboarding-verification-simplify-design.md)
 
 **Architecture:** Polish in place on `/onboarding`, `GetVerifiedModal`, `ListingVerificationModal`, and the shared `canSubmit*` helpers. Host vs listing scopes stay split. No new tables.
 
@@ -25,7 +27,7 @@ updated: 2026-08-31
 | Listing rules + modal | [`supabase/functions/_shared/listingAuthorization.ts`](../../../supabase/functions/_shared/listingAuthorization.ts), [`submit-listing-authorization`](../../../supabase/functions/submit-listing-authorization/index.ts), [`ListingVerificationModal.tsx`](../../../ui/src/features/dashboard/org/components/listing-authorization/ListingVerificationModal.tsx), [`listingVerificationTiers.ts`](../../../ui/src/features/dashboard/org/lib/listingVerificationTiers.ts) |
 | Plan gate             | [`submit-org-verification`](../../../supabase/functions/submit-org-verification/index.ts)                                                                                                                                                                                                                                                                                                                                                                                 |
 | Admin review          | Super-admin host/listing verification dialogs under `ui/src/features/dashboard/super-admin/`                                                                                                                                                                                                                                                                                                                                                                              |
-| Docs                  | [`docs/guides/routes/onboarding.md`](../../guides/routes/onboarding.md), [`docs/guides/routes/admin/approvals.md`](../../guides/routes/admin/approvals.md), property/parking settings guides, [`host-verification-tiers.md`](../in-progress/host-verification-tiers.md)                                                                                                                                                                                                   |
+| Docs                  | [`docs/guides/routes/onboarding.md`](../../guides/routes/onboarding.md), [`docs/guides/routes/admin/approvals.md`](../../guides/routes/admin/approvals.md), property/parking settings guides, [`host-verification-tiers.md`](./host-verification-tiers.md)                                                                                                                                                                                                                |
 
 ## Tasks
 
