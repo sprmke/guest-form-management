@@ -10,6 +10,10 @@ type Props = {
   disabled?: boolean;
   /** `inline` — compact chevrons for section headers; `centered` — Previous/Next row (location browse). */
   variant?: 'inline' | 'centered';
+  /** Inline only — hide `{page} / {totalPages}` between chevrons. Default true. */
+  showPageIndicator?: boolean;
+  /** Inline only — smaller icon buttons for dense dashboard section headers. */
+  compact?: boolean;
 };
 
 export function PublicListingPagination({
@@ -18,6 +22,8 @@ export function PublicListingPagination({
   onPageChange,
   disabled,
   variant = 'centered',
+  showPageIndicator = true,
+  compact = false,
 }: Props) {
   if (totalPages <= 1) return null;
 
@@ -26,31 +32,33 @@ export function PublicListingPagination({
 
   if (variant === 'inline') {
     return (
-      <nav aria-label="Listing pages" className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+      <nav aria-label="Listing pages" className="flex shrink-0 items-center gap-1">
         <Button
           type="button"
           variant="outline"
           size="icon"
-          className="min-h-[44px] min-w-[44px] rounded-full"
+          className={cn('rounded-full', compact ? 'size-8' : 'min-h-[44px] min-w-[44px]')}
           disabled={page <= 1 || disabled}
           aria-label="Previous page"
           onClick={goPrevious}
         >
-          <ChevronLeft className="h-4 w-4" aria-hidden />
+          <ChevronLeft className={compact ? 'size-3.5' : 'h-4 w-4'} aria-hidden />
         </Button>
-        <span className="text-muted-foreground min-w-[3.25rem] text-center text-sm tabular-nums">
-          {page} / {totalPages}
-        </span>
+        {showPageIndicator ? (
+          <span className="text-muted-foreground min-w-[3.25rem] text-center text-sm tabular-nums">
+            {page} / {totalPages}
+          </span>
+        ) : null}
         <Button
           type="button"
           variant="outline"
           size="icon"
-          className="min-h-[44px] min-w-[44px] rounded-full"
+          className={cn('rounded-full', compact ? 'size-8' : 'min-h-[44px] min-w-[44px]')}
           disabled={page >= totalPages || disabled}
           aria-label="Next page"
           onClick={goNext}
         >
-          <ChevronRight className="h-4 w-4" aria-hidden />
+          <ChevronRight className={compact ? 'size-3.5' : 'h-4 w-4'} aria-hidden />
         </Button>
       </nav>
     );

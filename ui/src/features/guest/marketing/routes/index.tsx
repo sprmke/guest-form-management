@@ -10,6 +10,7 @@ import { DevelopmentPropertiesPage } from '@/features/guest/marketing/pages/Deve
 import { DevelopmentsListPage } from '@/features/guest/marketing/pages/DevelopmentsListPage';
 import { DevelopmentsLocationPage } from '@/features/guest/marketing/pages/DevelopmentsLocationPage';
 import { ForHostsPage } from '@/features/guest/marketing/pages/ForHostsPage';
+import { ForHostsPreviewPage } from '@/features/guest/marketing/pages/ForHostsPreviewPage';
 import { ForHostsPricingPage } from '@/features/guest/marketing/pages/ForHostsPricingPage';
 import { GuestLandingPage } from '@/features/guest/marketing/pages/GuestLandingPage';
 import { HostPublicPage } from '@/features/guest/marketing/pages/HostPublicPage';
@@ -46,6 +47,8 @@ export const marketingRoutes = [
     <Route index element={<GuestLandingPage />} />
     <Route path="search" element={<SearchResultsPage />} />
     <Route path="for-hosts/pricing" element={<ForHostsPricingPage />} />
+    {/* Ground-up redesign preview — swap into `for-hosts` below once approved. */}
+    <Route path="for-hosts/preview" element={<ForHostsPreviewPage />} />
     <Route path="for-hosts" element={<ForHostsPage />} />
     <Route path="services" element={<ServicesPage />} />
     <Route path="hosts/:orgSlug" element={<HostPublicPage />} />
