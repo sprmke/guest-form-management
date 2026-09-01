@@ -17,6 +17,7 @@ export type ParkingSection =
   | 'team'
   | 'settings'
   | 'inbox'
+  | 'announcements'
   | 'help-support';
 
 export type ParkingPermissionId =
@@ -55,6 +56,7 @@ export const PARKING_NAV_VIEW_PERMISSION: Record<string, ParkingPermissionId> = 
   Team: 'team:view',
   Settings: 'settings:view',
   Inbox: 'inbox:view',
+  Announcements: 'bookings:view',
 };
 
 /** Minimum view permission per parking route section. */
@@ -67,5 +69,6 @@ export const PARKING_SECTION_VIEW_PERMISSION = {
   team: 'team:view',
   settings: 'settings:view',
   inbox: 'inbox:view',
+  announcements: 'bookings:view',
   'help-support': 'bookings:view',
 } as const satisfies Record<ParkingSection, ParkingPermissionId>;

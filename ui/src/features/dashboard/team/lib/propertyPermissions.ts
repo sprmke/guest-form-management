@@ -31,6 +31,7 @@ export type PropertySection =
   | 'team'
   | 'settings'
   | 'inbox'
+  | 'announcements'
   | 'help-support';
 
 export function hasPropertyPermission(
@@ -176,6 +177,7 @@ export const PROPERTY_NAV_VIEW_PERMISSION: Record<string, TeamPermissionId> = {
   Team: 'team:view',
   Settings: 'settings:view',
   Inbox: 'inbox:view',
+  Announcements: 'bookings:view',
 };
 
 /** Minimum view permission per property route section. */
@@ -193,6 +195,7 @@ export const PROPERTY_SECTION_VIEW_PERMISSION = {
   team: 'team:view',
   settings: 'settings:view',
   inbox: 'inbox:view',
-  // Help stays baseline for any active property member (RequirePropertyPermission special-cases it).
+  // Help + Announcements stay baseline for any active property member (RequirePropertyPermission special-cases them).
+  announcements: 'bookings:view',
   'help-support': 'bookings:view',
 } as const satisfies Record<PropertySection, TeamPermissionId>;
