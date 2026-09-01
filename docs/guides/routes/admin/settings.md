@@ -25,6 +25,8 @@ Route: `/admin/settings`
 
 Platform-wide AI controls for the super-admin team. Sidebar and overview label: **AI Management**. Changes apply across all organizations and properties immediately. Three cards: Platform AI, AI credit wallet, and AI dashboard assistant.
 
+Host-facing announcements are managed per development on **`/admin/developments/:slug`** — see [Development Settings](./development-detail.md). Platform-wide notices for all hosts live on **[Announcements](./announcements.md)** (`/admin/announcements`).
+
 **Access:** `RequireSuperAdmin` — email must be in `SUPER_ADMIN_EMAILS` (server) / `VITE_SUPER_ADMIN_EMAILS` (client UX gate).
 
 ---

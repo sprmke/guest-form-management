@@ -55,7 +55,7 @@ The goal is to accurately track AI usage per feature/action across the whole app
 
 **The critical discovery from this research: this is not greenfield.** The repo already has a mature, centralized AI metering system (`_shared/aiUsageService.ts`, `_shared/aiModelRouter.ts`, the `ai_platform_*` tables) that gates and records all 13 AI features by organization and property, with daily/monthly call limits and a daily USD cost cap. Verified by direct reads of `aiUsageService.ts` and `aiModelRouter.ts` (not just agent summaries). This plan is therefore a **hardening/extension pass**, not a new system — its job is to (1) close three concrete gaps in what already exists, and (2) introduce a "credits" abstraction that reconciles the draft pricing doc's vague "1000 credits" language with the $-cost tracking already in production, so a future paid-top-up phase can plug in without re-architecting anything.
 
-**Do not confuse with `docs/workflow/in-progress/host-verification-tiers.md`** — that's the Verified/Recommended host-trust-badge system, a completely different feature that happens to share the word "tier." This plan is about AI pricing tiers from the draft in `docs/workflow/intake/_to-plan.md` (lines ~509–563), not host verification.
+**Do not confuse with `docs/workflow/for-testing/host-verification-tiers.md`** — that's the Verified/Recommended host-trust-badge system, a completely different feature that happens to share the word "tier." This plan is about AI pricing tiers from the draft in `docs/workflow/intake/_to-plan.md` (lines ~509–563), not host verification.
 
 ## Current state (confirmed by direct code/schema reads this session)
 

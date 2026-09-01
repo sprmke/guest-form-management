@@ -7,7 +7,7 @@ tags: [verification, onboarding, multi-tenancy, listing-authorization, super-adm
 supersedes:
   - docs/workflow/wont-do/listing-authorization.md
 related:
-  - docs/workflow/in-progress/host-verification-tiers.md
+  - docs/workflow/for-testing/host-verification-tiers.md
 ---
 
 # Verification scope split — Host vs Listing
@@ -178,7 +178,7 @@ Also added `_shared/listingAuthorizationService.ts` — listing row + org resolu
 
 - [x] `docs/PROJECT.md`, `docs/architecture/edge-functions.md`, `docs/architecture/storage.md` (edge-functions + onboarding/approvals updated; PROJECT/storage light touch as needed)
 - [x] `docs/guides/routes/onboarding.md`, `admin/approvals.md`
-- [x] Reconcile `docs/workflow/in-progress/host-verification-tiers.md` (pointer to scope-split)
+- [x] Reconcile `docs/workflow/for-testing/host-verification-tiers.md` (pointer to scope-split)
 - [x] `bun run ci:quality`
 
 ---

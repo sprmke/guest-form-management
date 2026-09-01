@@ -20,6 +20,9 @@ Route: `/admin/developments/:developmentSlug`
 | Email automations     | Done     | Done       | Done | PMO email (optional)                                              |
 | Document Requirements | Done     | Done       | Done | Ordered checklist for PENDING_DOCUMENTS (all properties in dev)   |
 | Unit types            | Done     | Done       | Done | Per-type max adults/children capacity presets                     |
+| Pool                  | Done     | Done       | Done | Pool fee (PHP) + schedule                                         |
+| Guest information     | Done     | Done       | Done | Requirements, guides, other info for guests + AI                  |
+| Announcements         | Done     | Done       | Done | Host dashboard banners for this development                       |
 | Amenities             | Done     | —          | Done | Suggested chips + free-text add                                   |
 | Location              | Done     | Done       | Done | Location line + `PropertyLocationPicker`                          |
 | Towers & Parking      | Done     | —          | Done | Free-text tag lists                                               |
@@ -123,6 +126,59 @@ Properties pick one type under **Property Details → Unit type**; max adults/ch
 
 ---
 
+## Pool
+
+| Field          | Storage                              | Notes                                      |
+| -------------- | ------------------------------------ | ------------------------------------------ |
+| Pool fee (PHP) | `developments.settings.poolFee`      | Optional; guest-safe amount for AI/inbox   |
+| Pool schedule  | `developments.settings.poolSchedule` | Free text (hours, rules, seasonal closure) |
+
+**Azure North defaults** (when unset): pool fee **₱200**; schedule **7 AM to 7 PM. Maintenance every Tuesday.**
+
+Save path: batched **Save Changes** → **`PATCH update-development`**.
+
+Guest-facing AI (inbox auto-reply, voice receptionist) reads these fields when the property's `residence_name` matches this development.
+
+---
+
+## Guest information
+
+Building/residence facts shared across every unit in the development — surfaced to guests via AI tools, not a separate public page yet.
+
+| Field             | Storage                                   | Notes                                      |
+| ----------------- | ----------------------------------------- | ------------------------------------------ |
+| Requirements      | `developments.settings.guestRequirements` | Free text (ID, noise, move-in rules, etc.) |
+| Guides            | `developments.settings.guestGuides`       | JSON array `{ id, title, content }`        |
+| Other information | `developments.settings.importantInfo`     | Catch-all free text for AI grounding       |
+
+Document requirement **labels** from the Document Requirements section are also included in AI context (guest-safe checklist names only — no approval internals).
+
+Save path: batched **Save Changes** → **`PATCH update-development`**.
+
+---
+
+## Announcements
+
+Host-facing banners shown in the dashboard for every org with properties or parking linked to this development (`residence_name` match).
+
+| Field per row    | Storage                                 | Notes                                                                                                                       |
+| ---------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Title / message  | `developments.settings.announcements[]` | Required                                                                                                                    |
+| Severity         | same                                    | `info` / `warning` / `critical`                                                                                             |
+| Active           | same                                    | Off = hidden even inside schedule window                                                                                    |
+| Starts / ends    | same                                    | Optional calendar dates (Asia/Manila); no time picker — start is inclusive from that day, end is inclusive through that day |
+| Link URL / label | same                                    | Optional CTA                                                                                                                |
+
+**Banner dismiss (hosts):** Hosts may dismiss individual notices from the dashboard banner (×, stored per org in the browser). Dismissed notices remain on the property **Announcements** archive. Editing a notice bumps `updatedAt`, which surfaces it on the banner again.
+
+Notices stay active until **Active** is turned off or optional **Ends** date passes (Asia/Manila day boundaries). The dashboard banner shows the highest-priority non-dismissed notice; the full merged list lives under **Announcements** in the sidebar.
+
+Platform-wide announcements (maintenance, product releases) are managed on **`/admin/announcements`**.
+
+Save path: batched **Save Changes** → **`PATCH update-development`** with `announcements`.
+
+---
+
 ## Amenities
 
 Stored as `developments.settings.amenities` (string array). Suggested chips toggle on/off; a free-text input appends custom entries not in the suggestion list.
@@ -170,7 +226,7 @@ Three free-text tag lists stored in `developments.settings`: `propertyTowers`, `
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Page                  | `ui/src/features/dashboard/super-admin/pages/SuperAdminDevelopmentDetailPage.tsx`                                                                                                                         |
 | Settings shell        | `ui/src/features/dashboard/super-admin/components/super-admin-development-settings/DevelopmentSettingsCard.tsx`                                                                                           |
-| Section fields        | `ui/src/features/dashboard/super-admin/components/super-admin-development-settings/DevelopmentProfileSections.tsx`                                                                                        |
+| Section fields        | `ui/src/features/dashboard/super-admin/components/super-admin-development-settings/DevelopmentProfileSections.tsx`, `DevelopmentGuestInfoSection.tsx`                                                     |
 | Form draft / diff     | `ui/src/features/dashboard/super-admin/lib/developmentSettingsForm.ts`                                                                                                                                    |
 | Media adapter         | `ui/src/features/dashboard/super-admin/lib/developmentMedia.ts`                                                                                                                                           |
 | Location auto-suggest | `ui/src/features/dashboard/super-admin/lib/developmentLocation.ts`                                                                                                                                        |

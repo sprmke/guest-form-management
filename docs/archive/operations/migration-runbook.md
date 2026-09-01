@@ -432,7 +432,7 @@ Notes:
 
 ## 11a. Additive: Public Pages → Pro + Stay Guide config v2 (August 2026)
 
-Stay Guide ↔ Showcase template-engine parity — see [`docs/workflow/in-progress/stay-guide-showcase-templates.md`](../../workflow/in-progress/stay-guide-showcase-templates.md).
+Stay Guide ↔ Showcase template-engine parity — see [`docs/workflow/done/stay-guide-showcase-templates.md`](../../workflow/done/stay-guide-showcase-templates.md).
 
 | File                                           | Purpose                                                                                                                                                                                                                                                                               | Reversible?                                                                                                                                                    |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |

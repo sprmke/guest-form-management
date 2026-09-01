@@ -95,6 +95,8 @@ with those turns already loaded. First-inquiry guests can start a voice session 
 modal without picking dates; `guest-web-chat-resume` still returns `voiceReceptionistEnabled` when
 there is no existing thread.
 
+**AI grounding (text + voice):** when the property's residence matches a platform development, guest AI tools also receive development-level facts (amenities, pool fee/schedule, requirements, guides, document labels, other info) from **`developments.settings`** via `_shared/developmentGuestInfo.ts`. Super admins edit these on **`/admin/developments/:slug`** (Pool + Guest information sections).
+
 **Phase 6 (shipped):** speech VAD; rich map/list/link bubbles; leaner voice prompts; theme-aware
 in-thread voice panel (primary ring + mic waveform); batch Flash polish on hang-up (`thinkingBudget: 0`);
 panel shows **Saving conversation…** until the thread refetch settles; spoken money uses

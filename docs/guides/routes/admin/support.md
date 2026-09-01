@@ -68,11 +68,22 @@ Clicking a ticket opens `SuperAdminTicketDetailDialog` (bottom sheet on mobile, 
 | Priority | `support_tickets.priority`     | low / medium / high / none             |
 | Reply    | `support_ticket_messages.body` | Required, ≤5000 chars                  |
 
-Header shows organization, category, and the host who submitted. Status and priority are the dropdowns (no duplicate status badge). Enter sends the reply; Shift+Enter inserts a new line. Send is disabled while a reply is in flight.
+Header shows organization (or **Explore guest**), category, and the submitter. Status and priority are the dropdowns (no duplicate status badge). A status banner appears for **Resolved** and **Closed** tickets. Enter sends the reply; Shift+Enter inserts a new line. Send is disabled while a reply is in flight.
+
+**Status flow (admin):**
+
+| Status      | Composer | Auto on admin reply |
+| ----------- | -------- | ------------------- |
+| Open        | Shown    | → In progress       |
+| In progress | Shown    | —                   |
+| Resolved    | Shown    | → In progress       |
+| Closed      | Shown    | → In progress       |
+
+Admin reply email links to the host Help & Support ticket URL or `/account/tickets/:id` for explore guests.
 
 ### Save path
 
-1. Reply → **`reply-support-ticket-admin`** (POST) → inserts a `sender_type='admin'` message, auto-reopens an `open` ticket to `in_progress`, sends `sendSupportTicketReplyNotify` to the host (best-effort).
+1. Reply → **`reply-support-ticket-admin`** (POST) → inserts a `sender_type='admin'` message, auto-moves **Open → In progress** and **Resolved/Closed → In progress**, sends `sendSupportTicketReplyNotify` to the submitter (best-effort; guest channel links to `/account/tickets/:id`).
 2. Status/priority change → **`update-support-ticket-status`** (POST) → independent fields, either can be set alone.
 
 ## FAQ editor (`/admin/support/faqs`)
@@ -88,6 +99,7 @@ First-class Platform nav item and overview card (label **FAQs**). Category-group
 | List tickets (all orgs), filtered + paginated | `GET list-support-tickets-admin?page=&limit=&search=&category=&status=&org_id=` |
 | Get ticket + thread                           | `GET get-support-ticket-admin`                                                  |
 | Reply as admin                                | `POST reply-support-ticket-admin`                                               |
+| Reopen (submitter, closed only)               | `POST reopen-support-ticket`                                                    |
 | Update status/priority                        | `POST update-support-ticket-status`                                             |
 | List all FAQs (incl. unpublished), paginated  | `GET list-help-center-faqs-admin?page=&limit=`                                  |
 | Create FAQ                                    | `POST create-help-center-faq`                                                   |

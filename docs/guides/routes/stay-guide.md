@@ -11,7 +11,7 @@ Route: `/properties/:propertySlug/stay-guide?token=<opaque>`
 
 > **Status:** Documented — v2 renders through the **Property Showcase template engine**.
 
-**Manual testing:** [`custom-pages-module-manual.md`](../testing/custom-pages-module-manual.md)
+**Manual testing:** [`stay-guide-manual.md`](../testing/stay-guide-manual.md) · [`custom-pages-module-manual.md`](../testing/custom-pages-module-manual.md)
 
 ## Purpose
 
