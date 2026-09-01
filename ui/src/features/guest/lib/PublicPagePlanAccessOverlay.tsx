@@ -26,7 +26,7 @@ export function PublicPagePlanAccessOverlay({ pageLabel }: Props) {
           {pageLabel} isn’t available
         </h1>
         <p id={descId} className="text-muted-foreground mt-3 text-sm leading-relaxed">
-          This page isn’t available right now. Please contact your host to report the issue.
+          Your host’s plan doesn’t include this page. Contact them if you need access.
         </p>
         <Link
           to="/"
