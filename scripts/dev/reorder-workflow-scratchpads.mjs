@@ -17,14 +17,15 @@ const RANK = { '❌': 0, '✅': 1, '📋': 2, '🚧': 3, '🔵': 4 };
 const EMOJI_RE = /^(✅|🚧|📋|🔵|❌)\s+/;
 
 function parseScratchpad(content) {
+  const normalized = content.replace(/^[ \t]*\\===\s*$/gm, '===');
   const marker = '\n===\n\n';
-  const first = content.indexOf(marker);
+  const first = normalized.indexOf(marker);
   if (first === -1) {
     throw new Error('No scratchpad blocks found');
   }
 
-  const header = content.slice(0, first);
-  const rest = content.slice(first + marker.length);
+  const header = normalized.slice(0, first);
+  const rest = normalized.slice(first + marker.length);
   const rawBlocks = rest.split(marker);
 
   const blocks = rawBlocks.map((raw, idx) => {
@@ -43,7 +44,7 @@ function parseScratchpad(content) {
     header +
     marker +
     blocks.map((b) => `${b.body}\n===`).join('\n\n') +
-    (content.endsWith('\n') ? '\n' : '');
+    (normalized.endsWith('\n') ? '\n' : '');
 
   return rebuilt;
 }

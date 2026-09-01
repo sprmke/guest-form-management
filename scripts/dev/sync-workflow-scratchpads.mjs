@@ -6,7 +6,7 @@
  *   node scripts/dev/sync-workflow-scratchpads.mjs [--dry-run] [--report] [--slug=foo]
  *
  * Reads linked workflow doc paths in each item block and sets the title emoji:
- * in-progress → 🚧, planned → 📋, done → ✅, wont-do → ❌.
+ * in-progress → 🚧, for-testing → 🧪, planned → 📋, done → ✅, wont-do → ❌.
  * Never changes ❌ items. Never downgrades emojis (except 🔵 → higher).
  * Optional --fuzzy for title/slug guessing (off by default — too many false positives).
  */
@@ -23,18 +23,19 @@ const SCRATCHPADS = [
   path.join(ROOT, 'docs/workflow/intake/_to-plan.md'),
 ];
 
-const STAGES = ['in-progress', 'planned', 'done', 'wont-do'];
+const STAGES = ['in-progress', 'for-testing', 'planned', 'done', 'wont-do'];
 const STAGE_EMOJI = {
   'in-progress': '🚧',
+  'for-testing': '🧪',
   planned: '📋',
   done: '✅',
   'wont-do': '❌',
 };
-const STAGE_PRIORITY = { 'in-progress': 3, planned: 2, done: 1, 'wont-do': 0 };
-const EMOJI_RANK = { '❌': 99, '✅': 4, '🚧': 3, '📋': 2, '🔵': 1 };
-const TITLE_EMOJI_RE = /^(✅|🚧|📋|🔵|❌)\s+/;
+const STAGE_PRIORITY = { 'wont-do': 0, 'for-testing': 4, 'in-progress': 3, planned: 2, done: 1 };
+const EMOJI_RANK = { '❌': 99, '✅': 4, '🧪': 3.5, '🚧': 3, '📋': 2, '🔵': 1 };
+const TITLE_EMOJI_RE = /^(✅|🧪|🚧|📋|🔵|❌)\s+/;
 const WORKFLOW_PATH_RE =
-  /(?:\.\.\/|\/)?(?:docs\/workflow\/)?(?:planned|in-progress|done|wont-do)\/([^\s`)]+?)(?:\.md)?(?:[`)\s]|$)/g;
+  /(?:\.\.\/|\/)?(?:docs\/workflow\/)?(?:planned|in-progress|for-testing|done|wont-do)\/([^\s`)]+?)(?:\.md)?(?:[`)\s]|$)/g;
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');

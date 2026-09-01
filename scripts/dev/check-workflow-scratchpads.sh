@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-VALID='^(✅|🚧|📋|🔵|❌) '
+VALID='^(✅|🧪|🚧|📋|🔵|❌) '
 
 check_file() {
   local file="$1"
@@ -32,7 +32,7 @@ check_file() {
     expect_title=0
 
     if [[ ! "$line" =~ $VALID ]]; then
-      echo "check-workflow-scratchpads: ${rel}:${line_num}: item title must start with ✅ 🚧 📋 🔵 or ❌ — got: ${line}" >&2
+      echo "check-workflow-scratchpads: ${rel}:${line_num}: item title must start with ✅ 🧪 🚧 📋 🔵 or ❌ — got: ${line}" >&2
       errors=$((errors + 1))
     fi
   done <"$file"
