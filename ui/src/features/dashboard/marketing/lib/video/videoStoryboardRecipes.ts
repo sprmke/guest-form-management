@@ -518,7 +518,7 @@ export const VIDEO_STORYBOARD_RECIPES: VideoStoryboardRecipe[] = [
   {
     id: 'guest-love',
     name: 'Guest love',
-    category: 'social-proof',
+    category: 'reviews',
     musicCue: musicWarm,
     clips: [
       {
@@ -562,7 +562,7 @@ export const VIDEO_STORYBOARD_RECIPES: VideoStoryboardRecipe[] = [
   {
     id: 'stay-again',
     name: 'Stay again',
-    category: 'social-proof',
+    category: 'reviews',
     musicCue: musicWarm,
     clips: [
       {

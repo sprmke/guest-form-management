@@ -3,7 +3,7 @@ import {
   pickBindingMediaAt,
   resolveDesignBindingMedia,
 } from '@/features/dashboard/marketing/lib/propertyBindingMedia';
-import { isVideoCategory } from '@/features/dashboard/marketing/lib/video/videoCategories';
+import { normalizeVideoCategory } from '@/features/dashboard/marketing/lib/video/videoCategories';
 import { isVideoMotionOverride } from '@/features/dashboard/marketing/lib/video/videoMotionProfiles';
 import {
   DEFAULT_VIDEO_MUSIC,
@@ -27,10 +27,10 @@ import {
   normalizeSceneLayers,
   persistSceneLayers,
 } from '@/features/dashboard/marketing/lib/video/videoSceneLayers';
+import { textsForStoryboardBeats } from '@/features/dashboard/marketing/lib/video/videoSceneTexts';
 import type {
   VideoOverlayMode,
   VideoStoryboardClip,
-  VideoTextBeat,
 } from '@/features/dashboard/marketing/lib/video/videoStoryboardRecipes';
 import { resolveVideoStoryboardRecipe } from '@/features/dashboard/marketing/lib/video/videoStoryboardRecipes';
 import {
@@ -39,17 +39,8 @@ import {
 } from '@/features/dashboard/marketing/lib/video/videoTextSlots';
 import { defaultVideoFields } from '@/features/dashboard/marketing/lib/videoCampaignTemplates';
 
-const LEGACY_VIDEO_CATEGORY_MAP: Record<string, string> = {
-  promo: 'flash-deal',
-  slots: 'last-openings',
-  giveaway: 'social-proof',
-};
-
 function normalizeCampaignCategory(value: string | undefined, fallback: string): string {
-  if (value && isVideoCategory(value)) return value;
-  if (value && LEGACY_VIDEO_CATEGORY_MAP[value]) return LEGACY_VIDEO_CATEGORY_MAP[value];
-  if (isVideoCategory(fallback)) return fallback;
-  return LEGACY_VIDEO_CATEGORY_MAP[fallback] ?? 'soft-stay';
+  return normalizeVideoCategory(value, normalizeVideoCategory(fallback));
 }
 
 function normalizeScene(scene: VideoScene): VideoScene {
@@ -58,29 +49,6 @@ function normalizeScene(scene: VideoScene): VideoScene {
     return { ...normalized, motion: undefined };
   }
   return normalized;
-}
-
-function emptyTexts(): VideoSceneTextFields {
-  return {
-    headline: '',
-    subheadline: '',
-    promoLine: '',
-    ctaLine: '',
-    slotLabels: [],
-    rulesLine: '',
-  };
-}
-
-function textsForBeats(beats: VideoTextBeat[], source: VideoSceneTextFields): VideoSceneTextFields {
-  const next = emptyTexts();
-  for (const beat of beats) {
-    if (beat === 'slotLabels') {
-      next.slotLabels = [...source.slotLabels];
-    } else {
-      next[beat] = source[beat];
-    }
-  }
-  return next;
 }
 
 function clampDuration(seconds: number): number {
@@ -96,7 +64,7 @@ function sceneFromClip(
   background: { url: string | null; mediaType: 'image' | 'video' },
   sourceTexts: VideoSceneTextFields
 ): VideoScene {
-  const texts = textsForBeats(clip.textBeats, sourceTexts);
+  const texts = textsForStoryboardBeats(clip.textBeats, sourceTexts);
   const textLayout = defaultTextLayoutForSceneKind(clip.kind, templateId);
   const base: VideoScene = {
     id: createSceneId(),

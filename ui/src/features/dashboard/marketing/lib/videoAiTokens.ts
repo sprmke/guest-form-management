@@ -5,6 +5,7 @@
  */
 
 import type { VideoCategory } from '@/features/dashboard/marketing/lib/video/videoCategories';
+import { normalizeVideoCategory } from '@/features/dashboard/marketing/lib/video/videoCategories';
 import type { VideoMotionOverride } from '@/features/dashboard/marketing/lib/video/videoMotionProfiles';
 import type {
   VideoSceneKind,
@@ -44,7 +45,7 @@ const VIDEO_AI_CATEGORIES: VideoAiCategory[] = [
   'soft-stay',
   'flash-deal',
   'last-openings',
-  'social-proof',
+  'reviews',
   'fully-booked',
   'seasonal',
   'custom',
@@ -142,7 +143,13 @@ export function normalizeVideoTemplateTokens(
   }
 
   return {
-    category: pickEnum(raw?.category, VIDEO_AI_CATEGORIES, 'soft-stay'),
+    category: (() => {
+      if (raw?.category === 'custom') return 'custom';
+      if (typeof raw?.category === 'string') {
+        return pickEnum(normalizeVideoCategory(raw.category), VIDEO_AI_CATEGORIES, 'soft-stay');
+      }
+      return 'soft-stay';
+    })(),
     scenes,
     fontPairing: pickEnum(raw?.fontPairing, VIDEO_FONT_PAIRINGS, 'editorial-serif'),
     copy: {

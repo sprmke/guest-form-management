@@ -1076,6 +1076,151 @@ function buildFullyBookedWaitlistMark(
   ];
 }
 
+function reviewFields(binding: DesignBinding) {
+  return {
+    quote: binding.reviewQuote?.trim() || 'Felt like home the moment we arrived.',
+    attribution: binding.reviewAttribution?.trim() || '— Recent guest',
+    stars: binding.reviewStars?.trim() || '★★★★★',
+  };
+}
+
+function buildReviewQuoteCard(
+  binding: DesignBinding,
+  layout: CampaignLayout,
+  palette: CampaignPalette
+): PolotnoChild[] {
+  const { quote, attribution, stars } = reviewFields(binding);
+  const v = band(layout, {
+    portrait: { stars: 0.18, quote: 0.28, rule: 0.62, attr: 0.68, cta: 0.82 },
+    square: { stars: 0.16, quote: 0.26, rule: 0.6, attr: 0.66, cta: 0.8 },
+    wide: { stars: 0.14, quote: 0.28, rule: 0.58, attr: 0.64, cta: 0.78 },
+  });
+  return [
+    centeredText(
+      stars,
+      layout,
+      v.stars,
+      band(layout, { portrait: 0.04, square: 0.042, wide: 0.038 }),
+      palette.accent,
+      {
+        fontFamily: FONT_NUMERAL,
+        fontWeight: '600',
+        letterSpacing: 0.2,
+      }
+    ),
+    centeredText(
+      `“${quote}”`,
+      layout,
+      v.quote,
+      band(layout, { portrait: 0.05, square: 0.052, wide: 0.048 }),
+      palette.cream,
+      {
+        fontFamily: FONT_DISPLAY,
+        fontWeight: '500',
+        fontStyle: 'italic',
+      }
+    ),
+    thinRule(layout, 0.36, v.rule, 0.22, palette.accent),
+    detailText(
+      attribution,
+      layout,
+      v.attr,
+      palette.cream,
+      band(layout, { portrait: 0.028, square: 0.03, wide: 0.026 })
+    ),
+    ...outlinePill('Book your stay', layout, 0.34, v.cta, 0.32, 0.062, palette.cream),
+    galleryFooter(binding, layout, palette.cream),
+  ];
+}
+
+function buildReviewPhotoQuote(
+  binding: DesignBinding,
+  layout: CampaignLayout,
+  palette: CampaignPalette
+): PolotnoChild[] {
+  const { quote, attribution, stars } = reviewFields(binding);
+  const v = band(layout, {
+    portrait: { stars: 0.52, quote: 0.58, attr: 0.78, cta: 0.86 },
+    square: { stars: 0.5, quote: 0.56, attr: 0.76, cta: 0.84 },
+    wide: { stars: 0.42, quote: 0.5, attr: 0.7, cta: 0.8 },
+  });
+  return [
+    eyebrow(stars, layout, v.stars, palette.cream),
+    centeredText(
+      `“${quote}”`,
+      layout,
+      v.quote,
+      band(layout, { portrait: 0.042, square: 0.044, wide: 0.04 }),
+      palette.cream,
+      {
+        fontFamily: FONT_DISPLAY,
+        fontWeight: '500',
+        fontStyle: 'italic',
+      }
+    ),
+    detailText(
+      attribution,
+      layout,
+      v.attr,
+      palette.cream,
+      band(layout, { portrait: 0.028, square: 0.03, wide: 0.026 })
+    ),
+    ...outlinePill('Plan yours', layout, 0.34, v.cta, 0.32, 0.062, palette.cream),
+    galleryFooter(binding, layout, palette.cream),
+  ];
+}
+
+function buildReviewStarsStack(
+  binding: DesignBinding,
+  layout: CampaignLayout,
+  palette: CampaignPalette
+): PolotnoChild[] {
+  const { quote, attribution, stars } = reviewFields(binding);
+  const rating = binding.reviewRating ?? 5;
+  const v = band(layout, {
+    portrait: { rating: 0.16, stars: 0.32, quote: 0.42, attr: 0.68, cta: 0.82 },
+    square: { rating: 0.14, stars: 0.3, quote: 0.4, attr: 0.66, cta: 0.8 },
+    wide: { rating: 0.12, stars: 0.28, quote: 0.4, attr: 0.62, cta: 0.78 },
+  });
+  return [
+    heroText(
+      `${rating}.0`,
+      layout,
+      v.rating,
+      band(layout, { portrait: 0.12, square: 0.13, wide: 0.14 }),
+      palette.cream
+    ),
+    centeredText(
+      stars,
+      layout,
+      v.stars,
+      band(layout, { portrait: 0.036, square: 0.038, wide: 0.034 }),
+      palette.accent,
+      {
+        fontFamily: FONT_NUMERAL,
+        fontWeight: '600',
+        letterSpacing: 0.18,
+      }
+    ),
+    detailText(
+      `“${quote}”`,
+      layout,
+      v.quote,
+      palette.cream,
+      band(layout, { portrait: 0.032, square: 0.034, wide: 0.03 })
+    ),
+    detailText(
+      attribution,
+      layout,
+      v.attr,
+      palette.cream,
+      band(layout, { portrait: 0.026, square: 0.028, wide: 0.024 })
+    ),
+    ...outlinePill('Book direct', layout, 0.34, v.cta, 0.32, 0.062, palette.cream),
+    galleryFooter(binding, layout, palette.cream),
+  ];
+}
+
 type CampaignBuilder = (
   binding: DesignBinding,
   layout: CampaignLayout,
@@ -1095,6 +1240,9 @@ const BUILDERS: Record<string, CampaignBuilder> = {
   'giveaway-raffle': buildGiveawayRaffleTicket,
   'fully-booked': buildFullyBookedMark,
   'fully-booked-waitlist': buildFullyBookedWaitlistMark,
+  'review-quote': buildReviewQuoteCard,
+  'review-photo-quote': buildReviewPhotoQuote,
+  'review-stars': buildReviewStarsStack,
 };
 
 const CAMPAIGN_SCRIMS: Record<string, Scrim> = {
@@ -1110,6 +1258,9 @@ const CAMPAIGN_SCRIMS: Record<string, Scrim> = {
   'giveaway-raffle': { r: 30, g: 8, b: 8, top: 0.3, bottom: 0.5 },
   'fully-booked': { r: 12, g: 10, b: 9, top: 0.5, bottom: 0.72 },
   'fully-booked-waitlist': { r: 10, g: 22, b: 20, top: 0.34, bottom: 0.6 },
+  'review-quote': { r: 12, g: 18, b: 16, top: 0.22, bottom: 0.58 },
+  'review-photo-quote': { r: 18, g: 12, b: 10, top: 0.38, bottom: 0.72 },
+  'review-stars': { r: 14, g: 14, b: 12, top: 0.2, bottom: 0.56 },
 };
 
 const CAMPAIGN_PAGE_FALLBACKS: Record<string, string> = {
@@ -1125,6 +1276,9 @@ const CAMPAIGN_PAGE_FALLBACKS: Record<string, string> = {
   'giveaway-raffle': '#450a0a',
   'fully-booked': '#292524',
   'fully-booked-waitlist': '#134e4a',
+  'review-quote': '#134e4a',
+  'review-photo-quote': '#57534e',
+  'review-stars': '#44403c',
 };
 
 export type PolotnoDesignDocument = {
@@ -1167,11 +1321,18 @@ export function buildPolotnoCampaignDocument(
     height,
     schemaVersion: 2,
     fonts: [],
-    custom: { templateId, campaignBaseId: baseId },
+    custom: {
+      templateId,
+      campaignBaseId: baseId,
+      ...(binding.sourceReviewId ? { sourceReviewId: binding.sourceReviewId } : {}),
+    },
     pages: [
       {
         id: uid('page'),
-        background: campaignPageBackground(binding.propertyPhoto, pageFallback),
+        background: campaignPageBackground(
+          binding.reviewPhoto || binding.propertyPhoto,
+          pageFallback
+        ),
         children: [photoScrim(width, height, scrim), ...builder(binding, layout, palette)],
       },
     ],

@@ -2,6 +2,32 @@ import type {
   VideoSceneKind,
   VideoSceneTextFields,
 } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
+import type { VideoTextBeat } from '@/features/dashboard/marketing/lib/video/videoStoryboardRecipes';
+
+const EMPTY_TEXTS: VideoSceneTextFields = {
+  headline: '',
+  subheadline: '',
+  promoLine: '',
+  ctaLine: '',
+  slotLabels: [],
+  rulesLine: '',
+};
+
+/** Keep only text fields allowed on this storyboard clip (prevents cross-scene overlap). */
+export function textsForStoryboardBeats(
+  beats: VideoTextBeat[],
+  source: VideoSceneTextFields
+): VideoSceneTextFields {
+  const next: VideoSceneTextFields = { ...EMPTY_TEXTS };
+  for (const beat of beats) {
+    if (beat === 'slotLabels') {
+      next.slotLabels = [...source.slotLabels];
+    } else {
+      next[beat] = source[beat];
+    }
+  }
+  return next;
+}
 
 const GENERIC_SCENE_TEXTS: Record<VideoSceneKind, VideoSceneTextFields> = {
   photo: {

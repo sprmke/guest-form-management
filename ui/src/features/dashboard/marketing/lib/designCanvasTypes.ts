@@ -1,12 +1,14 @@
 import type { DesignTemplateFormat } from '@/features/dashboard/marketing/lib/templateRegistry';
 
-export type CampaignCategory = 'promo' | 'slots' | 'giveaway' | 'fully-booked' | 'custom';
+export type CampaignCategory =
+  'promo' | 'slots' | 'giveaway' | 'fully-booked' | 'reviews' | 'custom';
 
 export const CAMPAIGN_CATEGORY_LABELS: Record<CampaignCategory, string> = {
   promo: 'Promos',
   slots: 'Last slots',
   giveaway: 'Giveaway',
   'fully-booked': 'Fully booked',
+  reviews: 'Reviews',
   custom: 'Custom',
 };
 
@@ -25,6 +27,14 @@ export type DesignBinding = {
   monthLabel: string;
   monthShort: string;
   openSlots: Array<{ dateNum: string; dayName: string }>;
+  /** Guest-review seed fields (Marketing Reviews presets). */
+  reviewQuote?: string;
+  reviewAuthor?: string;
+  reviewRating?: number;
+  reviewAttribution?: string;
+  reviewStars?: string;
+  reviewPhoto?: string | null;
+  sourceReviewId?: string | null;
 };
 
 export type CampaignTemplateDef = {

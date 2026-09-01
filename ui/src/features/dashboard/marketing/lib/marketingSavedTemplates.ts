@@ -1,15 +1,8 @@
 import type { MarketingTemplateRecord } from '@/features/dashboard/marketing/hooks/useMarketingTemplates';
 import { isDesignCustomTemplate } from '@/features/dashboard/marketing/lib/designAutosave';
-import { isVideoCategory } from '@/features/dashboard/marketing/lib/video/videoCategories';
+import { normalizeVideoCategory } from '@/features/dashboard/marketing/lib/video/videoCategories';
 
 export { isDesignCustomTemplate } from '@/features/dashboard/marketing/lib/designAutosave';
-
-/** Design category ids that may still sit on pre–Quiet Coast video autosaves. */
-const VIDEO_LEGACY_CATEGORY_MAP: Record<string, string> = {
-  promo: 'flash-deal',
-  slots: 'last-openings',
-  giveaway: 'social-proof',
-};
 
 export function marketingSavedTemplateCategoryId(
   record: MarketingTemplateRecord
@@ -22,8 +15,7 @@ export function marketingSavedTemplateCategoryId(
 export function marketingVideoSavedCategoryId(record: MarketingTemplateRecord): string | undefined {
   const raw = marketingSavedTemplateCategoryId(record);
   if (!raw) return undefined;
-  if (isVideoCategory(raw)) return raw;
-  return VIDEO_LEGACY_CATEGORY_MAP[raw] ?? 'soft-stay';
+  return normalizeVideoCategory(raw);
 }
 
 export function marketingSavedTemplateAspect(record: MarketingTemplateRecord): string | null {

@@ -111,6 +111,27 @@ const BASE_TEMPLATES: BaseCampaignTemplate[] = [
     formats: ALL_FORMATS,
     preview: { primary: '#24a88e', secondary: CREAM },
   },
+  {
+    baseId: 'review-quote',
+    name: 'Quote card',
+    category: 'reviews',
+    formats: ALL_FORMATS,
+    preview: { primary: '#24a88e', secondary: CREAM },
+  },
+  {
+    baseId: 'review-photo-quote',
+    name: 'Photo + quote',
+    category: 'reviews',
+    formats: ALL_FORMATS,
+    preview: { primary: '#ea580c', secondary: CREAM },
+  },
+  {
+    baseId: 'review-stars',
+    name: 'Stars stack',
+    category: 'reviews',
+    formats: ALL_FORMATS,
+    preview: { primary: '#b45309', secondary: CREAM },
+  },
 ];
 
 export const DESIGN_CAMPAIGN_TEMPLATES: CampaignTemplateDef[] = BASE_TEMPLATES.flatMap((base) =>

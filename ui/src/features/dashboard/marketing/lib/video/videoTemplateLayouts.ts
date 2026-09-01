@@ -252,8 +252,8 @@ const VIDEO_TEMPLATE_LAYOUTS: Record<string, VideoTemplateLayoutProfile> = {
   'stay-again': {
     photo: { headline: { x: 50, y: 82, align: 'center' } },
     promo: {
-      headline: { x: 50, y: 44, align: 'center' },
-      subheadline: { x: 50, y: 56, align: 'center' },
+      headline: { x: 50, y: 28, align: 'center' },
+      subheadline: { x: 50, y: 52, align: 'center' },
     },
     slots: KIND_DEFAULTS.slots,
     cta: {

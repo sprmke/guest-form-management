@@ -52,6 +52,8 @@ import {
   openSlotDatesForMonth,
 } from '@/features/dashboard/marketing/lib/marketingBookedDates';
 import { marketingEditorWorkspaceClassName } from '@/features/dashboard/marketing/lib/marketingEditorWorkspace';
+import type { MarketingGuestReview } from '@/features/dashboard/marketing/lib/marketingGuestReview';
+import { bindingWithReview } from '@/features/dashboard/marketing/lib/marketingReviewDesignSeed';
 import {
   marketingDesignSidebarRecords,
   marketingSavedTemplateCategoryId,
@@ -107,7 +109,7 @@ type Props = {
   onPublish?: (payload: DesignExportPayload) => void;
 };
 
-const CATEGORIES: CampaignCategory[] = ['promo', 'slots', 'giveaway', 'fully-booked'];
+const CATEGORIES: CampaignCategory[] = ['promo', 'slots', 'giveaway', 'fully-booked', 'reviews'];
 
 export function PolotnoDesignStudio({ onPublish }: Props) {
   const { property, org } = useOrgContext();
@@ -131,6 +133,7 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
   const [savedTemplateId, setSavedTemplateId] = useState<string | null>(null);
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
   const [aiGenerateBusy, setAiGenerateBusy] = useState(false);
+  const [selectedReview, setSelectedReview] = useState<MarketingGuestReview | null>(null);
 
   const propertyId = usePropertyIdParam();
   const queryClient = useQueryClient();
@@ -159,7 +162,7 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
 
   const binding = useMemo<DesignBinding>(() => {
     const rate = publicProperty?.pricing.baseRate ?? 2799;
-    return {
+    const base: DesignBinding = {
       propertyName: property.name,
       propertyPhoto: publicProperty?.images[0] ?? null,
       nightlyRate: `${formatMoneyCompact(rate)} / night`,
@@ -168,7 +171,8 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
       monthShort: previewMonth.toLocaleDateString('en-US', { month: 'long' }),
       openSlots: openSlotDatesForMonth(bookedDates ?? [], previewMonth, 5),
     };
-  }, [property.name, publicProperty, bookedDates, previewMonth]);
+    return bindingWithReview(base, selectedReview);
+  }, [property.name, publicProperty, bookedDates, previewMonth, selectedReview]);
 
   bindingRef.current = binding;
 
@@ -258,6 +262,12 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
 
   const applyTemplateRef = useRef(applyTemplate);
   applyTemplateRef.current = applyTemplate;
+
+  // Re-seed Reviews presets when the host picks a different guest review.
+  useEffect(() => {
+    if (!selectedReview || category !== 'reviews' || !selectedId || savedTemplateId) return;
+    void applyTemplateRef.current(selectedId);
+  }, [selectedReview?.id, category, selectedId, savedTemplateId]);
 
   const lastAppliedAccentRef = useRef<string | null>(null);
   useEffect(() => {
@@ -598,6 +608,7 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
       format,
       binding: bindingRef.current!,
       polotno: activeStore.toJSON(),
+      sourceReviewId: bindingRef.current?.sourceReviewId ?? null,
     };
   }, [selectedId, format]);
 
@@ -815,6 +826,8 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
           onSavedTemplate={handleSavedTemplateCreated}
           onOpenAiGenerate={() => setAiGenerateOpen(true)}
           aiGenerateBusy={aiGenerateBusy || generateTemplate.isPending}
+          selectedReviewId={selectedReview?.id ?? null}
+          onSelectReview={setSelectedReview}
           designJsonForSave={designJsonForSave}
           aspectPreset={format}
           platform={format.includes('facebook') ? 'facebook' : 'instagram'}

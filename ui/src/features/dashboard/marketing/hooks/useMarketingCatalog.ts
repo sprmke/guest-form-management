@@ -41,6 +41,7 @@ const DESIGN_BUILTIN_CATEGORIES: CampaignCategory[] = [
   'slots',
   'giveaway',
   'fully-booked',
+  'reviews',
 ];
 
 function builtinCategoriesForTab(tab: MarketingCatalogTab): string[] {

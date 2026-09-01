@@ -71,6 +71,7 @@ import {
 } from '@/features/dashboard/marketing/lib/marketingBookedDates';
 import { marketingContentFingerprint } from '@/features/dashboard/marketing/lib/marketingContentFingerprint';
 import { resolveMarketingThumbBinding } from '@/features/dashboard/marketing/lib/marketingDefaultBinding';
+import type { MarketingGuestReview } from '@/features/dashboard/marketing/lib/marketingGuestReview';
 import {
   waitForMarketingIdle,
   yieldToMainThread,
@@ -98,6 +99,10 @@ import {
   renderVideoPresetThumbnail,
   renderVideoProjectThumbnail,
 } from '@/features/dashboard/marketing/lib/renderMarketingVideoThumbnail';
+import {
+  applyGuestReviewToVideoProject,
+  isReviewVideoTemplate,
+} from '@/features/dashboard/marketing/lib/video/applyGuestReviewToVideoProject';
 import { ensureVideoMusicForExport } from '@/features/dashboard/marketing/lib/video/importVideoMusic';
 import { resolveAiGeneratedVideoProjectsForAllFormats } from '@/features/dashboard/marketing/lib/video/videoAiProjectBuilder';
 import { VIDEO_CATEGORIES } from '@/features/dashboard/marketing/lib/video/videoCategories';
@@ -176,6 +181,7 @@ export function VideoEditor({ onPublish }: Props) {
   const [exporting, setExporting] = useState(false);
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
   const [aiGenerateBusy, setAiGenerateBusy] = useState(false);
+  const [selectedReview, setSelectedReview] = useState<MarketingGuestReview | null>(null);
   const { project, setProject, replaceProject, undo, redo, canUndo, canRedo } =
     useVideoProjectHistory();
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null);
@@ -274,7 +280,10 @@ export function VideoEditor({ onPublish }: Props) {
       setSavedTemplateId(null);
       setSelectedId(template.id);
       setCategory(template.category);
-      const next = buildDefaultVideoProject(template.id, template.category, binding, format);
+      let next = buildDefaultVideoProject(template.id, template.category, binding, format);
+      if (selectedReview && isReviewVideoTemplate(template.id)) {
+        next = applyGuestReviewToVideoProject(next, selectedReview, binding);
+      }
       replaceProject(next);
       setSelectedSceneId(next.scenes[0]?.id ?? null);
       // New template → always preview the full storyboard, not a leftover clip mode.
@@ -284,7 +293,7 @@ export function VideoEditor({ onPublish }: Props) {
       if (openEditor) setShowEditorSettings(true);
       window.setTimeout(() => setAutoSaveSuspended(false), 0);
     },
-    [templates, binding, format, replaceProject]
+    [templates, binding, format, replaceProject, selectedReview]
   );
 
   const applySavedVideoTemplate = useCallback(
@@ -1123,6 +1132,20 @@ export function VideoEditor({ onPublish }: Props) {
             binding={binding}
             onOpenAiGenerate={() => setAiGenerateOpen(true)}
             aiGenerateBusy={aiGenerateBusy || generateTemplate.isPending}
+            selectedReviewId={selectedReview?.id ?? null}
+            onSelectReview={(review) => {
+              setSelectedReview(review);
+              setCategory('reviews');
+              setProject((prev) => {
+                if (!prev) return prev;
+                if (!isReviewVideoTemplate(prev.templateId)) {
+                  const next = buildDefaultVideoProject('guest-love', 'reviews', binding, format);
+                  setSelectedId(next.templateId);
+                  return applyGuestReviewToVideoProject(next, review, binding);
+                }
+                return applyGuestReviewToVideoProject(prev, review, binding);
+              });
+            }}
             captureSaveThumbnail={async () => {
               if (!project) return null;
               return captureLiveVideoProjectThumbnail(project, accentColor);

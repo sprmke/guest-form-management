@@ -11,6 +11,7 @@ import {
 } from '@/features/dashboard/marketing/components/shared/MarketingFormatPicker';
 import { MarketingMoveTemplateDialog } from '@/features/dashboard/marketing/components/shared/MarketingMoveTemplateDialog';
 import { MarketingNameDialog } from '@/features/dashboard/marketing/components/shared/MarketingNameDialog';
+import { MarketingReviewSidebarSection } from '@/features/dashboard/marketing/components/shared/MarketingReviewSidebarSection';
 import { MARKETING_SIDEBAR_GRID } from '@/features/dashboard/marketing/components/shared/marketingSidebarLayout';
 import { MarketingSidebarSection } from '@/features/dashboard/marketing/components/shared/MarketingSidebarSection';
 import type { MarketingSidebarMenuItem } from '@/features/dashboard/marketing/components/shared/MarketingSidebarSection';
@@ -29,6 +30,7 @@ import {
 import { useMarketingTemplateThumbnails } from '@/features/dashboard/marketing/hooks/useMarketingTemplateThumbnails';
 import { DESIGN_CUSTOM_SOURCE_PRESET_ID } from '@/features/dashboard/marketing/lib/designAutosave';
 import type { DesignBinding } from '@/features/dashboard/marketing/lib/designCanvasTypes';
+import type { MarketingGuestReview } from '@/features/dashboard/marketing/lib/marketingGuestReview';
 import { isHiddenCategoryId } from '@/features/dashboard/marketing/lib/marketingCatalogHidden';
 import { resolveFormatOptionDimensions } from '@/features/dashboard/marketing/lib/marketingFormats';
 import {
@@ -107,6 +109,9 @@ type Props = {
   onSavedTemplate?: (record: MarketingTemplateRecord) => void;
   onOpenAiGenerate?: () => void;
   aiGenerateBusy?: boolean;
+  /** When set, shows Reviews list under Templates (Reviews / Social proof categories). */
+  selectedReviewId?: string | null;
+  onSelectReview?: (review: MarketingGuestReview) => void;
   designJsonForSave?: Record<string, unknown> | (() => Record<string, unknown> | null);
   aspectPreset?: string;
   platform?: string;
@@ -138,6 +143,8 @@ export function MarketingTemplatesPanel({
   onSavedTemplate,
   onOpenAiGenerate,
   aiGenerateBusy = false,
+  selectedReviewId = null,
+  onSelectReview,
   designJsonForSave,
   aspectPreset,
   platform,
@@ -498,6 +505,10 @@ export function MarketingTemplatesPanel({
   })();
 
   const hasTemplates = visiblePresets.length > 0 || visibleSavedRecords.length > 0;
+  const showGuestReviewsSection =
+    Boolean(onSelectReview) &&
+    ((contentType === 'design' && category === 'reviews') ||
+      (contentType === 'video' && category === 'reviews'));
 
   return (
     <>
@@ -596,6 +607,14 @@ export function MarketingTemplatesPanel({
           <p className="text-muted-foreground text-xs">No templates in this category.</p>
         )}
       </MarketingSidebarSection>
+
+      {showGuestReviewsSection && onSelectReview ? (
+        <MarketingReviewSidebarSection
+          selectedReviewId={selectedReviewId}
+          onSelect={onSelectReview}
+          socialSeedOnly
+        />
+      ) : null}
 
       {dialogMeta ? (
         <MarketingNameDialog

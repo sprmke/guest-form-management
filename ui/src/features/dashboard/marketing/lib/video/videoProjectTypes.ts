@@ -126,6 +126,8 @@ export type VideoProject = {
   music?: VideoProjectMusic;
   /** Optional look palette (AI suggestion mood) — overrides brand-tinted template palette. */
   palette?: CampaignPalette;
+  /** Marketing guest review id used to seed Guest love / Stay again copy. */
+  sourceReviewId?: string | null;
 };
 
 export const VIDEO_TRANSITION_FRAMES = 15;

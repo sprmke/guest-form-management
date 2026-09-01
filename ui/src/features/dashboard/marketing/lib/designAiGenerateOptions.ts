@@ -224,6 +224,8 @@ export const DESIGN_AI_DEFAULT_CONTENTS: Record<DesignCampaignCategory, string> 
     'Giveaway: invite guests to enter a contest or drawing for a chance to win a free stay.',
   'fully-booked':
     'Fully booked: let guests know the month is full and invite them to join a waitlist for future openings.',
+  reviews:
+    'Guest review social post: highlight a five-star quote, guest name, and stars to build trust for direct bookings.',
   custom: '',
 };
 

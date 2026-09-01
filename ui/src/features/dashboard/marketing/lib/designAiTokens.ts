@@ -18,7 +18,8 @@ export type DesignFontPairing =
 
 export type DesignBackgroundMood = 'photo' | 'solid' | 'gradient' | 'color-wash';
 
-export type DesignCampaignCategory = 'promo' | 'slots' | 'giveaway' | 'fully-booked' | 'custom';
+export type DesignCampaignCategory =
+  'promo' | 'slots' | 'giveaway' | 'fully-booked' | 'reviews' | 'custom';
 
 export type DesignTemplateTokens = {
   layoutArchetype: DesignLayoutArchetype;
@@ -78,6 +79,7 @@ const DESIGN_CATEGORIES: DesignCampaignCategory[] = [
   'slots',
   'giveaway',
   'fully-booked',
+  'reviews',
   'custom',
 ];
 
@@ -133,6 +135,13 @@ const CATEGORY_FALLBACK_COPY: Record<
     subheadline: 'Be the first to know when dates open up.',
     detail: 'Drop your details and we will notify you.',
     cta: 'Notify me',
+  },
+  reviews: {
+    eyebrow: 'Guest love',
+    headline: 'Felt like home',
+    subheadline: 'A five-star stay our guests still talk about.',
+    detail: '★★★★★',
+    cta: 'Book your stay',
   },
   custom: {
     eyebrow: 'Featured',

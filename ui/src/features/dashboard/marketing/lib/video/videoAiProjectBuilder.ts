@@ -168,7 +168,7 @@ const VIDEO_AI_MUSIC_CUES: Record<VideoAiCategory, { title: string; artist: stri
   'soft-stay': { title: 'Lofi Chillout Hip Hop Beat', artist: 'Joystock' },
   'flash-deal': { title: 'Upbeat', artist: 'Electronic' },
   'last-openings': { title: 'Pulse', artist: 'Cinematic' },
-  'social-proof': { title: 'Acoustic', artist: 'Chill' },
+  reviews: { title: 'Acoustic', artist: 'Chill' },
   'fully-booked': { title: 'Ambient', artist: 'Piano' },
   seasonal: { title: 'Warm', artist: 'Indie' },
   custom: { title: 'Ambient', artist: 'Piano' },

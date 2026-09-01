@@ -219,7 +219,7 @@ export const VIDEO_AI_DEFAULT_CONTENTS: Record<VideoAiCategory, string> = {
   'soft-stay': 'A calm, editorial welcome moment that sells the feeling of staying here.',
   'flash-deal': 'A limited-time discount with urgency to book direct.',
   'last-openings': 'The last remaining open dates this month, encouraging a quick booking.',
-  'social-proof': 'A warm guest-love moment that builds trust in the property.',
+  reviews: 'A warm guest-love moment that builds trust in the property.',
   'fully-booked': 'A fully booked announcement that invites guests to join a waitlist.',
   seasonal: 'A seasonal moment tied to the time of year that invites a booking.',
   custom: '',
