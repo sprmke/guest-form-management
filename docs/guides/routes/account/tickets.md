@@ -46,8 +46,9 @@ Guests can message Kame from the public Contact page after signing in with their
 - Auth: `RequireGuestSession` (same as Profile / Stays / Favorites).
 - Scope: `SupportTicketScopeProvider` with `channel: 'guest'` (no org/property/parking).
 - UI: `TicketsWorkspacePage` with `basePathOverride={GUEST_ACCOUNT_PATH}` (`/account`). **New** sets `?compose=1` on the tickets URL; legacy `/account/tickets/new` redirects to the same.
-- APIs: `list-support-tickets`, `get-support-ticket`, `submit-support-ticket`, `reply-support-ticket`, `upload-support-ticket-attachment` (guest channel when no org params).
+- APIs: `list-support-tickets`, `get-support-ticket`, `submit-support-ticket`, `reply-support-ticket`, `reopen-support-ticket`, `upload-support-ticket-attachment` (guest channel when no org params).
 - DB: `support_tickets.channel = 'guest'`, `organization_id` null; messages `sender_type = 'guest'`.
+- **Closed** tickets hide the composer; **Reopen ticket** calls `reopen-support-ticket` then restores replies. **Resolved** tickets keep the composer; replying moves status to **In progress**.
 
 ### Contact (`/contact`)
 
