@@ -13,6 +13,7 @@ import {
   Inbox,
   LayoutDashboard,
   Megaphone,
+  ScrollText,
   Settings,
   Tags,
   Users,
@@ -193,6 +194,11 @@ export function buildPropertyNavSections(
           Icon: Settings,
         },
         {
+          label: 'Announcements',
+          href: propertySectionPath(orgSlug, propertySlug, 'announcements'),
+          Icon: ScrollText,
+        },
+        {
           label: 'Help & Support',
           href: propertySectionPath(orgSlug, propertySlug, 'help-support'),
           Icon: HelpCircle,
@@ -247,6 +253,11 @@ export function buildParkingNavSections(orgSlug: string, parkingSlug: string): S
           label: 'Settings',
           href: parkingSectionPath(orgSlug, parkingSlug, 'settings'),
           Icon: Settings,
+        },
+        {
+          label: 'Announcements',
+          href: parkingSectionPath(orgSlug, parkingSlug, 'announcements'),
+          Icon: ScrollText,
         },
         {
           label: 'Help & Support',

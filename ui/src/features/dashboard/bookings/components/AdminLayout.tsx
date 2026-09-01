@@ -62,6 +62,8 @@ import {
 import { resolveActiveNavHref } from '@/features/dashboard/bookings/lib/navActive';
 import { NotificationBell } from '@/features/dashboard/notifications/components/NotificationBell';
 import { NotificationsProvider } from '@/features/dashboard/notifications/components/NotificationsProvider';
+import { AdminAnnouncementBanner } from '@/features/dashboard/announcements/components/AdminAnnouncementBanner';
+import { isHostAnnouncementsArchivePath } from '@/features/dashboard/announcements/lib/hostAnnouncementsPaths';
 import { useNotificationsList } from '@/features/dashboard/notifications/hooks/useNotifications';
 import { ListingContractRenewalProvider } from '@/features/dashboard/org/components/listing-authorization/ListingContractRenewalProvider';
 import { ListingVerificationSidebarCta } from '@/features/dashboard/org/components/listing-authorization/ListingVerificationSidebarCta';
@@ -622,7 +624,13 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
               <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
                 <AdminMobileTopBar superAdmin={superAdmin} />
 
-                <AdminMainColumn fillMain={fillMain} pathname={location.pathname}>
+                <AdminMainColumn
+                  fillMain={fillMain}
+                  pathname={location.pathname}
+                  showHostAnnouncements={
+                    !superAdmin && !isHostAnnouncementsArchivePath(location.pathname)
+                  }
+                >
                   {children}
                 </AdminMainColumn>
               </div>
@@ -712,10 +720,12 @@ function AdminMainColumn({
   children,
   fillMain,
   pathname,
+  showHostAnnouncements,
 }: {
   children: ReactNode;
   fillMain: boolean;
   pathname: string;
+  showHostAnnouncements: boolean;
 }) {
   const heroOwned = useAdminMobileHeroOwned();
 
@@ -746,6 +756,7 @@ function AdminMainColumn({
             fillMain ? 'flex min-h-0 flex-1 flex-col' : 'space-y-3 sm:space-y-4 lg:space-y-6'
           )}
         >
+          {showHostAnnouncements ? <AdminAnnouncementBanner /> : null}
           {children}
         </PageTransition>
       </MobileAppShell>
