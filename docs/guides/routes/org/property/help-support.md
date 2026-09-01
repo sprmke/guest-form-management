@@ -2,12 +2,14 @@
 title: 'Property Help & Support'
 status: active
 tags: [guides, routes, org, property, help-support]
-updated: 2026-08-28
+updated: 2026-09-01
 ---
 
 # Property Help & Support
 
 Route: `/org/:orgSlug/property/:propertySlug/help-support` (+ `/docs`, `/tickets`, `/tickets/new`, `/tickets/:ticketId`)
+
+Announcements moved to dedicated sidebar route: [Announcements](./announcements.md) (`/announcements`). Legacy `/help-support/announcements` redirects there.
 
 > **Status:** Documented
 
@@ -22,7 +24,7 @@ Route: `/org/:orgSlug/property/:propertySlug/help-support` (+ `/docs`, `/tickets
 
 ## Overview
 
-Property team members open Help & Support to find answers, chat with the AI assistant, and contact the Kame Homes team. FAQs, Guides, and Tickets stay under the same Help & Support title. Four clickable summary cards (same style as Finance and Bookings) stay at the top, with Ask AI last; FAQs, Guides, and Tickets swap the content below. Visible to **every** non–plan-limited property team member (same baseline as the Help nav item). Route guard (`RequirePropertyPermission`) does **not** require `bookings:view` — plan-limited members still hit the plan gate.
+Property team members open Help & Support to find answers, chat with the AI assistant, and contact the Kame Homes team. FAQs, Guides, and Tickets stay under the same Help & Support title. Four clickable summary cards (same style as Finance and Bookings) stay at the top, with Ask AI last; FAQs, Guides, and Tickets swap the content below. Platform and development **Announcements** live on the dedicated [Announcements](./announcements.md) sidebar item. Visible to **every** non–plan-limited property team member (same baseline as the Help nav item). Route guard (`RequirePropertyPermission`) does **not** require `bookings:view` — plan-limited members still hit the plan gate.
 
 ## Host-facing knowledge
 
@@ -36,6 +38,8 @@ This is where you go if you're stuck, found something broken, or want to ask us 
   A: Broken if a page or feature isn't working. Idea if you want a feature added. Question if you need to know how something works. Business for billing, plans, or partnerships.
 - Q: How do I know when someone replies to my ticket?
   A: You'll get an email. You can also open Tickets any time to see the latest status and read the conversation.
+- Q: Can I reply after my ticket is closed?
+  A: Closed tickets can't take new messages until you tap **Reopen ticket**. Resolved tickets still accept replies — that moves the ticket back to In progress.
 - Q: Can I attach a video?
   A: Yes. Tickets about something broken can include up to 3 files — images up to 10 MB (compressed automatically before upload) or short videos up to 50 MB. Trim or compress a longer clip first; videos aren't re-encoded for you.
 - Q: What's the difference between Ask AI and a ticket?
@@ -49,7 +53,7 @@ This is where you go if you're stuck, found something broken, or want to ask us 
 
 ### Sections
 
-Persistent **Help & Support** title and subtitle. Four clickable summary cards stay at the top, in this order: **FAQs**, **Guides**, **Tickets**, **Ask AI** — same surface, icon well, and hover as Finance/Bookings KPIs. The selected card uses a primary inset ring and tint. A centered title and one-line description sit under the cards: FAQs (“Short answers to the questions hosts ask most.”), Guides (“Walkthroughs for each page in the dashboard.”), Tickets (“Send a request to our team and track replies here.”). FAQs is selected on the default route. Content is the eight most common published FAQs (no search). Guides and Tickets swap only the content below the cards. Clicking the already-selected Guides or Tickets card returns to FAQs. Accordion items are exclusive (one open at a time) with comfortable spacing.
+Persistent **Help & Support** title and subtitle. Four clickable summary cards stay at the top: **FAQs**, **Guides**, **Tickets**, **Ask AI**. On desktop (`xl+`) they sit in one four-column row; below that they wrap as two columns (centered). The selected card uses a primary inset ring and tint. A centered title and one-line description sit under the cards for the active module. FAQs is selected on the default route. Content is the eight most common published FAQs (no search). Guides and Tickets swap only the content below the cards. Clicking the already-selected Guides or Tickets card returns to FAQs. Accordion items are exclusive (one open at a time) with comfortable spacing.
 
 ### Behavior / edge cases
 
@@ -88,39 +92,51 @@ Required fields show a red `*`. Submit stays disabled until Subject and Details 
 
 ## Ticket list and conversation
 
-Lists the caller's own tickets with a status badge (Open / In progress / Resolved / Closed). Opening a row shows the reply thread in the same Tickets workspace. The thread is sticky header + scrolling messages + a docked composer (bordered box, paperclip attach, Send on the right). Enter sends; Shift+Enter inserts a newline. Reply attach uses the paperclip control (up to 3 files) — the dashed dropzone stays on the new-ticket form only. Replying to a resolved or closed ticket reopens it to In progress. Empty and load-error states stay inside the list pane under **My Tickets** (icon well + title + retry). New ticket compose is a modal, not a second pane.
+Lists the caller's own tickets with a status badge (Open / In progress / Resolved / Closed). Opening a row shows the reply thread in the same Tickets workspace. The thread is sticky header + status banner + scrolling messages + a docked composer when replies are allowed (bordered box, paperclip attach, Send on the right). Enter sends; Shift+Enter inserts a newline. Reply attach uses the paperclip control (up to 3 files) — the dashed dropzone stays on the new-ticket form only.
+
+**Status flow (submitter):**
+
+| Status             | Composer | Behavior                                                                                          |
+| ------------------ | -------- | ------------------------------------------------------------------------------------------------- |
+| Open / In progress | Shown    | Normal replies                                                                                    |
+| Resolved           | Shown    | Banner explains resolution; placeholder “Reply to reopen…”; reply moves ticket to **In progress** |
+| Closed             | Hidden   | Banner + **Reopen ticket** button; reopen sets status to **Open**, then composer returns          |
+
+Empty and load-error states stay inside the list pane under **My Tickets** (icon well + title + retry). Closed rows in the list render slightly muted. New ticket compose is a modal, not a second pane.
 
 ## API reference
 
-| Action              | Endpoint                                |
-| ------------------- | --------------------------------------- |
-| List articles       | `GET list-help-center-articles`         |
-| List FAQs           | `GET list-help-center-faqs`             |
-| Submit ticket       | `POST submit-support-ticket`            |
-| List my tickets     | `GET list-support-tickets`              |
-| Get ticket + thread | `GET get-support-ticket`                |
-| Reply to ticket     | `POST reply-support-ticket`             |
-| Upload attachment   | `POST upload-support-ticket-attachment` |
+| Action               | Endpoint                                |
+| -------------------- | --------------------------------------- |
+| List articles        | `GET list-help-center-articles`         |
+| List FAQs            | `GET list-help-center-faqs`             |
+| Submit ticket        | `POST submit-support-ticket`            |
+| List my tickets      | `GET list-support-tickets`              |
+| Get ticket + thread  | `GET get-support-ticket`                |
+| Reply to ticket      | `POST reply-support-ticket`             |
+| Reopen closed ticket | `POST reopen-support-ticket`            |
+| Upload attachment    | `POST upload-support-ticket-attachment` |
 
 ## Implementation map
 
-| Concern            | Path                                                                                                                                                                                                           |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Pages              | `ui/src/features/dashboard/help-support/pages/*.tsx` (`HelpSupportOverviewPage`, `HelpDocumentationPage`, `TicketsWorkspacePage`)                                                                              |
-| Layout             | `ui/src/features/dashboard/help-support/components/HelpSupportLayout.tsx` (shell stays mounted; outlet only)                                                                                                   |
-| Page enter         | `ui/src/features/dashboard/bookings/lib/adminPageTransitionKey.ts` — Help & Support subtree shares one animation key                                                                                           |
-| Module nav         | `HelpSupportModuleNav.tsx` — `StatCard` / `StatCardGrid` from `@/components/shared/StatCard`                                                                                                                   |
-| Section intro      | `HelpSectionIntro.tsx` — centered title + description under the cards                                                                                                                                          |
-| Components         | `NewTicketModal.tsx` (compose overlay + discard confirm), `TicketThreadPanel.tsx` (inbox thread + docked composer), `TicketAttachmentDropzone.tsx` (`dropzone` + `composer` variants), `TicketComposeForm.tsx` |
-| Hooks              | `ui/src/features/dashboard/help-support/hooks/*.ts`                                                                                                                                                            |
-| API client         | `ui/src/features/dashboard/help-support/lib/supportTicketApi.ts`                                                                                                                                               |
-| Edge functions     | `supabase/functions/{submit,list,get,reply}-support-ticket*`, `upload-support-ticket-attachment`, `list-help-center-{articles,faqs}`                                                                           |
-| Scope resolution   | `supabase/functions/_shared/supportTicketScope.ts`                                                                                                                                                             |
-| Route registration | `ui/src/features/dashboard/help-support/routes/index.tsx`                                                                                                                                                      |
+| Concern            | Path                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Pages              | `ui/src/features/dashboard/help-support/pages/*.tsx` (`HelpSupportOverviewPage`, `HelpDocumentationPage`, `TicketsWorkspacePage`)                                                                                                                                                                                                                                                                                                    |
+| Layout             | `ui/src/features/dashboard/help-support/components/HelpSupportLayout.tsx` (shell stays mounted; outlet only)                                                                                                                                                                                                                                                                                                                         |
+| Page enter         | `ui/src/features/dashboard/bookings/lib/adminPageTransitionKey.ts` — Help & Support subtree shares one animation key                                                                                                                                                                                                                                                                                                                 |
+| Module nav         | `HelpSupportModuleNav.tsx` — `StatCard` / `StatCardGrid` from `@/components/shared/StatCard`                                                                                                                                                                                                                                                                                                                                         |
+| Section intro      | `HelpSectionIntro.tsx` — centered title + description under the cards                                                                                                                                                                                                                                                                                                                                                                |
+| Components         | `NewTicketModal.tsx` (compose overlay + discard confirm), `TicketThreadPanel.tsx` (inbox thread + status banner + docked composer), `TicketStatusBanner.tsx`, `TicketReplyComposer.tsx`, `TicketMessageBubble.tsx`, `TicketAttachmentDropzone.tsx` (`dropzone` + `composer` variants), `TicketComposeForm.tsx`, `AdminAnnouncementBanner.tsx`, `HostAnnouncementBannerStrip.tsx`, `HostAnnouncementCard.tsx`, `HostAnnouncementFeed` |
+| Hooks              | `ui/src/features/dashboard/help-support/hooks/*.ts`                                                                                                                                                                                                                                                                                                                                                                                  |
+| API client         | `ui/src/features/dashboard/help-support/lib/supportTicketApi.ts`                                                                                                                                                                                                                                                                                                                                                                     |
+| Edge functions     | `supabase/functions/{submit,list,get,reply}-support-ticket*`, `upload-support-ticket-attachment`, `list-help-center-{articles,faqs}`                                                                                                                                                                                                                                                                                                 |
+| Scope resolution   | `supabase/functions/_shared/supportTicketScope.ts`                                                                                                                                                                                                                                                                                                                                                                                   |
+| Route registration | `ui/src/features/dashboard/help-support/routes/index.tsx`                                                                                                                                                                                                                                                                                                                                                                            |
 
 ## Related docs
 
 - [Route index](../../README.md)
+- [Property Announcements](./announcements.md)
 - [Org Help & Support](../help-support.md)
 - [Parking Help & Support](../parking/help-support.md)
 - [Super-admin ticket management](../../admin/support.md)

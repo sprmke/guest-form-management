@@ -9,6 +9,8 @@ updated: 2026-08-17
 
 Route: `/org/:orgSlug/parking/:parkingSlug/help-support` (+ `/docs`, `/tickets`, `/tickets/new`, `/tickets/:ticketId`)
 
+Announcements: [Announcements](./announcements.md) (`/announcements`). Legacy `/help-support/announcements` redirects there.
+
 > **Status:** Documented
 
 ## Progress overview

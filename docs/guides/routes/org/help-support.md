@@ -9,6 +9,8 @@ updated: 2026-08-17
 
 Route: `/org/:orgSlug/help-support` (+ `/docs`, `/tickets`, `/tickets/new`, `/tickets/:ticketId`)
 
+Announcements are **property-only** — see [Property Announcements](./property/announcements.md). Org `/help-support/announcements` redirects to the Help index.
+
 > **Status:** Documented
 
 ## Progress overview

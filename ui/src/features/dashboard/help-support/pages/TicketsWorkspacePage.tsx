@@ -169,7 +169,7 @@ export function TicketsWorkspacePage({ basePathOverride }: TicketsWorkspacePageP
   return (
     <div
       className={cn(
-        'flex h-full min-h-0 flex-1 flex-col overflow-hidden',
+        'flex min-h-0 flex-1 flex-col overflow-hidden lg:min-h-[480px]',
         bottomTabBarOffsetClassName()
       )}
     >
@@ -238,7 +238,8 @@ export function TicketsWorkspacePage({ basePathOverride }: TicketsWorkspacePageP
                         className={cn(
                           'relative flex min-h-[44px] w-full touch-manipulation flex-col gap-1 px-3 py-3 text-left transition-colors',
                           'hover:bg-muted/40',
-                          selected && 'bg-muted/60'
+                          selected && 'bg-muted/60',
+                          ticket.status === 'closed' && !selected && 'opacity-70'
                         )}
                       >
                         {selected ? (
@@ -275,7 +276,7 @@ export function TicketsWorkspacePage({ basePathOverride }: TicketsWorkspacePageP
 
         <div
           className={cn(
-            'flex h-full min-h-0 min-w-0 flex-1 flex-col',
+            'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
             isEmpty ? 'hidden' : paneOpen ? 'flex' : 'hidden lg:flex'
           )}
         >

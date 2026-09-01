@@ -5,6 +5,7 @@ import {
   fetchSupportTicket,
   fetchSupportTickets,
   replySupportTicket,
+  reopenSupportTicket,
   submitSupportTicket,
   uploadSupportTicketAttachment,
   type SubmitSupportTicketPayload,
@@ -69,6 +70,21 @@ export function useReplySupportTicket(ticketId: string) {
   return useMutation({
     mutationFn: (args: { message: string; attachments?: SupportTicketAttachmentDraft[] }) =>
       replySupportTicket(scope, ticketId, args.message, args.attachments),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['support-ticket', ticketId, ...scopeKey(scope)] }),
+        qc.invalidateQueries({ queryKey: ['support-tickets', ...scopeKey(scope)] }),
+      ]);
+    },
+  });
+}
+
+export function useReopenSupportTicket(ticketId: string) {
+  const qc = useQueryClient();
+  const scope = useSupportTicketScope();
+
+  return useMutation({
+    mutationFn: () => reopenSupportTicket(scope, ticketId),
     onSuccess: async () => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['support-ticket', ticketId, ...scopeKey(scope)] }),

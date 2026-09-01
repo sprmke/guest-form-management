@@ -10,7 +10,8 @@ import { ADMIN_DEFAULT_PAGE_SIZE } from '@/lib/table/pagination';
 
 export type AdminSupportTicket = SupportTicket & {
   organizationName: string;
-  organizationSlug: string;
+  organizationSlug: string | null;
+  channel?: 'host' | 'guest';
 };
 
 export type SupportTicketAdminFilters = {
