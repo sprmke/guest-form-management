@@ -20,6 +20,15 @@ import { parseDocumentRequirements } from '../_shared/documentRequirements.ts';
 import { verifySuperAdminJwt } from '../_shared/superAdminAuth.ts';
 import { validatePropertyMediaArray } from '../_shared/propertyMedia.ts';
 import { parseUnitTypes, validateUnitTypes } from '../_shared/unitTypes.ts';
+import {
+  parseGuestGuides,
+  validateDevelopmentGuestInfoSettings,
+} from '../_shared/developmentGuestInfo.ts';
+import {
+  parseHostAnnouncements,
+  stampHostAnnouncementsForSave,
+  validateHostAnnouncements,
+} from '../_shared/hostAnnouncements.ts';
 
 const DEVELOPMENT_TYPES = new Set([
   'CONDOMINIUM',
@@ -234,7 +243,72 @@ serveAuthenticated('update-development', async (req) => {
     settingsChanged = true;
   }
 
+  if (body.poolFee !== undefined) {
+    const poolFee = numberOrNull(body.poolFee);
+    if (poolFee === undefined) {
+      return jsonError(req, 'poolFee must be a number or null');
+    }
+    if (poolFee != null && poolFee < 0) {
+      return jsonError(req, 'poolFee cannot be negative');
+    }
+    settingsPatch.poolFee = poolFee;
+    settingsChanged = true;
+  }
+
+  if (body.poolSchedule !== undefined) {
+    settingsPatch.poolSchedule =
+      typeof body.poolSchedule === 'string' ? body.poolSchedule.trim() || null : null;
+    settingsChanged = true;
+  }
+
+  if (body.guestRequirements !== undefined) {
+    settingsPatch.guestRequirements =
+      typeof body.guestRequirements === 'string' ? body.guestRequirements.trim() || null : null;
+    settingsChanged = true;
+  }
+
+  if (body.importantInfo !== undefined) {
+    settingsPatch.importantInfo =
+      typeof body.importantInfo === 'string' ? body.importantInfo.trim() || null : null;
+    settingsChanged = true;
+  }
+
+  if (body.guestGuides !== undefined) {
+    if (!Array.isArray(body.guestGuides)) {
+      return jsonError(req, 'guestGuides must be an array');
+    }
+    const parsed = parseGuestGuides(body.guestGuides);
+    if (parsed.length !== body.guestGuides.length) {
+      return jsonError(req, 'Each guest guide needs an id, title, and content');
+    }
+    settingsPatch.guestGuides = parsed;
+    settingsChanged = true;
+  }
+
+  if (body.announcements !== undefined) {
+    if (!Array.isArray(body.announcements)) {
+      return jsonError(req, 'announcements must be an array');
+    }
+    const parsed = parseHostAnnouncements(body.announcements);
+    if (parsed.length !== body.announcements.length) {
+      return jsonError(req, 'Each announcement needs an id, title, and message');
+    }
+    const validationError = validateHostAnnouncements(parsed);
+    if (validationError) {
+      return jsonError(req, validationError);
+    }
+    settingsPatch.announcements = stampHostAnnouncementsForSave(
+      parsed,
+      parseHostAnnouncements((existing as DevelopmentRow).settings?.announcements)
+    );
+    settingsChanged = true;
+  }
+
   if (settingsChanged) {
+    const guestInfoError = validateDevelopmentGuestInfoSettings(settingsPatch);
+    if (guestInfoError) {
+      return jsonError(req, guestInfoError);
+    }
     patch.settings = settingsPatch;
   }
 
