@@ -14,6 +14,8 @@ import {
   type ShowcaseTemplateKey,
   type StayGuideChapterBlock,
 } from '@/features/guest/marketing/showcase/types/showcase';
+import type { ResolvedPropertyDetail } from '@/features/guest/marketing/properties/types/publicProperty';
+import { resolveShowcaseHeroEyebrow } from '@/features/guest/marketing/showcase/lib/showcaseHeroEyebrow';
 import type { GuestStayGuideDto } from '@/features/guest/stay-guide/lib/api';
 import {
   isStayGuideChapterSectionId,
@@ -122,10 +124,16 @@ function resolveHeroEyebrow(
   dto: GuestStayGuideDto,
   entry: StayGuideSectionConfigEntry | undefined
 ): string {
-  const source = entry?.heroEyebrow?.source ?? 'location';
-  if (source === 'custom')
-    return entry?.heroEyebrow?.customText?.trim() || dto.property.locationLabel;
-  return dto.property.locationLabel || 'Your stay';
+  const property = dto.property as GuestStayGuideDto['property'] & {
+    type?: string;
+    residenceName?: string | null;
+    developmentSlug?: string | null;
+  };
+  return resolveShowcaseHeroEyebrow(
+    property as unknown as ResolvedPropertyDetail,
+    dto.property.locationLabel || 'Your stay',
+    entry?.heroEyebrow
+  );
 }
 
 export function mapStayGuideData(input: {

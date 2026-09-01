@@ -2,7 +2,7 @@ const STAY_GUIDE_RICH_TEXT_CLASS = 'stay-guide-rich-text';
 
 const richTextStyles = `
   .${STAY_GUIDE_RICH_TEXT_CLASS} {
-    color: #404040;
+    color: hsl(var(--showcase-ink-muted, var(--muted-foreground)));
     overflow-wrap: break-word;
     word-break: break-word;
   }
@@ -13,33 +13,25 @@ const richTextStyles = `
     overflow-x: auto;
   }
 
-  .dark .${STAY_GUIDE_RICH_TEXT_CLASS} {
-    color: #D4D4D4;
-  }
-
   .${STAY_GUIDE_RICH_TEXT_CLASS} h2 {
     font-size: 1.25rem;
     font-weight: 700;
     margin: 1.25rem 0 0.75rem;
     letter-spacing: -0.02em;
-    color: hsl(var(--primary));
+    color: hsl(var(--showcase-ink, var(--foreground)));
   }
 
   .${STAY_GUIDE_RICH_TEXT_CLASS} h3 {
     font-size: 1.05rem;
     font-weight: 600;
     margin: 1.25rem 0 0.5rem;
-    color: hsl(var(--primary));
+    color: hsl(var(--showcase-ink, var(--foreground)));
   }
 
   .${STAY_GUIDE_RICH_TEXT_CLASS} p {
     margin: 0 0 1rem;
     line-height: 1.75;
-    color: #404040;
-  }
-
-  .dark .${STAY_GUIDE_RICH_TEXT_CLASS} p {
-    color: #D4D4D4;
+    color: hsl(var(--showcase-ink-muted, var(--muted-foreground)));
   }
 
   .${STAY_GUIDE_RICH_TEXT_CLASS} p + h3,
@@ -52,6 +44,7 @@ const richTextStyles = `
   .${STAY_GUIDE_RICH_TEXT_CLASS} ol {
     margin: 0 0 1rem;
     padding-left: 1.35rem;
+    color: hsl(var(--showcase-ink-muted, var(--muted-foreground)));
   }
 
   .${STAY_GUIDE_RICH_TEXT_CLASS} ul {
@@ -78,7 +71,7 @@ const richTextStyles = `
   }
 
   .${STAY_GUIDE_RICH_TEXT_CLASS} a {
-    color: hsl(var(--primary));
+    color: hsl(var(--showcase-accent, var(--primary)));
     text-decoration: underline;
     text-underline-offset: 3px;
     word-break: break-word;
@@ -94,6 +87,7 @@ const richTextStyles = `
 
   .${STAY_GUIDE_RICH_TEXT_CLASS} strong {
     font-weight: 600;
+    color: hsl(var(--showcase-ink, var(--foreground)));
   }
 `;
 

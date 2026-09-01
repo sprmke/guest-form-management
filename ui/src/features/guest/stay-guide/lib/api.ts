@@ -3,12 +3,7 @@ import type { StayGuideConfigV2 } from '@/features/guest/stay-guide/lib/stayGuid
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-/**
- * v1 stay-guide section config — still consumed by `stayGuideChapters.ts` and the chapter
- * renderer (`StayGuideChapter` / `StayGuideTabs`). Kept alongside the v2 `StayGuideConfigV2`
- * during the Stay Guide → page-template-engine migration; remove once the chapter renderer
- * is ported to v2.
- */
+/** Legacy v1 config shape — kept for migration/backfill reference only. Runtime uses `StayGuideConfigV2`. */
 export type StayGuideChapterConfig = {
   id: 'getting-in' | 'make-yourself-at-home' | 'before-you-go';
   visible: boolean;

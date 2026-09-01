@@ -315,9 +315,9 @@ function StayGuideChapter({
           />
         </ShowcaseReveal>
         <div className="mt-6 space-y-8">
-          {blocks.map((block, i) => (
-            <ShowcaseReveal key={block.key || i}>
-              <div className={cn('@md:p-7 rounded-3xl border p-5', tokens.card, tokens.cardBorder)}>
+          {blocks.map((block, i) => {
+            const content = (
+              <>
                 {blocks.length > 1 && block.heading ? (
                   <h3 className="mb-2 text-lg font-semibold">{block.heading}</h3>
                 ) : null}
@@ -330,9 +330,23 @@ function StayGuideChapter({
                     className="mt-4 w-full rounded-2xl object-cover"
                   />
                 ) : null}
-              </div>
-            </ShowcaseReveal>
-          ))}
+              </>
+            );
+
+            return (
+              <ShowcaseReveal key={block.key || i}>
+                {blocks.length === 1 ? (
+                  content
+                ) : (
+                  <div
+                    className={cn('@md:p-7 rounded-3xl border p-5', tokens.card, tokens.cardBorder)}
+                  >
+                    {content}
+                  </div>
+                )}
+              </ShowcaseReveal>
+            );
+          })}
         </div>
       </div>
     </section>
