@@ -109,6 +109,9 @@ export type PublicGuestReviewDto = {
   source?: 'kame' | 'facebook' | 'airbnb';
   /** ISO timestamp for newest-first merge sort. */
   createdAt: string | null;
+  /** Booking stay boundaries (`guest_submissions` MM-DD-YYYY). Kame reviews only. */
+  checkInDate?: string | null;
+  checkOutDate?: string | null;
 };
 
 export async function listPublicGuestReviews(
@@ -119,7 +122,7 @@ export async function listPublicGuestReviews(
   const { data, error } = await supabase
     .from('guest_reviews')
     .select(
-      'id, star_rating, review_text, feedback_tags, media_urls, guest_display_name, created_at'
+      'id, star_rating, review_text, feedback_tags, media_urls, guest_display_name, created_at, guest_submissions(check_in_date, check_out_date)'
     )
     .eq('property_id', propertyId)
     .order('created_at', { ascending: false })
@@ -135,6 +138,14 @@ export async function listPublicGuestReviews(
     const date = created
       ? new Date(created).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
       : '';
+    const bookingRaw = row.guest_submissions as
+      | { check_in_date?: string | null; check_out_date?: string | null }
+      | { check_in_date?: string | null; check_out_date?: string | null }[]
+      | null;
+    const booking = Array.isArray(bookingRaw) ? bookingRaw[0] : bookingRaw;
+    const checkInDate = typeof booking?.check_in_date === 'string' ? booking.check_in_date : null;
+    const checkOutDate =
+      typeof booking?.check_out_date === 'string' ? booking.check_out_date : null;
     const mediaRaw = row.media_urls;
     const media: GuestReviewMediaItem[] = Array.isArray(mediaRaw)
       ? mediaRaw
@@ -162,6 +173,8 @@ export async function listPublicGuestReviews(
       media,
       source: 'kame',
       createdAt: created || null,
+      checkInDate,
+      checkOutDate,
     };
   });
 }

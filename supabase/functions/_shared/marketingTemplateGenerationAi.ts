@@ -220,7 +220,8 @@ export type DesignFontPairing =
 
 export type DesignBackgroundMood = 'photo' | 'solid' | 'gradient' | 'color-wash';
 
-export type DesignCampaignCategory = 'promo' | 'slots' | 'giveaway' | 'fully-booked' | 'custom';
+export type DesignCampaignCategory =
+  'promo' | 'slots' | 'giveaway' | 'fully-booked' | 'reviews' | 'custom';
 
 export type DesignTemplateTokens = {
   layoutArchetype: DesignLayoutArchetype;
@@ -243,13 +244,7 @@ export type DesignTemplateTokens = {
 };
 
 export type VideoCategory =
-  | 'soft-stay'
-  | 'flash-deal'
-  | 'last-openings'
-  | 'social-proof'
-  | 'fully-booked'
-  | 'seasonal'
-  | 'custom';
+  'soft-stay' | 'flash-deal' | 'last-openings' | 'reviews' | 'fully-booked' | 'seasonal' | 'custom';
 
 export type VideoSceneKind = 'photo' | 'promo' | 'slots' | 'cta';
 
@@ -374,6 +369,7 @@ const DESIGN_CATEGORIES: DesignCampaignCategory[] = [
   'slots',
   'giveaway',
   'fully-booked',
+  'reviews',
   'custom',
 ];
 
@@ -381,7 +377,7 @@ const VIDEO_CATEGORIES: VideoCategory[] = [
   'soft-stay',
   'flash-deal',
   'last-openings',
-  'social-proof',
+  'reviews',
   'fully-booked',
   'seasonal',
   'custom',
@@ -572,7 +568,11 @@ export function parseVideoTemplateTokens(raw: unknown): VideoTemplateTokens {
   }
 
   return {
-    category: pickEnum(nested.category, VIDEO_CATEGORIES, 'soft-stay'),
+    category: pickEnum(
+      nested.category === 'social-proof' ? 'reviews' : nested.category,
+      VIDEO_CATEGORIES,
+      'soft-stay'
+    ),
     scenes,
     fontPairing: pickEnum(nested.fontPairing, VIDEO_FONT_PAIRINGS, 'editorial-serif'),
     copy: {
@@ -591,7 +591,7 @@ const VIDEO_CATEGORY_DEFAULT_CONTENT: Record<VideoCategory, string> = {
   'soft-stay': 'a calm, editorial welcome moment that sells the feeling of staying here',
   'flash-deal': 'a limited-time discount with urgency to book direct',
   'last-openings': 'the last remaining open dates this month, encouraging a quick booking',
-  'social-proof': 'a warm guest-love moment that builds trust in the property',
+  reviews: 'a warm guest-love moment that builds trust in the property',
   'fully-booked': 'a fully booked announcement that invites guests to join a waitlist',
   seasonal: 'a seasonal moment tied to the time of year that invites a booking',
   custom: '',
@@ -618,7 +618,7 @@ function videoSystemPrompt(): string {
     'The editor renders a fixed sequence of "scenes" — you choose how many (3 to 5) and describe each one. Every scene shares the same background (a property photo/video) with camera motion, plus optional text overlays layered on top.',
     'Return ONLY JSON matching this schema (no markdown):',
     '{',
-    '  "category": "soft-stay|flash-deal|last-openings|social-proof|fully-booked|seasonal|custom",',
+    '  "category": "soft-stay|flash-deal|last-openings|reviews|fully-booked|seasonal|custom",',
     '  "scenes": [',
     '    { "kind": "photo|promo|slots|cta", "durationSec": 2-6, "transition": "none|fade|slide-left|slide-up|wipe|dissolve|flip|clock-wipe|zoom-in-out|push-cut", "motion": "slow-zoom-in|punch-in|zoom-out|pan-left|pan-right|drift-up|diagonal-drift|hold" }',
     '  ],',
@@ -718,6 +718,7 @@ const DESIGN_CATEGORY_DEFAULT_CONTENT: Record<DesignCampaignCategory, string> = 
   slots: 'last remaining availability alert with urgency',
   giveaway: 'giveaway or contest invitation',
   'fully-booked': 'fully booked announcement with waitlist invitation',
+  reviews: 'guest review social proof with quote stars and guest attribution',
   custom: 'custom vacation-rental marketing message',
 };
 
@@ -730,7 +731,7 @@ function designSystemPrompt(): string {
     '  "palette": { "primary": "#rrggbb", "secondary": "#rrggbb", "accent": "#rrggbb" },',
     '  "fontPairing": "serif-editorial|clean-sans|modern-sleek|rounded-friendly",',
     '  "backgroundMood": "photo|solid|gradient|color-wash",',
-    '  "category": "promo|slots|giveaway|fully-booked|custom",',
+    '  "category": "promo|slots|giveaway|fully-booked|reviews|custom",',
     '  "copy": {',
     '    "eyebrow": "short tracked uppercase label under 40 chars",',
     '    "headline": "main headline under 80 chars",',
@@ -749,7 +750,7 @@ function designSystemPrompt(): string {
     '- secondary = very light surface/card color (near-white or pale tint).',
     '- accent = warm, punchier color for rules, frames, and CTA emphasis.',
     '- When a property photo is available, you MUST set backgroundMood to "photo" so the compiler can place it. When no property photo is available, never use "photo" — prefer "gradient" or "color-wash".',
-    '- Category should match the prompt intent: promo for discounts, slots for limited openings, giveaway for contests, fully-booked for waitlist announcements, custom for anything else.',
+    '- Category should match the prompt intent: promo for discounts, slots for limited openings, giveaway for contests, fully-booked for waitlist announcements, reviews for guest-quote social proof, custom for anything else.',
     '- Copy should be concise, on-brand, and specific to the category and Content.',
     '- label should be memorable and specific to the prompt vibe (not "AI design").',
     '- Do not invent layout fields outside the schema.',

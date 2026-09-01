@@ -5,6 +5,12 @@
 
 import { serializeGuestPaymentInfo } from './appSettings.ts';
 import { listAvailableCheckIns, manilaTodayYmd } from './calendarAvailabilityManila.ts';
+import {
+  collectDevelopmentPricingValues,
+  loadGuestSafeDevelopmentContextByName,
+  renderDevelopmentGuestFacts,
+  type DevelopmentGuestContextDto,
+} from './developmentGuestInfo.ts';
 import type { PropertyPaymentMethod } from './paymentMethods.ts';
 import { createServiceClient } from './orgAuth.ts';
 import { computeDefaultBookingRateFromDefaults, loadPropertyPricing } from './propertyPricing.ts';
@@ -387,6 +393,15 @@ export async function loadGuestSafeOrgContext(orgId: string): Promise<OrgGuestCo
   return { organizationName, properties };
 }
 
+export async function loadGuestSafeDevelopmentContext(
+  residenceName: string | null | undefined
+): Promise<DevelopmentGuestContextDto | null> {
+  const name = String(residenceName ?? '').trim();
+  if (!name) return null;
+  const sb = createServiceClient();
+  return loadGuestSafeDevelopmentContextByName(sb, name);
+}
+
 export async function loadGuestSafePropertyContext(
   propertyId: string
 ): Promise<PropertyGuestContextDto | null> {
@@ -611,6 +626,17 @@ function renderPropertyFacts(property: PropertyGuestContextDto): string {
   return lines.join('\n');
 }
 
+async function appendDevelopmentFactsForProperty(
+  lines: string[],
+  pricingValues: number[],
+  residenceName: string | null
+): Promise<number[]> {
+  const development = await loadGuestSafeDevelopmentContext(residenceName);
+  if (!development) return pricingValues;
+  lines.push(renderDevelopmentGuestFacts(development));
+  return appendPricingValues(pricingValues, collectDevelopmentPricingValues(development));
+}
+
 function renderAvailabilityFacts(availability: AvailabilityGuestContextDto): string {
   const immediate = renderImmediateAvailabilityFacts(availability);
   const blockedLine =
@@ -659,6 +685,11 @@ export async function buildAiGroundingFacts(
           lines.push(renderPropertyFacts(property));
           pricingValues = collectPricingValues(property.pricing);
           allowedAccountNumbers = property.paymentAccountNumbers;
+          pricingValues = await appendDevelopmentFactsForProperty(
+            lines,
+            pricingValues,
+            property.residenceName
+          );
           const availability = await loadGuestSafeAvailabilityContext(propertyId);
           lines.push(renderAvailabilityFacts(availability));
         } else {
@@ -681,6 +712,11 @@ export async function buildAiGroundingFacts(
         lines.push(renderPropertyFacts(singleProperty));
         pricingValues = collectPricingValues(singleProperty.pricing);
         allowedAccountNumbers = singleProperty.paymentAccountNumbers;
+        pricingValues = await appendDevelopmentFactsForProperty(
+          lines,
+          pricingValues,
+          singleProperty.residenceName
+        );
         const availability = await loadGuestSafeAvailabilityContext(only.id);
         lines.push(renderAvailabilityFacts(availability));
       }

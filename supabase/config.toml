@@ -798,6 +798,9 @@ verify_jwt = false
 [functions.marketing-templates]
 verify_jwt = false
 
+[functions.list-property-guest-reviews]
+verify_jwt = false
+
 [functions.publish-to-meta]
 verify_jwt = false
 
@@ -823,6 +826,15 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.delete-development]
+verify_jwt = false
+
+[functions.list-host-announcements]
+verify_jwt = false
+
+[functions.get-platform-host-settings]
+verify_jwt = false
+
+[functions.update-platform-host-settings]
 verify_jwt = false
 
 [functions.list-hosts]
@@ -973,6 +985,10 @@ verify_jwt = false
 
 [functions.submit-support-ticket]
 verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
 
 [functions.upload-support-ticket-attachment]
 verify_jwt = false
@@ -985,6 +1001,13 @@ verify_jwt = false
 
 [functions.reply-support-ticket]
 verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+
+[functions.reopen-support-ticket]
+verify_jwt = false
 
 [functions.list-support-tickets-admin]
 verify_jwt = false
@@ -994,9 +1017,17 @@ verify_jwt = false
 
 [functions.reply-support-ticket-admin]
 verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
 
 [functions.update-support-ticket-status]
 verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
 
 [functions.list-help-center-faqs-admin]
 verify_jwt = false
