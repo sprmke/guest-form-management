@@ -8,12 +8,12 @@ import { OrgRoleListingAccessSection } from '@/features/dashboard/team/component
 import { PermissionsTreeView } from '@/features/dashboard/team/components/PermissionsTreeView';
 import { RoleSelectOptions } from '@/features/dashboard/team/components/RoleSelectOptions';
 import { ORG_PERMISSION_CATALOG } from '@/features/dashboard/team/lib/orgPermissionCatalog';
-import { getOrgRolePermissions } from '@/features/dashboard/team/lib/orgTeamRoles';
-import { defaultOrgInviteTemplateId } from '@/features/dashboard/team/lib/orgTeamRoles';
 import {
   findOrgRoleById,
   orgRoleListingDefaults,
 } from '@/features/dashboard/team/lib/orgRoleListingScope';
+import { getOrgRolePermissions } from '@/features/dashboard/team/lib/orgTeamRoles';
+import { defaultOrgInviteTemplateId } from '@/features/dashboard/team/lib/orgTeamRoles';
 import { sortOrgTemplatesForDisplay } from '@/features/dashboard/team/lib/orgTeamTemplates';
 import { handleRoleSelectChange } from '@/features/dashboard/team/lib/roleSelectUtils';
 import {

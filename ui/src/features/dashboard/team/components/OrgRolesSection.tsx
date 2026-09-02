@@ -33,7 +33,7 @@ export function OrgRolesSection() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base sm:text-lg">Roles</CardTitle>
+        <CardTitle>Roles</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="overflow-hidden rounded-lg border">

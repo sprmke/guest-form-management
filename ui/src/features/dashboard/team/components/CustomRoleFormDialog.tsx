@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 
 import { ApplyTemplatePicker } from '@/features/dashboard/team/components/ApplyTemplatePicker';
+import type { OrgListingAssignments } from '@/features/dashboard/team/components/OrgListingAssignmentPicker';
 import { OrgRoleListingAccessSection } from '@/features/dashboard/team/components/OrgRoleListingAccessSection';
 import { PermissionsTreeView } from '@/features/dashboard/team/components/PermissionsTreeView';
-import type { OrgListingAssignments } from '@/features/dashboard/team/components/OrgListingAssignmentPicker';
 import { ORG_PERMISSION_CATALOG } from '@/features/dashboard/team/lib/orgPermissionCatalog';
 import { PROPERTY_PERMISSION_CATALOG } from '@/features/dashboard/team/lib/propertyPermissionCatalog';
 import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';

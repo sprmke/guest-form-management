@@ -13,11 +13,11 @@ import {
   resolveOrgMemberTemplateRoleId,
 } from '@/features/dashboard/team/lib/orgMemberRoleDisplay';
 import { ORG_PERMISSION_CATALOG } from '@/features/dashboard/team/lib/orgPermissionCatalog';
-import { getOrgRolePermissions } from '@/features/dashboard/team/lib/orgTeamRoles';
 import {
   findOrgRoleById,
   orgRoleListingDefaults,
 } from '@/features/dashboard/team/lib/orgRoleListingScope';
+import { getOrgRolePermissions } from '@/features/dashboard/team/lib/orgTeamRoles';
 import { sortOrgTemplatesForDisplay } from '@/features/dashboard/team/lib/orgTeamTemplates';
 import { handleRoleSelectChange } from '@/features/dashboard/team/lib/roleSelectUtils';
 import { getRoleLabelForScope } from '@/features/dashboard/team/lib/teamRoleHelpers';

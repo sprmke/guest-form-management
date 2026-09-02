@@ -1,13 +1,13 @@
 import { Fragment } from 'react';
 import type { ReactNode } from 'react';
 
-import { adminPropertyRoutes } from '@/features/dashboard/bookings/routes/propertyRoutes';
-import { customPagesPropertyRoute } from '@/features/dashboard/custom-pages/routes';
-import { financePropertyRoute } from '@/features/dashboard/finance/routes';
 import {
   hostAnnouncementsParkingRoute,
   hostAnnouncementsPropertyRoute,
 } from '@/features/dashboard/announcements/routes';
+import { adminPropertyRoutes } from '@/features/dashboard/bookings/routes/propertyRoutes';
+import { customPagesPropertyRoute } from '@/features/dashboard/custom-pages/routes';
+import { financePropertyRoute } from '@/features/dashboard/finance/routes';
 import {
   helpSupportParkingRoute,
   helpSupportPropertyRoute,

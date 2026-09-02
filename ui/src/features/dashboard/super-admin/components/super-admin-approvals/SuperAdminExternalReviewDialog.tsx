@@ -33,12 +33,12 @@ import type { ExternalReviewApprovalSummary } from '@/features/dashboard/super-a
 import { ListRowsSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { cn } from '@/lib/utils';
 
 function MiniStarRating({ value }: { value: number | null }) {
@@ -98,18 +98,22 @@ export function SuperAdminExternalReviewDialog({ approval, onOpenChange }: Props
 
   return (
     <>
-      <Dialog open={open} onOpenChange={(next) => (!next ? close() : null)}>
-        <DialogContent showCloseButton className={superAdminApprovalDialogContentClass}>
-          <DialogHeader className={superAdminApprovalDialogHeaderClass}>
+      <ResponsiveModal open={open} onOpenChange={(next) => (!next ? close() : null)}>
+        <ResponsiveModalContent
+          sheetLayout="split"
+          showCloseButton
+          className={superAdminApprovalDialogContentClass}
+        >
+          <ResponsiveModalHeader className={superAdminApprovalDialogHeaderClass}>
             <div className="flex items-start gap-3">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-violet-500/10 text-violet-700 dark:text-violet-300">
                 <MessageSquare className="size-5" aria-hidden />
               </span>
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <DialogTitle className="text-lg font-semibold">
+                  <ResponsiveModalTitle className="text-lg font-semibold">
                     {approval.propertyName}
-                  </DialogTitle>
+                  </ResponsiveModalTitle>
                   <SuperAdminExternalReviewSourceBadge source={approval.source} />
                   <VerificationStatusBadge status={approval.moderationStatus} />
                 </div>
@@ -138,7 +142,7 @@ export function SuperAdminExternalReviewDialog({ approval, onOpenChange }: Props
                 </div>
               </div>
             </div>
-          </DialogHeader>
+          </ResponsiveModalHeader>
 
           <div className={superAdminApprovalDialogBodyClass}>
             {assets.isLoading ? (
@@ -209,7 +213,7 @@ export function SuperAdminExternalReviewDialog({ approval, onOpenChange }: Props
             )}
           </div>
 
-          <DialogFooter className={superAdminApprovalDialogFooterClass}>
+          <ResponsiveModalFooter className={superAdminApprovalDialogFooterClass}>
             {isPending ? (
               <>
                 <Button
@@ -247,9 +251,9 @@ export function SuperAdminExternalReviewDialog({ approval, onOpenChange }: Props
                 Close
               </Button>
             )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveModalFooter>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
 
       <VerificationDocFullViewDialog
         asset={fullView}

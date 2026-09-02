@@ -3,18 +3,18 @@ import type { ReactNode } from 'react';
 import { Copy, Edit3, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
 
 import { TierBadge, TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
+import { orgListingScopeSummary } from '@/features/dashboard/team/lib/orgRoleListingScope';
 import {
   isSeededOrgTemplateName,
   sortOrgTemplatesForDisplay,
 } from '@/features/dashboard/team/lib/orgTeamTemplates';
-import { orgListingScopeSummary } from '@/features/dashboard/team/lib/orgRoleListingScope';
 import {
   isSeededTemplateName,
   sortTemplatesForDisplay,
 } from '@/features/dashboard/team/lib/propertyTeamTemplates';
 import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
-import type { CustomPropertyRole } from '@/features/dashboard/team/types/propertyTeam';
 import type { CustomOrgRole } from '@/features/dashboard/team/types/orgTeam';
+import type { CustomPropertyRole } from '@/features/dashboard/team/types/propertyTeam';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -222,7 +222,7 @@ export function CustomRolesSection({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-3">
-        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+        <CardTitle className="flex items-center gap-2">
           Roles
           <TierBadge feature="customRoles" />
         </CardTitle>
