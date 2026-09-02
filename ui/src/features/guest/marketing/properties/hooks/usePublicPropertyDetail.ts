@@ -41,7 +41,11 @@ async function fetchPublicProperty(slug: string): Promise<ResolvedPropertyDetail
   });
 
   if (res.status === 404) {
-    return resolveMockProperty(slug);
+    // Dev-only fallback so the marketing UI still has content to preview locally
+    // without seeded data. In production a genuine 404 must resolve to `null` so
+    // PropertyDetailPage's `isError || !propertyData` branch redirects to
+    // `/properties` instead of silently rendering a fake listing to a real guest.
+    return import.meta.env.DEV ? resolveMockProperty(slug) : null;
   }
 
   const json = (await res.json()) as {

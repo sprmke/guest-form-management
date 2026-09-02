@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 
 import { MarketingCalendarSection } from '@/features/dashboard/marketing/components/calendar-builder/MarketingCalendarSection';
-import { DesignEditor } from '@/features/dashboard/marketing/components/design-editor/DesignEditor';
 import type { DesignExportPayload } from '@/features/dashboard/marketing/components/design-editor/DesignEditor';
 import {
   PublishDialog,
@@ -12,11 +11,36 @@ import { MarketingStudioHeaderActionsProvider } from '@/features/dashboard/marke
 import { MarketingStudioModeTabs } from '@/features/dashboard/marketing/components/shared/MarketingStudioModeTabs';
 import { SlidingTabs } from '@/features/dashboard/marketing/components/shared/MarketingStudioModeTabs';
 import { MarketingStudioShell } from '@/features/dashboard/marketing/components/shared/MarketingStudioShell';
-import { VideoEditor } from '@/features/dashboard/marketing/components/video-editor/VideoEditor';
 import type { VideoExportPayload } from '@/features/dashboard/marketing/components/video-editor/VideoEditor';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { Skeleton } from '@/components/ui/skeleton';
 import { SlidingTabsContent } from '@/components/ui/sliding-tabs';
+
+// Lazy-loaded: Polotno (design editor) and Remotion/Blueprint (video editor) are heavy
+// deps that only the "design"/"video" tabs need — SlidingTabsContent already unmounts
+// the inactive tab's tree, but a static import still ships their JS in every Marketing
+// Studio page load regardless of which tab is open. Splitting into separate chunks means
+// that JS is only fetched the first time a guest actually opens that tab.
+const DesignEditor = lazy(() =>
+  import('@/features/dashboard/marketing/components/design-editor/DesignEditor').then((m) => ({
+    default: m.DesignEditor,
+  }))
+);
+const VideoEditor = lazy(() =>
+  import('@/features/dashboard/marketing/components/video-editor/VideoEditor').then((m) => ({
+    default: m.VideoEditor,
+  }))
+);
+
+function StudioTabFallback() {
+  return (
+    <div className="flex flex-1 flex-col gap-3 p-4">
+      <Skeleton className="h-8 w-40 rounded-lg" />
+      <Skeleton className="h-64 w-full rounded-xl" />
+    </div>
+  );
+}
 
 export function MarketingStudioPage() {
   const [tab, setTab] = useState('calendar');
@@ -55,11 +79,15 @@ export function MarketingStudioPage() {
               </SlidingTabsContent>
 
               <SlidingTabsContent value="design" className="mt-0 flex min-h-0 flex-1 flex-col">
-                <DesignEditor onPublish={handleDesignPublish} />
+                <Suspense fallback={<StudioTabFallback />}>
+                  <DesignEditor onPublish={handleDesignPublish} />
+                </Suspense>
               </SlidingTabsContent>
 
               <SlidingTabsContent value="video" className="mt-0 flex min-h-0 flex-1 flex-col">
-                <VideoEditor onPublish={handleVideoPublish} />
+                <Suspense fallback={<StudioTabFallback />}>
+                  <VideoEditor onPublish={handleVideoPublish} />
+                </Suspense>
               </SlidingTabsContent>
             </MarketingStudioShell>
 

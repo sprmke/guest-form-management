@@ -493,13 +493,13 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
           checkOutDate: normalizeDateString(booking.checkOutDate),
         }));
         setBookedDates(normalizedDates);
-        console.log('✅ Loaded booked dates:', normalizedDates.length, 'bookings');
-        console.log('📅 Booked date ranges:', normalizedDates);
       } else {
         console.error('❌ Failed to fetch booked dates:', result);
+        toast.error('Could not load availability. Some already-booked dates may not be blocked.');
       }
     } catch (error) {
       console.error('❌ Error fetching booked dates:', error);
+      toast.error('Could not load availability. Some already-booked dates may not be blocked.');
     }
   };
 
