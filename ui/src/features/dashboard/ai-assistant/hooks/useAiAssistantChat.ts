@@ -3,6 +3,13 @@ import { useCallback, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import {
+  confirmAssistantAction,
+  fetchAiAssistantConversationMessages,
+  type ChatAttachmentMeta,
+  type ChatBlock,
+  type PageContext,
+} from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
+import {
   buildTurnProgressFromStreamEvent,
   humanizeAssistantStreamError,
   isAbortError,
@@ -14,19 +21,12 @@ import {
   type AssistantStreamEvent,
   type TurnProgressLiveState,
 } from '@/features/dashboard/ai-assistant/lib/assistantStream';
-import {
-  confirmAssistantAction,
-  fetchAiAssistantConversationMessages,
-  type ChatAttachmentMeta,
-  type ChatBlock,
-  type PageContext,
-} from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
+import type { AttachedContextItem } from '@/features/dashboard/ai-assistant/lib/attachedContext';
+import type { ChatSendInput } from '@/features/dashboard/ai-assistant/lib/chatAttachments';
 import {
   hostFacingUserMessageText,
   patchActionConfirmationStatus,
 } from '@/features/dashboard/ai-assistant/lib/chatBlockDisplay';
-import type { AttachedContextItem } from '@/features/dashboard/ai-assistant/lib/attachedContext';
-import type { ChatSendInput } from '@/features/dashboard/ai-assistant/lib/chatAttachments';
 import { useOrgScopeKey, useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 export type ChatThreadMessage = {

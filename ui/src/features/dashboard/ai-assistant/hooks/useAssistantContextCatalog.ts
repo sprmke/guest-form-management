@@ -51,6 +51,7 @@ import { formatMoney } from '@/utils/format/currency';
 
 const PAGE_LABELS: Record<CustomPageType, string> = {
   stay_guide: 'Stay guide',
+  property_showcase: 'Showcase',
 };
 
 const CATALOG_LIMIT = 40;

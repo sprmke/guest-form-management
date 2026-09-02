@@ -4,9 +4,9 @@
  */
 
 import type { ChatBlock } from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
+import type { PageContext } from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
 import { getAssistantToolActivityLabel } from '@/features/dashboard/ai-assistant/lib/assistantToolLabels';
 import type { AttachedContextItem } from '@/features/dashboard/ai-assistant/lib/attachedContext';
-import type { PageContext } from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
 import { getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
 
 export type AssistantStreamPhase =

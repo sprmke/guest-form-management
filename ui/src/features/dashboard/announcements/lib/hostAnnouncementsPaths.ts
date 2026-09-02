@@ -36,3 +36,13 @@ export function hostAnnouncementsPathFromHelpSupport(helpSupportPath: string): s
 export function isHostAnnouncementsArchivePath(pathname: string): boolean {
   return pathname.includes('/announcements') && !pathname.startsWith('/admin');
 }
+
+export function hostAnnouncementDetailPath(basePath: string, announcementId: string): string {
+  return `${basePath}/${encodeURIComponent(announcementId)}`;
+}
+
+export function isHostAnnouncementDetailPath(pathname: string, basePath: string | null): boolean {
+  if (!basePath || !pathname.startsWith(`${basePath}/`)) return false;
+  const suffix = pathname.slice(basePath.length + 1);
+  return suffix.length > 0 && !suffix.includes('/');
+}

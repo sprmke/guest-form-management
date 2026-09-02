@@ -5,6 +5,8 @@
  * `gallery` / `host`); templates switch on `section.kind`.
  */
 
+import type { ResolvedPropertyDetail } from '@/features/guest/marketing/properties/types/publicProperty';
+import { resolveShowcaseHeroEyebrow } from '@/features/guest/marketing/showcase/lib/showcaseHeroEyebrow';
 import {
   defaultPropertyShowcaseConfig,
   isShowcaseTemplateKey,
@@ -14,8 +16,6 @@ import {
   type ShowcaseTemplateKey,
   type StayGuideChapterBlock,
 } from '@/features/guest/marketing/showcase/types/showcase';
-import type { ResolvedPropertyDetail } from '@/features/guest/marketing/properties/types/publicProperty';
-import { resolveShowcaseHeroEyebrow } from '@/features/guest/marketing/showcase/lib/showcaseHeroEyebrow';
 import type { GuestStayGuideDto } from '@/features/guest/stay-guide/lib/api';
 import {
   isStayGuideChapterSectionId,

@@ -1,4 +1,5 @@
 import type { ChatBlock } from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
+
 import { formatBookingDateShort } from '@/utils/format/bookingDisplay';
 
 const TECHNICAL_BOOKING_CHIP_RE = /^booking\s*#?\s*[\da-f-]+$/i;

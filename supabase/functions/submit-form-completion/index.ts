@@ -29,6 +29,7 @@ import { tryGetAuthenticatedUser } from '../_shared/orgAuth.ts';
 import { resolveOrganizationIdForProperty } from '../_shared/propertyScope.ts';
 import type { GuestSubmission } from '../_shared/types.ts';
 import { capturePostHogException } from '../_shared/posthog.ts';
+import { antiSpamGate } from '../_shared/antiSpam.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -46,6 +47,15 @@ serve(async (req) => {
 
     const url = new URL(req.url);
     const formData = await req.formData();
+
+    // Anti-spam: bot heuristics → Turnstile → durable rate limit.
+    // Plan: docs/workflow/for-testing/captcha-anti-spam-hardening.md
+    const antiSpamBlocked = await antiSpamGate(req, formData, {
+      scope: 'submit-form-completion',
+      rateLimit: { limit: 15, windowSec: 60 },
+    });
+    if (antiSpamBlocked) return antiSpamBlocked;
+
     const token =
       (formData.get('complete') as string | null)?.trim() || url.searchParams.get('complete') || '';
 
@@ -158,7 +168,7 @@ serve(async (req) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[submit-form-completion] error:', message);
-    await capturePostHogException(error, { logPrefix: 'submit-form-completion' });
+    await capturePostHogException(error, { logPrefix: 'submit-form-completion', request: req });
     return json({ success: false, error: message }, 400);
   }
 });

@@ -49,7 +49,7 @@ export function TeamPermissionsTab({
       />
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base sm:text-lg">{matrixTitle}</CardTitle>
+          <CardTitle>{matrixTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto rounded-xl">
