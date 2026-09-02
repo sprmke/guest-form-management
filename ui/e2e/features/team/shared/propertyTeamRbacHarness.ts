@@ -12,6 +12,18 @@ export const TEAM_E2E_PROPERTY_SLUG = 'solea-mactan';
 
 const SUPABASE_AUTH_STORAGE_KEY = 'sb-127-auth-token';
 
+type AssistantChatBlock = {
+  type: string;
+  [key: string]: unknown;
+};
+
+let assistantChatBlocks: AssistantChatBlock[] = [];
+
+/** Set mocked assistant turn blocks for the next dashboard-assistant-chat POST. */
+export function queueAssistantChatBlocksForMocks(blocks: AssistantChatBlock[]) {
+  assistantChatBlocks = blocks;
+}
+
 /** Full Access — all leaf ids (subset representative of catalog modules for nav). */
 export const FULL_ACCESS_PERMISSIONS = [
   'bookings:view',
@@ -219,7 +231,7 @@ function propertyAccessPayload(permissions: readonly string[]) {
   };
 }
 
-function entitlementsPayload(freePlan = false) {
+function entitlementsPayload(freePlan = false, assistantEnabled = false) {
   return {
     automatedBookingFlow: !freePlan,
     verifiedBadgeEligible: false,
@@ -232,7 +244,7 @@ function entitlementsPayload(freePlan = false) {
     aiMonthlyCreditAllowance: 0,
     marketingStudio: true,
     customPages: true,
-    aiDashboardAssistant: false,
+    aiDashboardAssistant: assistantEnabled,
     aiReceptionist: false,
     aiMarketingGeneration: true,
     aiChatAutoReply: false,
@@ -410,6 +422,21 @@ function orgSettingsPayload() {
   };
 }
 
+function assistantOrgSettingsPayload() {
+  return {
+    organizationId: ORG_ID,
+    enabled: true,
+    disabledPropertyIds: [] as string[],
+    dailyMessageLimit: 50,
+    monthlyMessageLimit: 500,
+    dailyWriteActionLimit: 20,
+    updatedBy: null,
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    platformEnabled: true,
+    usage: null,
+  };
+}
+
 function orgAccessPayload() {
   return {
     accessKind: 'member' as const,
@@ -467,10 +494,11 @@ export async function installTeamMemberSession(page: Page) {
 export async function installPropertyTeamRbacMocks(
   page: Page,
   template: TeamRbacTemplate,
-  opts?: { freePlan?: boolean }
+  opts?: { freePlan?: boolean; assistantEnabled?: boolean }
 ) {
   const permissions = permissionsForTemplate(template);
   const freePlan = Boolean(opts?.freePlan);
+  const assistantEnabled = Boolean(opts?.assistantEnabled);
   await installTeamMemberSession(page);
 
   await page.route('**/functions/v1/**', async (route) => {
@@ -491,7 +519,10 @@ export async function installPropertyTeamRbacMocks(
         await fulfillJson(route, { success: true, data: propertyAccessPayload(permissions) });
         return;
       case 'property-entitlements':
-        await fulfillJson(route, { success: true, data: entitlementsPayload(freePlan) });
+        await fulfillJson(route, {
+          success: true,
+          data: entitlementsPayload(freePlan, assistantEnabled),
+        });
         return;
       case 'dashboard-stats':
         await fulfillJson(route, { success: true, data: dashboardStatsPayload() });
@@ -528,12 +559,56 @@ export async function installPropertyTeamRbacMocks(
       case 'notifications-mark-read':
         await fulfillJson(route, { success: true, data: { updated: true } });
         return;
+      case 'list-host-announcements':
+        await fulfillJson(route, { success: true, data: { announcements: [] } });
+        return;
       case 'dashboard-assistant-settings':
         await fulfillJson(route, {
           success: true,
-          data: { enabled: false, disabledPropertyIds: [] },
+          data: assistantEnabled
+            ? assistantOrgSettingsPayload()
+            : { enabled: false, disabledPropertyIds: [] },
         });
         return;
+      case 'dashboard-assistant-conversations':
+        if (route.request().method() === 'GET') {
+          await fulfillJson(route, { success: true, data: { conversations: [] } });
+          return;
+        }
+        await fulfillJson(route, { success: true, data: {} });
+        return;
+      case 'dashboard-assistant-chat':
+        if (route.request().method() === 'POST') {
+          await fulfillJson(route, {
+            success: true,
+            data: {
+              conversationId: 'conv-e2e-assistant-001',
+              blocks: assistantChatBlocks,
+            },
+          });
+          return;
+        }
+        await fulfillJson(route, { success: true, data: {} });
+        return;
+      case 'dashboard-assistant-confirm': {
+        const body = route.request().postDataJSON() as {
+          actionId?: string;
+          confirm?: boolean;
+        };
+        await fulfillJson(route, {
+          success: true,
+          data: {
+            actionId: body.actionId ?? 'action-e2e-001',
+            status: body.confirm ? 'executed' : 'denied',
+            blocks: assistantChatBlocks.map((block) =>
+              block.type === 'action_confirmation' && block.actionId === body.actionId
+                ? { ...block, status: body.confirm ? 'executed' : 'denied' }
+                : block
+            ),
+          },
+        });
+        return;
+      }
       case 'get-booking-ai-review':
         await fulfillJson(route, { success: true, data: { review: null } });
         return;
@@ -541,10 +616,10 @@ export async function installPropertyTeamRbacMocks(
         await fulfillJson(route, { success: true, data: { entries: [] } });
         return;
       case 'finance-line-items':
-        await fulfillJson(route, { success: true, data: { items: [] } });
+        await fulfillJson(route, { success: true, data: [] });
         return;
       case 'maintenance-items':
-        await fulfillJson(route, { success: true, data: { items: [] } });
+        await fulfillJson(route, { success: true, data: [] });
         return;
       case 'marketing-templates':
         await fulfillJson(route, { success: true, data: { templates: [] } });

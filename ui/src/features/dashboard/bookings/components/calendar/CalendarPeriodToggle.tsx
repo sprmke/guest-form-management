@@ -19,11 +19,11 @@ export function CalendarPeriodToggle({ value, onChange, className, size = 'toolb
       onChange={onChange}
       size={toolbar ? 'dense' : 'compact'}
       className={className}
-      listClassName={cn('border-border/60', toolbar ? 'h-9 min-h-[36px] w-auto p-0.5' : 'w-full')}
+      listClassName={cn('border-border/60 w-fit', toolbar && 'p-0.5')}
       triggerClassName={
         toolbar
-          ? 'h-full min-h-0 px-2.5 py-0 text-[11px]'
-          : 'h-9 min-h-[44px] px-2.5 text-[11px] sm:h-7 sm:min-h-0'
+          ? 'h-6 min-h-0 px-2 py-0 text-[10px] leading-none lg:h-full lg:text-[11px]'
+          : undefined
       }
       aria-label="Calendar period"
       options={[

@@ -26,6 +26,7 @@ import {
   TierBadge,
 } from '@/features/guest/marketing/for-hosts/components/film/FilmPrimitives';
 import { FilmShell } from '@/features/guest/marketing/for-hosts/components/film/FilmShell';
+
 import { cn } from '@/lib/utils';
 
 /* ---------------- 3. Booking workflow ---------------- */
