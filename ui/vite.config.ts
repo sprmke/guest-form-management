@@ -1,9 +1,19 @@
+import { createRequire } from 'module';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 import posthogRollupPlugin, { type PostHogRollupPluginOptions } from '@posthog/rollup-plugin';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
+
+const require = createRequire(import.meta.url);
+/** Shared with scripts/pwa/check-precache-budget.mjs — edit the JSON, not here. */
+const precacheGlobs = require('../scripts/pwa/precache-globs.json') as {
+  globPatterns: string[];
+  globIgnores: string[];
+  budgetKiB: number;
+};
 
 import {
   buildScopedPolotnoBlueprintCss,
@@ -123,11 +133,110 @@ function scopeBlueprintCssPlugin(): Plugin {
   };
 }
 
+/**
+ * PWA — installable shell + custom Workbox service worker (`src/pwa/sw.ts`).
+ *
+ * `injectManifest` (not `generateSW`): the SW hand-rolls push / notificationclick /
+ * background-sync / kill-switch handlers `generateSW` can't express. See
+ * docs/architecture/pwa.md.
+ *
+ * Precache = app shell + entry chunks only. The heavy feature-lazy chunks
+ * (Polotno studio, mediabunny audio encoders, html2canvas) are excluded here and
+ * runtime-cached on demand instead — keeps the install payload bounded.
+ */
+function gfmPwaPlugin(): Plugin[] {
+  return VitePWA({
+    strategies: 'injectManifest',
+    srcDir: 'src/pwa',
+    filename: 'sw.ts',
+    registerType: 'prompt',
+    // Registration is owned by `@/lib/pwa/useRegisterSW` (workbox-window) — not
+    // `virtual:pwa-register/*`, which breaks under a stale Vite process.
+    injectRegister: false,
+    // SW off in `vite` dev so it never fights HMR. Test the SW with
+    // `bun run build && bun run preview`. Flip VITE_PWA_DEV=true to opt in locally.
+    devOptions: {
+      enabled: process.env.VITE_PWA_DEV === 'true',
+      type: 'module',
+      navigateFallback: 'index.html',
+    },
+    injectManifest: {
+      globPatterns: precacheGlobs.globPatterns,
+      // Feature-lazy heavy chunks — runtime-cached on demand, never precached.
+      globIgnores: precacheGlobs.globIgnores,
+      // The app's main entry chunk is large; allow it past the 2 MB default.
+      // `scripts/pwa/check-precache-budget.mjs` guards the total in CI.
+      maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
+    },
+    manifest: {
+      id: '/?app',
+      name: 'Stays — Property Management',
+      short_name: 'Stays',
+      description:
+        'Manage bookings, guest messages, pricing and your property operations from one place.',
+      lang: 'en',
+      dir: 'ltr',
+      scope: '/',
+      start_url: '/?source=pwa',
+      display: 'standalone',
+      display_override: ['standalone', 'minimal-ui'],
+      orientation: 'portrait',
+      theme_color: '#f5f6f8',
+      background_color: '#f5f6f8',
+      categories: ['business', 'productivity'],
+      launch_handler: { client_mode: ['navigate-existing', 'auto'] },
+      icons: [
+        { src: '/icons/pwa-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: '/icons/pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+        {
+          src: '/icons/pwa-maskable-192.png',
+          sizes: '192x192',
+          type: 'image/png',
+          purpose: 'maskable',
+        },
+        {
+          src: '/icons/pwa-maskable-512.png',
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'maskable',
+        },
+      ],
+      shortcuts: [
+        {
+          name: 'Bookings',
+          short_name: 'Bookings',
+          url: '/?source=pwa&shortcut=bookings',
+          icons: [{ src: '/icons/pwa-192.png', sizes: '192x192' }],
+        },
+        {
+          name: 'Guest Inbox',
+          short_name: 'Inbox',
+          url: '/?source=pwa&shortcut=inbox',
+          icons: [{ src: '/icons/pwa-192.png', sizes: '192x192' }],
+        },
+        {
+          name: "Today's check-ins",
+          short_name: 'Check-ins',
+          url: '/?source=pwa&shortcut=checkins',
+          icons: [{ src: '/icons/pwa-192.png', sizes: '192x192' }],
+        },
+      ],
+    },
+  }) as Plugin[];
+}
+
+/** Monotonic build id (epoch seconds) — the PWA kill-switch compares against it. */
+const pwaBuildId = String(Math.floor(Date.now() / 1000));
+
 export default defineConfig({
+  define: {
+    __PWA_BUILD_ID__: JSON.stringify(pwaBuildId),
+  },
   plugins: [
     patchOpenPolotnoHighlighter(),
     scopeBlueprintCssPlugin(),
     react(),
+    ...gfmPwaPlugin(),
     ...(posthogSourceMapsEnabled
       ? [
           resilientPosthogSourcemapsPlugin({

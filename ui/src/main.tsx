@@ -14,6 +14,7 @@ import { PostHogIdentitySync } from '@/lib/posthog/PostHogIdentitySync';
 import App from './App';
 import { ThemedToaster } from './components/theme/ThemedToaster';
 import { ThemeProvider } from './components/theme/ThemeProvider';
+import '@/lib/pwa/installPrompt'; // capture beforeinstallprompt early
 import 'react-day-picker/dist/style.css';
 import './index.css';
 
