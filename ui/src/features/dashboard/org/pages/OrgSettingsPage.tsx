@@ -18,8 +18,8 @@ import {
   OrgBasicInformationSection,
   OrgSocialsBrandingSection,
 } from '@/features/dashboard/org/components/org-settings/OrgProfileSettingsSections';
-import { OrgSuperhostProgressSection } from '@/features/dashboard/org/components/org-settings/OrgSuperhostProgressSection';
 import { OrgSettingsBrandColorPreview } from '@/features/dashboard/org/components/org-settings/OrgSettingsBrandColorPreview';
+import { OrgSuperhostProgressSection } from '@/features/dashboard/org/components/org-settings/OrgSuperhostProgressSection';
 import { useCheckOrganizationName } from '@/features/dashboard/org/hooks/useCheckOrganizationName';
 import { useDeleteOrganization } from '@/features/dashboard/org/hooks/useDeleteOrganization';
 import { useOrganizations, useProperties } from '@/features/dashboard/org/hooks/useOrganizations';

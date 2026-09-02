@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { OtpCodeInput } from '@/features/guest/auth/components/OtpCodeInput';
 
-import { platformLegalSubject } from '@/lib/platformBranding';
 
 import {
   useSettingsVerification,
@@ -20,6 +19,7 @@ import {
   ResponsiveModalHeader,
   ResponsiveModalTitle,
 } from '@/components/ui/responsive-modal';
+import { platformLegalSubject } from '@/lib/platformBranding';
 import { cn } from '@/lib/utils';
 
 type Props = {

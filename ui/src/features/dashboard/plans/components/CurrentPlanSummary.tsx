@@ -18,7 +18,6 @@ import {
 import { FloatingPanel } from '@/components/mobile/FloatingPanel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 
 type CurrentPlanSummaryProps = {
   /** Null when the active subscription sits outside the selectable tier list (e.g. commission). */
@@ -27,6 +26,7 @@ type CurrentPlanSummaryProps = {
   canManage?: boolean;
   pendingCheckoutUrl?: string | null;
   onPayNow?: () => void;
+  onResumePayment?: () => void;
   isPaying?: boolean;
   upgradePlan?: OrgBundlePlanDto | null;
   onManageBilling?: () => void;
@@ -74,6 +74,7 @@ export function CurrentPlanSummary({
   canManage = false,
   pendingCheckoutUrl,
   onPayNow,
+  onResumePayment,
   isPaying = false,
   upgradePlan,
   onManageBilling,
@@ -114,7 +115,7 @@ export function CurrentPlanSummary({
 
   const openCheckout = () => {
     if (pendingCheckoutUrl) {
-      window.location.assign(pendingCheckoutUrl);
+      onResumePayment?.();
       return;
     }
     onPayNow?.();
@@ -123,39 +124,56 @@ export function CurrentPlanSummary({
   return (
     <FloatingPanel
       as="section"
-      padding="lg"
+      padding="md"
       aria-labelledby="current-plan-heading"
-      className={cn(
-        'border-primary from-primary/5 to-primary/10 border bg-gradient-to-r',
-        'pt-6 sm:pt-6 md:pt-6'
-      )}
+      className="border-primary from-primary/5 to-primary/10 border bg-gradient-to-r"
     >
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex min-w-0 items-center gap-4">
-          <PlanTierIconWell planCode={plan?.code ?? subscription?.planCode ?? 'free'} size="lg" />
+      <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+          <PlanTierIconWell planCode={plan?.code ?? subscription?.planCode ?? 'free'} size="md" />
 
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 id="current-plan-heading" className="text-lg font-semibold tracking-tight">
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-2">
+              <h2
+                id="current-plan-heading"
+                className="text-foreground truncate text-sm font-semibold tracking-tight sm:text-base lg:text-lg"
+              >
                 {name} plan
               </h2>
-              <Badge variant={badge.variant}>{badge.label}</Badge>
+              <Badge
+                variant={badge.variant}
+                className="h-5 shrink-0 px-1.5 text-[10px] leading-none sm:h-6 sm:px-2 sm:text-xs"
+              >
+                {badge.label}
+              </Badge>
             </div>
-            <p className="text-muted-foreground mt-0.5 text-sm">{billingLine}</p>
+            <p className="text-muted-foreground mt-0.5 truncate text-xs sm:text-sm">{billingLine}</p>
           </div>
         </div>
 
         {showActions ? (
-          <div className="flex shrink-0 flex-wrap gap-2">
+          <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:shrink-0 sm:flex-wrap sm:justify-end">
             {onManageBilling ? (
-              <Button type="button" variant="outline" size="sm" onClick={onManageBilling}>
-                <Settings className="size-4" aria-hidden />
-                Manage subscription
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="min-h-[44px] w-full justify-center sm:w-auto"
+                onClick={onManageBilling}
+              >
+                <Settings className="size-4 shrink-0" aria-hidden />
+                <span className="sm:hidden">Manage</span>
+                <span className="hidden sm:inline">Manage subscription</span>
               </Button>
             ) : null}
             {upgradePlan && onUpgrade ? (
-              <Button type="button" size="sm" onClick={() => onUpgrade(upgradePlan)}>
-                <ArrowUpRight className="size-4" aria-hidden />
+              <Button
+                type="button"
+                size="sm"
+                className="min-h-[44px] w-full justify-center sm:w-auto"
+                onClick={() => onUpgrade(upgradePlan)}
+              >
+                <ArrowUpRight className="size-4 shrink-0" aria-hidden />
                 {upgradeBannerActionLabel(upgradePlan)}
               </Button>
             ) : null}
@@ -164,7 +182,7 @@ export function CurrentPlanSummary({
       </div>
 
       {needsAttention ? (
-        <div className="border-destructive/25 mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="border-destructive/25 mt-3 flex flex-col gap-2.5 border-t pt-3 sm:mt-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:pt-4">
           <p className="text-destructive flex items-start gap-2 text-sm">
             <span className="mt-0.5 size-1.5 shrink-0 rounded-full bg-current" aria-hidden />
             {subscription?.status === 'suspended'
@@ -184,7 +202,7 @@ export function CurrentPlanSummary({
           ) : null}
         </div>
       ) : showResume ? (
-        <div className="border-primary/15 mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="border-primary/15 mt-3 flex flex-col gap-2.5 border-t pt-3 sm:mt-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:pt-4">
           <p className="text-muted-foreground flex items-start gap-2 text-sm">
             <Sparkles className="text-primary mt-0.5 size-4 shrink-0" aria-hidden />A plan payment
             is waiting to be completed.
@@ -203,7 +221,7 @@ export function CurrentPlanSummary({
       ) : null}
 
       {uncoveredPropertyCount > 0 && onCoverUncoveredProperties ? (
-        <div className="border-primary/15 mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="border-primary/15 mt-3 flex flex-col gap-2.5 border-t pt-3 sm:mt-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:pt-4">
           <p className="text-muted-foreground text-sm">
             {uncoveredPropertyCount}{' '}
             {uncoveredPropertyCount === 1 ? 'property is' : 'properties are'} not on your plan yet.

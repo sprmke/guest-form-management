@@ -36,7 +36,6 @@ import {
   resolveOrgLandingPath,
   userOwnsOrganization,
 } from '@/features/dashboard/org/lib/orgLanding';
-import type { Organization } from '@/features/dashboard/org/types';
 import { DUPLICATE_ORGANIZATION_NAME_MESSAGE } from '@/features/dashboard/org/lib/orgSettingsValidation';
 import {
   type OrgVerificationRights,
@@ -79,6 +78,7 @@ import {
   setLastParkingContext,
   setLastTenantContext,
 } from '@/features/dashboard/org/lib/tenantPaths';
+import type { Organization } from '@/features/dashboard/org/types';
 
 import { AvailabilityCheckInput } from '@/components/AvailabilityCheckInput';
 import { RouteGuardSkeleton } from '@/components/skeletons/AdminSkeletons';

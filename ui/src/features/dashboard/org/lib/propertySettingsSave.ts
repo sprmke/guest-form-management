@@ -13,9 +13,6 @@ import {
   externalReviewsEqual,
   type PropertyExternalReview,
 } from '@/features/dashboard/org/lib/propertyExternalReviews';
-import type { PropertyVoucherPrize } from '@/features/dashboard/org/lib/propertyVoucherSettings';
-import { voucherPrizesEqual } from '@/features/dashboard/org/lib/propertyVoucherSettings';
-import type { VoucherRevealStyle } from '@/features/dashboard/org/lib/voucherRevealStyle';
 import type {
   PropertySettingsCompletionResult,
   PropertySettingsSectionId,
@@ -27,6 +24,9 @@ import {
   type PropertyProfileDraft,
   type PropertyProfileUpdatePayload,
 } from '@/features/dashboard/org/lib/propertySettingsForm';
+import type { PropertyVoucherPrize } from '@/features/dashboard/org/lib/propertyVoucherSettings';
+import { voucherPrizesEqual } from '@/features/dashboard/org/lib/propertyVoucherSettings';
+import type { VoucherRevealStyle } from '@/features/dashboard/org/lib/voucherRevealStyle';
 
 import { propertyBrandColorsEquivalent } from '@/lib/theme/brandColor';
 

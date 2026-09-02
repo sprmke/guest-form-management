@@ -77,8 +77,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { PLATFORM_APP_NAME, platformProductLabel } from '@/lib/platformBranding';
 import { prepareUpload } from '@/lib/media/prepareUpload';
+import { PLATFORM_APP_NAME, platformProductLabel } from '@/lib/platformBranding';
 import { cn } from '@/lib/utils';
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;

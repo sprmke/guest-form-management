@@ -39,6 +39,7 @@ import {
   MUTUALLY_EXCLUSIVE_HOUSE_RULES,
   type CustomHouseRule,
 } from '@/features/dashboard/org/lib/propertyHouseRulesConstants';
+import type { PropertyLocationFields } from '@/features/dashboard/org/lib/propertyLocation';
 import {
   clampToRange,
   getResidencePropertyDefaults,
@@ -49,7 +50,6 @@ import {
   isTowerInResidence,
 } from '@/features/dashboard/org/lib/propertyResidences';
 import { type PropertySettingsSectionId } from '@/features/dashboard/org/lib/propertySettingsCompletion';
-import type { PropertyLocationFields } from '@/features/dashboard/org/lib/propertyLocation';
 import {
   CUSTOM_AMENITY_MAX_LENGTH,
   PROPERTY_TYPES,

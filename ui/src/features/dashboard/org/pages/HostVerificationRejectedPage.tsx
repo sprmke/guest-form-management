@@ -25,7 +25,7 @@ export function HostVerificationRejectedPage({ organizationName, rejectionReason
         role="alert"
       >
         <ShieldX className="text-destructive mx-auto mb-4 size-10" aria-hidden />
-        <h1 className="text-foreground text-xl font-semibold tracking-tight">
+        <h1 className="text-foreground text-lg font-semibold tracking-tight">
           Verification declined
         </h1>
         <p className="text-muted-foreground mt-3 text-sm leading-relaxed">

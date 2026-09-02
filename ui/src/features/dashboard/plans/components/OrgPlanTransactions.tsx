@@ -17,6 +17,8 @@ const STATUS_META: Record<string, StatusMeta> = {
   paid: { label: 'Paid', tone: 'success' },
   pending: { label: 'Pending', tone: 'secondary' },
   failed: { label: 'Failed', tone: 'destructive' },
+  expired: { label: 'Expired', tone: 'secondary' },
+  cancelled: { label: 'Cancelled', tone: 'secondary' },
 };
 
 const METHOD_LABELS: Record<string, string> = {

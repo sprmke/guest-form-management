@@ -27,7 +27,7 @@ export function VerificationTierCard({ tier, children, className, active = false
           <div className="flex flex-wrap items-center gap-2">
             <h3
               id={`verification-tier-${tier.id}-title`}
-              className="text-foreground text-[15px] font-semibold leading-tight"
+              className="text-foreground text-sm font-semibold leading-tight"
             >
               {tier.title}
             </h3>
