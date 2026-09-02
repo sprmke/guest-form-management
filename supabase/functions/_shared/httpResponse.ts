@@ -96,6 +96,7 @@ export async function handleEdgeError(
   if (!(error instanceof Response) || status >= 500) {
     await capturePostHogException(error, {
       logPrefix,
+      request: req,
       extra: { status, message, url: sanitizeUrlForTelemetry(req.url) },
     });
   }

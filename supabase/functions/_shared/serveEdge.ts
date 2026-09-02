@@ -91,7 +91,7 @@ export function serveCronPost(
       return jsonResponse(req, { success: true, ...result });
     } catch (error) {
       console.error(`${logPrefix}:`, error);
-      await capturePostHogException(error, { logPrefix: `cron:${logPrefix}` });
+      await capturePostHogException(error, { logPrefix: `cron:${logPrefix}`, request: req });
       return jsonError(req, (error as Error).message);
     }
   });

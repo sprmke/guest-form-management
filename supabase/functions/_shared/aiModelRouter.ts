@@ -151,8 +151,20 @@ const FEATURE_MODELS: Record<AiFeature, AiModelConfig> = {
   },
 };
 
+/**
+ * Optional local/dev override: `GEMINI_MODEL_OVERRIDE_<FEATURE>` (e.g.
+ * `GEMINI_MODEL_OVERRIDE_DASHBOARD_ASSISTANT=gemini-3.5-flash-lite`) or a global
+ * `GEMINI_MODEL_OVERRIDE`. Used when free-tier quota is exhausted on the default model.
+ * Does not change pricing metadata — only the model id sent to Gemini.
+ */
 export function getModelConfig(feature: AiFeature): AiModelConfig {
-  return FEATURE_MODELS[feature];
+  const base = FEATURE_MODELS[feature];
+  const featureKey = `GEMINI_MODEL_OVERRIDE_${feature.toUpperCase()}`;
+  const override =
+    (typeof Deno !== 'undefined' ? Deno.env.get(featureKey) : undefined)?.trim() ||
+    (typeof Deno !== 'undefined' ? Deno.env.get('GEMINI_MODEL_OVERRIDE') : undefined)?.trim();
+  if (!override) return base;
+  return { ...base, model: override };
 }
 
 export function geminiGenerateContentUrl(model: string): string {

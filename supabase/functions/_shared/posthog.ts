@@ -36,8 +36,12 @@ function getClient(): PostHog | null {
     client = null;
     return client;
   }
-  const host = Deno.env.get('POSTHOG_HOST') ?? 'https://us.i.posthog.com';
-  client = new PostHog(apiKey, { host, flushAt: 1, flushInterval: 0 });
+  const host = Deno.env.get('POSTHOG_HOST');
+  client = new PostHog(apiKey, {
+    ...(host ? { host } : {}),
+    flushAt: 1,
+    flushInterval: 0,
+  });
   return client;
 }
 
@@ -49,17 +53,29 @@ function environmentTag(): string {
 
 export async function capturePostHogException(
   error: unknown,
-  options: { logPrefix: string; distinctId?: string; extra?: Record<string, unknown> }
+  options: {
+    logPrefix: string;
+    distinctId?: string;
+    request?: Request;
+    extra?: Record<string, unknown>;
+  }
 ): Promise<void> {
   const ph = getClient();
   if (!ph) return;
 
   try {
+    const requestDistinctId = options.request?.headers.get('X-POSTHOG-DISTINCT-ID')?.trim();
+    const requestSessionId = options.request?.headers.get('X-POSTHOG-SESSION-ID')?.trim();
+    const distinctId = options.distinctId ?? requestDistinctId ?? `edge:${options.logPrefix}`;
+    const hasUserContext = Boolean(options.distinctId ?? requestDistinctId);
     const err = error instanceof Error ? error : new Error(String(error));
-    ph.captureException(err, options.distinctId ?? `edge:${options.logPrefix}`, {
+    ph.captureException(err, distinctId, {
       logPrefix: options.logPrefix,
       environment: environmentTag(),
       runtime: 'deno-edge-function',
+      ...(requestSessionId ? { $session_id: requestSessionId } : {}),
+      // Cron and webhook failures are not people; avoid a shared system profile.
+      ...(hasUserContext ? {} : { $process_person_profile: false }),
       ...options.extra,
     });
     await Promise.race([

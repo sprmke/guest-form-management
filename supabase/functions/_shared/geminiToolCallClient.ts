@@ -30,22 +30,29 @@ export type GeminiToolCallResult = {
   text: string | null;
   /** Credits this call consumed — 0 on a cache hit. Callers looping rounds should sum this. */
   creditsConsumed: number;
+  /**
+   * Raw model `content.parts` from the Gemini response (includes `thoughtSignature` when present).
+   * Echo these verbatim into the next request's history — do not rebuild functionCall parts.
+   */
+  modelParts?: GeminiContentPart[];
 };
+
+export type GeminiContentPart =
+  | { text: string; thoughtSignature?: string }
+  | { functionCall: { name: string; args: Record<string, unknown> }; thoughtSignature?: string }
+  | {
+      functionResponse: { name: string; response: Record<string, unknown> };
+      thoughtSignature?: string;
+    }
+  | { inlineData: { mimeType: string; data: string }; thoughtSignature?: string };
+
+export type GeminiContent = { role: 'user' | 'model'; parts: GeminiContentPart[] };
 
 export type GeminiStructuredResult<T> = {
   data: T | null;
   text: string | null;
   creditsConsumed: number;
 };
-
-/** One turn of multi-round tool-calling conversation history (see `history` below). */
-export type GeminiContentPart =
-  | { text: string }
-  | { functionCall: { name: string; args: Record<string, unknown> } }
-  | { functionResponse: { name: string; response: Record<string, unknown> } }
-  | { inlineData: { mimeType: string; data: string } };
-
-export type GeminiContent = { role: 'user' | 'model'; parts: GeminiContentPart[] };
 
 export type GeminiToolCallOptions = {
   feature: AiFeature;
@@ -82,8 +89,12 @@ function buildGeminiRequestBody(
   const generationConfig: Record<string, unknown> = {
     temperature: options.temperature ?? 0,
     maxOutputTokens: options.maxOutputTokens ?? modelConfig.defaultMaxOutputTokens,
-    thinkingConfig: { thinkingBudget: modelConfig.thinkingBudget },
   };
+  // Some Gemini models (e.g. gemini-3.5-flash-lite) reject thinkingBudget: 0 as INVALID_ARGUMENT.
+  // Only send thinkingConfig when a non-zero budget is configured.
+  if (modelConfig.thinkingBudget !== 0) {
+    generationConfig.thinkingConfig = { thinkingBudget: modelConfig.thinkingBudget };
+  }
 
   const conversationTurns =
     options.history && options.history.length > 0
@@ -126,6 +137,43 @@ function parseToolCalls(json: unknown): GeminiToolCallResult['toolCalls'] {
     }
   }
   return calls;
+}
+
+/** Preserve thoughtSignature / thought_signature on model parts for multi-round tool loops. */
+function parseModelParts(json: unknown): GeminiContentPart[] {
+  const candidates =
+    (json as { candidates?: Array<{ content?: { parts?: unknown[] } }> }).candidates ?? [];
+  const rawParts = (candidates[0]?.content?.parts ?? []) as Array<Record<string, unknown>>;
+  const out: GeminiContentPart[] = [];
+  for (const part of rawParts) {
+    const signature =
+      (typeof part.thoughtSignature === 'string' && part.thoughtSignature) ||
+      (typeof part.thought_signature === 'string' && part.thought_signature) ||
+      undefined;
+    if (part.functionCall && typeof part.functionCall === 'object') {
+      const fc = part.functionCall as { name?: string; args?: Record<string, unknown> };
+      if (!fc.name) continue;
+      out.push({
+        functionCall: { name: fc.name, args: fc.args ?? {} },
+        ...(signature ? { thoughtSignature: signature } : {}),
+      });
+      continue;
+    }
+    if (typeof part.text === 'string') {
+      out.push({ text: part.text, ...(signature ? { thoughtSignature: signature } : {}) });
+      continue;
+    }
+    if (part.inlineData && typeof part.inlineData === 'object') {
+      const data = part.inlineData as { mimeType?: string; data?: string };
+      if (data.mimeType && data.data) {
+        out.push({
+          inlineData: { mimeType: data.mimeType, data: data.data },
+          ...(signature ? { thoughtSignature: signature } : {}),
+        });
+      }
+    }
+  }
+  return out;
 }
 
 export async function callGeminiToolCall(
@@ -216,6 +264,7 @@ export async function callGeminiToolCall(
       const { inputTokens, outputTokens } = extractGeminiUsage(resJson);
       const toolCalls = parseToolCalls(resJson);
       const text = extractGeminiText(resJson);
+      const modelParts = parseModelParts(resJson);
 
       const { creditsConsumed } = await recordAiUsage({
         feature: options.feature,
@@ -242,7 +291,7 @@ export async function callGeminiToolCall(
         });
       }
 
-      return { toolCalls, text, creditsConsumed };
+      return { toolCalls, text, creditsConsumed, modelParts };
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
       if (i < keys.length - 1) {

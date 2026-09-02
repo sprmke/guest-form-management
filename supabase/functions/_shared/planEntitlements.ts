@@ -1387,7 +1387,7 @@ export async function changeOrgSubscription(
     .from('org_subscriptions')
     .select('id, organization_id, plan_id')
     .eq('id', orgSubscriptionId)
-    .in('status', ['active', 'trialing', 'past_due'])
+    .in('status', ['active', 'trialing', 'past_due', 'suspended'])
     .maybeSingle();
   if (orgSubError) throw new Error(orgSubError.message);
   if (!orgSub) throw new Error('Org subscription not found or not active');

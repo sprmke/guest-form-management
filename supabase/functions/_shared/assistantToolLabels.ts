@@ -336,6 +336,167 @@ const TOOL_LABELS: Record<string, { progress: string; done: string; failed: stri
     done: 'Prepared Meta publish',
     failed: 'Meta publish prep failed',
   },
+  propose_apply_booking_attachment: {
+    progress: 'Preparing file upload…',
+    done: 'Prepared file upload',
+    failed: 'File upload prep failed',
+  },
+  propose_send_workflow_email: {
+    progress: 'Preparing workflow email…',
+    done: 'Prepared workflow email',
+    failed: 'Workflow email prep failed',
+  },
+  propose_apply_org_logo: {
+    progress: 'Preparing logo upload…',
+    done: 'Prepared logo upload',
+    failed: 'Logo upload prep failed',
+  },
+  propose_apply_property_media: {
+    progress: 'Preparing gallery upload…',
+    done: 'Prepared gallery upload',
+    failed: 'Gallery upload prep failed',
+  },
+  propose_apply_parking_media: {
+    progress: 'Preparing parking photo…',
+    done: 'Prepared parking photo',
+    failed: 'Parking photo prep failed',
+  },
+  propose_apply_app_settings_attachment: {
+    progress: 'Preparing settings file…',
+    done: 'Prepared settings file',
+    failed: 'Settings file prep failed',
+  },
+  propose_apply_template_attachment: {
+    progress: 'Preparing template image…',
+    done: 'Prepared template image',
+    failed: 'Template image prep failed',
+  },
+  propose_apply_org_verification_attachment: {
+    progress: 'Preparing verification proof…',
+    done: 'Prepared verification proof',
+    failed: 'Verification proof prep failed',
+  },
+  propose_submit_org_verification: {
+    progress: 'Preparing verification submit…',
+    done: 'Prepared verification submit',
+    failed: 'Verification submit prep failed',
+  },
+  propose_apply_listing_authorization_attachment: {
+    progress: 'Preparing listing proof…',
+    done: 'Prepared listing proof',
+    failed: 'Listing proof prep failed',
+  },
+  propose_submit_listing_authorization: {
+    progress: 'Preparing listing submit…',
+    done: 'Prepared listing submit',
+    failed: 'Listing submit prep failed',
+  },
+  propose_stage_gcash_qr: {
+    progress: 'Preparing GCash QR…',
+    done: 'Prepared GCash QR',
+    failed: 'GCash QR prep failed',
+  },
+  list_support_tickets: {
+    progress: 'Listing support tickets…',
+    done: 'Listed support tickets',
+    failed: 'Support ticket list failed',
+  },
+  get_support_ticket: {
+    progress: 'Loading support ticket…',
+    done: 'Loaded support ticket',
+    failed: 'Support ticket load failed',
+  },
+  propose_create_support_ticket: {
+    progress: 'Preparing support ticket…',
+    done: 'Prepared support ticket',
+    failed: 'Support ticket prep failed',
+  },
+  list_host_announcements: {
+    progress: 'Loading announcements…',
+    done: 'Loaded announcements',
+    failed: 'Announcements load failed',
+  },
+  get_host_announcement: {
+    progress: 'Loading announcement…',
+    done: 'Loaded announcement',
+    failed: 'Announcement load failed',
+  },
+
+  get_channel_sync_status: {
+    progress: 'Checking Channel sync…',
+    done: 'Checked Channel sync',
+    failed: 'Channel sync check failed',
+  },
+  propose_run_channel_sync: {
+    progress: 'Preparing Channel sync…',
+    done: 'Prepared Channel sync',
+    failed: 'Channel sync prep failed',
+  },
+  get_public_pages_status: {
+    progress: 'Loading public pages…',
+    done: 'Loaded public pages',
+    failed: 'Public pages load failed',
+  },
+  propose_update_public_page_template: {
+    progress: 'Preparing page template…',
+    done: 'Prepared page template',
+    failed: 'Page template prep failed',
+  },
+  propose_update_finance_line_item: {
+    progress: 'Preparing finance update…',
+    done: 'Prepared finance update',
+    failed: 'Finance update prep failed',
+  },
+  propose_delete_finance_line_item: {
+    progress: 'Preparing finance delete…',
+    done: 'Prepared finance delete',
+    failed: 'Finance delete prep failed',
+  },
+  propose_update_maintenance_item: {
+    progress: 'Preparing maintenance update…',
+    done: 'Prepared maintenance update',
+    failed: 'Maintenance update prep failed',
+  },
+  propose_delete_maintenance_item: {
+    progress: 'Preparing maintenance delete…',
+    done: 'Prepared maintenance delete',
+    failed: 'Maintenance delete prep failed',
+  },
+  get_org_plan_snapshot: {
+    progress: 'Loading plan snapshot…',
+    done: 'Loaded plan snapshot',
+    failed: 'Plan snapshot failed',
+  },
+  get_notification_preferences: {
+    progress: 'Loading notification prefs…',
+    done: 'Loaded notification prefs',
+    failed: 'Notification prefs failed',
+  },
+  guide_notification_settings: {
+    progress: 'Loading notification guide…',
+    done: 'Loaded notification guide',
+    failed: 'Notification guide failed',
+  },
+  get_telegram_notification_settings: {
+    progress: 'Loading Telegram settings…',
+    done: 'Loaded Telegram settings',
+    failed: 'Telegram settings failed',
+  },
+  guide_telegram_settings: {
+    progress: 'Loading Telegram guide…',
+    done: 'Loaded Telegram guide',
+    failed: 'Telegram guide failed',
+  },
+  guide_create_booking: {
+    progress: 'Loading new booking guide…',
+    done: 'Loaded new booking guide',
+    failed: 'New booking guide failed',
+  },
+  guide_import_bookings: {
+    progress: 'Loading import guide…',
+    done: 'Loaded import guide',
+    failed: 'Import guide failed',
+  },
 };
 
 /** Short audit-card label (past tense, no ellipsis). */

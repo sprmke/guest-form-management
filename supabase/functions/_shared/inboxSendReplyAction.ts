@@ -1,11 +1,6 @@
 /**
- * Shared "send a plain-text reply" action for the AI dashboard assistant's
- * `propose_send_inbox_reply` tool — a deliberately narrower slice of `social-inbox-send`'s
- * capability (text + conversationId only, no attachments/replyToMessageId) since
- * this is the assistant's first externally-visible, real-guest-facing send action. The full
- * `social-inbox-send` edge function keeps its own richer inline implementation — not refactored
- * to share this module, since its feature set is intentionally broader than what a chat tool
- * should attempt to fill from free text.
+ * Shared inbox reply send for the AI dashboard assistant's `propose_send_inbox_reply` tool
+ * and any other callers that need the same scoped, guest-facing send path.
  */
 
 import {
@@ -22,7 +17,8 @@ import {
   updateConversationAfterMessage,
 } from './socialInboxService.ts';
 import { maybeNotifyGuestOfHostWebReply } from './guestChatEmail.ts';
-import { buildMessagePreview } from './guestChatAttachments.ts';
+import { assertGuestWebMessagePayload, buildMessagePreview } from './guestChatAttachments.ts';
+import type { NormalizedInboxAttachment } from './inboxAttachments.ts';
 import type { SocialChannelConnectionRow, SocialConversationRow } from './socialInboxTypes.ts';
 import type { InboxAccessContext } from './inboxAccess.ts';
 
@@ -54,29 +50,46 @@ export async function loadInboxConversationInScope(
   return conv;
 }
 
-/** Sends a plain-text reply — web insert+notify, or Meta DM via the Graph API. */
-export async function sendInboxTextReply(
+export type SendInboxReplyOptions = {
+  useHumanAgentTag?: boolean;
+  attachments?: NormalizedInboxAttachment[];
+};
+
+/** Sends a reply — web insert+notify (text and/or attachments), or Meta DM text only. */
+export async function sendInboxReply(
   ctx: InboxAccessContext,
   conv: SocialConversationRow,
   userId: string,
   text: string,
-  opts: { useHumanAgentTag?: boolean } = {}
+  opts: SendInboxReplyOptions = {}
 ): Promise<{ sent: true }> {
   const trimmed = text.trim();
-  if (!trimmed) throw new InboxSendReplyError('text is required');
+  const attachments = opts.attachments ?? [];
+
+  if (attachments.length > 0 && conv.platform !== 'web') {
+    throw new InboxSendReplyError(
+      'Attachments are only supported for website chat — send text only on Messenger or Instagram'
+    );
+  }
 
   const now = new Date().toISOString();
 
   if (conv.platform === 'web') {
+    try {
+      assertGuestWebMessagePayload(trimmed, attachments);
+    } catch (e) {
+      throw new InboxSendReplyError(e instanceof Error ? e.message : String(e));
+    }
+
     const externalId = `web:${crypto.randomUUID()}`;
-    const preview = buildMessagePreview(trimmed, []);
+    const preview = buildMessagePreview(trimmed, attachments);
     await insertMessageIfNew({
       organization_id: ctx.org.id,
       conversation_id: conv.id,
       direction: 'outbound',
       external_message_id: externalId,
-      body_text: trimmed,
-      attachments: [],
+      body_text: trimmed || null,
+      attachments,
       sent_at: now,
       delivery_status: 'sent',
       sent_by_user_id: userId,
@@ -96,6 +109,8 @@ export async function sendInboxTextReply(
     }).catch((err) => console.warn('[inboxSendReplyAction] guest notify:', err));
     return { sent: true };
   }
+
+  if (!trimmed) throw new InboxSendReplyError('text is required');
 
   const sb = createServiceClient();
   const { data: conn } = await sb
@@ -159,4 +174,15 @@ export async function sendInboxTextReply(
   });
 
   return { sent: true };
+}
+
+/** @deprecated Use sendInboxReply — kept for existing imports. */
+export async function sendInboxTextReply(
+  ctx: InboxAccessContext,
+  conv: SocialConversationRow,
+  userId: string,
+  text: string,
+  opts: { useHumanAgentTag?: boolean } = {}
+): Promise<{ sent: true }> {
+  return sendInboxReply(ctx, conv, userId, text, opts);
 }
