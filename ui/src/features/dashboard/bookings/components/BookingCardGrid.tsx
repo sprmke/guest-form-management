@@ -100,70 +100,78 @@ function BookingCard({
     }
   };
 
+  const stayMeta = [
+    `${row.number_of_nights} ${row.number_of_nights === 1 ? 'night' : 'nights'}`,
+    `${pax} ${pax === 1 ? 'guest' : 'guests'}`,
+    row.booking_rate != null ? formatMoney(row.booking_rate) : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={handleKey}
-      aria-label={`Open booking for ${name}`}
+      aria-label={`Open booking for ${name}${row.guest_email ? `, ${row.guest_email}` : ''}`}
       className={cn(
         'surface-card-interactive group relative cursor-pointer overflow-hidden',
         'outline-none',
         'focus-visible:ring-sidebar-primary/40 focus-visible:ring-2'
       )}
     >
-      {/* Phone: horizontal list row */}
-      <div className="flex items-start gap-3.5 p-4 sm:hidden">
-        <GuestAvatar name={name} validIdUrl={row.valid_id_url} size="lg" className="shrink-0" />
-        <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-foreground truncate text-[15px] font-semibold leading-snug">
-                {name}
-              </p>
-              <p className="text-muted-foreground mt-1 truncate text-xs leading-snug">
-                {row.guest_email}
-              </p>
-            </div>
-            <ChevronRight className="text-muted-foreground/60 mt-0.5 size-4 shrink-0" aria-hidden />
+      {/* Phone: dense 2-line list row — name/status, stay meta, optional flags */}
+      <div className="flex items-center gap-3 px-3 py-2.5 sm:hidden">
+        <GuestAvatar name={name} validIdUrl={row.valid_id_url} size="sm" className="shrink-0" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="text-foreground min-w-0 flex-1 truncate text-[13px] font-semibold leading-tight">
+              {name}
+            </p>
+            <StatusBadge
+              status={row.status}
+              className="w-fit max-w-[9.5rem] shrink-0 origin-right scale-90"
+            />
+            <ChevronRight className="text-muted-foreground/50 size-3.5 shrink-0" aria-hidden />
           </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <StatusBadge status={row.status} className="w-fit max-w-full" />
-            {row.status === 'PENDING_HOST_ACCEPTANCE' && row.parking_broadcast_expires_at && (
+          <div className="mt-1 flex min-w-0 items-center gap-1.5">
+            <p className="text-muted-foreground min-w-0 flex-1 truncate text-[11px] tabular-nums leading-tight">
+              <span className="text-foreground/80 font-medium">
+                {formatBookingDateShort(row.check_in_date)}
+                <span className="text-muted-foreground/40 mx-0.5 font-light">→</span>
+                {formatBookingDate(row.check_out_date)}
+              </span>
+              {stayMeta ? (
+                <>
+                  <span className="text-muted-foreground/40 mx-1" aria-hidden>
+                    ·
+                  </span>
+                  <span>{stayMeta}</span>
+                </>
+              ) : null}
+            </p>
+            {row.status === 'PENDING_HOST_ACCEPTANCE' && row.parking_broadcast_expires_at ? (
               <ParkingBroadcastCountdown expiresAt={row.parking_broadcast_expires_at} />
-            )}
-          </div>
-          {showProperty ? <BookingResourceLabel row={row} className="font-medium" /> : null}
-          <p className="text-foreground text-[13px] font-semibold tabular-nums leading-snug">
-            {formatBookingDateShort(row.check_in_date)}
-            <span className="text-muted-foreground/50 mx-1 font-light">→</span>
-            {formatBookingDate(row.check_out_date)}
-          </p>
-          <div className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] leading-snug">
-            <span>
-              {row.number_of_nights} {row.number_of_nights === 1 ? 'night' : 'nights'}
-            </span>
-            <span aria-hidden>·</span>
-            <span>
-              {pax} {pax === 1 ? 'guest' : 'guests'}
-            </span>
-            {row.booking_rate != null ? (
-              <>
-                <span aria-hidden>·</span>
-                <span className="text-foreground font-semibold tabular-nums">
-                  {formatMoney(row.booking_rate)}
-                </span>
-              </>
             ) : null}
           </div>
-          {hasAnyFlags ? (
-            <AdminTableFlagsCell
-              need_parking={row.need_parking}
-              has_pets={row.has_pets}
-              guest_requests_surprise_decor={row.guest_requests_surprise_decor}
-              has_invalid_receipt_ai={hasInvalidReceiptAi}
-            />
+          {showProperty || hasAnyFlags ? (
+            <div className="mt-1 flex min-w-0 items-center gap-2">
+              {showProperty ? (
+                <BookingResourceLabel
+                  row={row}
+                  className="min-w-0 truncate text-[11px] font-medium"
+                />
+              ) : null}
+              {hasAnyFlags ? (
+                <AdminTableFlagsCell
+                  need_parking={row.need_parking}
+                  has_pets={row.has_pets}
+                  guest_requests_surprise_decor={row.guest_requests_surprise_decor}
+                  has_invalid_receipt_ai={hasInvalidReceiptAi}
+                />
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>

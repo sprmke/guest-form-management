@@ -10,7 +10,7 @@ import type { PetDetailsValues } from '@/features/dashboard/bookings/lib/petDefa
 import { SettingsField } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 
 import { Input } from '@/components/ui/input';
-import { SlidingTabs, SlidingTabsList, SlidingTabsTrigger } from '@/components/ui/sliding-tabs';
+import { SegmentedControl } from '@/components/ui/sliding-tabs';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
 import { cn } from '@/lib/utils';
 
@@ -193,32 +193,30 @@ export function BuildingFormsSettingsSection({
       </div>
 
       <div className="min-w-0 lg:sticky lg:top-4 lg:self-start">
-        <SlidingTabs
+        <SegmentedControl
           value={previewTab}
-          onValueChange={(value) => setPreviewTab(value as PreviewTab)}
+          onChange={setPreviewTab}
+          size="dense"
+          fullWidth
+          aria-label="PDF preview"
           className="mb-3 w-full max-w-full sm:max-w-md"
-        >
-          <SlidingTabsList size="compact" className="segment-shell w-full" aria-label="PDF preview">
-            {PREVIEW_TABS.map(({ value, label, shortLabel, Icon }) => (
-              <SlidingTabsTrigger
-                key={value}
-                value={value}
-                id={`building-form-preview-tab-${value}`}
-                aria-controls={`building-form-preview-panel-${value}`}
-                className="segment-item min-h-[44px] flex-1 gap-1.5 px-2.5 sm:px-3"
-              >
-                <Icon className="size-4 shrink-0" aria-hidden />
+          options={PREVIEW_TABS.map(({ value, label, shortLabel, Icon }) => ({
+            value,
+            ariaLabel: label,
+            icon: Icon,
+            label: (
+              <>
                 <span className="truncate sm:hidden">{shortLabel}</span>
                 <span className="hidden truncate sm:inline">{label}</span>
-              </SlidingTabsTrigger>
-            ))}
-          </SlidingTabsList>
-        </SlidingTabs>
+              </>
+            ),
+          }))}
+        />
 
         <div
           role="tabpanel"
           id={`building-form-preview-panel-${previewTab}`}
-          aria-labelledby={`building-form-preview-tab-${previewTab}`}
+          aria-label={PREVIEW_TABS.find((tab) => tab.value === previewTab)?.label ?? 'PDF preview'}
         >
           {previewTab === 'gaf' ? (
             <GafPdfPreview details={values} signatureUrl={effectiveSignatureUrl} />

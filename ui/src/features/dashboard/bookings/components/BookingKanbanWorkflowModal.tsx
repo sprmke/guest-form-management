@@ -129,7 +129,7 @@ export function BookingKanbanWorkflowModal({
               <div className="min-w-0 flex-1 pt-0.5">
                 <h2
                   id={titleId}
-                  className="text-foreground truncate text-lg font-bold tracking-tight sm:text-xl"
+                  className="text-foreground truncate text-base font-bold tracking-tight sm:text-lg"
                 >
                   {title}
                 </h2>

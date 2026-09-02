@@ -46,6 +46,7 @@ import {
   pickBuildingFormsTeamContact,
 } from '@/features/dashboard/bookings/lib/buildingFormsTeamDefaults';
 import { PropertyAiPlatformSection } from '@/features/dashboard/org/components/property-settings/PropertyAiPlatformSection';
+import { PropertyGuestRewardsSection } from '@/features/dashboard/org/components/property-settings/PropertyGuestRewardsSection';
 import {
   operationalSettingsDraftIsDirty,
   PropertyOperationalSettingsSections,
@@ -55,7 +56,6 @@ import {
   PropertyProfileMainSections,
 } from '@/features/dashboard/org/components/property-settings/PropertyProfileSettingsSections';
 import { PropertySettingsBrandColorPreview } from '@/features/dashboard/org/components/property-settings/PropertySettingsBrandColorPreview';
-import { PropertyGuestRewardsSection } from '@/features/dashboard/org/components/property-settings/PropertyGuestRewardsSection';
 import { PropertySocialsSection } from '@/features/dashboard/org/components/property-settings/PropertySocialsBrandingSection';
 import { SensitiveSettingsOtpDialog } from '@/features/dashboard/org/components/property-settings/SensitiveSettingsOtpDialog';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';

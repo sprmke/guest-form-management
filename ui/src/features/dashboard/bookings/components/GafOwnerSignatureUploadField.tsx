@@ -12,7 +12,7 @@ import { useUploadAppSettingsAsset } from '@/features/dashboard/bookings/hooks/u
 import { SettingsFieldLabel } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 
 import { Button } from '@/components/ui/button';
-import { SlidingTabs, SlidingTabsList, SlidingTabsTrigger } from '@/components/ui/sliding-tabs';
+import { SegmentedControl } from '@/components/ui/sliding-tabs';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
 import { cn } from '@/lib/utils';
 
@@ -88,26 +88,17 @@ export function GafOwnerSignatureUploadField({
         required={required}
       />
       <div className="space-y-3 pt-1">
-        <SlidingTabs
+        <SegmentedControl
           value={mode}
-          onValueChange={(value) => setMode(value as SignatureInputMode)}
-          className="w-full"
-        >
-          <SlidingTabsList
-            size="compact"
-            className="segment-shell w-full"
-            aria-label="Signature input"
-          >
-            <SlidingTabsTrigger value="draw" className="segment-item min-h-[44px] flex-1 gap-1.5">
-              <PenLine className="size-4 shrink-0" aria-hidden />
-              Sign
-            </SlidingTabsTrigger>
-            <SlidingTabsTrigger value="upload" className="segment-item min-h-[44px] flex-1 gap-1.5">
-              <Upload className="size-4 shrink-0" aria-hidden />
-              Upload
-            </SlidingTabsTrigger>
-          </SlidingTabsList>
-        </SlidingTabs>
+          onChange={setMode}
+          size="dense"
+          fullWidth
+          aria-label="Signature input"
+          options={[
+            { value: 'draw', label: 'Sign', icon: PenLine },
+            { value: 'upload', label: 'Upload', icon: Upload },
+          ]}
+        />
 
         <div
           className={cn(

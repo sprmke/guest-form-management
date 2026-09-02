@@ -197,7 +197,7 @@ export function BookingAiSummaryPanel({ booking, open, onOpenChange, onPreview }
         <header className="border-border flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3 sm:px-5 sm:py-4">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 id="booking-ai-summary-title" className="text-foreground text-lg font-semibold">
+              <h3 id="booking-ai-summary-title" className="text-foreground text-base font-semibold">
                 AI Summary
               </h3>
               <TierBadge feature="aiValidations" />

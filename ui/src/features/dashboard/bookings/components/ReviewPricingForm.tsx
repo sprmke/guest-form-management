@@ -18,6 +18,12 @@ import { useForm, type DefaultValues } from 'react-hook-form';
 import { z } from 'zod';
 
 import {
+  computePercentDiscountPhp,
+  formatVoucherOfferLabel,
+  resolveVoucherPercentOff,
+} from '@/features/guest/account/lib/voucherDiscount';
+
+import {
   focusFirstWorkflowFieldError,
   useRegisterWorkflowProceedValidator,
 } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowProceedValidationContext';
@@ -39,11 +45,6 @@ import {
   type PropertyPricingDefaults,
 } from '@/features/dashboard/pricing/lib/pricingCompute';
 
-import {
-  computePercentDiscountPhp,
-  formatVoucherOfferLabel,
-  resolveVoucherPercentOff,
-} from '@/features/guest/account/lib/voucherDiscount';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
 import { formatMoney } from '@/utils/format/currency';
 

@@ -117,6 +117,7 @@ export function BookingDateRangeFilter({
 
   const triggerActive = isActive || open || calendarOpen;
   const showNav = canNavigate;
+  const controlSize = isMobileLayout ? 'compact' : 'default';
 
   const desktopPresetList = (
     <div className="py-1">
@@ -243,6 +244,7 @@ export function BookingDateRangeFilter({
 
   const triggerButton = (
     <ButtonGroupItem
+      size={controlSize}
       type="button"
       position={showNav ? 'middle' : 'only'}
       active={triggerActive}
@@ -280,6 +282,7 @@ export function BookingDateRangeFilter({
       <ButtonGroup fullWidth={fullWidth}>
         {showNav ? (
           <ButtonGroupItem
+            size={controlSize}
             type="button"
             position="first"
             onClick={() => navigatePeriod('prev')}
@@ -294,6 +297,7 @@ export function BookingDateRangeFilter({
 
         {showNav ? (
           <ButtonGroupItem
+            size={controlSize}
             type="button"
             position="last"
             onClick={() => navigatePeriod('next')}

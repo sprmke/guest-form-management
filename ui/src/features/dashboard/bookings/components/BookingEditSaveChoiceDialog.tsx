@@ -2,13 +2,13 @@ import { AlertTriangle, RotateCcw, Save } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 
 type Props = {
   open: boolean;
@@ -26,14 +26,14 @@ export function BookingEditSaveChoiceDialog({
   onSaveAndRevert,
 }: Props) {
   return (
-    <Dialog
+    <ResponsiveModal
       open={open}
       onOpenChange={(next) => {
         if (!isSaving) onOpenChange(next);
       }}
     >
-      <DialogContent className="max-w-[min(calc(100vw-1.5rem),26rem)] gap-5">
-        <DialogHeader>
+      <ResponsiveModalContent className="gap-5 sm:max-w-[26rem]">
+        <ResponsiveModalHeader>
           <div className="flex items-start gap-3 pr-6">
             <div
               className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300"
@@ -42,13 +42,15 @@ export function BookingEditSaveChoiceDialog({
               <AlertTriangle className="size-5" />
             </div>
             <div className="min-w-0 space-y-1.5 pt-0.5">
-              <DialogTitle className="text-left text-base sm:text-lg">Save changes</DialogTitle>
-              <DialogDescription className="text-left text-[13px] leading-snug sm:text-sm">
+              <ResponsiveModalTitle className="text-left text-base sm:text-lg">
+                Save changes
+              </ResponsiveModalTitle>
+              <ResponsiveModalDescription className="text-left text-[13px] leading-snug sm:text-sm">
                 Guest or stay details changed.
-              </DialogDescription>
+              </ResponsiveModalDescription>
             </div>
           </div>
-        </DialogHeader>
+        </ResponsiveModalHeader>
 
         <div className="flex flex-col gap-2">
           <Button
@@ -83,7 +85,7 @@ export function BookingEditSaveChoiceDialog({
           </Button>
         </div>
 
-        <DialogFooter className="pt-0 sm:justify-center">
+        <ResponsiveModalFooter className="pt-0 sm:justify-center">
           <Button
             type="button"
             variant="ghost"
@@ -93,8 +95,8 @@ export function BookingEditSaveChoiceDialog({
           >
             Cancel
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }
