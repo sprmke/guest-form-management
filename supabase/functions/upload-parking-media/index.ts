@@ -9,36 +9,7 @@ import { handleEdgeError } from '../_shared/httpResponse.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { resolveScopedParkingAccess } from '../_shared/parkingScope.ts';
 import { PROPERTY_MEDIA_BUCKET } from '../_shared/propertyMedia.ts';
-import { assertWithinUploadLimit } from '../_shared/uploadLimits.ts';
-import { formatPublicUrl } from '../_shared/utils.ts';
-
-const ALLOWED_MIME = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-  'image/heic',
-  'image/heif',
-]);
-
-function extensionForMime(mime: string, fileName: string): string {
-  const fromName = fileName.includes('.') ? `.${fileName.split('.').pop()?.toLowerCase()}` : '';
-  if (fromName && fromName.length <= 6) return fromName;
-  switch (mime) {
-    case 'image/png':
-      return '.png';
-    case 'image/webp':
-      return '.webp';
-    case 'image/gif':
-      return '.gif';
-    default:
-      return '.jpg';
-  }
-}
-
-function parkingCoverStoragePath(parkingId: string, ext: string): string {
-  return `parking/${parkingId}/cover${ext}`;
-}
+import { applyParkingCoverFromBytes } from '../_shared/parkingMediaUpload.ts';
 
 async function readParkingSettings(parkingId: string): Promise<Record<string, unknown>> {
   const supabase = createServiceClient();
@@ -119,52 +90,26 @@ serve(async (req) => {
     if (!file) throw new Error('file is required');
     if (!fileName) throw new Error('fileName is required');
 
-    const mime = (file.type || '').toLowerCase();
-    if (!ALLOWED_MIME.has(mime)) {
-      throw new Error('File must be JPEG, PNG, WebP, or GIF');
-    }
-    assertWithinUploadLimit(file, 'image');
-
-    const current = await readParkingSettings(parkingId);
-    const previousPath =
-      typeof current.coverImageStoragePath === 'string' ? current.coverImageStoragePath.trim() : '';
-
-    const ext = extensionForMime(mime, fileName);
-    const storagePath = parkingCoverStoragePath(parkingId, ext);
-
-    const { error: uploadError } = await supabase.storage
-      .from(PROPERTY_MEDIA_BUCKET)
-      .upload(storagePath, file, { upsert: true, contentType: mime });
-
-    if (uploadError) {
-      throw new Error(`Upload failed: ${uploadError.message}`);
-    }
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from(PROPERTY_MEDIA_BUCKET).getPublicUrl(storagePath);
-    const safePublicUrl = formatPublicUrl(publicUrl);
-
-    const saved = await persistCover(parkingId, safePublicUrl, storagePath);
-
-    if (
-      previousPath &&
-      previousPath !== storagePath &&
-      previousPath.startsWith(`parking/${parkingId}/`)
-    ) {
-      const { error: removeError } = await supabase.storage
-        .from(PROPERTY_MEDIA_BUCKET)
-        .remove([previousPath]);
-      if (removeError) {
-        console.warn('[upload-parking-media] Previous cover delete failed:', removeError.message);
-      }
-    }
-
-    console.log(`[upload-parking-media] Uploaded cover for ${parkingId}: ${storagePath}`);
-
-    return new Response(JSON.stringify({ success: true, data: saved }), {
-      headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const result = await applyParkingCoverFromBytes({
+      parkingId,
+      bytes,
+      mimeType: file.type || '',
+      fileName,
     });
+
+    console.log(`[upload-parking-media] Uploaded cover for ${parkingId}: ${result.coverImageStoragePath}`);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        data: {
+          coverImage: result.coverImage,
+          coverImageStoragePath: result.coverImageStoragePath,
+        },
+      }),
+      { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
     return await handleEdgeError(req, error, '[upload-parking-media]');
   }

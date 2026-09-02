@@ -2,40 +2,30 @@
  * upload-inbox-chat-asset — Host inbox image/PDF upload (web chat replies).
  */
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-
 import { resolveInboxAccess } from '../_shared/inboxAccess.ts';
-import type { NormalizedInboxAttachment } from '../_shared/inboxAttachments.ts';
+import {
+  uploadInboxChatAssetFromBytes,
+  INBOX_CHAT_ALLOWED_MIME,
+} from '../_shared/inboxChatAssetUpload.ts';
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
+import { identityFromRequest, rateLimitGate } from '../_shared/rateLimit.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { conversationAllowedInScope, getConversationById } from '../_shared/socialInboxService.ts';
 import { resolveMetaConnectionIdsForScope } from '../_shared/metaInboxScope.ts';
-import { assertWithinUploadLimit } from '../_shared/uploadLimits.ts';
-import { formatPublicUrl } from '../_shared/utils.ts';
-
-const BUCKET = 'guest-chat-attachments';
-const ALLOWED_MIME = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/heic',
-  'image/heif',
-  'application/pdf',
-]);
-
-function extensionForMime(mime: string): string {
-  if (mime === 'image/png') return '.png';
-  if (mime === 'image/webp') return '.webp';
-  if (mime === 'application/pdf') return '.pdf';
-  if (mime === 'image/heic') return '.heic';
-  if (mime === 'image/heif') return '.heif';
-  return '.jpg';
-}
 
 serveAuthenticated('upload-inbox-chat-asset', async (req, user) => {
   if (req.method !== 'POST') {
     return jsonError(req, 'Method not allowed', 405);
   }
+
+  // Durable per-user upload rate limit. Plan: docs/workflow/for-testing/captcha-anti-spam-hardening.md
+  const limited = await rateLimitGate(req, {
+    scope: 'upload-inbox-chat-asset',
+    identity: identityFromRequest(req, user),
+    limit: 60,
+    windowSec: 600,
+  });
+  if (limited) return limited;
 
   const formData = await req.formData();
   const file = formData.get('file');
@@ -53,10 +43,9 @@ serveAuthenticated('upload-inbox-chat-asset', async (req, user) => {
   }
 
   const mime = (file.type || '').toLowerCase();
-  if (!ALLOWED_MIME.has(mime)) {
+  if (!INBOX_CHAT_ALLOWED_MIME.has(mime)) {
     return jsonError(req, 'File must be JPEG, PNG, WebP, HEIC, or PDF', 400);
   }
-  assertWithinUploadLimit(file, mime === 'application/pdf' ? 'pdf' : 'image');
 
   const scopeBody: Record<string, unknown> = {};
   if (propertyId) scopeBody.propertyId = propertyId;
@@ -85,34 +74,20 @@ serveAuthenticated('upload-inbox-chat-asset', async (req, user) => {
 
   void user;
 
-  const ext = extensionForMime(mime);
+  const ext = mime === 'application/pdf' ? '.pdf' : mime === 'image/png' ? '.png' : '.jpg';
   const fileName = String(formData.get('fileName') ?? file.name ?? `upload${ext}`).trim();
-  const safeName = fileName.replace(/[^\w.\-() ]+/g, '_').slice(0, 120) || `upload${ext}`;
-  const storagePath = `${conv.organization_id}/${conv.id}/${crypto.randomUUID()}${ext}`;
 
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  );
-
-  const { error: uploadError } = await supabase.storage
-    .from(BUCKET)
-    .upload(storagePath, file, { upsert: false, contentType: mime });
-
-  if (uploadError) {
-    return jsonError(req, `Upload failed: ${uploadError.message}`, 500);
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const attachment = await uploadInboxChatAssetFromBytes({
+      organizationId: conv.organization_id,
+      conversationId: conv.id,
+      bytes,
+      mimeType: mime,
+      fileName,
+    });
+    return jsonSuccess(req, { attachment });
+  } catch (err) {
+    return jsonError(req, err instanceof Error ? err.message : String(err), 400);
   }
-
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
-  const url = formatPublicUrl(publicUrl);
-
-  const attachment: NormalizedInboxAttachment = {
-    kind: mime === 'application/pdf' ? 'file' : 'image',
-    url,
-    label: safeName,
-  };
-
-  return jsonSuccess(req, { attachment });
 });

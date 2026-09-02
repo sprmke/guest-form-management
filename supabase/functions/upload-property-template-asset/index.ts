@@ -5,28 +5,10 @@
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { corsHeaders } from '../_shared/cors.ts';
 import { handleEdgeError } from '../_shared/httpResponse.ts';
-import {
-  getBuiltinPropertyTemplate,
-  isBuiltinPropertyTemplateKey,
-  upsertPropertyTemplateRow,
-} from '../_shared/propertyTemplates.ts';
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
-import { assertWithinUploadLimit } from '../_shared/uploadLimits.ts';
-import { formatPublicUrl } from '../_shared/utils.ts';
-
-const BUCKET = 'app-settings-assets';
-const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const STANDARD_KEYS = new Set([
-  'house-rules',
-  'check-in-instructions',
-  'check-out-instructions',
-  'parking-reminders',
-]);
-
-type AssetType = 'section_image' | 'inline_image';
+import { applyPropertyTemplateAssetFromBytes } from '../_shared/propertyTemplateAssetUpload.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -42,7 +24,7 @@ serve(async (req) => {
     }
 
     const formData = await req.formData();
-    const assetType = formData.get('assetType') as AssetType;
+    const assetType = String(formData.get('assetType') ?? '').trim();
     const file = formData.get('file') as File;
     const templateKey = String(formData.get('templateKey') ?? '').trim();
     const fileName = (formData.get('fileName') as string) || file?.name;
@@ -52,84 +34,27 @@ serve(async (req) => {
     }
     if (!file) throw new Error('file is required');
     if (!fileName) throw new Error('fileName is required');
-    if (assetType === 'section_image') {
-      if (!templateKey || !isBuiltinPropertyTemplateKey(templateKey)) {
-        throw new Error('templateKey is required for section_image');
-      }
-      const builtin = getBuiltinPropertyTemplate(templateKey);
-      if (!builtin || builtin.category !== 'standard') {
-        throw new Error('Section images are only supported for standard templates');
-      }
-      if (!STANDARD_KEYS.has(templateKey)) {
-        throw new Error('Unknown standard template key');
-      }
-    }
 
-    const mime = (file.type || '').toLowerCase();
-    if (!ALLOWED_MIME.has(mime)) {
-      throw new Error('File must be JPEG, PNG, or WebP');
-    }
-    assertWithinUploadLimit(file, 'image');
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const result = await applyPropertyTemplateAssetFromBytes({
+      propertyId,
+      assetType,
+      bytes,
+      mimeType: file.type || '',
+      fileName,
+      templateKey: templateKey || undefined,
+    });
 
-    const ext = fileName.includes('.')
-      ? `.${fileName.split('.').pop()?.toLowerCase()}`
-      : mime === 'image/png'
-        ? '.png'
-        : mime === 'image/webp'
-          ? '.webp'
-          : '.jpg';
-
-    const storagePath =
-      assetType === 'section_image'
-        ? `template-section/${propertyId}/${templateKey}${ext}`
-        : `template-inline/${propertyId}/${crypto.randomUUID()}${ext}`;
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    const { error: uploadError } = await supabase.storage
-      .from(BUCKET)
-      .upload(storagePath, file, { upsert: true, contentType: mime });
-
-    if (uploadError) {
-      throw new Error(`Upload failed: ${uploadError.message}`);
-    }
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
-    const safePublicUrl = formatPublicUrl(publicUrl);
-
-    if (assetType === 'section_image') {
-      const builtin = getBuiltinPropertyTemplate(templateKey)!;
-      const { data: existing } = await supabase
-        .from('property_template_contents')
-        .select('content')
-        .eq('property_id', propertyId)
-        .eq('template_key', templateKey)
-        .maybeSingle();
-
-      await upsertPropertyTemplateRow({
-        propertyId,
-        templateKey,
-        category: 'standard',
-        content: String(existing?.content ?? builtin.defaultContent),
-        sectionImageUrl: safePublicUrl,
-      });
-    }
-
-    console.log(`[upload-property-template-asset] Uploaded ${assetType}: ${safePublicUrl}`);
+    console.log(`[upload-property-template-asset] Uploaded ${assetType}: ${result.url}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         data: {
-          url: safePublicUrl,
-          bucket: BUCKET,
-          path: storagePath,
-          templateKey: templateKey || null,
+          url: result.url,
+          bucket: result.bucket,
+          path: result.path,
+          templateKey: result.templateKey,
         },
       }),
       { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
