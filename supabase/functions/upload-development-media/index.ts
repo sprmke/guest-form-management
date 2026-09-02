@@ -20,6 +20,7 @@ import {
   PROPERTY_MEDIA_BUCKET,
   type PropertyMediaRecord,
 } from '../_shared/propertyMedia.ts';
+import { capturePostHogException } from '../_shared/posthog.ts';
 
 function extensionForMime(mime: string, fileName: string): string {
   const fromName = fileName.includes('.') ? `.${fileName.split('.').pop()?.toLowerCase()}` : '';
@@ -252,6 +253,7 @@ serve(async (req) => {
     console.error('[upload-development-media]', error);
     const message = error instanceof Error ? error.message : 'Request failed';
     const status = message.includes('Unauthorized') || message.includes('restricted') ? 403 : 400;
+    await capturePostHogException(error, { logPrefix: 'upload-development-media' });
 
     return new Response(JSON.stringify({ success: false, error: message }), {
       status,

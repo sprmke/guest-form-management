@@ -20,10 +20,15 @@ import {
   type CalendarFeedRow,
 } from '../_shared/calendarSyncRun.ts';
 import { corsHeaders } from '../_shared/cors.ts';
-import { catchPlanFeatureError, requirePropertyFeature, resolvePropertyEntitlements } from '../_shared/planEntitlements.ts';
+import {
+  catchPlanFeatureError,
+  requirePropertyFeature,
+  resolvePropertyEntitlements,
+} from '../_shared/planEntitlements.ts';
 import { isFeatureEnabled } from '../_shared/planFeatures.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
+import { capturePostHogException } from '../_shared/posthog.ts';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const GLOBAL_BATCH = 100;
@@ -68,8 +73,10 @@ serve(async (req) => {
 
     // ── Scoped "Sync now" ──────────────────────────────────────────────────
     if (scoped) {
-      if (feedId && !UUID_RE.test(feedId)) return json(req, { success: false, error: 'Invalid feedId' }, 400);
-      if (propertyId && !UUID_RE.test(propertyId)) return json(req, { success: false, error: 'Invalid propertyId' }, 400);
+      if (feedId && !UUID_RE.test(feedId))
+        return json(req, { success: false, error: 'Invalid feedId' }, 400);
+      if (propertyId && !UUID_RE.test(propertyId))
+        return json(req, { success: false, error: 'Invalid propertyId' }, 400);
 
       const { property } = await resolveScopedPropertyAccess(req, 'pricing.channels:edit');
       try {
@@ -102,7 +109,13 @@ serve(async (req) => {
       for (const feed of feeds) {
         results.push(await runFeedSync(feed, { runId, force: true, supabase }));
       }
-      return json(req, { success: true, scoped: true, runId, feedsProcessed: results.length, results });
+      return json(req, {
+        success: true,
+        scoped: true,
+        runId,
+        feedsProcessed: results.length,
+        results,
+      });
     }
 
     // ── Global sweep ──────────────────────────────────────────────────────
@@ -130,7 +143,10 @@ serve(async (req) => {
       let entitled = entitlementCache.get(feed.property_id);
       if (entitled === undefined) {
         try {
-          entitled = isFeatureEnabled(await resolvePropertyEntitlements(feed.property_id), 'calendarSync');
+          entitled = isFeatureEnabled(
+            await resolvePropertyEntitlements(feed.property_id),
+            'calendarSync'
+          );
         } catch (err) {
           console.error('[calendar-sync-cron] entitlement check failed:', err);
           entitled = false;
@@ -161,6 +177,7 @@ serve(async (req) => {
   } catch (err) {
     if (err instanceof Response) return err;
     console.error('[calendar-sync-cron] fatal:', err);
+    await capturePostHogException(err, { logPrefix: 'cron:calendar-sync-cron' });
     return json(req, { success: false, error: (err as Error).message }, 500);
   }
 });

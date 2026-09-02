@@ -28,6 +28,7 @@ import { bookingNotificationMetadata } from '../_shared/notificationEnrichment.t
 import { tryGetAuthenticatedUser } from '../_shared/orgAuth.ts';
 import { resolveOrganizationIdForProperty } from '../_shared/propertyScope.ts';
 import type { GuestSubmission } from '../_shared/types.ts';
+import { capturePostHogException } from '../_shared/posthog.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -157,6 +158,7 @@ serve(async (req) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[submit-form-completion] error:', message);
+    await capturePostHogException(error, { logPrefix: 'submit-form-completion' });
     return json({ success: false, error: message }, 400);
   }
 });

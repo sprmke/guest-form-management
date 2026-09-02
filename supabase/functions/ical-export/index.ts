@@ -19,6 +19,7 @@ import type { CalendarFeedProvider } from '../_shared/calendarSyncService.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { readPropertySlugFromUrl, resolvePropertyIdBySlug } from '../_shared/propertyScope.ts';
+import { capturePostHogException } from '../_shared/posthog.ts';
 
 const PROVIDERS: readonly CalendarFeedProvider[] = ['airbnb', 'booking_com', 'vrbo', 'other'];
 
@@ -83,7 +84,11 @@ serve(async (req) => {
       .maybeSingle();
     const calendarName = `${propertyRow?.name ?? propertyRow?.tower_and_unit ?? 'Property'} (GFM)`;
 
-    const { ranges, lastModifiedIso } = await loadExportRanges(supabase, propertyId, excludeProvider);
+    const { ranges, lastModifiedIso } = await loadExportRanges(
+      supabase,
+      propertyId,
+      excludeProvider
+    );
     const projectRef =
       (Deno.env.get('SUPABASE_URL') ?? '').match(/https?:\/\/([^.]+)\./)?.[1] ?? 'gfm';
 
@@ -133,6 +138,7 @@ serve(async (req) => {
     });
   } catch (err) {
     console.error('[ical-export] error:', err);
+    await capturePostHogException(err, { logPrefix: 'ical-export' });
     // Still a 404 — never leak internals on this public endpoint.
     return notFound(req);
   }

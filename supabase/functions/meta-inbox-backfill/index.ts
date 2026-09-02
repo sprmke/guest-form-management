@@ -9,6 +9,7 @@ import { resolveInboxAccess } from '../_shared/inboxAccess.ts';
 import { createServiceClient, verifyAuthenticatedUser } from '../_shared/orgAuth.ts';
 import { resolveSupabaseServiceRoleKey } from '../_shared/supabaseRuntimeEnv.ts';
 import type { SocialChannelConnectionRow } from '../_shared/socialInboxTypes.ts';
+import { capturePostHogException } from '../_shared/posthog.ts';
 
 function isServiceRoleRequest(req: Request): boolean {
   const auth = req.headers.get('Authorization') ?? '';
@@ -98,6 +99,7 @@ serve(async (req) => {
     return jsonSuccess(req, result);
   } catch (e) {
     console.error('[meta-inbox-backfill]', e);
+    await capturePostHogException(e, { logPrefix: 'meta-inbox-backfill' });
     return jsonError(req, (e as Error).message, 500);
   }
 });
