@@ -1,4 +1,8 @@
+import { createServiceClient } from './orgAuth.ts';
+import { assertWithinUploadLimit } from './uploadLimits.ts';
 import type { SupportTicketScope } from './supportTicketScope.ts';
+
+const SUPPORT_TICKET_BUCKET = 'support-ticket-attachments';
 
 export type IncomingSupportTicketAttachment = {
   name: string;
@@ -59,3 +63,41 @@ export const SUPPORT_TICKET_ATTACHMENT_MIME = new Set([
   'video/mp4',
   'video/quicktime',
 ]);
+
+/** Upload bytes to support-ticket-attachments for the authenticated submitter. */
+export async function uploadSupportTicketAttachmentFromBytes(
+  scope: SupportTicketScope,
+  input: { bytes: Uint8Array; mimeType: string; fileName?: string }
+): Promise<IncomingSupportTicketAttachment> {
+  const mime = input.mimeType.trim().toLowerCase();
+  if (!SUPPORT_TICKET_ATTACHMENT_MIME.has(mime)) {
+    throw new Error('File must be JPEG, PNG, WebP, HEIC, MP4, or MOV');
+  }
+  assertWithinUploadLimit(
+    { size: input.bytes.byteLength },
+    mime.startsWith('video/') ? 'video' : 'image'
+  );
+
+  const safeName =
+    String(input.fileName ?? 'upload')
+      .replace(/[^\w.\-() ]+/g, '_')
+      .slice(0, 120) || 'upload';
+  const root = scope.org?.id ?? 'guest';
+  const storagePath = `${root}/${scope.user.id}/${crypto.randomUUID()}-${safeName}`;
+
+  const sb = createServiceClient();
+  const { error: uploadError } = await sb.storage
+    .from(SUPPORT_TICKET_BUCKET)
+    .upload(storagePath, input.bytes, { upsert: false, contentType: mime });
+
+  if (uploadError) {
+    throw new Error(`Upload failed: ${uploadError.message}`);
+  }
+
+  return {
+    name: safeName,
+    mimeType: mime,
+    size: input.bytes.byteLength,
+    path: storagePath,
+  };
+}

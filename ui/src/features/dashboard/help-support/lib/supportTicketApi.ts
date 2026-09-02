@@ -6,6 +6,7 @@ import {
 import { callEdgeFunction, getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
 
 import { prepareUpload } from '@/lib/media/prepareUpload';
+import { withAntiSpam, type AntiSpamRequestFields } from '@/lib/security/antiSpamRequest';
 
 import type { SupportTicketAttachmentDraft, SupportTicketCategory } from './supportTicketSchema';
 
@@ -86,11 +87,12 @@ export type SubmitSupportTicketPayload = SupportTicketScopeParams & {
 };
 
 export function submitSupportTicket(
-  payload: SubmitSupportTicketPayload
+  payload: SubmitSupportTicketPayload,
+  antiSpam?: Partial<AntiSpamRequestFields>
 ): Promise<{ ticket: SupportTicket; message: SupportTicketMessage }> {
   return callEdgeFunction('submit-support-ticket', {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify(withAntiSpam({ ...payload }, antiSpam)),
   });
 }
 
