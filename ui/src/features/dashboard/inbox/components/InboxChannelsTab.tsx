@@ -13,12 +13,12 @@ import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate'
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -324,15 +324,15 @@ export function InboxChannelsTab({
         </li>
       </ul>
 
-      <Dialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>
-        <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-          <DialogHeader>
-            <DialogTitle>Disconnect Meta?</DialogTitle>
-          </DialogHeader>
+      <ResponsiveModal open={disconnectOpen} onOpenChange={setDisconnectOpen}>
+        <ResponsiveModalContent className="sm:max-w-[28rem]">
+          <ResponsiveModalHeader>
+            <ResponsiveModalTitle>Disconnect Meta?</ResponsiveModalTitle>
+          </ResponsiveModalHeader>
           <p className="text-muted-foreground text-sm">
             Synced Facebook and Instagram conversations will be removed from this inbox.
           </p>
-          <DialogFooter className="gap-1">
+          <ResponsiveModalFooter className="gap-1">
             <Button
               type="button"
               variant="outline"
@@ -351,9 +351,9 @@ export function InboxChannelsTab({
             >
               {disconnecting ? 'Disconnecting…' : 'Disconnect'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveModalFooter>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </>
   );
 }

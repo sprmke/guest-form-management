@@ -1,9 +1,10 @@
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
-import type { InboxConversation } from '@/features/dashboard/inbox/types/inbox';
 import {
   buildInboxQuickReplyLinkVars,
   INBOX_QUICK_REPLY_LINK_FIELDS,
 } from '@/features/dashboard/inbox/lib/inboxQuickReplyLinks';
+import type { InboxConversation } from '@/features/dashboard/inbox/types/inbox';
+
 import { formatStayDateRange } from '@/utils/format/dates';
 
 export const INBOX_QUICK_REPLY_MERGE_FIELDS = [

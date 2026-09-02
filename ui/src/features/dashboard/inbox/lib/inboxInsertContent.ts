@@ -1,5 +1,5 @@
-import { formatPaymentAccountNumberDisplay } from '@/features/dashboard/org/lib/paymentProviders';
 import type { PropertyPaymentMethod } from '@/features/dashboard/org/lib/paymentMethods';
+import { formatPaymentAccountNumberDisplay } from '@/features/dashboard/org/lib/paymentProviders';
 
 /** Guest-safe payment block for chat composer insert. */
 export function formatPaymentMethodsChatText(methods: PropertyPaymentMethod[]): string | null {

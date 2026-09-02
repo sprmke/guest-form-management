@@ -367,6 +367,34 @@ export async function sendInboxReply(
   unwrapEdgePayload(json);
 }
 
+/** Scoped `social-inbox-send` URL — for the offline outbox, which needs a concrete URL. */
+export function inboxSendUrl(
+  orgSlug: string | null,
+  orgId: string | null,
+  scope?: InboxApiScope | null
+): string {
+  return withInboxScope(orgUrl('/social-inbox-send', orgSlug, orgId), scope);
+}
+
+/** Request body for a text reply (no attachments) — used by the offline outbox. */
+export function inboxSendBody(
+  input: {
+    conversationId: string;
+    text: string;
+    replyToMessageId?: string;
+    useHumanAgentTag?: boolean;
+  },
+  scope?: InboxApiScope | null
+): Record<string, unknown> {
+  return {
+    conversationId: input.conversationId,
+    text: input.text,
+    replyToMessageId: input.replyToMessageId,
+    useHumanAgentTag: input.useHumanAgentTag === true,
+    ...inboxScopeBody(scope),
+  };
+}
+
 export async function editInboxMessage(
   orgSlug: string | null,
   orgId: string | null,

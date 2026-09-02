@@ -26,21 +26,28 @@ import { toast } from 'sonner';
 
 import { BookingCalendarModal } from '@/features/guest/marketing/properties/components/property-detail/BookingCalendarModal';
 
+import { useBookingStayGuideLink } from '@/features/dashboard/bookings/hooks/useBookingStayGuideLink';
+import { InboxInsertMenu } from '@/features/dashboard/inbox/components/InboxInsertMenu';
 import {
   InboxMediaPreviewDialog,
   InboxMessageMediaTile,
 } from '@/features/dashboard/inbox/components/InboxMediaPreviewDialog';
-import { InboxInsertMenu } from '@/features/dashboard/inbox/components/InboxInsertMenu';
 import { PlatformLogo } from '@/features/dashboard/inbox/components/PlatformLogo';
+import { useInboxMatchedBooking } from '@/features/dashboard/inbox/hooks/useInboxMatchedBooking';
+import type { InboxChatAttachment } from '@/features/dashboard/inbox/lib/inboxChatAttachment';
+import { readPropertyCheckInTimes } from '@/features/dashboard/inbox/lib/inboxCheckInPack';
 import {
   isMessagingWindowOpen,
   messagingWindowLabel,
   platformLabel,
 } from '@/features/dashboard/inbox/lib/inboxFormat';
+import { readPropertyMapsUrl } from '@/features/dashboard/inbox/lib/inboxInsertContent';
 import {
   inboxAttachmentPreviews,
   type InboxAttachmentPreview,
 } from '@/features/dashboard/inbox/lib/inboxMessageAttachments';
+import { readInboxPinnedSnippets } from '@/features/dashboard/inbox/lib/inboxPinnedSnippets';
+import { applyInboxQuickReplyMerge } from '@/features/dashboard/inbox/lib/inboxQuickReplyMerge';
 import { templatesForConversationPlatform } from '@/features/dashboard/inbox/lib/quickReplyGroups';
 import {
   type InboxConversation,
@@ -49,20 +56,12 @@ import {
   canHostEditMessage,
   canHostUnsendMessage,
 } from '@/features/dashboard/inbox/types/inbox';
-import { readPropertyMapsUrl } from '@/features/dashboard/inbox/lib/inboxInsertContent';
-import { readPropertyCheckInTimes } from '@/features/dashboard/inbox/lib/inboxCheckInPack';
-import { useBookingStayGuideLink } from '@/features/dashboard/bookings/hooks/useBookingStayGuideLink';
-import { applyInboxQuickReplyMerge } from '@/features/dashboard/inbox/lib/inboxQuickReplyMerge';
-import { readInboxPinnedSnippets } from '@/features/dashboard/inbox/lib/inboxPinnedSnippets';
-import { useInboxMatchedBooking } from '@/features/dashboard/inbox/hooks/useInboxMatchedBooking';
-import type { InboxChatAttachment } from '@/features/dashboard/inbox/lib/inboxChatAttachment';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
-import { CHAT_ATTACHMENT_ACCEPT, CHAT_MAX_ATTACHMENTS } from '@/lib/chat/chatAttachments';
 
 import { ChatComposerContextBar } from '@/components/chat/ChatComposerContextBar';
 import {
@@ -83,6 +82,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { CHAT_ATTACHMENT_ACCEPT, CHAT_MAX_ATTACHMENTS } from '@/lib/chat/chatAttachments';
 import { isChatActionEligibilityError } from '@/lib/chat/chatMessageActions';
 import {
   formatChatBubbleTime,

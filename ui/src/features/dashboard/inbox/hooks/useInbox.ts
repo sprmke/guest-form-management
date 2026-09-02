@@ -24,6 +24,8 @@ import {
   saveInboxTemplate,
   deleteInboxTemplate,
   editInboxMessage,
+  inboxSendBody,
+  inboxSendUrl,
   sendInboxReply,
   unsendInboxMessage,
   startMetaInboxOAuth,
@@ -72,6 +74,7 @@ import {
   type SocialMessageRealtimeRow,
 } from '@/lib/chat/chatMessageCache';
 import { useChatReadReceiptSync } from '@/lib/chat/useChatReadReceiptSync';
+import { runOfflineMutation } from '@/lib/pwa/offlineMutation';
 import { supabase } from '@/lib/supabase/client';
 
 export const INBOX_THREADS_KEY = 'inbox-threads';
@@ -303,21 +306,39 @@ export function useInboxMutations(
   });
 
   const sendReply = useMutation({
-    mutationFn: (opts: {
+    mutationFn: async (opts: {
       conversationId: string;
       text: string;
       replyToMessageId?: string;
       useHumanAgentTag?: boolean;
       attachments?: Array<{ kind: 'image' | 'file'; url: string; label?: string }>;
-    }) =>
-      mockMode
-        ? mockSendReply(opts.conversationId, opts.text).then(() => undefined)
-        : sendInboxReply(orgSlug, orgId, opts.conversationId, opts.text, {
-            replyToMessageId: opts.replyToMessageId,
-            useHumanAgentTag: opts.useHumanAgentTag,
-            attachments: opts.attachments,
-            scope,
-          }),
+    }) => {
+      if (mockMode) {
+        await mockSendReply(opts.conversationId, opts.text);
+        return undefined;
+      }
+      // Text-only replies survive going offline via the durable outbox; replies
+      // with attachments need an online upload first, so stay online-only.
+      if (!opts.attachments?.length) {
+        await runOfflineMutation(
+          {
+            kind: 'inbox-reply',
+            label: 'Reply to a guest message',
+            url: inboxSendUrl(orgSlug, orgId, scope),
+            body: inboxSendBody(opts, scope),
+            invalidateKeys: [INBOX_MESSAGES_KEY, INBOX_THREADS_KEY],
+          },
+          qc
+        );
+        return undefined;
+      }
+      return sendInboxReply(orgSlug, orgId, opts.conversationId, opts.text, {
+        replyToMessageId: opts.replyToMessageId,
+        useHumanAgentTag: opts.useHumanAgentTag,
+        attachments: opts.attachments,
+        scope,
+      });
+    },
     onMutate: async (vars) => {
       const msgKey = inboxMessagesQueryKey(vars.conversationId, scope);
       await qc.cancelQueries({ queryKey: msgKey });

@@ -12,19 +12,19 @@ import {
   type InboxShareRow,
 } from '@/features/dashboard/inbox/lib/inboxBookingShareRows';
 import { buildCheckInPackContent } from '@/features/dashboard/inbox/lib/inboxCheckInPack';
-import type { InboxPinnedSnippet } from '@/features/dashboard/inbox/lib/inboxPinnedSnippets';
 import { formatPaymentMethodsChatText } from '@/features/dashboard/inbox/lib/inboxInsertContent';
+import type { InboxPinnedSnippet } from '@/features/dashboard/inbox/lib/inboxPinnedSnippets';
 import {
   bookingGuestName,
   bookingSearchHaystack,
   bookingStayRange,
 } from '@/features/dashboard/inbox/lib/inboxShareBookingItems';
 import type { InboxConversation, InboxTemplate } from '@/features/dashboard/inbox/types/inbox';
-import { buildPropertyGuestPublicPages } from '@/features/dashboard/property/lib/propertyGuestPublicPages';
+import { legacyGcashQrForPaymentMethods } from '@/features/dashboard/lib/storedMediaDisplay';
+import { normalizePaymentMethodsDraft } from '@/features/dashboard/org/lib/paymentMethods';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
-import { normalizePaymentMethodsDraft } from '@/features/dashboard/org/lib/paymentMethods';
-import { legacyGcashQrForPaymentMethods } from '@/features/dashboard/lib/storedMediaDisplay';
+import { buildPropertyGuestPublicPages } from '@/features/dashboard/property/lib/propertyGuestPublicPages';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
