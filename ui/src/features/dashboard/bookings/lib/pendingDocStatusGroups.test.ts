@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import { DEFAULT_DOCUMENT_REQUIREMENTS } from '@/features/dashboard/bookings/lib/documentRequirements';
 import {
   buildPendingDocStatusGroups,
   freeOutboundNeedsManualSend,
 } from '@/features/dashboard/bookings/lib/pendingDocStatusGroups';
-import { DEFAULT_DOCUMENT_REQUIREMENTS } from '@/features/dashboard/bookings/lib/documentRequirements';
 
 const baseBooking = {
   id: 'b1',

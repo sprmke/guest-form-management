@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveWorkflowEmailTriggerAvailability } from '@/features/dashboard/bookings/lib/workflowEmailTriggerAvailability';
 import {
   gafRequestSendDisabledReason,
   gafRequestValidIdsReady,
 } from '@/features/dashboard/bookings/lib/workflowEmailSendPrerequisites';
+import { resolveWorkflowEmailTriggerAvailability } from '@/features/dashboard/bookings/lib/workflowEmailTriggerAvailability';
 
 describe('gafRequestSendPrerequisites', () => {
   it('requires primary valid ID', () => {

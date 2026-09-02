@@ -1,9 +1,10 @@
+import { voucherLiabilityPhp } from '@/features/guest/sd-form/lib/voucher';
+
 import {
   computeTotalGuestBalance,
   guestBalancePaidRecorded,
 } from '@/features/dashboard/bookings/lib/totalGuestBalance';
 import type { BookingRow, SdSettlementLineItem } from '@/features/dashboard/bookings/lib/types';
-import { voucherLiabilityPhp } from '@/features/guest/sd-form/lib/voucher';
 
 /** Minimum booking columns for pricing / P&amp;L math (full row or finance snapshot). */
 export type BookingFinanceInput = Pick<

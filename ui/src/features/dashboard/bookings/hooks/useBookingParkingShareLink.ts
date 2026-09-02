@@ -6,12 +6,12 @@ import { useCallback, useMemo } from 'react';
 
 import { toast } from 'sonner';
 
+import type { OwnerDefaultParkingResult } from '@/features/dashboard/bookings/hooks/useOwnerDefaultParking';
 import {
   absoluteBookingParkingFindUrl,
   absoluteBookingParkingOwnDefaultUrl,
   propertyCityLocationSlug,
 } from '@/features/dashboard/bookings/lib/parkingFindPathFromBooking';
-import type { OwnerDefaultParkingResult } from '@/features/dashboard/bookings/hooks/useOwnerDefaultParking';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 

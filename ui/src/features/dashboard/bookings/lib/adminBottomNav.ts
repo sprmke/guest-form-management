@@ -12,7 +12,7 @@ export const ASSISTANT_TAB_KEY = 'assistant';
 export const NOTIFICATIONS_TAB_KEY = 'notifications';
 
 const MAX_PRIMARY_ROUTE_TABS = 3;
-const CORE_ROUTE_LABELS = ['Dashboard', 'Bookings', 'Finance'] as const;
+const CORE_ROUTE_LABELS = ['Dashboard', 'Bookings', 'Inbox'] as const;
 
 export type AdminBottomNavOverlays = {
   onMoreClick: () => void;
@@ -57,8 +57,8 @@ function pickPrimaryRouteTabs(navigable: SidebarNavItem[]): SidebarNavItem[] {
 
 /**
  * Split permission-filtered sidebar nav into primary bottom tabs + full list for the More sheet.
- * Route tabs prefer Dashboard / Bookings / Finance, then fill from remaining nav.
- * Assistant and Notifications are overlay actions (not routes) when provided.
+ * Route tabs prefer Dashboard / Bookings / Inbox, then fill from remaining nav.
+ * Notifications then Assistant are overlay actions (not routes) when provided.
  */
 export function splitAdminBottomNav(
   sections: SidebarNavSection[],
@@ -77,15 +77,6 @@ export function splitAdminBottomNav(
     })),
   ];
 
-  if (overlays.assistant) {
-    tabItems.push({
-      key: ASSISTANT_TAB_KEY,
-      label: 'Assistant',
-      Icon: Sparkles,
-      onClick: overlays.assistant.onClick,
-    });
-  }
-
   if (overlays.notifications) {
     tabItems.push({
       key: NOTIFICATIONS_TAB_KEY,
@@ -93,6 +84,15 @@ export function splitAdminBottomNav(
       Icon: Bell,
       onClick: overlays.notifications.onClick,
       badge: overlays.notifications.badge,
+    });
+  }
+
+  if (overlays.assistant) {
+    tabItems.push({
+      key: ASSISTANT_TAB_KEY,
+      label: 'Assistant',
+      Icon: Sparkles,
+      onClick: overlays.assistant.onClick,
     });
   }
 

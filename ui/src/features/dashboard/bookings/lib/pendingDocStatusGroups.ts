@@ -5,6 +5,7 @@
  * Free — nothing sends automatically; outbound is the package to send from Automation Triggers.
  */
 
+import type { BookingWorkflowEmailKind } from '@/features/dashboard/bookings/lib/bookingWorkflowEmail';
 import {
   hasApplicableDocumentPdfTemplate,
   requirementDocKind,
@@ -12,7 +13,6 @@ import {
 } from '@/features/dashboard/bookings/lib/documentRequirements';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import type { PendingDocNestedKey } from '@/features/dashboard/bookings/lib/workflow';
-import type { BookingWorkflowEmailKind } from '@/features/dashboard/bookings/lib/bookingWorkflowEmail';
 
 export type PendingDocRowStatus = 'missing' | 'ready' | 'on-file' | 'awaiting' | 'received';
 
