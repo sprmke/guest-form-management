@@ -17,15 +17,15 @@ kind: plan
 
 ## TL;DR
 
-| Item                 | Decision                                                         |
-| -------------------- | ---------------------------------------------------------------- |
-| **Model**            | **Earned only** — automatic, no application                      |
-| **Scope**            | **Organization** — badge on all properties under that org        |
-| **Public badge**     | `isSuperhost = organizations.settings.superhost.earned === true` |
-| **Criteria**         | Airbnb-style four metrics, rolling 365 days, all required        |
-| **Assessment**       | Quarterly cron (Jan 1, Apr 1, Jul 1, Oct 1 — Asia/Manila)        |
-| **Plan gating**      | None — trust is not paywalled                                    |
-| **Effort remaining** | ~6–10 focused dev days (metrics → engine → host UX → QA)         |
+| Item                 | Decision                                                                                                    |
+| -------------------- | ----------------------------------------------------------------------------------------------------------- |
+| **Model**            | **Earned only** — automatic, no application                                                                 |
+| **Scope**            | **Organization** — badge on all properties under that org                                                   |
+| **Public badge**     | `isSuperhost = organizations.settings.superhost.earned === true`                                            |
+| **Criteria**         | Airbnb-style four metrics, rolling 365 days, all required                                                   |
+| **Assessment**       | Quarterly cron (Jan 1, Apr 1, Jul 1, Oct 1 — Asia/Manila)                                                   |
+| **Plan gating**      | None — trust is not paywalled                                                                               |
+| **Effort remaining** | Manual QA only — see [`../qa/property-dashboard/20-superhost.md`](../qa/property-dashboard/20-superhost.md) |
 
 ---
 
