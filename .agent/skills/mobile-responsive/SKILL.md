@@ -51,18 +51,18 @@ Desktop (lg+):
 ```
 
 - Desktop sidebar is `hidden lg:flex` (collapsible width); main column fills the rest.
-- On mobile, **bottom tabs** are the primary navigation: **Dashboard**, **Bookings**, **Finance** (when present), **Assistant** (when enabled), **Notifications**, and **More**. Assistant and Notifications open the same slide-over / sheet as desktop — they are not extra header icons. Remaining pages live in the More sheet. The hamburger drawer is retired.
+- On mobile, **bottom tabs** are the primary navigation: **Dashboard**, **Bookings**, **Inbox** (when present), **Notifications**, **Assistant** (when enabled), and **More**. Assistant and Notifications open the same slide-over / sheet as desktop — they are not extra header icons. Remaining pages (including Finance) live in the More sheet. The hamburger drawer is retired.
 - Screens with a dominant primary action (e.g. booking edit Save/Cancel) mount `ContextualActionBar`, which hides the tab bar for that route.
 - Shared primitives: `ui/src/components/mobile/` (`BottomTabBar`, `BottomBarSlot`, `ContextualActionBar`, `MobileAppShell`, `PageTransition`, `MobileHeroActionMenu`, `AdminListRefineSheet`).
 - **Hero trailing:** never render multiple icon buttons. Use `MobileHeroActionMenu` (1 item = direct icon; 2+ = one ··· dropdown). Same idea as Guest pages menu.
 - **List toolbars (`max-lg`):** progressive disclosure — search + refine icon (opens `AdminListRefineSheet` for filters/sort/per-page) + view toggle. Do not stack Status/Filters/Sort/Per-page as separate full-width rows on mobile. Desktop (`lg+`) keeps the inline multi-control toolbar.
-- **Dashboard density (`max-lg`):** hide hero subtitles, KPI decorative icons, repeated “vs last period” labels, chart icon wells/descriptions, and period eyebrows when the date filter already conveys the range. Prefer title-only section headers. Keep comfortable card/section gaps (≈10–14px gutters, `p-3`+ padding) — dense chrome, not cramped type. Keep comfortable card/section gaps (≈10–14px gutters, `p-3`+ padding) — dense chrome, not cramped type.
+- **Dashboard density (`max-lg`):** hide page/hero subtitles (`AdminMobilePage` / `AdminPageHeader` / `MobileBrandHero` — never re-show them as body copy below `lg`), KPI decorative icons, repeated “vs last period” labels, chart icon wells/descriptions, and period eyebrows when the date filter already conveys the range. Prefer title-only section headers. **Card-header segments** (`AdminSurfaceCardHeader` actions: Name/Price, All/Income/Expenses, revenue/bookings): always **right of the title on one row**, `SegmentedControl` `size="dense"` + `equalSegments`, shared `cardHeaderSegmented*ClassName` (~28px track, 11px labels) — never stack under the title or use content-sized uneven pills. Form/toolbar segments use dense (~32px, `h-8` + `p-0.5`); page/section strips use compact/primary (~36px). Never add `h-9`/`p-1` or `min-h-[44px]` on dense triggers — use `fullWidth` for equal Sign/Upload-style pairs. Keep comfortable card/section gaps (≈10–14px gutters, `p-3`+ padding) — dense chrome, not cramped type.
 - **Choice pickers (`max-lg`):** option lists open as `MobileChoiceSheet` (full-width ≥48px rows), not tiny floating dropdowns. Desktop (`lg+`) keeps `DropdownMenu` / absolute panels. Shared: `ui/src/components/mobile/MobileChoiceSheet.tsx`.
 - **Choice pickers (`max-lg`):** option lists open as `MobileChoiceSheet` (full-width ≥48px rows), not tiny floating dropdowns. Desktop (`lg+`) keeps `DropdownMenu` / absolute panels. Shared: `ui/src/components/mobile/MobileChoiceSheet.tsx`.
 - Floating pill tab bar — content uses `max-lg:pb-[calc(7.75rem+env(safe-area-inset-bottom))]` via `bottomTabBarOffsetClassName()`. On document-scroll pages apply it on `MobileAppShell`; on **fill-main** pages (`AdminSectionNavLayout`, Inbox) apply it on the **inner scrollport / content root** instead — shell `pb` shrinks the flex area into a dead white gap and clips mid-card. Avoid shell `p-*` shorthand (twMerge drops the clearance). Active tab uses a solid brand pill + on-primary labels; icons ~18px / stroke 1.75 (not chunky); dock chrome is `mobileFloatingDockClassName`.
 - Sticky brand hero (`max-lg`): scroll collapses title/arc (parallax). Float toolbar morphs into fixed `MobileStickyChrome` when its top hits the viewport (`useMobileStickyChrome`). Heavy lists: compact sticky row + More sheet.
 - Prefer `surface-card` / `native-cta` / `native-stagger` / `native-press` for dashboard content on mobile.
-- Hybrid modals: short confirms stay `Dialog`; longer forms use `ResponsiveModal` / bottom sheet (`ui/src/components/ui/responsive-modal.tsx`).
+- Modals: never render a centered desktop `Dialog` on mobile. Every dashboard modal — confirms included — uses `ResponsiveModal` (`ui/src/components/ui/responsive-modal.tsx`): centered `Dialog` on `lg+`, bottom sheet below `lg`. Don't import `@/components/ui/dialog` directly under `features/dashboard/**`. Exceptions: `AlertDialog` (OS-style destructive confirm) and full-screen media/document lightboxes.
 
 ## 3. Touch targets
 
@@ -80,13 +80,25 @@ Table row actions, filter buttons, nav items, and pagination chips must all meet
 
 ## 4. Typography scaling
 
-| Use               | Mobile                                        | Desktop          |
-| ----------------- | --------------------------------------------- | ---------------- |
-| Page title        | `text-lg font-bold` (`text-admin-page-title`) | `sm:text-xl`     |
-| Page subtitle     | `text-sm` (`text-admin-page-subtitle`)        | `sm:text-[15px]` |
-| Table data        | `text-sm`                                     | `text-[13px]`    |
-| Secondary / muted | `text-xs`                                     | `text-[11px]`    |
-| Section labels    | `text-xs font-bold uppercase tracking-wider`  | same             |
+Native-app density on phone (≈ iOS HIG ops apps). Prefer shared tokens in `ui/src/index.css`.
+
+| Use                         | Mobile                                                                                                                                                                     | Desktop                         |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| Hero / page title           | `text-lg` (`text-admin-page-title`, hero h1)                                                                                                                               | `sm:text-xl` → `md:text-2xl`    |
+| Section title               | `text-sm` (`text-section-title`)                                                                                                                                           | `sm:text-[15px]`                |
+| Card title                  | `text-base` (`text-card-title`)                                                                                                                                            | `sm:text-lg`                    |
+| Body / UI                   | `text-sm` (`text-ui`)                                                                                                                                                      | same                            |
+| KPI / stat value            | `text-base` (`text-stat-value`)                                                                                                                                            | `sm:text-xl` → `md:text-2xl`    |
+| List amount                 | `text-[15px]` (`text-list-amount`)                                                                                                                                         | `sm:text-base`                  |
+| Secondary / muted           | `text-xs` (`text-data-secondary`, `text-meta`)                                                                                                                             | `sm:text-[13px]` / `sm:text-sm` |
+| Tabs / segments (dashboard) | Form/toolbar: `SegmentedControl` `dense` (~h-8, label ~11–12px); section strips: `compact`/`primary` (~h-9). Never `h-9 p-1` or `min-h-[44px]` overrides on dense triggers | same                            |
+| List search fields          | `text-[13px]` placeholder/value on phone                                                                                                                                   | `lg:text-sm`                    |
+| Table data                  | `text-sm`                                                                                                                                                                  | `text-[13px]`                   |
+| Caption / overline          | `text-[10px]`–`text-xs`                                                                                                                                                    | same                            |
+
+**Do not** bump phone titles with `max-sm:text-[1.65rem]` or KPI values with `text-lg`/`text-2xl` on `max-lg` — that reads oversized vs native apps.
+
+**Marketing display exception:** full-bleed marketing heroes (`MarketingPublicPageHero`, for-hosts film, stay-guide showcase templates) may use `text-3xl`–`text-5xl`. Do **not** apply that display scale to admin chrome, guest form/account/auth, listing cards, or operational public flows.
 
 ## 5. Tables
 
@@ -132,7 +144,7 @@ Always set explicit `width`/`height` or `aspect-*` classes. Use `object-cover` i
 
 ## 9. Modals and dropdowns
 
-Modals: hybrid — short confirms stay centered `Dialog`; longer forms/detail panels use `ResponsiveModal` (bottom sheet on phone). Dropdowns: `max-w-[calc(100vw-24px)]` safety net on mobile. `z-50` for overlays, `z-40` for sticky headers and the bottom tab / contextual bar.
+Modals: no centered `Dialog` on mobile — all dashboard modals (confirms, forms, detail panels) use `ResponsiveModal` (centered on `lg+`, bottom sheet below). Only `AlertDialog` and full-screen media lightboxes stay non-sheet. Dropdowns: `max-w-[calc(100vw-24px)]` safety net on mobile. `z-50` for overlays, `z-40` for sticky headers and the bottom tab / contextual bar.
 
 ## 10. Don'ts
 

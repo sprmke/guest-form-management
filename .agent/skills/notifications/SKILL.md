@@ -31,7 +31,7 @@ description: In-app Notification Center — bell + realtime toasts for booking s
 | `booking_pet_auto_approved`  | `approval-email-webhook` — live inbound path only                                                         | `${bookingId}:booking_pet_auto_approved`                                            |
 | `inbox_new_message`          | `metaInboxWebhookHandler.ts` (Meta DM inbound), `webGuestChatService.ts#sendGuestWebMessage` (web widget) | `${conversationId}:inbox_new_message` (coalesced — one row per thread, latest body) |
 
-Adding a new type: extend `notifications_type_check` in a **new** migration (never edit the shipped one) and the `NotificationType` union in both `_shared/notificationService.ts` and the UI's `notificationsApi.ts`.
+Adding a new type: extend `notifications_type_check` in a **new** migration (never edit the shipped one) and the `NotificationType` union in both `_shared/notificationService.ts` and the UI's `notificationsApi.ts`. OS push needs no extra wiring — the `push-fanout` trigger fires for any new row.
 
 ## Rules
 
@@ -43,7 +43,7 @@ Adding a new type: extend `notifications_type_check` in a **new** migration (nev
 - **RLS is stricter than the edge-function gate.** `user_can_access_org_notifications` only checks `organization_members`, so a property/parking-only team member (no org-level row) gets **no realtime push**, even though they can still list/mark-read via the edge function (service role behind `org:dashboard:view` / `bookings:view`, not RLS). Known v1 gap — `docs/architecture/roadmap.md`.
 - **Read state is per-user, not a column on `notifications`.** Absence of a `notification_reads` row = unread. Never add a shared `read_at` on `notifications` — it would mark an item read for every admin the moment one admin dismisses it.
 - **One realtime channel per org** (`notifications-${orgId}`), mounted once via `NotificationsProvider` in `AdminLayout.tsx` — never per-page, never per-event-type.
-- **No OS-level `Notification` popups.** That stays inbox-chat-only (`inboxNotifications.ts`, untouched). New event types get in-app toast + bell entry only.
+- **OS push is a channel for every event type** (PWA). An `AFTER INSERT` trigger on `notifications` → `pg_net` → `supabase/functions/push-fanout` → Web Push, gated on a per-device opt-in (`PushNotificationsCard`). A new `notifications` row fans out automatically — nothing to wire per type. Recipients = org owner + active `organization_members` (mirrors realtime). See `docs/architecture/pwa.md` §5 + `.cursor/rules/pwa.mdc`. The old "no OS `Notification` / inbox-chat-only" restriction is retired.
 - **A new event type needs a row in `NOTIFICATION_ICONS`** (`notificationsDisplay.ts`) — the `Record<NotificationType, LucideIcon>` is exhaustive, so `type-check` fails until you add one. Both the bell/Activity rows and the realtime toast read from it, so they can't drift.
 - **Toast chrome lives in CSS, not props.** Sonner's default action chip is a near-black inverted button; `[data-sonner-toast] [data-button]` in `index.css` overrides it to `--primary` for every toast in the app. The 32px category badge needs `[data-sonner-toast]:has([data-notification-toast-icon]) [data-icon]` to override Sonner's fixed 16×16 `[data-icon]` box — drop the `data-notification-toast-icon` attribute and the badge overflows.
 - **Toasts are keyed by `row.id`.** Coalesced inbox rows fire an `UPDATE` per message, so a stable id replaces the visible toast instead of stacking one per message.
@@ -56,6 +56,7 @@ Gated on **`org:dashboard:view`** (org scope) / **`bookings:view`** (property/pa
 ## Related rules
 
 - `.cursor/rules/notifications.mdc`
+- `.cursor/rules/pwa.mdc` + `docs/architecture/pwa.md` §5 — OS push pipeline
 - Plan: `docs/workflow/done/in-app-notifications.md`
-- `docs/architecture/data-model.md` — `notifications` / `notification_reads` section
+- `docs/architecture/data-model.md` — `notifications` / `notification_reads` / `push_subscriptions` sections
 - `.cursor/rules/booking-workflow.mdc` §3 — which booking transitions also emit a notification

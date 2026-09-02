@@ -36,7 +36,23 @@ Source of truth: `ui/src/index.css` HSL tokens (no raw hex in components).
 | UI / body | **Plus Jakarta Sans** (`font-sans`) | Configured in `ui/tailwind.config.js`   |
 | Mono      | system / existing code fonts        | Edge/debug only — not marketing display |
 
-Hierarchy via Tailwind scale (`text-sm` → `text-4xl`). Prefer weight/size contrast over adding a second display family. Guest heroes may use larger tracking-tight headlines; admin stays tighter and quieter.
+Hierarchy via shared utilities in `ui/src/index.css` (not one-off `text-xl` / `max-sm:[1.65rem]` bumps). Prefer weight/size contrast over a second display family.
+
+**Admin / dashboard (phone density — 4af):** use the token classes, not raw sizes:
+
+| Role              | Token                      | Phone              |
+| ----------------- | -------------------------- | ------------------ |
+| Page / hero title | `text-admin-page-title`    | 18px (`text-lg`)   |
+| Section / group   | `text-section-title`       | 14px (`text-sm`)   |
+| Card title        | `text-card-title`          | 16px (`text-base`) |
+| Body / UI         | `text-sm` / `text-ui`      | 14px               |
+| KPI value         | `text-stat-value`          | 16px               |
+| List amount       | `text-list-amount`         | 15px               |
+| Meta / caption    | `text-xs` / `text-caption` | 12px               |
+
+Canonical table: `.cursor/rules/mobile-responsive.mdc` §4. Marketing display heroes may stay large; do not apply that display scale to admin chrome.
+
+Guest heroes may use larger tracking-tight headlines; admin stays tighter and quieter.
 
 ## 4. Component Stylings
 

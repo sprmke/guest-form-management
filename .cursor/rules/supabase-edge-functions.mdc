@@ -107,6 +107,10 @@ Any handler that reads a `File` from `req.formData()` (or `databaseService` proc
 
 See `docs/architecture/storage.md` §7.1.
 
+## Anti-spam — public / lightly-authed writes
+
+Any **new anonymous write endpoint** (or a self-service-authed one that fans out email/Telegram) must gate on **`antiSpamGate(req, body, { scope, rateLimit, captcha?, heuristics? })`** from `_shared/antiSpam.ts` and `return` the `Response` it yields (bot heuristics → Turnstile `siteverify` → durable `request_rate_limits` counter). Behind the auth wall with no CAPTCHA, use **`rateLimitGate(req, { scope, identity: identityFromRequest(req, user), limit, windowSec })`** from `_shared/rateLimit.ts`. Never `throw` these from a `servePublic`/`serveAuthenticated` handler — `handleEdgeError` flattens a thrown `Response` and drops the `captchaFailed` / `rateLimited` flags. Client side: `ui/src/components/security/useAntiSpamSubmit.ts` + `ui/src/lib/security/antiSpamResponse.ts`. Full map: `docs/architecture/edge-functions.md` (Anti-spam & CAPTCHA).
+
 ## Adding a new function — checklist
 
 1. Create `supabase/functions/<name>/index.ts` using the skeleton above.

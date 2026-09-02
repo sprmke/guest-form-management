@@ -55,6 +55,7 @@ Root `bun run *:supabase` wrappers source `ui/.env.development` before invoking 
 
 - **502 on `/functions/v1/*`**: Kong stuck on a stale Docker edge-runtime IP after `db:reset`/a partial restart. Fix: `bun run stop:supabase` then `./dev.sh`.
 - Never run a second `supabase functions serve` in parallel (Docker name conflict).
+- **PWA / service worker**: the SW is **off** under `vite` dev (it would fight HMR). Test it with `bun run build && cd ui && bun run preview`, or set `VITE_PWA_DEV=true`. If a stale SW causes weird caching, DevTools → Application → Service Workers → **Unregister**, then hard-reload. Full reference: `docs/architecture/pwa.md`; rule: `.cursor/rules/pwa.mdc`.
 
 ## Architecture
 

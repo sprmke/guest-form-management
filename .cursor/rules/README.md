@@ -61,28 +61,30 @@ Run **`bun run check:ai-tooling-sync`** after changing hooks, commands, agents, 
 
 ## Conditional rules (by file glob — loaded when relevant)
 
-| File                          | Globs / topic                                               |
-| ----------------------------- | ----------------------------------------------------------- |
-| `booking-workflow.mdc`        | Booking status, orchestrator, guest form / bookings UI      |
-| `admin-auth.mdc`              | JWT allow list, org/property auth surfaces                  |
-| `competitive-ux-research.mdc` | Material UX only (skip polish/bugs)                         |
-| `mobile-responsive.mdc`       | `ui/src/**` — breakpoints, touch targets, admin shell       |
-| `tech-stack.mdc`              | `ui/**`, Vite, Bun, React Router                            |
-| `architecture.mdc`            | Feature folders, imports, tooling                           |
-| `naming-conventions.mdc`      | File naming                                                 |
-| `components.mdc`              | `*.tsx` — shadcn, theme, structure                          |
-| `state-management.mdc`        | `hooks/`, TanStack Query v5                                 |
-| `forms.mdc`                   | `*Form*`, `schemas/` — RHF + Zod                            |
-| `security.mdc`                | Edge auth, org/property RBAC                                |
-| `public-ui.mdc`               | Guest form, calendar, sd-form                               |
-| `supabase-platform.mdc`       | Migrations, env, Storage                                    |
-| `supabase-edge-functions.mdc` | `supabase/functions/**`                                     |
-| `accessibility.mdc`           | WCAG for UI                                                 |
-| `plan-mode.mdc`               | Plan mode — save finished plans to `docs/workflow/planned/` |
-| `workflow-docs.mdc`           | Workflow lifecycle — in-progress tracking, no silent moves  |
-| `github-issues.mdc`           | GitHub Issues backlog + shipped archive                     |
-| `social-inbox.mdc`            | Meta inbox                                                  |
-| `notifications.mdc`           | In-app Notification Center (bell, realtime toasts)          |
+| File                          | Globs / topic                                                                        |
+| ----------------------------- | ------------------------------------------------------------------------------------ |
+| `booking-workflow.mdc`        | Booking status, orchestrator, guest form / bookings UI                               |
+| `admin-auth.mdc`              | JWT allow list, org/property auth surfaces                                           |
+| `competitive-ux-research.mdc` | Material UX only (skip polish/bugs)                                                  |
+| `mobile-responsive.mdc`       | `ui/src/**` — breakpoints, touch targets, admin shell                                |
+| `tech-stack.mdc`              | `ui/**`, Vite, Bun, React Router                                                     |
+| `architecture.mdc`            | Feature folders, imports, tooling                                                    |
+| `naming-conventions.mdc`      | File naming                                                                          |
+| `components.mdc`              | `*.tsx` — shadcn, theme, structure                                                   |
+| `state-management.mdc`        | `hooks/`, TanStack Query v5                                                          |
+| `forms.mdc`                   | `*Form*`, `schemas/` — RHF + Zod                                                     |
+| `security.mdc`                | Edge auth, org/property RBAC                                                         |
+| `public-ui.mdc`               | Guest form, calendar, sd-form                                                        |
+| `supabase-platform.mdc`       | Migrations, env, Storage                                                             |
+| `supabase-edge-functions.mdc` | `supabase/functions/**`                                                              |
+| `accessibility.mdc`           | WCAG for UI                                                                          |
+| `plan-mode.mdc`               | Plan mode — save finished plans to `docs/workflow/planned/`                          |
+| `workflow-docs.mdc`           | Workflow lifecycle — in-progress tracking, no silent moves                           |
+| `github-issues.mdc`           | GitHub Issues backlog + shipped archive                                              |
+| `social-inbox.mdc`            | Meta inbox                                                                           |
+| `notifications.mdc`           | In-app Notification Center (bell, realtime toasts)                                   |
+| `pwa.mdc`                     | PWA — service worker, offline cache allowlist, Web Push, offline outbox, kill-switch |
+| `ai-assistant-parity.mdc`     | New host dashboard writes → assistant tool or documented exclusion (same change)     |
 
 ## Skills (`.cursor/skills/` — invoke `/name` or agent decides)
 
