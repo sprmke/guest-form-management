@@ -45,6 +45,7 @@ export type OrgSubscriptionDto = {
 
 export type OrgPaymentTransactionDto = {
   id: string;
+  planId: string;
   amount: number;
   currency: string;
   status: string;
@@ -60,6 +61,7 @@ export type OrgPlanResponse = {
   subscription: OrgSubscriptionDto | null;
   assignedPropertyIds: string[];
   pendingCheckoutUrl: string | null;
+  pendingCheckoutPlanId: string | null;
   transactions: OrgPaymentTransactionDto[];
 };
 

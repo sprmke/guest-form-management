@@ -62,7 +62,7 @@ export function PlanPriceLine({ price, variant = 'card', className }: PlanPriceL
     );
   }
 
-  const amountClass = 'text-2xl font-bold tracking-tight';
+  const amountClass = 'text-xl font-bold tracking-tight sm:text-2xl';
 
   return (
     <div className={cn('space-y-0.5', className)}>

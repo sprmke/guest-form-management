@@ -439,6 +439,26 @@ export function planFeatureGains(from: PlanFeatures | null, to: PlanFeatures): P
   }).map((row) => ({ key: row.key, label: row.describe(to) }));
 }
 
+const CELEBRATION_GAIN_LIMIT = 8;
+
+/** Highlights for the post-checkout success modal — upgrade deltas first, then tier card bullets. */
+export function resolveUpgradeCelebrationGains(
+  previous: OrgBundlePlanDto | null,
+  target: OrgBundlePlanDto
+): PlanFeatureChange[] {
+  const deltas =
+    previous && previous.id !== target.id
+      ? planFeatureGains(previous.features, target.features)
+      : [];
+  if (deltas.length > 0) return deltas.slice(0, CELEBRATION_GAIN_LIMIT);
+
+  const labels = PLAN_TIER_CARD_GAINS[target.code] ?? [];
+  return labels.slice(0, CELEBRATION_GAIN_LIMIT).map((label, index) => ({
+    key: `celebration-${target.code}-${index}`,
+    label,
+  }));
+}
+
 /** Capabilities `from` has that `to` drops — the honest half of a downgrade. */
 export function planFeatureLosses(from: PlanFeatures, to: PlanFeatures): PlanFeatureChange[] {
   return PLAN_FEATURE_ROWS.filter((row) => {

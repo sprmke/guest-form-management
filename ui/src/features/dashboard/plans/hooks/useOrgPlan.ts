@@ -6,17 +6,30 @@ import {
   createOrgPlanCheckout,
   fetchOrgPlan,
 } from '@/features/dashboard/plans/lib/orgPlanApi';
+import { readOrgPlanCheckoutSession } from '@/features/dashboard/plans/lib/orgPlanCheckoutSession';
 
 export const orgPlanQueryKey = (orgId: string) => ['org', orgId, 'plan'] as const;
 
+type UseOrgPlanOptions = {
+  /** Poll while PayMongo checkout is open — Payment Links have no success redirect. */
+  pollWhileCheckoutPending?: boolean;
+};
+
 /** `orgId` is explicit (not read from route context) — this page renders org-only routes,
  * which don't populate the property-scoped org context `useOrgIdParam()` relies on. */
-export function useOrgPlan(orgId: string | null) {
+export function useOrgPlan(orgId: string | null, options?: UseOrgPlanOptions) {
   return useQuery({
     queryKey: orgPlanQueryKey(orgId ?? ''),
     queryFn: () => fetchOrgPlan(orgId!),
     enabled: Boolean(orgId),
     staleTime: 60_000,
+    refetchInterval: (query) => {
+      if (!options?.pollWhileCheckoutPending || !orgId) return false;
+      const pending = query.state.data?.pendingCheckoutUrl;
+      const session = readOrgPlanCheckoutSession(orgId);
+      if (pending || session) return 3_000;
+      return false;
+    },
   });
 }
 

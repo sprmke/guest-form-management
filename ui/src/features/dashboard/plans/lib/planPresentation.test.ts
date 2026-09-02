@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import type { OrgBundlePlanDto } from '@/features/dashboard/plans/lib/orgPlanApi';
+import type { PlanFeatures } from '@/features/dashboard/plans/lib/planFeatures';
 import {
   isPlanDowngrade,
   MANAGED_PLAN_CODE,
   resolveDowngradeBlockedReason,
 } from '@/features/dashboard/plans/lib/planPresentation';
-import type { PlanFeatures } from '@/features/dashboard/plans/lib/planFeatures';
 
 const emptyFeatures = {} as PlanFeatures;
 

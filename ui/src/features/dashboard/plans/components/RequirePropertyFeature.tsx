@@ -4,8 +4,8 @@ import { Link } from 'react-router-dom';
 
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
-import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { PlanGatedText } from '@/features/dashboard/plans/components/PlanUpgradeLink';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 import { featureGateCopy } from '@/features/dashboard/plans/lib/featureGateCopy';
 import type { PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';

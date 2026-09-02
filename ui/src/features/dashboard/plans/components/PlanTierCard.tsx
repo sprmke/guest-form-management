@@ -61,7 +61,7 @@ export function PlanTierCard({
             <PlanTierIconWell planCode={plan.code} size="sm" />
             <h3
               id={headingId}
-              className="text-foreground min-w-0 text-lg font-semibold tracking-tight"
+              className="text-foreground min-w-0 text-base font-semibold tracking-tight sm:text-lg"
             >
               {title}
             </h3>

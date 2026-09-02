@@ -14,16 +14,22 @@ import { canManageOrgBilling } from '@/features/dashboard/org/lib/orgAccessKind'
 import { orgPlansPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { CurrentPlanSummary } from '@/features/dashboard/plans/components/CurrentPlanSummary';
 import { PlanBillingPanel } from '@/features/dashboard/plans/components/PlanBillingPanel';
+import { PlanCheckoutConfirmationBanner } from '@/features/dashboard/plans/components/PlanCheckoutConfirmationBanner';
 import { PlanFaqSection } from '@/features/dashboard/plans/components/PlanFaqSection';
 import { PlanFeatureMatrix } from '@/features/dashboard/plans/components/PlanFeatureMatrix';
 import { PlanReviewDialog } from '@/features/dashboard/plans/components/PlanReviewDialog';
 import { PlanTierRail } from '@/features/dashboard/plans/components/PlanTierRail';
+import { PlanUpgradeSuccessModal } from '@/features/dashboard/plans/components/PlanUpgradeSuccessModal';
 import {
   useCreateOrgPlanCheckout,
   useApplyOrgPlanDowngrade,
   useOrgPlan,
 } from '@/features/dashboard/plans/hooks/useOrgPlan';
+import { useOrgPlanCheckoutConfirmation } from '@/features/dashboard/plans/hooks/useOrgPlanCheckoutConfirmation';
+import { openOrgPlanCheckout } from '@/features/dashboard/plans/lib/openOrgPlanCheckout';
 import type { OrgBundlePlanDto } from '@/features/dashboard/plans/lib/orgPlanApi';
+import { parseOrgPlanCheckoutReturn } from '@/features/dashboard/plans/lib/orgPlanCheckoutParams';
+import { consumeOrgPlanUpgradeCelebration } from '@/features/dashboard/plans/lib/orgPlanCheckoutSession';
 import type { PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
 import {
   buildPlanTiers,
@@ -84,14 +90,34 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
         : undefined;
   usePageTitle(pageTitle);
 
-  const { data, isLoading, error, refetch } = useOrgPlan(org?.id ?? null);
+  const checkoutReturn = parseOrgPlanCheckoutReturn(searchParams.get('checkout'));
+
+  const clearCheckoutReturnParam = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('checkout');
+    setSearchParams(next, { replace: true });
+  };
+
+  const { data, isLoading, error, refetch } = useOrgPlan(org?.id ?? null, {
+    pollWhileCheckoutPending: true,
+  });
   const createCheckout = useCreateOrgPlanCheckout(org?.id ?? null);
   const applyDowngrade = useApplyOrgPlanDowngrade(org?.id ?? null);
+  const checkoutConfirmation = useOrgPlanCheckoutConfirmation({
+    orgId: org?.id ?? null,
+    data,
+    pollWhileConfirming: true,
+    checkoutReturn,
+    onCheckoutReturnHandled: clearCheckoutReturnParam,
+  });
 
   /** Org billing hub defaults to Billing; property mirror only shows Plans + Compare. */
   const [activeTab, setActiveTab] = useState<PlansTab>(isPropertyMirror ? 'plans' : 'billing');
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [upgradeCelebrationOpen, setUpgradeCelebrationOpen] = useState(false);
+  const [celebrationPreviousPlanId, setCelebrationPreviousPlanId] = useState<string | null>(null);
+  const [celebrationTargetPlanId, setCelebrationTargetPlanId] = useState<string | null>(null);
 
   const plans = data?.plans ?? [];
   const properties = data?.properties ?? [];
@@ -116,6 +142,41 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
   );
 
   const canManageBilling = canManageOrgBilling(org?.accessKind);
+
+  const resumePendingCheckout = async () => {
+    const pendingTxn = data?.transactions.find(
+      (txn) => txn.status === 'pending' && txn.checkoutUrl
+    );
+    const planId = data?.pendingCheckoutPlanId ?? pendingTxn?.planId;
+    if (!planId || !org?.id) return;
+
+    const checkout = await createCheckout.mutateAsync({ planId });
+    openOrgPlanCheckout({
+      orgId: org.id,
+      transactionId: checkout.transactionId,
+      checkoutUrl: checkout.checkoutUrl,
+      previousPlanId: effectiveCurrentPlanId ?? null,
+      targetPlanId: planId,
+    });
+  };
+
+  const celebrationPreviousPlan = useMemo(
+    () => plans.find((plan) => plan.id === celebrationPreviousPlanId) ?? null,
+    [plans, celebrationPreviousPlanId]
+  );
+  const celebrationTargetPlan = useMemo(
+    () => plans.find((plan) => plan.id === celebrationTargetPlanId) ?? currentPlan,
+    [plans, celebrationTargetPlanId, currentPlan]
+  );
+
+  useEffect(() => {
+    if (checkoutConfirmation !== 'success' || !org?.id) return;
+    const payload = consumeOrgPlanUpgradeCelebration(org.id);
+    if (!payload) return;
+    setCelebrationPreviousPlanId(payload.previousPlanId);
+    setCelebrationTargetPlanId(payload.targetPlanId);
+    setUpgradeCelebrationOpen(true);
+  }, [checkoutConfirmation, org?.id]);
 
   useEffect(() => {
     setPendingPlanId(null);
@@ -164,6 +225,11 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
       setActiveTab(tab);
     }
 
+    if (checkoutReturn === 'success' && !isPropertyMirror) {
+      setActiveTab('billing');
+      void refetch();
+    }
+
     const reviewPlanId = searchParams.get('reviewPlan');
     const featureParam = searchParams.get('feature');
     let targetPlanId: string | null = reviewPlanId;
@@ -185,10 +251,18 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
       setReviewOpen(true);
     }
 
-    if (tab || reviewPlanId || featureParam) {
+    if ((tab || reviewPlanId || featureParam) && !checkoutReturn) {
       setSearchParams({}, { replace: true });
     }
-  }, [plans, searchParams, setSearchParams, isPropertyMirror, canManageBilling]);
+  }, [
+    plans,
+    searchParams,
+    setSearchParams,
+    isPropertyMirror,
+    canManageBilling,
+    checkoutReturn,
+    refetch,
+  ]);
 
   const isBootstrapping = orgsLoading || (Boolean(org?.id) && isLoading && !data);
 
@@ -233,16 +307,13 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
         </FloatingPanel>
       ) : (
         <div className="native-stagger flex min-w-0 flex-col gap-5 sm:gap-6 lg:gap-8">
-          <p className="text-foreground max-w-2xl text-base font-medium lg:hidden">
-            {PLANS_PAGE_SUBTITLE}
-          </p>
-
           {currentPlan ? (
             <CurrentPlanSummary
               plan={currentPlan}
               subscription={subscription}
               canManage={canManageBilling}
               pendingCheckoutUrl={data?.pendingCheckoutUrl}
+              onResumePayment={canManageBilling ? resumePendingCheckout : undefined}
               upgradePlan={upgradeTarget}
               onUpgrade={handleSelectPlan}
               uncoveredPropertyCount={uncoveredPropertyCount}
@@ -290,6 +361,13 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
                   <h2 id="billing-tab-heading" className={cn(planTabSectionTitleClass, 'mb-4')}>
                     Billing
                   </h2>
+
+                  <PlanCheckoutConfirmationBanner
+                    state={checkoutConfirmation}
+                    pendingCheckoutUrl={data?.pendingCheckoutUrl}
+                    onResumePayment={canManageBilling ? resumePendingCheckout : undefined}
+                    className="mb-4"
+                  />
 
                   <PlanBillingPanel
                     plan={currentPlan}
@@ -345,18 +423,32 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
           await applyDowngrade.mutateAsync({ planId });
         }}
         onCheckoutPaid={async (planId) => {
+          if (!org?.id) return;
+          const checkout = await createCheckout.mutateAsync({ planId });
+          openOrgPlanCheckout({
+            orgId: org.id,
+            transactionId: checkout.transactionId,
+            checkoutUrl: checkout.checkoutUrl,
+            previousPlanId: effectiveCurrentPlanId ?? null,
+            targetPlanId: planId,
+          });
+          setReviewOpen(false);
           if (paidCheckoutMode === 'redirect-to-org') {
-            if (!orgSlug || !org?.id) return;
-            await createCheckout.mutateAsync({ planId });
-            setReviewOpen(false);
+            if (!orgSlug) return;
             navigate(`${orgPlansPath(orgSlug)}?tab=billing`);
             return;
           }
-          if (!org?.id) return;
-          const { checkoutUrl } = await createCheckout.mutateAsync({ planId });
-          window.location.assign(checkoutUrl);
+          setActiveTab('billing');
         }}
         isSubmitting={createCheckout.isPending || applyDowngrade.isPending}
+      />
+
+      <PlanUpgradeSuccessModal
+        open={upgradeCelebrationOpen}
+        onOpenChange={setUpgradeCelebrationOpen}
+        previousPlan={celebrationPreviousPlan}
+        targetPlan={celebrationTargetPlan}
+        onViewCompare={() => setActiveTab('compare')}
       />
     </AdminMobilePage>
   );

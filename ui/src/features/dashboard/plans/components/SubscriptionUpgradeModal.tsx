@@ -1,18 +1,12 @@
 import { useMemo, useEffect } from 'react';
 
-import { useNavigate } from 'react-router-dom';
-
 import { toast } from 'sonner';
 
-import {
-  usePropertyIdParam,
-  useResolvedOrgId,
-  useOrgSlugParam,
-} from '@/features/dashboard/org/lib/adminApiScope';
-import { orgPlansPath } from '@/features/dashboard/org/lib/tenantPaths';
+import { usePropertyIdParam, useResolvedOrgId } from '@/features/dashboard/org/lib/adminApiScope';
 import { PlanReviewDialog } from '@/features/dashboard/plans/components/PlanReviewDialog';
 import { useCreateOrgPlanCheckout, useOrgPlan } from '@/features/dashboard/plans/hooks/useOrgPlan';
 import { usePropertyEntitlements } from '@/features/dashboard/plans/hooks/usePropertyEntitlements';
+import { openOrgPlanCheckout } from '@/features/dashboard/plans/lib/openOrgPlanCheckout';
 import { isFeatureEnabled, type PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
 import {
   resolveEffectiveCurrentPlan,
@@ -28,14 +22,12 @@ type Props = {
 
 /**
  * Feature-gate entry — resolves the minimum plan for `feature`, shows PlanReviewDialog in place,
- * then starts checkout and opens org **Billing** (no second review modal).
+ * then starts checkout; PayMongo returns to org Billing on success.
  */
 export function SubscriptionUpgradeModal({ open, onOpenChange, feature }: Props) {
-  const navigate = useNavigate();
-  const orgSlug = useOrgSlugParam();
   const orgId = useResolvedOrgId();
   const propertyId = usePropertyIdParam();
-  const { data } = useOrgPlan(orgId);
+  const { data } = useOrgPlan(orgId, { pollWhileCheckoutPending: true });
   const createCheckout = useCreateOrgPlanCheckout(orgId);
   const { data: propertyEntitlements } = usePropertyEntitlements();
 
@@ -74,10 +66,16 @@ export function SubscriptionUpgradeModal({ open, onOpenChange, feature }: Props)
   }, [open, feature, targetPlan, onOpenChange]);
 
   const handleContinueToPayment = async (planId: string) => {
-    if (!orgSlug || !orgId) return;
-    await createCheckout.mutateAsync({ planId });
+    if (!orgId) return;
+    const checkout = await createCheckout.mutateAsync({ planId });
     onOpenChange(false);
-    navigate(`${orgPlansPath(orgSlug)}?tab=billing`);
+    openOrgPlanCheckout({
+      orgId,
+      transactionId: checkout.transactionId,
+      checkoutUrl: checkout.checkoutUrl,
+      previousPlanId: currentPlanId ?? null,
+      targetPlanId: planId,
+    });
   };
 
   return (

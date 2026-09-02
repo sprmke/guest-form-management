@@ -183,6 +183,7 @@ export function DashboardFinanceCalendarSection({
           to={to}
           rangeLabel={rangeLabel}
           datePreset={datePreset}
+          transactionsHref={financeHref}
           isLoading={lineItemsQuery.isLoading}
           isRefreshing={lineItemsQuery.isFetching}
         />

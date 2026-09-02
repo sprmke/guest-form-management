@@ -4,11 +4,11 @@ import { AlertTriangle, ArrowRight, Bell, CalendarDays, ChevronRight } from 'luc
 
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import { bookingDetailPath } from '@/features/dashboard/org/lib/tenantPaths';
+import { resolvePropertyDashboardHref } from '@/features/dashboard/property/lib/resolvePropertyDashboardHref';
 import type {
   DashboardAttentionItem,
   DashboardRecentBooking,
 } from '@/features/dashboard/property/lib/types';
-import { resolvePropertyDashboardHref } from '@/features/dashboard/property/lib/resolvePropertyDashboardHref';
 
 import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
 import { Skeleton } from '@/components/ui/skeleton';
