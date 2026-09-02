@@ -9,6 +9,7 @@ import {
   jsonResponse,
   requireHttpMethod,
 } from './httpResponse.ts';
+import { capturePostHogException } from './posthog.ts';
 
 export function serveAdmin(
   logPrefix: string,
@@ -90,6 +91,7 @@ export function serveCronPost(
       return jsonResponse(req, { success: true, ...result });
     } catch (error) {
       console.error(`${logPrefix}:`, error);
+      await capturePostHogException(error, { logPrefix: `cron:${logPrefix}` });
       return jsonError(req, (error as Error).message);
     }
   });

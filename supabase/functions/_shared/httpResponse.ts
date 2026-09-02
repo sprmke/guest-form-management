@@ -1,4 +1,5 @@
 import { corsHeaders } from './cors.ts';
+import { capturePostHogException } from './posthog.ts';
 
 export function jsonResponse(req: Request, body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -44,6 +45,28 @@ export function handleOptions(req: Request): Response | null {
   return null;
 }
 
+/**
+ * Several public GET endpoints accept an unguessable bearer-capability token via query
+ * string (`?token=`/`?complete=` — get-guest-stay-guide, get-form-completion,
+ * get-guest-booking-document, get-team-invite-preview, ical-export). `handleEdgeError`
+ * forwards `req.url` to PostHog on captured exceptions, so a raw URL would leak that
+ * token into a third-party system on any unexpected error. Redact every query param
+ * *value* (keep the key names, still useful for diagnosing which params a failing
+ * request carried) rather than maintaining a param-name denylist that a future
+ * token-accepting endpoint could easily miss.
+ */
+function sanitizeUrlForTelemetry(rawUrl: string): string {
+  try {
+    const url = new URL(rawUrl);
+    for (const key of Array.from(new Set(url.searchParams.keys()))) {
+      url.searchParams.set(key, '[redacted]');
+    }
+    return url.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
 export async function errorMessageFromThrown(
   error: unknown,
   unauthorizedFallback = 'Unauthorized'
@@ -68,6 +91,14 @@ export async function handleEdgeError(
 ): Promise<Response> {
   console.error(logPrefix, error);
   const { status, message } = await errorMessageFromThrown(error, unauthorizedFallback);
+  // Response-instance throws are intentional control flow (401/403/expected 400s) —
+  // only report genuine unexpected exceptions or real server errors to PostHog.
+  if (!(error instanceof Response) || status >= 500) {
+    await capturePostHogException(error, {
+      logPrefix,
+      extra: { status, message, url: sanitizeUrlForTelemetry(req.url) },
+    });
+  }
   return jsonError(req, message, status);
 }
 
