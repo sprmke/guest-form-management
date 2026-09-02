@@ -1,12 +1,12 @@
 import { LegalSimplePage } from '@/features/guest/marketing/legal/components/LegalSimplePage';
 
+import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 import {
   PLATFORM_APP_NAME,
   PLATFORM_CONTACT_EMAIL,
   platformLegalIntro,
   platformLegalSubject,
 } from '@/lib/platformBranding';
-import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 const legalSubject = platformLegalSubject();
 

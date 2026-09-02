@@ -52,7 +52,7 @@ export function HostPublicHero({ host, className }: Props) {
           <div className="min-w-0 flex-1 space-y-4 text-center sm:space-y-5 sm:pt-1 sm:text-left">
             <div className="space-y-2.5">
               <div className="flex flex-col items-center gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-start sm:gap-3">
-                <h1 className="text-foreground text-2xl font-bold tracking-tight sm:text-3xl lg:text-[2rem] lg:leading-tight">
+                <h1 className="text-foreground text-xl font-bold tracking-tight sm:text-2xl lg:text-[2rem] lg:leading-tight">
                   {host.name}
                 </h1>
                 {host.isSuperhost ? (

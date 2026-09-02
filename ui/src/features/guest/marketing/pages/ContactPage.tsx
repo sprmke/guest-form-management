@@ -22,8 +22,8 @@ import type { SupportTicketCategory } from '@/features/dashboard/help-support/li
 import { MANAGED_PLAN_INQUIRY_SUBJECT } from '@/features/dashboard/plans/lib/planPresentation';
 
 import { Button } from '@/components/ui/button';
-import { PLATFORM_CONTACT_EMAIL } from '@/lib/platformBranding';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
+import { PLATFORM_CONTACT_EMAIL } from '@/lib/platformBranding';
 
 const GUEST_TICKET_SCOPE = {
   channel: 'guest' as const,

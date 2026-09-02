@@ -9,10 +9,16 @@ function normalizeEmail(email: string): string {
 }
 
 export function useGuestAuthActions() {
-  const sendEmailOtp = useCallback(async (email: string) => {
+  const sendEmailOtp = useCallback(async (email: string, captchaToken?: string) => {
     const { error } = await supabase.auth.signInWithOtp({
       email: normalizeEmail(email),
-      options: { shouldCreateUser: true },
+      options: {
+        shouldCreateUser: true,
+        // Ignored by GoTrue unless [auth.captcha] is enabled; always sent so the
+        // server can enforce it without a client change. Anti-spam plan:
+        // docs/workflow/for-testing/captcha-anti-spam-hardening.md
+        ...(captchaToken ? { captchaToken } : {}),
+      },
     });
     return error;
   }, []);

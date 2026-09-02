@@ -4,6 +4,7 @@ import {
   guestPropertyPath,
   guestShowcasePath,
 } from '@/features/guest/lib/guestPublicPaths';
+
 import type { ChatUrlLinkResourceKind } from '@/lib/chat/parseChatRichBlocks';
 import { urlLinkCardMeta } from '@/lib/chat/parseChatRichBlocks';
 

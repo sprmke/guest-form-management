@@ -11,8 +11,8 @@ import { MarketingPublicPageContent } from '@/features/guest/marketing/shared/co
 import { MarketingPublicPageHero } from '@/features/guest/marketing/shared/components/MarketingPublicPageHero';
 
 import { Button } from '@/components/ui/button';
-import { PLATFORM_CONTACT_EMAIL } from '@/lib/platformBranding';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
+import { PLATFORM_CONTACT_EMAIL } from '@/lib/platformBranding';
 
 const guestFaqs: MarketingPublicFaqItem[] = [
   {

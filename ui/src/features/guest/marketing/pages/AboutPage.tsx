@@ -17,8 +17,8 @@ import { MarketingPublicPageHero } from '@/features/guest/marketing/shared/compo
 import { MarketingPublicSectionHeading } from '@/features/guest/marketing/shared/components/MarketingPublicSectionHeading';
 
 import { Button } from '@/components/ui/button';
-import { PLATFORM_APP_NAME, PLATFORM_CONTACT_EMAIL } from '@/lib/platformBranding';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
+import { PLATFORM_APP_NAME, PLATFORM_CONTACT_EMAIL } from '@/lib/platformBranding';
 
 const capabilities = [
   {

@@ -123,7 +123,7 @@ export function DevelopmentHero({ development }: DevelopmentHeroProps) {
                 <p className="text-primary text-sm font-semibold uppercase tracking-wider">
                   {development.developerName}
                 </p>
-                <h1 className="text-foreground text-2xl font-bold tracking-tight sm:text-3xl">
+                <h1 className="text-foreground text-xl font-bold tracking-tight sm:text-2xl md:text-3xl">
                   {development.name}
                 </h1>
 

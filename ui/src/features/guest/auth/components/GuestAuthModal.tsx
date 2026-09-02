@@ -6,6 +6,7 @@ import { AuthDivider } from '@/features/guest/auth/components/AuthDivider';
 import { useGuestAuthActions } from '@/features/guest/auth/hooks/useGuestAuthActions';
 
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
+import { useCaptchaToken } from '@/components/security/useCaptchaToken';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SpinnerIcon } from '@/components/ui/icons';
@@ -23,6 +24,7 @@ interface GuestAuthModalProps {
 
 export function GuestAuthModal({ open, onOpenChange, oauthRedirectPath }: GuestAuthModalProps) {
   const { sendEmailOtp, verifyEmailOtp, signInWithGoogle } = useGuestAuthActions();
+  const captcha = useCaptchaToken({ action: 'auth-email-otp' });
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -53,7 +55,9 @@ export function GuestAuthModal({ open, onOpenChange, oauthRedirectPath }: GuestA
     }
     setError(null);
     setIsSending(true);
-    const otpError = await sendEmailOtp(trimmed);
+    const captchaToken = await captcha.ensureToken();
+    const otpError = await sendEmailOtp(trimmed, captchaToken);
+    captcha.reset();
     setIsSending(false);
     if (otpError) {
       setError(otpError.message);
@@ -97,7 +101,7 @@ export function GuestAuthModal({ open, onOpenChange, oauthRedirectPath }: GuestA
           <div className="from-primary to-primary/80 mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br shadow-md">
             <span className="text-lg font-bold text-white">K</span>
           </div>
-          <DialogTitle className="text-center text-xl font-bold">
+          <DialogTitle className="text-center text-lg font-bold sm:text-xl">
             {step === 'email' ? 'Log in or sign up' : 'Confirm your email'}
           </DialogTitle>
         </DialogHeader>
@@ -166,6 +170,9 @@ export function GuestAuthModal({ open, onOpenChange, oauthRedirectPath }: GuestA
               />
             </div>
           )}
+
+          {/* Kept mounted on both steps so Resend (OTP step) still has a fresh single-use token. */}
+          {captcha.widget}
 
           {error ? (
             <p className="text-destructive text-center text-sm" role="alert">
