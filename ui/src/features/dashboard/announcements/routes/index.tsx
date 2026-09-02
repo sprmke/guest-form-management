@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
 
-import { Navigate, Route } from 'react-router-dom';
+import { Navigate, Outlet, Route } from 'react-router-dom';
 
 import {
   hostAnnouncementsPathFromHelpSupport,
   useHasHostAnnouncementsArchiveScope,
 } from '@/features/dashboard/announcements/lib/hostAnnouncementsPaths';
-import { HostAnnouncementsPage } from '@/features/dashboard/announcements/pages/HostAnnouncementsPage';
+import { HostAnnouncementDetailPage } from '@/features/dashboard/announcements/pages/HostAnnouncementDetailPage';
+import { HostAnnouncementsListPage } from '@/features/dashboard/announcements/pages/HostAnnouncementsListPage';
 import { useHelpSupportBasePath } from '@/features/dashboard/help-support/lib/helpSupportPaths';
 import type { ParkingRouteFn, PropertyRouteFn } from '@/features/dashboard/org/routes/guards';
 
@@ -25,21 +26,28 @@ function HelpSupportAnnouncementsRedirect() {
   return <Navigate to={hostAnnouncementsPathFromHelpSupport(helpSupportPath)} replace />;
 }
 
+function hostAnnouncementsNestedRoutes(): ReactNode {
+  return (
+    <>
+      <Route index element={<HostAnnouncementsListPage />} />
+      <Route path=":announcementId" element={<HostAnnouncementDetailPage />} />
+    </>
+  );
+}
+
 export function hostAnnouncementsPropertyRoute(propertyRoute: PropertyRouteFn): ReactNode {
   return (
-    <Route
-      path="announcements"
-      element={propertyRoute('announcements', <HostAnnouncementsPage />)}
-    />
+    <Route path="announcements" element={propertyRoute('announcements', <Outlet />)}>
+      {hostAnnouncementsNestedRoutes()}
+    </Route>
   );
 }
 
 export function hostAnnouncementsParkingRoute(parkingRoute: ParkingRouteFn): ReactNode {
   return (
-    <Route
-      path="announcements"
-      element={parkingRoute('announcements', <HostAnnouncementsPage />)}
-    />
+    <Route path="announcements" element={parkingRoute('announcements', <Outlet />)}>
+      {hostAnnouncementsNestedRoutes()}
+    </Route>
   );
 }
 

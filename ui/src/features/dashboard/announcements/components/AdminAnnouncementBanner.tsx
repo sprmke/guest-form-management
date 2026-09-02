@@ -13,7 +13,10 @@ import {
 } from '@/features/dashboard/announcements/lib/hostAnnouncementsPaths';
 import { useNotificationsOrgScope } from '@/features/dashboard/notifications/lib/notificationsScope';
 
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
+
 export function AdminAnnouncementBanner() {
+  const isBelowLg = useIsBelowLg();
   const hasArchive = useHasHostAnnouncementsArchiveScope();
   const { orgId } = useNotificationsOrgScope();
   const { announcements, isLoading, isError, refetch } = useHostAnnouncements();
@@ -31,18 +34,22 @@ export function AdminAnnouncementBanner() {
 
   const { dismissedKeys, dismiss } = useHostAnnouncementBannerDismiss(orgId, activeIdentityKeys);
 
-  const bannerAnnouncement = useMemo(
+  const undismissedAnnouncements = useMemo(
     () =>
-      sortedAnnouncements.find((entry) => !dismissedKeys.has(hostAnnouncementIdentityKey(entry))) ??
-      null,
+      sortedAnnouncements.filter((entry) => !dismissedKeys.has(hostAnnouncementIdentityKey(entry))),
     [sortedAnnouncements, dismissedKeys]
   );
+
+  const bannerAnnouncement = undismissedAnnouncements[0] ?? null;
+
+  /* Desktop-only strip — do not mount a hidden sibling on mobile (breaks space-y layout). */
+  if (isBelowLg) return null;
 
   if (!hasArchive) return null;
 
   if (isError) {
     return (
-      <div className="surface-card border-l-[3px] border-l-rose-500 px-4 py-3">
+      <div className="surface-card mb-2 border-l-[3px] border-l-rose-500 px-4 py-3 sm:mb-2.5">
         <p className="text-destructive text-sm">Could not load announcements.</p>
         <button
           type="button"
@@ -55,7 +62,9 @@ export function AdminAnnouncementBanner() {
     );
   }
 
-  if (isLoading || !bannerAnnouncement) return null;
+  if (isLoading || !bannerAnnouncement || !announcementsPath) return null;
+
+  const dismissCurrent = () => dismiss(hostAnnouncementIdentityKey(bannerAnnouncement));
 
   return (
     <div className="mb-2 sm:mb-2.5" aria-label="Announcements">
@@ -63,7 +72,7 @@ export function AdminAnnouncementBanner() {
         announcement={bannerAnnouncement}
         totalCount={sortedAnnouncements.length}
         announcementsPath={announcementsPath}
-        onDismiss={() => dismiss(hostAnnouncementIdentityKey(bannerAnnouncement))}
+        onDismiss={dismissCurrent}
       />
     </div>
   );

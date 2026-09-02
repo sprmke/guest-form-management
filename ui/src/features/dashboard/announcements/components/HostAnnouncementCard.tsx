@@ -1,71 +1,107 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { ArrowUpRight, Megaphone } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-import type { HostAnnouncement } from '@/features/dashboard/announcements/lib/hostAnnouncementTypes';
-import type { HostAnnouncementSeverity } from '@/features/dashboard/announcements/lib/hostAnnouncementTypes';
+import { ChevronRight, Megaphone } from 'lucide-react';
+
+import { PublicListingPagination } from '@/features/guest/marketing/shared/components/PublicListingPagination';
+
+import { useHostAnnouncementReadState } from '@/features/dashboard/announcements/hooks/useHostAnnouncementReadState';
+import { isLongHostAnnouncementBody } from '@/features/dashboard/announcements/lib/hostAnnouncementDetail';
 import {
   groupHostAnnouncementsForFeed,
   HOST_ANNOUNCEMENT_FEED_PAGE_SIZE,
   hostAnnouncementIdentityKey,
   type HostAnnouncementFeedGroup,
 } from '@/features/dashboard/announcements/lib/hostAnnouncementPresentation';
+import { HOST_ANNOUNCEMENT_SEVERITY_MARKER_CLASS } from '@/features/dashboard/announcements/lib/hostAnnouncementSeverity';
+import { hostAnnouncementDetailPath } from '@/features/dashboard/announcements/lib/hostAnnouncementsPaths';
+import type { HostAnnouncement } from '@/features/dashboard/announcements/lib/hostAnnouncementTypes';
 import { AdminSectionGroupHeading } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
-import { PublicListingPagination } from '@/features/guest/marketing/shared/components/PublicListingPagination';
+import { useNotificationsOrgScope } from '@/features/dashboard/notifications/lib/notificationsScope';
 
 import { cn } from '@/lib/utils';
 
-const SEVERITY_ROW_CLASS: Record<HostAnnouncementSeverity, string> = {
-  critical: 'border-l-rose-500/90',
-  warning: 'border-l-amber-500/80',
-  info: 'border-l-border/70',
-};
-
-type HostAnnouncementCardProps = {
+type HostAnnouncementListRowProps = {
   announcement: HostAnnouncement;
-  /** Last row in a group panel — skip bottom divider spacing cue. */
-  isLast?: boolean;
+  detailPath: string;
+  unread: boolean;
 };
 
-export function HostAnnouncementCard({ announcement, isLast }: HostAnnouncementCardProps) {
-  const linkLabel = announcement.linkLabel?.trim() || 'Learn more';
-  const hasLink = Boolean(announcement.linkUrl);
+function HostAnnouncementListRow({
+  announcement,
+  detailPath,
+  unread,
+}: HostAnnouncementListRowProps) {
+  const showReadMore =
+    isLongHostAnnouncementBody(announcement.body) || Boolean(announcement.linkUrl);
 
   return (
-    <article
+    <Link
+      to={detailPath}
+      aria-label={unread ? `${announcement.title}, unread` : announcement.title}
       className={cn(
-        'group relative border-l-[3px] py-4 pl-4 pr-4 sm:py-[1.125rem] sm:pl-5 sm:pr-5',
-        SEVERITY_ROW_CLASS[announcement.severity],
-        !isLast && 'border-border/40 border-b'
+        'group flex items-center gap-3 px-4 py-4 transition-colors sm:gap-4 sm:px-5 sm:py-[1.125rem]',
+        'hover:bg-muted/50 focus-visible:bg-muted/50',
+        'focus-visible:ring-ring/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset',
+        unread ? 'bg-background' : 'bg-muted/25'
       )}
-      role="status"
-      aria-label={announcement.title}
     >
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <h3 className="text-foreground text-[15px] font-semibold leading-snug tracking-tight sm:text-base">
-            {announcement.title}
-          </h3>
-          <p className="text-muted-foreground text-sm leading-relaxed">{announcement.body}</p>
-        </div>
-
-        {hasLink ? (
-          <a
-            href={announcement.linkUrl!}
-            target="_blank"
-            rel="noreferrer"
-            className="text-foreground/80 hover:text-foreground inline-flex min-h-9 shrink-0 items-center gap-1 text-sm font-medium transition-colors sm:pt-0.5"
-          >
-            {linkLabel}
-            <ArrowUpRight className="size-3.5 shrink-0 opacity-60" aria-hidden />
-          </a>
+      <span
+        className={cn(
+          'h-10 w-0.5 shrink-0 rounded-full sm:h-11',
+          HOST_ANNOUNCEMENT_SEVERITY_MARKER_CLASS[announcement.severity],
+          !unread && 'opacity-55'
+        )}
+        aria-hidden
+      />
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <h3
+          className={cn(
+            'text-sm leading-snug tracking-tight sm:text-[15px]',
+            unread ? 'text-foreground font-semibold' : 'text-foreground/75 font-medium'
+          )}
+        >
+          {announcement.title}
+          {unread ? (
+            <span
+              className="bg-destructive ml-1.5 inline-block size-1.5 shrink-0 rounded-full align-middle"
+              aria-hidden
+            />
+          ) : null}
+        </h3>
+        <p
+          className={cn(
+            'line-clamp-2 text-sm leading-relaxed',
+            unread ? 'text-muted-foreground' : 'text-muted-foreground/75'
+          )}
+        >
+          {announcement.body}
+        </p>
+        {showReadMore ? (
+          <span className="text-primary inline-flex items-center gap-0.5 text-sm font-semibold">
+            Read more
+            <ChevronRight className="size-3.5 shrink-0 opacity-90" aria-hidden />
+          </span>
         ) : null}
       </div>
-    </article>
+      <ChevronRight
+        className="text-muted-foreground/45 group-hover:text-muted-foreground size-4 shrink-0 transition-colors"
+        aria-hidden
+      />
+    </Link>
   );
 }
 
-function HostAnnouncementGroupSection({ group }: { group: HostAnnouncementFeedGroup }) {
+function HostAnnouncementGroupSection({
+  group,
+  basePath,
+  isUnread,
+}: {
+  group: HostAnnouncementFeedGroup;
+  basePath: string | null;
+  isUnread: (identityKey: string) => boolean;
+}) {
   const [page, setPage] = useState(1);
   const count = group.announcements.length;
   const pageCount = Math.max(1, Math.ceil(count / HOST_ANNOUNCEMENT_FEED_PAGE_SIZE));
@@ -99,20 +135,53 @@ function HostAnnouncementGroupSection({ group }: { group: HostAnnouncementFeedGr
         }
       />
 
-      <div className="surface-card overflow-hidden">
-        {pageAnnouncements.map((announcement, index) => (
-          <HostAnnouncementCard
-            key={hostAnnouncementIdentityKey(announcement)}
-            announcement={announcement}
-            isLast={index === pageAnnouncements.length - 1}
-          />
-        ))}
+      <div className="surface-card divide-border/50 divide-y overflow-hidden">
+        {pageAnnouncements.map((announcement) => {
+          const identityKey = hostAnnouncementIdentityKey(announcement);
+          return basePath ? (
+            <HostAnnouncementListRow
+              key={identityKey}
+              announcement={announcement}
+              detailPath={hostAnnouncementDetailPath(basePath, announcement.id)}
+              unread={isUnread(identityKey)}
+            />
+          ) : (
+            <div key={identityKey} className="flex gap-3 px-4 py-4 sm:px-5">
+              <span
+                className={cn(
+                  'h-10 w-0.5 shrink-0 rounded-full',
+                  HOST_ANNOUNCEMENT_SEVERITY_MARKER_CLASS[announcement.severity]
+                )}
+                aria-hidden
+              />
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <h3 className="text-foreground text-sm font-semibold leading-snug sm:text-[15px]">
+                  {announcement.title}
+                </h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">{announcement.body}</p>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );
 }
 
-export function HostAnnouncementFeed({ announcements }: { announcements: HostAnnouncement[] }) {
+export function HostAnnouncementFeed({
+  announcements,
+  basePath,
+}: {
+  announcements: HostAnnouncement[];
+  basePath?: string | null;
+}) {
+  const { orgId } = useNotificationsOrgScope();
+  const activeIdentityKeys = useMemo(
+    () => announcements.map((entry) => hostAnnouncementIdentityKey(entry)),
+    [announcements]
+  );
+  const { isUnread } = useHostAnnouncementReadState(orgId, activeIdentityKeys);
+
   if (announcements.length === 0) {
     return (
       <div className="surface-card text-muted-foreground flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
@@ -127,7 +196,12 @@ export function HostAnnouncementFeed({ announcements }: { announcements: HostAnn
   return (
     <div className="space-y-8">
       {groups.map((group) => (
-        <HostAnnouncementGroupSection key={group.key} group={group} />
+        <HostAnnouncementGroupSection
+          key={group.key}
+          group={group}
+          basePath={basePath ?? null}
+          isUnread={isUnread}
+        />
       ))}
     </div>
   );

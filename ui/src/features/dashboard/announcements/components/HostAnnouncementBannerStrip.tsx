@@ -1,11 +1,12 @@
-import { ArrowUpRight, ChevronRight, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-import type { HostAnnouncement } from '@/features/dashboard/announcements/lib/hostAnnouncementTypes';
+import { ArrowUpRight, ChevronRight, X } from 'lucide-react';
+
 import {
   HOST_ANNOUNCEMENT_SEVERITY_PRESENTATION,
   hostAnnouncementScopeLabel,
 } from '@/features/dashboard/announcements/lib/hostAnnouncementPresentation';
+import type { HostAnnouncement } from '@/features/dashboard/announcements/lib/hostAnnouncementTypes';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
