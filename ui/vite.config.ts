@@ -1,6 +1,7 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import posthogRollupPlugin, { type PostHogRollupPluginOptions } from '@posthog/rollup-plugin';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
 
@@ -29,6 +30,45 @@ const useSyncExternalStoreShimRoot = path.resolve(
   './src/lib/shims/use-sync-external-store/shim'
 );
 const classnamesShim = path.resolve(__dirname, './src/lib/shims/classnames.ts');
+
+// Build-time only (Node context, never bundled into client code) — set these in
+// CI/Vercel to enable readable production stack traces in PostHog. Requires a
+// *personal* API key (error tracking write scope) — deliberately not named
+// POSTHOG_API_KEY, which is a different (project) key used by the edge runtime.
+// See docs/architecture/validation-and-env.md §11.1.
+const posthogSourceMapsEnabled = Boolean(
+  process.env.POSTHOG_PERSONAL_API_KEY && process.env.POSTHOG_PROJECT_ID
+);
+
+/**
+ * `@posthog/rollup-plugin`'s `writeBundle` hook shells out to `posthog-cli sourcemap upload`
+ * and rejects the whole build on any non-zero exit (bad/expired personal API key, network
+ * blip, PostHog outage, rate limit) — see `spawnLocal` in `@posthog/plugin-utils`. That hook
+ * runs *after* Rollup has already written the real JS/CSS bundle to disk, so a failed upload
+ * has nothing left to roll back; the only loss is readable stack traces for this release.
+ * Losing that must never block a production deploy (including an urgent hotfix), so this
+ * wraps the hook to warn-and-continue instead of throwing.
+ */
+function resilientPosthogSourcemapsPlugin(options: PostHogRollupPluginOptions): Plugin {
+  const plugin = posthogRollupPlugin(options);
+  const writeBundle = plugin.writeBundle;
+
+  if (writeBundle && typeof writeBundle === 'object' && 'handler' in writeBundle) {
+    const originalHandler = writeBundle.handler.bind(writeBundle);
+    writeBundle.handler = async (...args: Parameters<typeof originalHandler>) => {
+      try {
+        await originalHandler(...args);
+      } catch (error) {
+        console.warn(
+          '[posthog-rollup-plugin] source map upload failed; continuing build without readable production stack traces for this release.',
+          error
+        );
+      }
+    };
+  }
+
+  return plugin;
+}
 
 let scopedPolotnoBlueprintCache: string | null = null;
 
@@ -84,7 +124,29 @@ function scopeBlueprintCssPlugin(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [patchOpenPolotnoHighlighter(), scopeBlueprintCssPlugin(), react()],
+  plugins: [
+    patchOpenPolotnoHighlighter(),
+    scopeBlueprintCssPlugin(),
+    react(),
+    ...(posthogSourceMapsEnabled
+      ? [
+          resilientPosthogSourcemapsPlugin({
+            personalApiKey: process.env.POSTHOG_PERSONAL_API_KEY!,
+            projectId: process.env.POSTHOG_PROJECT_ID!,
+            host: process.env.POSTHOG_HOST,
+            sourcemaps: {
+              releaseName: 'guest-form-management-ui',
+              deleteAfterUpload: true,
+            },
+          }),
+        ]
+      : []),
+  ],
+  build: {
+    // 'hidden' still generates + uploads maps but omits the sourceMappingURL
+    // comment from shipped JS, so they aren't publicly fetchable.
+    sourcemap: posthogSourceMapsEnabled ? 'hidden' : false,
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
