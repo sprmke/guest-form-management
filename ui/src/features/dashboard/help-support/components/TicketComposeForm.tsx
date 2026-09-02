@@ -22,6 +22,7 @@ import {
 } from '@/features/dashboard/help-support/lib/supportTicketSchema';
 
 import { FieldLabel, RequiredMark } from '@/components/forms/FieldLabel';
+import { useAntiSpamFields } from '@/components/security/useAntiSpamFields';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -33,6 +34,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
+import { isPostHogEnabled, posthog } from '@/lib/posthog/client';
 import { cn } from '@/lib/utils';
 
 const CATEGORY_ICONS: Record<SupportTicketCategory, typeof Bug> = {
@@ -67,6 +69,7 @@ export function TicketComposeForm({
   defaultCategory,
 }: Props) {
   const submitTicket = useSubmitSupportTicket();
+  const antiSpam = useAntiSpamFields();
   const [attachments, setAttachments] = useState<SupportTicketAttachmentDraft[]>([]);
   const [attachmentsBusy, setAttachmentsBusy] = useState(false);
 
@@ -172,7 +175,15 @@ export function TicketComposeForm({
         contactPreference:
           'contactPreference' in parsed.data ? parsed.data.contactPreference : undefined,
         attachments: 'attachments' in parsed.data ? parsed.data.attachments : undefined,
+        antiSpam: antiSpam.getFields(),
       });
+      if (isPostHogEnabled) {
+        posthog.capture('support_ticket_submitted', {
+          category: parsed.data.category,
+          severity: 'severity' in parsed.data ? parsed.data.severity : 'not_applicable',
+          attachment_count: 'attachments' in parsed.data ? parsed.data.attachments.length : 0,
+        });
+      }
       toast.success('Submitted');
       onSubmitted(result.ticket.id);
     } catch (error) {
@@ -212,6 +223,7 @@ export function TicketComposeForm({
       onSubmit={handleSubmit((values) => void onSubmit(values))}
       noValidate
     >
+      {antiSpam.field}
       <fieldset className="space-y-2">
         <legend className="text-foreground text-sm font-medium">
           What is this about?

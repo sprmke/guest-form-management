@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { Minus, Plus } from 'lucide-react';
 
+import { VoucherRevealStylePicker } from '@/features/dashboard/org/components/property-settings/VoucherRevealStylePicker';
 import type { PropertyVoucherPrize } from '@/features/dashboard/org/lib/propertyVoucherSettings';
 import {
   VOUCHER_PRESET_PERCENTS,
@@ -16,7 +17,6 @@ import {
   voucherRevealStyleLabel,
   type VoucherRevealStyle,
 } from '@/features/dashboard/org/lib/voucherRevealStyle';
-import { VoucherRevealStylePicker } from '@/features/dashboard/org/components/property-settings/VoucherRevealStylePicker';
 import { usePropertyPricingDefaults } from '@/features/dashboard/pricing/hooks/usePropertyPricing';
 import {
   DEFAULT_WEEKDAY_NIGHTLY_RATE,

@@ -7,6 +7,7 @@
 
 import { expect, type Page, type Route } from '@playwright/test';
 
+import { VOUCHER_E2E_BOOKING_ID } from './voucherRevealHarness';
 import {
   applyTeamMemberSessionStorage,
   installPropertyTeamRbacMocks,
@@ -14,7 +15,6 @@ import {
   TEAM_E2E_PROPERTY_ID,
   TEAM_E2E_PROPERTY_SLUG,
 } from '../../team/shared/propertyTeamRbacHarness';
-import { VOUCHER_E2E_BOOKING_ID } from './voucherRevealHarness';
 
 /** Mirrors `GuestVoucherDto` — kept local so e2e harnesses avoid UI path aliases. */
 export type E2eGuestVoucher = {

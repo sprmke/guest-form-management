@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useRef } from 'react';
 
 import {
+  buildReelKeyframes,
+  VOUCHER_REEL_CHIP_TONES,
+} from '@/features/guest/sd-form/components/voucher-reveal/VoucherRevealReel';
+import { usePrefersReducedMotion } from '@/features/guest/sd-form/lib/voucherRevealMotion';
+
+import {
   DEFAULT_VOUCHER_REVEAL_STYLE,
   VOUCHER_REVEAL_STYLES,
   voucherRevealStyleLabel,
   type VoucherRevealStyle,
 } from '@/features/dashboard/org/lib/voucherRevealStyle';
-import {
-  buildReelKeyframes,
-  VOUCHER_REEL_CHIP_TONES,
-} from '@/features/guest/sd-form/components/voucher-reveal/VoucherRevealReel';
-import { usePrefersReducedMotion } from '@/features/guest/sd-form/lib/voucherRevealMotion';
 
 import { cn } from '@/lib/utils';
 

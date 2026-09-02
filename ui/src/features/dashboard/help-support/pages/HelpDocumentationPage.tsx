@@ -160,7 +160,7 @@ export function HelpDocumentationPage() {
             <h3
               ref={headingRef}
               tabIndex={-1}
-              className="text-foreground w-full px-12 text-center text-xl font-semibold tracking-tight outline-none sm:px-28"
+              className="text-foreground w-full px-12 text-center text-lg font-semibold tracking-tight outline-none sm:px-28 sm:text-xl"
             >
               {selectedGroup}
             </h3>

@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import type { AntiSpamRequestFields } from '@/lib/security/antiSpamRequest';
+
 import { useSupportTicketScope } from './useSupportTicketScope';
 import {
   fetchSupportTicket,
@@ -11,6 +13,7 @@ import {
   type SubmitSupportTicketPayload,
   type SupportTicketScopeParams,
 } from '../lib/supportTicketApi';
+
 
 import type { SupportTicketAttachmentDraft } from '../lib/supportTicketSchema';
 
@@ -55,8 +58,12 @@ export function useSubmitSupportTicket() {
   const scope = useSupportTicketScope();
 
   return useMutation({
-    mutationFn: (payload: Omit<SubmitSupportTicketPayload, keyof SupportTicketScopeParams>) =>
-      submitSupportTicket({ ...scope, ...payload }),
+    mutationFn: ({
+      antiSpam,
+      ...payload
+    }: Omit<SubmitSupportTicketPayload, keyof SupportTicketScopeParams> & {
+      antiSpam?: Partial<AntiSpamRequestFields>;
+    }) => submitSupportTicket({ ...scope, ...payload }, antiSpam),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['support-tickets', ...scopeKey(scope)] });
     },

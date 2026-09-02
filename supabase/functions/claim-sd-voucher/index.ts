@@ -23,10 +23,22 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
+import { antiSpamGate } from '../_shared/antiSpam.ts';
 
 servePublic('claim-sd-voucher', async (req) => {
   requireHttpMethod(req, 'POST');
   const body = await readJsonBody(req);
+
+  // Anti-spam: Turnstile + durable rate limit. Heuristics are skipped — the
+  // "Claim it!" action is a single tap with no form-fill window to time.
+  // Plan: docs/workflow/for-testing/captcha-anti-spam-hardening.md
+  const antiSpamBlocked = await antiSpamGate(req, body as Record<string, unknown>, {
+    scope: 'claim-sd-voucher',
+    rateLimit: { limit: 10, windowSec: 60 },
+    heuristics: false,
+  });
+  if (antiSpamBlocked) return antiSpamBlocked;
+
   const bookingId = (typeof body.bookingId === 'string' ? body.bookingId : '').trim();
   if (!bookingId) throw new Error('bookingId is required');
 

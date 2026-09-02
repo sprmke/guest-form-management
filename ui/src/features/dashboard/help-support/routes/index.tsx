@@ -2,8 +2,8 @@ import type { ReactNode } from 'react';
 
 import { Route } from 'react-router-dom';
 
-import { HelpSupportLayout } from '@/features/dashboard/help-support/components/HelpSupportLayout';
 import { helpSupportAnnouncementsRedirectRoute } from '@/features/dashboard/announcements/routes';
+import { HelpSupportLayout } from '@/features/dashboard/help-support/components/HelpSupportLayout';
 import { HelpDocumentationPage } from '@/features/dashboard/help-support/pages/HelpDocumentationPage';
 import { HelpSupportOverviewPage } from '@/features/dashboard/help-support/pages/HelpSupportOverviewPage';
 import { TicketsWorkspacePage } from '@/features/dashboard/help-support/pages/TicketsWorkspacePage';

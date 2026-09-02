@@ -14,13 +14,13 @@ import {
   useSupportTicket,
 } from '@/features/dashboard/help-support/hooks/useSupportTickets';
 import {
-  canSubmitterReply,
-  submitterReplyPlaceholder,
-} from '@/features/dashboard/help-support/lib/supportTicketStatus';
-import {
   SUPPORT_TICKET_CATEGORY_LABELS,
   type SupportTicketAttachmentDraft,
 } from '@/features/dashboard/help-support/lib/supportTicketSchema';
+import {
+  canSubmitterReply,
+  submitterReplyPlaceholder,
+} from '@/features/dashboard/help-support/lib/supportTicketStatus';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
