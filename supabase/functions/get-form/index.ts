@@ -2,10 +2,20 @@ import { DatabaseService } from '../_shared/databaseService.ts';
 import { canGuestPublicUpdateForm } from '../_shared/statusMachine.ts';
 import { extractRouteParam } from '../_shared/utils.ts';
 import { jsonError, jsonResponse, requireHttpMethod } from '../_shared/httpResponse.ts';
+import { checkIpRateLimit, clientIpFromRequest } from '../_shared/publicRateLimit.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
 
 servePublic('get-form', async (req) => {
   requireHttpMethod(req, 'GET');
+
+  // This returns full guest PII by bookingId alone — throttle brute-force/enumeration
+  // attempts. Not a substitute for the token-based access control tracked separately
+  // (docs/workflow/in-progress/production-readiness-hardening.md Phase 2).
+  const ip = clientIpFromRequest(req);
+  const rate = checkIpRateLimit('get-form', ip, 30, 60_000);
+  if (!rate.allowed) {
+    return jsonError(req, 'Too many requests. Please wait a moment.', 429);
+  }
 
   const url = new URL(req.url);
   const bookingId = extractRouteParam(url.pathname, '/get-form/');

@@ -48,10 +48,26 @@ import { checkGuestBalanceSettlement } from '../_shared/totalGuestBalance.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
 import { sendSdRefundFormRequest } from '../_shared/emailService.ts';
 import { propertyAutomationEnabled } from '../_shared/propertyAutomationToggles.ts';
+import { capturePostHogException } from '../_shared/posthog.ts';
 
 const MANILA_TZ = 'Asia/Manila';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * Guards the unscoped global-sweep path (empty/`{}` body — no `bookingId`, no admin JWT).
+ * Same fail-open-until-configured convention as every other scheduled cron in this repo
+ * (`verifyParkingBroadcastExpireCronSecret`, `verifyContractExpiryCronSecret`, Telegram
+ * crons, etc.) — if the operator hasn't set `SD_REFUND_CRON_SECRET` yet, the sweep keeps
+ * working exactly as before; once set, only the pg_cron job's Vault-sourced header
+ * (`sync_sd_refund_cron_job` migration) or another caller who knows the secret can trigger it.
+ */
+function verifySdRefundCronSecret(req: Request): boolean {
+  const expected = Deno.env.get('SD_REFUND_CRON_SECRET')?.trim();
+  if (!expected) return true;
+  const got = req.headers.get('x-sd-refund-cron-secret')?.trim();
+  return got === expected;
+}
 
 // ─── Date/time helpers ─────────────────────────────────────────────────────────
 
@@ -194,6 +210,11 @@ serve(async (req) => {
       await verifyBookingBelongsToProperty(scopedBookingId, adminPropertyId);
       scoped = true;
       console.log(`[sd-refund-cron] Scoped run for bookingId=${scopedBookingId}`);
+    } else if (!verifySdRefundCronSecret(req)) {
+      return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      });
     }
 
     const sb = supabaseAdmin();
@@ -452,6 +473,7 @@ serve(async (req) => {
       return error;
     }
     console.error('[sd-refund-cron] Fatal error:', error);
+    await capturePostHogException(error, { logPrefix: 'cron:sd-refund-cron' });
     return new Response(JSON.stringify({ success: false, error: (error as Error).message }), {
       status: 500,
       headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },

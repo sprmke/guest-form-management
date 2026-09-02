@@ -24,6 +24,8 @@ import {
 import { createServiceClient, tryGetAuthenticatedUser } from '../_shared/orgAuth.ts';
 import { applyVoucherToBooking, assertVoucherEligible } from '../_shared/voucherRedemption.ts';
 import { linkGuestBookingsByEmail } from '../_shared/guestProfileService.ts';
+import { checkIpRateLimit, clientIpFromRequest } from '../_shared/publicRateLimit.ts';
+import { capturePostHogException } from '../_shared/posthog.ts';
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -37,6 +39,17 @@ serve(async (req) => {
     // Only allow POST requests
     if (req.method !== 'POST') {
       throw new Error(`Method ${req.method} not allowed`);
+    }
+
+    // Generous per-IP throttle — real guests submit/edit a handful of times at most;
+    // this only blunts scripted spam/abuse of the unauthenticated public endpoint.
+    const ip = clientIpFromRequest(req);
+    const rate = checkIpRateLimit('submit-form', ip, 20, 60_000);
+    if (!rate.allowed) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Too many requests. Please wait a moment.' }),
+        { status: 429, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
+      );
     }
 
     // Get URL parameters
@@ -99,6 +112,41 @@ serve(async (req) => {
 
     if (!checkInDate || !checkOutDate) {
       throw new Error('Check-in and check-out dates are required');
+    }
+
+    if (checkOutDate <= checkInDate) {
+      throw new Error('Check-out date must be after check-in date');
+    }
+
+    // Server-side mirror of guestFormSchema.ts's format-only rules (guest-form-management
+    // Phase 2 hardening) — the client already blocks these in the browser, so real guests
+    // never hit these branches; this only rejects payloads posted by bypassing the UI.
+    // Deliberately NOT mirroring property-config-dependent rules here (guest count caps,
+    // cleaning buffer, Airbnb-conditional payment receipt) — those depend on per-property
+    // settings resolved later in this handler / DatabaseService and are riskier to duplicate
+    // without live verification.
+    const guestFacebookName = ((formData.get('guestFacebookName') as string) || '').trim();
+    if (!guestFacebookName) {
+      throw new Error('Your name is required');
+    }
+
+    const guestEmailRaw = ((formData.get('guestEmail') as string) || '').trim();
+    if (!guestEmailRaw || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmailRaw)) {
+      throw new Error('Please enter a valid email address');
+    }
+
+    const guestPhoneDigits = ((formData.get('guestPhoneNumber') as string) || '').replace(
+      /\s+/g,
+      ''
+    );
+    if (!/^09\d{9}$/.test(guestPhoneDigits)) {
+      throw new Error("Please enter a valid 11-digit phone number starting with '09'");
+    }
+
+    const numberOfAdultsRaw = formData.get('numberOfAdults');
+    const numberOfAdults = numberOfAdultsRaw != null ? Number(numberOfAdultsRaw) : NaN;
+    if (!Number.isFinite(numberOfAdults) || numberOfAdults < 1) {
+      throw new Error('At least 1 adult guest is required');
     }
 
     // Check for overlapping bookings (only if saving to database)
@@ -415,6 +463,7 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Error processing form submission:', error);
+    await capturePostHogException(error, { logPrefix: 'submit-form' });
 
     return new Response(
       JSON.stringify({
