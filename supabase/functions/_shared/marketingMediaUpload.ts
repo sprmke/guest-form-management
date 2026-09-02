@@ -107,3 +107,30 @@ export async function resolvePublicMarketingMediaUrl(
 
   return uploadMarketingMediaBytes(supabase, propertyId, parsed.bytes, parsed.mime, parsed.ext);
 }
+
+function marketingExtFromMime(mime: string, fileName?: string): string {
+  const fromName = fileName?.includes('.') ? `.${fileName.split('.').pop()?.toLowerCase()}` : '';
+  if (fromName && fromName.length <= 6) return fromName;
+  if (mime === 'image/png') return '.png';
+  if (mime === 'image/webp') return '.webp';
+  if (mime === 'image/gif') return '.gif';
+  if (mime === 'video/webm') return '.webm';
+  if (mime === 'video/quicktime') return '.mov';
+  return mime.startsWith('video/') ? '.mp4' : '.jpg';
+}
+
+/** Upload assistant chat attachment bytes for Meta publish (images/videos only). */
+export async function uploadMarketingMediaFromAssistantBytes(
+  supabase: SupabaseClient,
+  propertyId: string,
+  bytes: Uint8Array,
+  mime: string,
+  fileName?: string
+): Promise<string> {
+  const normalized = mime.toLowerCase();
+  if (!normalized.startsWith('image/') && !normalized.startsWith('video/')) {
+    throw new Error('Marketing publish supports images and videos only');
+  }
+  const ext = marketingExtFromMime(normalized, fileName);
+  return uploadMarketingMediaBytes(supabase, propertyId, bytes, normalized, ext);
+}
