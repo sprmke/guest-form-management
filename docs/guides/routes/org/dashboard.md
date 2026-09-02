@@ -2,7 +2,7 @@
 title: 'Organization Dashboard — operator guide'
 status: active
 tags: [guides, routes, org]
-updated: 2026-08-17
+updated: 2026-09-03
 ---
 
 # Organization Dashboard — operator guide
@@ -31,7 +31,7 @@ Route: `/org/:orgSlug/dashboard`
 
 Org-level performance overview across **all properties** and, when present, **parking listings** in the organization. Layout matches the property dashboard density: KPI strip, then an equal-width `lg:grid-cols-2` board (`items-stretch`), then a full-width listings performance card.
 
-Page title **Dashboard**. Subtitle is _Performance across all properties._ or _Performance across all properties and parking._ when `parkingCount > 0`. On **phone/tablet** (`max-lg`), shared **brand hero** shell (`AdminMobilePage`): teal hero + title/subtitle, date range in overlapping floating toolbar, **Add listing** as hero icon when permitted. Desktop (`lg+`) keeps compact header with date filter + Add listing. Selected **`?from` / `?to`** (Asia/Manila) drives KPIs, charts, status breakdown, recent bookings, and listing performance.
+Page title **Dashboard**. Subtitle is _Performance across all properties._ or _Performance across all properties and parking._ when `parkingCount > 0`. On **phone/tablet** (`max-lg`), shared **brand hero** shell (`AdminMobilePage`): teal hero + title/subtitle, date range in overlapping floating toolbar, **Add listing** as hero icon when permitted. Card-header segments (revenue/bookings, All/Properties/Parkings) stay **right of the title** on one row — dense equal-width `SegmentedControl` (`cardHeaderSegmented*ClassName`). Desktop (`lg+`) keeps compact header with date filter + Add listing. Selected **`?from` / `?to`** (Asia/Manila) drives KPIs, charts, status breakdown, recent bookings, and listing performance.
 
 **Add listing** (when the user can create property and/or parking): same unified modal as the workspace switcher **+** (title **New listing**). Creating a listing navigates to its dashboard.
 

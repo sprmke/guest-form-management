@@ -2,7 +2,7 @@
 title: 'Parking notifications — operator guide'
 status: active
 tags: [guides, routes, org, parking]
-updated: 2026-08-17
+updated: 2026-09-02
 ---
 
 # Parking notifications — operator guide
@@ -20,12 +20,13 @@ Deep links:
 
 ## Progress overview
 
-| Section  | E2E save | Docs       | Notes                                       |
-| -------- | -------- | ---------- | ------------------------------------------- |
-| Activity | ✓        | Documented | In-app bell feed (org-wide, paginated)      |
-| Chat     | ✓        | Documented | Inbound guest web chat Telegram alerts      |
-| Parking  | ✓        | Documented | Ops alerts (reservation, check-in, payment) |
-| Finance  | ✓        | Documented | Due-date reminders for parking transactions |
+| Section     | E2E save | Docs       | Notes                                       |
+| ----------- | -------- | ---------- | ------------------------------------------- |
+| This device | ⏳       | Documented | PWA OS-push opt-in + offline-changes queue  |
+| Activity    | ✓        | Documented | In-app bell feed (org-wide, paginated)      |
+| Chat        | ✓        | Documented | Inbound guest web chat Telegram alerts      |
+| Parking     | ✓        | Documented | Ops alerts (reservation, check-in, payment) |
+| Finance     | ✓        | Documented | Due-date reminders for parking transactions |
 
 ---
 
@@ -34,6 +35,10 @@ Deep links:
 Hub for **in-app activity** (same org-wide feed as the bell) and **Telegram** alerts for this parking slot.
 
 **Plan gating (interim):** Parking routes temporarily skip property-plan checks for **Telegram Chat enable** and the **AI dashboard assistant** until org-level subscription entitlements ship ([`pricing-portfolio-bundling.md`](../../../workflow/planned/pricing-portfolio-bundling.md)). Replace with org entitlement checks when that project lands.
+
+### This device (PWA)
+
+Above the Activity feed: **Notifications on this device** (OS push opt-in — per device; on iPhone/iPad needs **Add to Home Screen** first) and **Offline changes** (Sync Center — appears only when changes were made offline; lists waiting/failed items with Sync now / Retry / Discard). Same components and behaviour as the property Notifications page — see [`../property/notifications.md`](../property/notifications.md) → "This device (PWA)" and [`docs/architecture/pwa.md`](../../../architecture/pwa.md) §5–§6.
 
 ### In-app activity
 

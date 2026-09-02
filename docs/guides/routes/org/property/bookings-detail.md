@@ -256,6 +256,8 @@ This is the page a host opens to manage one specific booking end to end: guest d
 
 **Common host questions**
 
+- Q: Can the AI assistant upload an approved GAF or guest ID for me?
+  A: Yes. In the assistant, attach the PDF or photo, pin the booking (or name the guest), and ask it to apply the file — for example as the approved GAF or a valid ID. You’ll get a Confirm card (including a warning if a file is already there). You can also ask it to send workflow emails (acknowledgement, GAF request, and the rest) the same way you would from Automation Triggers.
 - Q: Why can't I see the pricing yet?
   A: Pricing only appears once you've moved the booking past the initial review step. This keeps the page focused on reviewing the guest's request first.
 - Q: A fee I expected isn't listed under Rates & fees.

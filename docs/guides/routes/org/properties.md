@@ -99,6 +99,8 @@ Cards omit type and bed/bath/guest chips (type remains available via the toolbar
 | Type    | Case-insensitive match on `properties.type` |
 | View    | Grid or list                                |
 
+On phone/tablet (`max-lg`) Status + Type collapse into a single **refine sheet** (`AdminListRefineSheet`, opened from a filter icon beside the search box, with an active-count badge and **Clear**); the inline `Select` strip is desktop-only (`lg+`).
+
 ---
 
 ## Actions menu

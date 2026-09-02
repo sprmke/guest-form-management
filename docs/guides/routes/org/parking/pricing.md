@@ -2,7 +2,7 @@
 title: 'Parking Pricing — operator guide'
 status: active
 tags: [guides, routes, org, parking]
-updated: 2026-08-27
+updated: 2026-09-03
 ---
 
 # Parking Pricing — operator guide
@@ -72,9 +72,10 @@ Three KPI chips: weekday base rate, weekend premium %, count of custom calendar 
 
 ### Calendar
 
-- Month grid titled **Rates & availability** (_Manage pricing and availability_ on desktop); legend under the grid.
+- Month grid titled **Rates & availability** (_Manage pricing and availability_ on desktop); legend under the grid on **`lg+` only** (hidden on phone/tablet).
 - Legend: **Available**, **Custom** (pen icon), **Booked**, **Blocked**, **Selected**.
 - Click or drag future available dates → **Set nightly rate** modal (**Reset** / **Apply**; close via X). When every selected night is blocked, modal offers **Unblock** only.
+- **Mobile (`max-lg`):** no pointer drag — the grid uses a **two-tap** range model (tap start → thick primary border on the cell, no tip banner → tap end commits; tap a booked/locked cell clears the armed start). Selected/armed/today use border-only highlight below `sm` (no outer ring). Shorter day cells below `sm`; title **Pricing**, month **MMM yyyy**, denser stay pills (~20px). Shared `PricingCalendarGrid`, so this matches property Pricing exactly.
 - **Block** / **Unblock** in the modal persist via **`parking-pricing`** PATCH (`blockRange` / `unblockDateKeys`).
 
 ### Base rates (right column)

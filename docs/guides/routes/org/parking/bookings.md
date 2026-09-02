@@ -24,7 +24,7 @@ Parking-slot **reservations** for one slot — separate from stay `need_parking`
 
 ## New booking (modal)
 
-**Entry:** **New booking** button in the page header (desktop) or hero icon (mobile). Opens `AdminParkingNewBookingModal` — no route change, target parking slot fixed from the current page context; **Tower** is pre-filled read-only from the slot's record.
+**Entry:** **New booking** button in the page header (desktop) or hero icon (mobile). Opens `AdminParkingNewBookingModal` — no route change, target parking slot fixed from the current page context; **Tower** is pre-filled read-only from the slot's record. Rendered as a **`ResponsiveModal`** (`sheetLayout="split"`): centered dialog on desktop, **full-width bottom sheet** with a sticky header + scrolling body on phone/tablet.
 
 Unlike the property booking modal, no separate admin-only auth bypass is needed here — the host's own dashboard session is itself a valid signed-in identity, and `submit-parking-booking-request` (Phase 3: guest-authenticated) accepts any signed-in caller, not just the guest. **Known gap**: because the host is the one calling the endpoint, the booking's payment/cancel ownership binds to the _host's_ account, not the guest's — once matched, the guest can't self-serve "Pay Now" or cancel from the public status page for a booking created this way (they'd need to be signed in as the host, which they aren't). For now, collect payment for admin-created bookings the same way you would outside this flow (e.g. on-site/manual) rather than relying on the guest status page.
 

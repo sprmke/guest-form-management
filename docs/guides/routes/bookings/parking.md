@@ -60,6 +60,8 @@ When a guest needs parking, use **Use your parking** if you list your own slot (
 
 Bootstrap: `GET get-pay-parking` (also returns `linked_parking_booking_id`, `city_location_slug`, `owner_default_parking_slug` + stay dates).
 
+The retired `POST submit-pay-parking` endpoint still exists for backward-compatible vehicle-field updates and is now anti-spam gated (Turnstile + honeypot + durable rate limit via `_shared/antiSpam.ts`); it has no live UI caller. See [PROJECT.md → Anti-spam & CAPTCHA](../../PROJECT.md).
+
 ---
 
 ## Implementation map
