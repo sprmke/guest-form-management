@@ -36,7 +36,7 @@ Single-page finance view — no tabs. A **date range** picker in the page header
 
 **Charts:** a cash-flow area chart plus an income/expense/all category-breakdown donut — the same chart components used on the property dashboard.
 
-**Unified ledger:** stay bookings and manual operating transactions appear together in one list, switchable between **table**, **card**, and **calendar** views (`?view=table|card|calendar`; mobile always defaults to card). Each row shows date, description, category, status (`completed` | `pending` | `canceled`), and net amount.
+**Unified ledger:** stay bookings and manual operating transactions appear together in one list, switchable between **table**, **card**, and **calendar** views (`?view=table|card|calendar`; mobile always defaults to card). Each row shows date, description, category, status (`completed` | `pending` | `canceled`), and net amount. On phone, card rows are dense list rows (type icon · title + amount · date · category · status · inline edit/delete); `sm+` keeps the taller multi-line card.
 
 The parking-scoped finance page (`/org/:orgSlug/parking/:parkingSlug/finance`) reuses this same page and components but hides the stays ledger and stays export section (parking has no `guest_submissions` rows) — see `scope.parkingId` gating throughout.
 

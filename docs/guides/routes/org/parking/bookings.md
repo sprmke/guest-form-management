@@ -17,7 +17,7 @@ Detail: `/org/:orgSlug/parking/:parkingSlug/bookings/:bookingId`
 Parking-slot **reservations** for one slot — separate from stay `need_parking` on property bookings. On **phone/tablet**, uses the shared **brand hero** shell (`AdminMobilePage`) with **New booking** as a hero icon and filters in an overlapping toolbar.
 
 - Summary stage cards (Needs action · Pending · Active · Completed labels) — `PENDING_HOST_ACCEPTANCE` buckets into **Needs action**, `NO_HOST_AVAILABLE` into **Completed** (history)
-- Search, status filters (including explicit **Finding host** / **No host** chips aligned with guest copy), table / card / calendar (no kanban). Calendar shares property **Month \| Week \| Day** periods (hourly grid on week/day; multi-night continuous blocks + pricing-style hover tips).
+- Search, status filters (including explicit **Finding host** / **No host** chips aligned with guest copy), table / card / calendar (no kanban). Card view on phone uses the same dense booking list rows as property bookings (name + amount; status + dates; no email). Calendar shares property **Month \| Week \| Day** periods (hourly grid on week/day; multi-night continuous blocks + pricing-style hover tips).
 - **New booking** → opens `AdminParkingNewBookingModal` (title **New booking**, flat shell — no icon chrome), embedding `ParkingRegistrationForm` (the same component the public parking form uses) — submits through `submit-parking-booking-request`, the same live broadcast/claim flow a guest submission would use
 
 ---

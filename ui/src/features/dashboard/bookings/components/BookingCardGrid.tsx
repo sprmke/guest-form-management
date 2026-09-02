@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 
 import { ChevronRight } from 'lucide-react';
+import type { KeyboardEvent } from 'react';
 
 import { AdminTableFlagsCell } from '@/features/dashboard/bookings/components/AdminDataTable';
 import { BookingResourceLabel } from '@/features/dashboard/bookings/components/BookingResourceLabel';
@@ -93,20 +94,12 @@ function BookingCard({
     bookingRequestsSurpriseDecor(row.guest_requests_surprise_decor) ||
     hasInvalidReceiptAi;
 
-  const handleKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleKey = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       onOpen();
     }
   };
-
-  const stayMeta = [
-    `${row.number_of_nights} ${row.number_of_nights === 1 ? 'night' : 'nights'}`,
-    `${pax} ${pax === 1 ? 'guest' : 'guests'}`,
-    row.booking_rate != null ? formatMoney(row.booking_rate) : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
 
   return (
     <div
@@ -121,35 +114,35 @@ function BookingCard({
         'focus-visible:ring-sidebar-primary/40 focus-visible:ring-2'
       )}
     >
-      {/* Phone: dense 2-line list row — name/status, stay meta, optional flags */}
-      <div className="flex items-center gap-3 px-3 py-2.5 sm:hidden">
+      {/* Phone: dense list row — name + amount; status · dates · nights · guests; optional flags */}
+      <div className="flex items-center gap-2.5 px-3 py-2.5 sm:hidden">
         <GuestAvatar name={name} validIdUrl={row.valid_id_url} size="sm" className="shrink-0" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="text-foreground min-w-0 flex-1 truncate text-[13px] font-semibold leading-tight">
               {name}
             </p>
-            <StatusBadge
-              status={row.status}
-              className="w-fit max-w-[9.5rem] shrink-0 origin-right scale-90"
-            />
+            {row.booking_rate != null ? (
+              <span className="text-foreground shrink-0 text-[13px] font-semibold tabular-nums leading-none">
+                {formatMoney(row.booking_rate)}
+              </span>
+            ) : null}
             <ChevronRight className="text-muted-foreground/50 size-3.5 shrink-0" aria-hidden />
           </div>
           <div className="mt-1 flex min-w-0 items-center gap-1.5">
+            <StatusBadge status={row.status} className="w-fit max-w-[8.5rem] shrink-0" />
             <p className="text-muted-foreground min-w-0 flex-1 truncate text-[11px] tabular-nums leading-tight">
-              <span className="text-foreground/80 font-medium">
-                {formatBookingDateShort(row.check_in_date)}
-                <span className="text-muted-foreground/40 mx-0.5 font-light">→</span>
-                {formatBookingDate(row.check_out_date)}
+              {formatBookingDateShort(row.check_in_date)}
+              <span className="text-muted-foreground/40 mx-0.5 font-light">→</span>
+              {formatBookingDate(row.check_out_date)}
+              <span className="text-muted-foreground/40 mx-1" aria-hidden>
+                ·
               </span>
-              {stayMeta ? (
-                <>
-                  <span className="text-muted-foreground/40 mx-1" aria-hidden>
-                    ·
-                  </span>
-                  <span>{stayMeta}</span>
-                </>
-              ) : null}
+              {row.number_of_nights}n
+              <span className="text-muted-foreground/40 mx-1" aria-hidden>
+                ·
+              </span>
+              {pax}g
             </p>
             {row.status === 'PENDING_HOST_ACCEPTANCE' && row.parking_broadcast_expires_at ? (
               <ParkingBroadcastCountdown expiresAt={row.parking_broadcast_expires_at} />

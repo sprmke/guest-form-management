@@ -90,34 +90,47 @@ export function SuperAdminApprovalsCardGrid({ approvals, onSelect }: Props) {
             key={approvalQueueItemKey(approval)}
             onOpen={() => onSelect(approval)}
             aria-label={ariaLabel}
-            className="min-h-[132px] gap-3 p-3.5 sm:p-4"
+            className="gap-1.5 px-3 py-2.5 sm:min-h-[132px] sm:gap-3 sm:p-4"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                  <p className="text-foreground truncate text-sm font-semibold">{label}</p>
-                  {isReview ? <ReviewBadge /> : null}
-                  {isListing ? <ListingBadge /> : null}
-                  {!isReview && !isListing && approval.hasActiveUnitConflict ? (
-                    <SuccessionBadge />
-                  ) : null}
-                  {!isReview && !isListing && approval.hasPendingConsideration ? (
-                    <ConsiderationBadge />
-                  ) : null}
-                  {isListing && approval.hasActiveUnitConflict ? <SuccessionBadge /> : null}
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <p className="text-foreground min-w-0 flex-1 truncate text-[13px] font-semibold leading-tight sm:text-sm">
+                    {label}
+                  </p>
+                  <span className="hidden sm:contents">
+                    {isReview ? <ReviewBadge /> : null}
+                    {isListing ? <ListingBadge /> : null}
+                    {!isReview && !isListing && approval.hasActiveUnitConflict ? (
+                      <SuccessionBadge />
+                    ) : null}
+                    {!isReview && !isListing && approval.hasPendingConsideration ? (
+                      <ConsiderationBadge />
+                    ) : null}
+                    {isListing && approval.hasActiveUnitConflict ? <SuccessionBadge /> : null}
+                  </span>
+                  <span className="sm:hidden">
+                    {isReview ? <ReviewBadge /> : null}
+                    {isListing ? <ListingBadge /> : null}
+                  </span>
                 </div>
-                <p className="text-muted-foreground mt-0.5 truncate text-xs">
+                <p className="text-muted-foreground mt-1 truncate text-[11px] leading-tight sm:mt-0.5 sm:text-xs">
                   {isReview
                     ? approval.organizationName
                     : isListing
                       ? approval.organizationName
                       : approval.ownerName}
+                  {!isReview && !isListing && approval.ownerEmail ? (
+                    <span className="sm:hidden"> · {approval.ownerEmail}</span>
+                  ) : null}
                 </p>
                 {!isReview && !isListing && approval.ownerEmail ? (
-                  <p className="text-muted-foreground truncate text-xs">{approval.ownerEmail}</p>
+                  <p className="text-muted-foreground hidden truncate text-xs sm:block">
+                    {approval.ownerEmail}
+                  </p>
                 ) : null}
                 {isReview ? (
-                  <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs">
+                  <p className="text-muted-foreground mt-0.5 line-clamp-1 text-[11px] sm:line-clamp-2 sm:text-xs">
                     {approval.reviewText}
                   </p>
                 ) : null}
@@ -125,16 +138,17 @@ export function SuperAdminApprovalsCardGrid({ approvals, onSelect }: Props) {
               <AdminTableRowAffordance />
             </div>
 
-            <div className="border-border/50 mt-auto flex flex-wrap items-center justify-between gap-2 border-t pt-3">
-              <span className="text-muted-foreground text-xs">
+            <div className="sm:border-border/50 mt-1 flex min-w-0 items-center justify-between gap-2 sm:mt-auto sm:flex-wrap sm:border-t sm:pt-3">
+              <span className="text-muted-foreground min-w-0 truncate text-[11px] sm:text-xs">
                 {isReview
                   ? externalReviewSourceLabel(approval.source)
                   : isListing
                     ? listingKindLabel(approval.listingKind)
                     : hostModesLabel(approval.hostModes)}
-              </span>
-              <div className="flex items-center gap-2">
-                <span className={cn('text-muted-foreground text-xs tabular-nums')}>
+                <span className="text-muted-foreground/40 mx-1" aria-hidden>
+                  ·
+                </span>
+                <span className="tabular-nums">
                   {formatSubmittedDate(
                     isReview
                       ? approval.submittedAt
@@ -143,6 +157,8 @@ export function SuperAdminApprovalsCardGrid({ approvals, onSelect }: Props) {
                         : latestApprovalSubmittedAt(approval)
                   )}
                 </span>
+              </span>
+              <div className="flex shrink-0 items-center gap-2">
                 {isReview ? (
                   <VerificationStatusBadge status={approval.moderationStatus} />
                 ) : isListing ? (

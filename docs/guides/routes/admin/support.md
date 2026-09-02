@@ -50,7 +50,7 @@ The platform team reviews every ticket hosts file through their Help & Support p
 
 ### Sections
 
-Search (subject / org name / submitter name / email) + category filter + status filter, applied server-side against the full ticket set (not just the loaded page). Desktop defaults to a table (subject, org, category, priority, status, date) with a table/grid toggle matching Hosts and Developments. Phone/tablet layouts force the card grid.
+Search (subject / org name / submitter name / email) + category filter + status filter, applied server-side against the full ticket set (not just the loaded page). Desktop defaults to a table (subject, org, category, priority, status, date) with a table/grid toggle matching Hosts and Developments. Phone/tablet layouts force the card grid — phone rows are dense (subject + status; org · submitter · category · priority · date on one meta line).
 
 ### Behavior / edge cases
 

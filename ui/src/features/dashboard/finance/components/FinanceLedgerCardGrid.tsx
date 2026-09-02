@@ -110,9 +110,7 @@ export function FinanceLedgerCardGrid({
                   </div>
                   <div className="mt-1 flex min-w-0 items-center gap-1.5">
                     <p className="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
-                      <span className="tabular-nums">
-                        {format(parseISO(entry.date), 'MMM d, yyyy')}
-                      </span>
+                      <span className="tabular-nums">{format(parseISO(entry.date), 'MMM d')}</span>
                       <span className="text-muted-foreground/40 mx-1" aria-hidden>
                         ·
                       </span>

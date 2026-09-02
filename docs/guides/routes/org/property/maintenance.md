@@ -36,7 +36,7 @@ Single-page maintenance view (no tabs), structured like Finance.
 
 Status, category, and Telegram filters apply **client-side** on items already loaded for the date range; search still uses the API `q` param. List/card views paginate filtered results; calendar shows all matching rows for the period.
 
-**Reminders list:** table / card / calendar (`?view=table|card|calendar`). CRUD via modal; recurring series and mark-as-done supported.
+**Reminders list:** table / card / calendar (`?view=table|card|calendar`). CRUD via modal; recurring series and mark-as-done supported. On phone, card rows are dense (title + status · date · category · recurrence · inline actions; notes hidden until edit). `sm+` keeps the taller stacked card with notes and a footer action bar.
 
 Maintenance Telegram defaults: **Notifications → Maintenance**.
 

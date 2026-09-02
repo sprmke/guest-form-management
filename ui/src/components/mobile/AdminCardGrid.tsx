@@ -24,8 +24,8 @@ export function AdminCardGrid({
     <div
       className={cn(
         denser
-          ? 'native-stagger grid grid-cols-1 gap-3.5 sm:grid-cols-2 sm:gap-3.5 lg:grid-cols-3 lg:gap-4 xl:grid-cols-4'
-          : 'native-stagger grid grid-cols-1 items-stretch gap-3.5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4',
+          ? 'native-stagger grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3.5 lg:grid-cols-3 lg:gap-4 xl:grid-cols-4'
+          : 'native-stagger grid grid-cols-1 items-stretch gap-2 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4',
         'transition-opacity duration-300',
         isRefreshing && 'opacity-60',
         className
