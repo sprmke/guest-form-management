@@ -2,10 +2,11 @@ import type { ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
 
-type FloatingPanelPadding = 'none' | 'sm' | 'md' | 'lg';
+type FloatingPanelPadding = 'none' | 'xs' | 'sm' | 'md' | 'lg';
 
 const PADDING: Record<FloatingPanelPadding, string> = {
   none: 'p-0',
+  xs: 'p-2',
   sm: 'p-3 sm:p-3.5',
   md: 'p-3.5 sm:p-4',
   lg: 'p-4 sm:p-4 md:p-5',
@@ -130,15 +131,17 @@ export function FloatingSection({
 type FloatingToolbarProps = {
   children: ReactNode;
   className?: string;
+  /** Inner padding — `xs` for single-control date bars; `sm`/`md` when stacking filters. */
+  padding?: FloatingPanelPadding;
 };
 
 /**
  * Soft floating shell for filter / search toolbars (phone + tablet).
  * Desktop (`lg+`) is transparent so existing toolbar layout stays.
  */
-export function FloatingToolbar({ children, className }: FloatingToolbarProps) {
+export function FloatingToolbar({ children, className, padding = 'xs' }: FloatingToolbarProps) {
   return (
-    <FloatingPanel mobileOnly padding="md" className={cn('space-y-3', className)}>
+    <FloatingPanel mobileOnly padding={padding} className={cn('space-y-2', className)}>
       {children}
     </FloatingPanel>
   );

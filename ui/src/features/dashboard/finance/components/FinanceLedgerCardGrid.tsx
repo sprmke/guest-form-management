@@ -40,7 +40,7 @@ export function FinanceLedgerCardGrid({
     <>
       <div
         className={cn(
-          'native-stagger grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4',
+          'native-stagger grid grid-cols-1 items-stretch gap-2 sm:grid-cols-2 sm:gap-3.5 lg:grid-cols-3 xl:grid-cols-4',
           'transition-opacity duration-300',
           isRefreshing && 'opacity-60'
         )}
@@ -48,6 +48,9 @@ export function FinanceLedgerCardGrid({
         {rows.map((entry) => {
           const isIncome = entry.type === 'income';
           const amountPrefix = isIncome ? '+' : '−';
+          const recurrenceLabel = entry.transaction?.recurrence_series_id
+            ? recurrenceIntervalLabel(entry.transaction.recurrence_interval)
+            : null;
 
           const handleOpen = () => {
             if (entry.source === 'stay' && entry.stay) {
@@ -62,7 +65,7 @@ export function FinanceLedgerCardGrid({
               key={entry.id}
               role="button"
               tabIndex={0}
-              className="surface-card-interactive flex min-h-[148px] cursor-pointer flex-col p-3.5 sm:p-4"
+              className="surface-card-interactive flex cursor-pointer flex-col px-3 py-2.5 sm:min-h-[148px] sm:p-4"
               onClick={handleOpen}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -71,88 +74,184 @@ export function FinanceLedgerCardGrid({
                 }
               }}
             >
-              <div className="mb-3 flex items-start justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-2">
-                  <div
-                    className={cn(
-                      'size-8 shrink-0',
-                      toneIconWrapClasses(isIncome ? 'green' : 'red')
-                    )}
-                  >
-                    {isIncome ? (
-                      <ArrowUpRight
-                        className="size-4 text-emerald-600 dark:text-emerald-400"
-                        aria-hidden
-                      />
-                    ) : (
-                      <ArrowDownRight
-                        className="size-4 text-red-600 dark:text-red-400"
-                        aria-hidden
-                      />
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-foreground truncate text-sm font-semibold">
+              {/* Phone: dense ledger row */}
+              <div className="flex items-center gap-2.5 sm:hidden">
+                <div
+                  className={cn('size-7 shrink-0', toneIconWrapClasses(isIncome ? 'green' : 'red'))}
+                >
+                  {isIncome ? (
+                    <ArrowUpRight
+                      className="size-3.5 text-emerald-600 dark:text-emerald-400"
+                      aria-hidden
+                    />
+                  ) : (
+                    <ArrowDownRight
+                      className="size-3.5 text-red-600 dark:text-red-400"
+                      aria-hidden
+                    />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-foreground min-w-0 flex-1 truncate text-[13px] font-semibold leading-tight">
                       {entry.description}
                     </p>
-                    <p className="text-muted-foreground text-xs">
-                      {format(parseISO(entry.date), 'MMM d, yyyy')}
+                    <span
+                      className={cn(
+                        'shrink-0 text-[13px] font-semibold tabular-nums leading-none',
+                        isIncome
+                          ? 'text-emerald-700 dark:text-emerald-300'
+                          : 'text-red-600 dark:text-red-400'
+                      )}
+                    >
+                      {amountPrefix}
+                      {formatMoney(Math.abs(entry.netAmount))}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex min-w-0 items-center gap-1.5">
+                    <p className="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
+                      <span className="tabular-nums">
+                        {format(parseISO(entry.date), 'MMM d, yyyy')}
+                      </span>
+                      <span className="text-muted-foreground/40 mx-1" aria-hidden>
+                        ·
+                      </span>
+                      <span>{entry.category}</span>
+                      {recurrenceLabel ? (
+                        <>
+                          <span className="text-muted-foreground/40 mx-1" aria-hidden>
+                            ·
+                          </span>
+                          <span className="uppercase tracking-wide">{recurrenceLabel}</span>
+                        </>
+                      ) : null}
                     </p>
+                    <FinanceLedgerStatusBadge status={entry.status} />
+                    {entry.source === 'transaction' ? (
+                      <div
+                        className="flex shrink-0 items-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {entry.transaction?.recurrence_series_id && onOpenSeries ? (
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:bg-muted/60 hover:text-foreground inline-flex size-8 items-center justify-center rounded-md"
+                            aria-label="View recurring series"
+                            onClick={() => onOpenSeries(entry)}
+                          >
+                            <Repeat className="size-3.5" />
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:bg-muted/60 hover:text-foreground inline-flex size-8 items-center justify-center rounded-md"
+                          aria-label="Edit transaction"
+                          onClick={() => onEditTransaction?.(entry)}
+                        >
+                          <Pencil className="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive inline-flex size-8 items-center justify-center rounded-md"
+                          aria-label="Delete transaction"
+                          onClick={() => onDeleteTransaction?.(entry)}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
-                <FinanceLedgerStatusBadge status={entry.status} />
               </div>
 
-              <div className="mt-auto space-y-2">
-                <p className="text-muted-foreground text-xs">{entry.category}</p>
-                <div className="flex items-center justify-between gap-2">
-                  <span
-                    className={cn(
-                      'text-lg font-bold tabular-nums',
-                      isIncome
-                        ? 'text-emerald-700 dark:text-emerald-300'
-                        : 'text-red-600 dark:text-red-400'
-                    )}
-                  >
-                    {amountPrefix}
-                    {formatMoney(Math.abs(entry.netAmount))}
-                  </span>
-                  {entry.source === 'transaction' ? (
-                    <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
-                      {entry.transaction?.recurrence_series_id && onOpenSeries ? (
+              {/* sm+: taller card layout */}
+              <div className="hidden h-full flex-col sm:flex">
+                <div className="mb-3 flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <div
+                      className={cn(
+                        'size-8 shrink-0',
+                        toneIconWrapClasses(isIncome ? 'green' : 'red')
+                      )}
+                    >
+                      {isIncome ? (
+                        <ArrowUpRight
+                          className="size-4 text-emerald-600 dark:text-emerald-400"
+                          aria-hidden
+                        />
+                      ) : (
+                        <ArrowDownRight
+                          className="size-4 text-red-600 dark:text-red-400"
+                          aria-hidden
+                        />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-foreground truncate text-sm font-semibold leading-snug">
+                        {entry.description}
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        {format(parseISO(entry.date), 'MMM d, yyyy')}
+                      </p>
+                    </div>
+                  </div>
+                  <FinanceLedgerStatusBadge status={entry.status} />
+                </div>
+
+                <div className="mt-auto space-y-2">
+                  <p className="text-muted-foreground text-xs">{entry.category}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      className={cn(
+                        'text-sm font-semibold tabular-nums tracking-tight sm:text-base',
+                        isIncome
+                          ? 'text-emerald-700 dark:text-emerald-300'
+                          : 'text-red-600 dark:text-red-400'
+                      )}
+                    >
+                      {amountPrefix}
+                      {formatMoney(Math.abs(entry.netAmount))}
+                    </span>
+                    {entry.source === 'transaction' ? (
+                      <div
+                        className="flex items-center gap-0.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {entry.transaction?.recurrence_series_id && onOpenSeries ? (
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:bg-muted/60 hover:text-foreground inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg"
+                            aria-label="View recurring series"
+                            onClick={() => onOpenSeries(entry)}
+                          >
+                            <Repeat className="size-4" />
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className="text-muted-foreground hover:bg-muted/60 hover:text-foreground inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg"
-                          aria-label="View recurring series"
-                          onClick={() => onOpenSeries(entry)}
+                          aria-label="Edit transaction"
+                          onClick={() => onEditTransaction?.(entry)}
                         >
-                          <Repeat className="size-4" />
+                          <Pencil className="size-4" />
                         </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="text-muted-foreground hover:bg-muted/60 hover:text-foreground inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg"
-                        aria-label="Edit transaction"
-                        onClick={() => onEditTransaction?.(entry)}
-                      >
-                        <Pencil className="size-4" />
-                      </button>
-                      <button
-                        type="button"
-                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg"
-                        aria-label="Delete transaction"
-                        onClick={() => onDeleteTransaction?.(entry)}
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
-                    </div>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg"
+                          aria-label="Delete transaction"
+                          onClick={() => onDeleteTransaction?.(entry)}
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                  {recurrenceLabel ? (
+                    <p className="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
+                      {recurrenceLabel}
+                    </p>
                   ) : null}
                 </div>
-                {entry.transaction?.recurrence_series_id ? (
-                  <p className="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
-                    {recurrenceIntervalLabel(entry.transaction.recurrence_interval)}
-                  </p>
-                ) : null}
               </div>
             </div>
           );

@@ -11,8 +11,13 @@ import type {
   RecurrenceEditScope,
 } from '@/features/dashboard/maintenance/lib/types';
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { cn } from '@/lib/utils';
 import { formatIsoDate } from '@/utils/format/bookingDisplay';
 
@@ -40,16 +45,16 @@ export function RecurringDeleteDialog({
   const isSeries = Boolean(item.recurrence_series_id) && !singleOccurrenceOnly;
 
   return (
-    <Dialog
+    <ResponsiveModal
       open={open}
       onOpenChange={(next) => {
         if (!next && !isPending) onClose();
       }}
     >
-      <DialogContent className="max-w-[min(calc(100vw-1.5rem),26rem)] sm:p-5">
-        <DialogHeader className="text-left">
-          <DialogTitle>Delete reminder</DialogTitle>
-        </DialogHeader>
+      <ResponsiveModalContent className="sm:max-w-[26rem] sm:p-5">
+        <ResponsiveModalHeader className="text-left">
+          <ResponsiveModalTitle>Delete reminder</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
         <p className="text-muted-foreground text-sm">
           Delete <span className="text-foreground font-semibold">{item.label}</span>
           {singleOccurrenceOnly ? (
@@ -114,7 +119,7 @@ export function RecurringDeleteDialog({
             Delete
           </button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

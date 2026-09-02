@@ -64,6 +64,8 @@ type MobileChoiceItemProps = {
   label: string;
   description?: string;
   icon?: ReactNode;
+  /** Optional element pinned to the row's right edge (e.g. a plan `TierBadge`). */
+  trailing?: ReactNode;
   disabled?: boolean;
   className?: string;
 };
@@ -75,6 +77,7 @@ export function MobileChoiceItem({
   label,
   description,
   icon,
+  trailing,
   disabled = false,
   className,
 }: MobileChoiceItemProps) {
@@ -96,7 +99,7 @@ export function MobileChoiceItem({
       <span className="min-w-0 flex-1">
         <span
           className={cn(
-            'text-foreground block text-[15px] leading-tight',
+            'text-foreground block text-sm leading-tight',
             selected ? 'font-semibold' : 'font-medium'
           )}
         >
@@ -108,6 +111,7 @@ export function MobileChoiceItem({
           </span>
         ) : null}
       </span>
+      {trailing ? <span className="shrink-0">{trailing}</span> : null}
       {selected ? <Check className="text-primary size-5 shrink-0" aria-hidden /> : null}
     </button>
   );

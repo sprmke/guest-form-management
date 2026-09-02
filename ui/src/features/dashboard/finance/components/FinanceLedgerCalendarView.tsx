@@ -112,7 +112,7 @@ function LedgerCalendarDayCard({
       <div className="mt-3 flex items-center justify-between gap-2">
         <span
           className={cn(
-            'text-base font-bold tabular-nums',
+            'text-sm font-semibold tabular-nums tracking-tight sm:text-base',
             isIncome ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-600 dark:text-red-400'
           )}
         >

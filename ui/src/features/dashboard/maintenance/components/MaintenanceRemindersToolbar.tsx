@@ -98,10 +98,10 @@ export function MaintenanceRemindersToolbar({
         placeholder="Search reminders…"
         aria-label="Search reminders"
         className={cn(
-          'border-border bg-card text-foreground field-focus h-12 min-h-[48px] w-full rounded-2xl border py-2.5 pl-11 text-[15px]',
-          'lg:h-10 lg:min-h-[44px] lg:rounded-lg lg:pl-10 lg:text-[13px]',
+          'border-border bg-card text-foreground field-focus h-11 min-h-[44px] w-full rounded-2xl border py-2.5 pl-11 text-[13px]',
+          'lg:h-10 lg:min-h-[44px] lg:rounded-lg lg:pl-10 lg:text-sm',
           searchDraft ? 'pr-11' : 'pr-3',
-          'placeholder:text-muted-foreground'
+          'placeholder:text-muted-foreground placeholder:text-[13px] lg:placeholder:text-sm'
         )}
         value={searchDraft}
         onChange={(e) => setSearchDraft(e.target.value)}

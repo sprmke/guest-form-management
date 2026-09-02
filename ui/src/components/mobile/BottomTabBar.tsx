@@ -204,6 +204,22 @@ export function bottomTabBarOffsetClassName(): string {
   return 'max-lg:pb-[calc(7.75rem+env(safe-area-inset-bottom,0px))]';
 }
 
+/**
+ * Fixed-bottom overlays (install/update toasts) sit above the floating tab bar
+ * on phone/tablet — same stack offset as `MarketingEditorMobileToolbar`, plus a
+ * small gap. Desktop has no tab bar, so flush to the safe-area bottom.
+ * Class strings are static so Tailwind JIT can detect them.
+ *
+ * Pair with z-[45] on the overlay itself: above BottomTabBar (z-40), below
+ * Sheet (z-50) / Dialog (z-100) so choice sheets and modals are never covered.
+ */
+export function aboveBottomTabBarOverlayClassName(): string {
+  return cn(
+    'max-lg:bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] max-lg:pb-0',
+    'lg:bottom-0 lg:pb-[calc(0.75rem+env(safe-area-inset-bottom))]'
+  );
+}
+
 export type BottomTabBarSlotProps = {
   children?: ReactNode;
 };

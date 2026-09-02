@@ -524,7 +524,7 @@ export function AdminSectionGroupHeading({
   return (
     <div className={cn('flex flex-wrap items-center justify-between gap-2', className)}>
       <div className="flex items-center gap-2">
-        <h2 className="text-lg font-semibold">{title}</h2>
+        <h2 className="text-section-title">{title}</h2>
         {count != null ? (
           <span className="bg-muted text-muted-foreground inline-flex min-h-[22px] items-center rounded-full px-2 text-xs font-medium">
             {count}
@@ -565,8 +565,8 @@ export const AdminSection = React.memo(function AdminSection({
         className={cn(headerAction && 'flex flex-row items-center justify-between gap-3 space-y-0')}
       >
         <div className={cn(headerAction && 'min-w-0 space-y-1.5')}>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            {Icon ? <Icon className="size-5 shrink-0" aria-hidden /> : null}
+          <CardTitle className="flex items-center gap-2">
+            {Icon ? <Icon className="size-4 shrink-0 sm:size-5" aria-hidden /> : null}
             <span className="min-w-0">{title}</span>
             {badge}
           </CardTitle>

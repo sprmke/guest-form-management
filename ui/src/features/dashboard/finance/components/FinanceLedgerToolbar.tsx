@@ -229,11 +229,11 @@ function FinanceSearchField({
         type="search"
         placeholder="Search transactions..."
         className={cn(
-          'border-border bg-card text-foreground field-focus h-12 min-h-[48px] w-full rounded-2xl border py-2.5 pl-11 text-[15px]',
+          'border-border bg-card text-foreground field-focus h-11 min-h-[44px] w-full rounded-2xl border py-2.5 pl-11 text-[13px]',
           'sm:h-10 sm:min-h-[44px] sm:rounded-xl sm:pl-10 sm:text-[13px]',
-          'lg:h-10 lg:min-h-[44px] lg:rounded-lg',
+          'lg:h-10 lg:min-h-[44px] lg:rounded-lg lg:text-sm',
           value ? 'pr-11' : 'pr-3.5',
-          'placeholder:text-muted-foreground'
+          'placeholder:text-muted-foreground placeholder:text-[13px] lg:placeholder:text-sm'
         )}
         value={value}
         onChange={(e) => onChange(e.target.value)}

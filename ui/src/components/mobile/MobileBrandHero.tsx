@@ -1,18 +1,10 @@
-import {
-  forwardRef,
-  useLayoutEffect,
-  useRef,
-  type CSSProperties,
-  type ReactNode,
-  type RefObject,
-} from 'react';
+import { forwardRef, useRef, type CSSProperties, type ReactNode, type RefObject } from 'react';
 
 import { useAdminLayoutIsFillMain } from '@/features/dashboard/bookings/components/AdminLayout';
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { SidebarTenantScope } from '@/features/dashboard/org/components/TenantSwitchers';
 import { SuperAdminSidebarScope } from '@/features/dashboard/super-admin/components/SuperAdminSidebarScope';
 
-import { useAdminMobileHeroContext } from '@/components/mobile/AdminMobileHeroContext';
 import { MobilePageStack } from '@/components/mobile/FloatingPanel';
 import { MobileStickyChrome } from '@/components/mobile/MobileStickyChrome';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
@@ -110,7 +102,10 @@ export const MobileBrandHero = forwardRef<HTMLElement, MobileBrandHeroProps>(
           <div className="flex flex-wrap items-center gap-2">
             <h1
               id={titleId}
-              className="text-primary-foreground text-xl font-semibold tracking-tight"
+              /* Size matches `text-admin-page-title`; color must stay on-primary.
+               * Do not use the token class here — it bakes in `text-foreground`
+               * and wins over `text-primary-foreground` in the CSS cascade. */
+              className="text-primary-foreground text-lg font-bold tracking-tight sm:text-xl"
             >
               {title}
             </h1>
@@ -230,7 +225,6 @@ export function AdminMobilePage({
   className,
   children,
 }: AdminMobilePageProps) {
-  const heroContext = useAdminMobileHeroContext();
   const isMobileLayout = useIsBelowLg();
   const fillMain = useAdminLayoutIsFillMain();
   const heroRef = useRef<HTMLElement | null>(null);
@@ -241,13 +235,6 @@ export function AdminMobilePage({
   const { pinned } = useMobileStickyChrome(pinSentinelRef, isMobileLayout);
 
   const resolvedStickyPrimary = stickyPrimary ?? (stickyMore ? undefined : overlap);
-
-  /* Flush shell gutters so the hero is edge-to-edge. Do not call useAdminLayoutFillMain here —
-   * section/inbox pages opt in themselves; we only preserve the flex chain when they do. */
-  useLayoutEffect(() => {
-    heroContext?.setHeroOwned(true);
-    return () => heroContext?.setHeroOwned(false);
-  }, [heroContext]);
 
   return (
     <div

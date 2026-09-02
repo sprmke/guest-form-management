@@ -31,6 +31,9 @@ import {
   getAssistantOpenRequestId,
   subscribeAssistantOpenRequest,
 } from '@/features/dashboard/ai-assistant/lib/assistantOpenStore';
+import { AdminAnnouncementBanner } from '@/features/dashboard/announcements/components/AdminAnnouncementBanner';
+import { useHostAnnouncementHasUnread } from '@/features/dashboard/announcements/hooks/useHostAnnouncementHasUnread';
+import { isHostAnnouncementsArchivePath } from '@/features/dashboard/announcements/lib/hostAnnouncementsPaths';
 import {
   AdminBrandTheme,
   useAdminBrandThemeStyle,
@@ -62,8 +65,6 @@ import {
 import { resolveActiveNavHref } from '@/features/dashboard/bookings/lib/navActive';
 import { NotificationBell } from '@/features/dashboard/notifications/components/NotificationBell';
 import { NotificationsProvider } from '@/features/dashboard/notifications/components/NotificationsProvider';
-import { AdminAnnouncementBanner } from '@/features/dashboard/announcements/components/AdminAnnouncementBanner';
-import { isHostAnnouncementsArchivePath } from '@/features/dashboard/announcements/lib/hostAnnouncementsPaths';
 import { useNotificationsList } from '@/features/dashboard/notifications/hooks/useNotifications';
 import { ListingContractRenewalProvider } from '@/features/dashboard/org/components/listing-authorization/ListingContractRenewalProvider';
 import { ListingVerificationSidebarCta } from '@/features/dashboard/org/components/listing-authorization/ListingVerificationSidebarCta';
@@ -105,10 +106,6 @@ import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermiss
 import { useParkingPermissions } from '@/features/dashboard/team/hooks/useParkingPermissions';
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
 
-import {
-  AdminMobileHeroProvider,
-  useAdminMobileHeroOwned,
-} from '@/components/mobile/AdminMobileHeroContext';
 import { BottomBarSlotProvider } from '@/components/mobile/BottomBarSlot';
 import { BottomTabBar } from '@/components/mobile/BottomTabBar';
 import { MobileAppShell } from '@/components/mobile/ContextualActionBar';
@@ -384,6 +381,7 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
   } = useAiAssistantAccess(propertyId);
   const { data: notificationsPreview } = useNotificationsList('preview');
   const unreadNotificationCount = notificationsPreview?.pages[0]?.unreadCount ?? 0;
+  const hostAnnouncementsHaveUnread = useHostAnnouncementHasUnread();
   const showAssistantFab = isAiAssistantFabVisible(
     assistantAccessible,
     assistantSettings,
@@ -538,15 +536,19 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
     (orgSettingsHasIssues && isOrgAdminPath(location.pathname));
 
   const tabItemsWithBadges = useMemo(() => {
-    if (!settingsIssueOnTabs) return tabItems;
+    const announcementsInMore = moreItems.some((item) => item.label === 'Announcements');
+    const moreNeedsDot =
+      (announcementsInMore && hostAnnouncementsHaveUnread) ||
+      (settingsIssueOnTabs && moreItems.some((m) => m.label === 'Settings'));
+
     return tabItems.map((item) => {
-      if (item.key === 'more' && moreItems.some((m) => m.label === 'Settings')) {
-        return { ...item, badge: true };
+      if (item.key === 'more') {
+        return moreNeedsDot ? { ...item, badge: true } : item;
       }
-      if (item.label === 'Settings') return { ...item, badge: true };
+      if (item.label === 'Settings' && settingsIssueOnTabs) return { ...item, badge: true };
       return item;
     });
-  }, [tabItems, moreItems, settingsIssueOnTabs]);
+  }, [tabItems, moreItems, settingsIssueOnTabs, hostAnnouncementsHaveUnread]);
 
   const toggleSidebarCollapsed = () => {
     setSidebarCollapsed((prev) => {
@@ -567,144 +569,139 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
       {isOrgAdminPath(location.pathname) ? <OrgSettingsIssuesSync /> : null}
       {!superAdmin ? <HostVerificationChangesGate /> : null}
       {!superAdmin ? <NotificationsProvider /> : null}
-      <AdminMobileHeroProvider>
-        <BottomBarSlotProvider tabBar={mobileTabBar}>
-          <div className="bg-background flex h-screen overflow-hidden" style={brandStyle}>
-            <div className="relative flex min-w-0 flex-1">
-              {/* Desktop sidebar */}
-              <aside
-                className="border-sidebar-border bg-sidebar hidden h-screen shrink-0 flex-col border-r transition-[width] duration-300 ease-out lg:flex"
-                style={{ width: sidebarWidth }}
-                aria-label="Admin navigation"
-                aria-expanded={!sidebarCollapsed}
+      <BottomBarSlotProvider tabBar={mobileTabBar}>
+        <div className="bg-background flex h-screen overflow-hidden" style={brandStyle}>
+          <div className="relative flex min-w-0 flex-1">
+            {/* Desktop sidebar */}
+            <aside
+              className="border-sidebar-border bg-sidebar hidden h-screen shrink-0 flex-col border-r transition-[width] duration-300 ease-out lg:flex"
+              style={{ width: sidebarWidth }}
+              aria-label="Admin navigation"
+              aria-expanded={!sidebarCollapsed}
+            >
+              <AdminSidebarContent
+                navSections={navSections}
+                activeNavHref={activeNavHref}
+                navHrefsKey={navHrefsKey}
+                pathname={location.pathname}
+                propertySettingsHasIssues={propertySettingsHasIssues}
+                parkingSettingsHasIssues={parkingSettingsHasIssues}
+                orgSettingsHasIssues={orgSettingsHasIssues}
+                hostAnnouncementsHaveUnread={hostAnnouncementsHaveUnread}
+                displayName={displayName}
+                avatarUrl={avatarUrl}
+                initials={initials}
+                email={email}
+                signOut={signOut}
+                onOpenProfile={openProfileModal}
+                collapsed={sidebarCollapsed}
+                superAdmin={superAdmin}
+              />
+            </aside>
+
+            <button
+              type="button"
+              onClick={toggleSidebarCollapsed}
+              style={{
+                left: sidebarWidth,
+                top: sidebarCollapsed ? SIDEBAR_TOGGLE_TOP_COLLAPSED : SIDEBAR_TOGGLE_TOP_EXPANDED,
+              }}
+              className={cn(
+                'border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground shadow-elevated',
+                'absolute z-30 hidden min-h-[28px] min-w-[28px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border transition-all duration-300 ease-out lg:flex',
+                'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
+              )}
+              aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {sidebarCollapsed ? (
+                <ChevronRight className="h-3 w-3" aria-hidden />
+              ) : (
+                <ChevronLeft className="h-3 w-3" aria-hidden />
+              )}
+            </button>
+
+            <div className="admin-mobile-shell-column flex min-w-0 flex-1 flex-col overflow-hidden">
+              <AdminMobileTopBar superAdmin={superAdmin} />
+
+              <AdminMainColumn
+                fillMain={fillMain}
+                pathname={location.pathname}
+                showHostAnnouncements={
+                  !superAdmin && !isHostAnnouncementsArchivePath(location.pathname)
+                }
               >
-                <AdminSidebarContent
-                  navSections={navSections}
-                  activeNavHref={activeNavHref}
-                  navHrefsKey={navHrefsKey}
-                  pathname={location.pathname}
-                  propertySettingsHasIssues={propertySettingsHasIssues}
-                  parkingSettingsHasIssues={parkingSettingsHasIssues}
-                  orgSettingsHasIssues={orgSettingsHasIssues}
-                  displayName={displayName}
-                  avatarUrl={avatarUrl}
-                  initials={initials}
-                  email={email}
-                  signOut={signOut}
-                  onOpenProfile={openProfileModal}
-                  collapsed={sidebarCollapsed}
-                  superAdmin={superAdmin}
-                />
-              </aside>
-
-              <button
-                type="button"
-                onClick={toggleSidebarCollapsed}
-                style={{
-                  left: sidebarWidth,
-                  top: sidebarCollapsed
-                    ? SIDEBAR_TOGGLE_TOP_COLLAPSED
-                    : SIDEBAR_TOGGLE_TOP_EXPANDED,
-                }}
-                className={cn(
-                  'border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground shadow-elevated',
-                  'absolute z-30 hidden min-h-[28px] min-w-[28px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border transition-all duration-300 ease-out lg:flex',
-                  'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
-                )}
-                aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              >
-                {sidebarCollapsed ? (
-                  <ChevronRight className="h-3 w-3" aria-hidden />
-                ) : (
-                  <ChevronLeft className="h-3 w-3" aria-hidden />
-                )}
-              </button>
-
-              <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-                <AdminMobileTopBar superAdmin={superAdmin} />
-
-                <AdminMainColumn
-                  fillMain={fillMain}
-                  pathname={location.pathname}
-                  showHostAnnouncements={
-                    !superAdmin && !isHostAnnouncementsArchivePath(location.pathname)
-                  }
-                >
-                  {children}
-                </AdminMainColumn>
-              </div>
+                {children}
+              </AdminMainColumn>
             </div>
           </div>
+        </div>
 
-          <AdminMoreSheet
-            open={moreSheetOpen}
+        <AdminMoreSheet
+          open={moreSheetOpen}
+          onOpenChange={(open) => {
+            setMoreSheetOpen(open);
+            if (open) {
+              setAssistantOpen(false);
+              setNotificationsOpen(false);
+            }
+          }}
+          moreItems={moreItems}
+          activeNavHref={activeNavHref}
+          pathname={location.pathname}
+          propertySettingsHasIssues={propertySettingsHasIssues}
+          parkingSettingsHasIssues={parkingSettingsHasIssues}
+          orgSettingsHasIssues={orgSettingsHasIssues}
+          hostAnnouncementsHaveUnread={hostAnnouncementsHaveUnread}
+          displayName={displayName}
+          avatarUrl={avatarUrl}
+          initials={initials}
+          email={email}
+          signOut={signOut}
+          onOpenProfile={() => {
+            setMoreSheetOpen(false);
+            openProfileModal();
+          }}
+          onSignOutNavigate={() => navigate(hostLoginPath(), { replace: true })}
+          superAdmin={superAdmin}
+        />
+
+        <GuestProfileModal open={profileModalOpen} onOpenChange={setProfileModalOpen} />
+
+        {!superAdmin ? (
+          <NotificationBell
+            variant="fab"
+            open={notificationsOpen}
             onOpenChange={(open) => {
-              setMoreSheetOpen(open);
               if (open) {
+                setMoreSheetOpen(false);
                 setAssistantOpen(false);
+              }
+              setNotificationsOpen(open);
+            }}
+            className={showAssistantFab ? notificationFabStackedBottomClassName : undefined}
+          />
+        ) : null}
+        {!superAdmin ? (
+          <AiAssistantLauncherButton
+            open={assistantOpen}
+            onOpenChange={(open) => {
+              if (open) {
+                setMoreSheetOpen(false);
                 setNotificationsOpen(false);
               }
+              setAssistantOpen(open);
             }}
-            moreItems={moreItems}
-            activeNavHref={activeNavHref}
-            pathname={location.pathname}
-            propertySettingsHasIssues={propertySettingsHasIssues}
-            parkingSettingsHasIssues={parkingSettingsHasIssues}
-            orgSettingsHasIssues={orgSettingsHasIssues}
-            displayName={displayName}
-            avatarUrl={avatarUrl}
-            initials={initials}
-            email={email}
-            signOut={signOut}
-            onOpenProfile={() => {
-              setMoreSheetOpen(false);
-              openProfileModal();
-            }}
-            onSignOutNavigate={() => navigate(hostLoginPath(), { replace: true })}
-            superAdmin={superAdmin}
           />
-
-          <GuestProfileModal open={profileModalOpen} onOpenChange={setProfileModalOpen} />
-
-          {!superAdmin ? (
-            <NotificationBell
-              variant="fab"
-              open={notificationsOpen}
-              onOpenChange={(open) => {
-                if (open) {
-                  setMoreSheetOpen(false);
-                  setAssistantOpen(false);
-                }
-                setNotificationsOpen(open);
-              }}
-              className={showAssistantFab ? notificationFabStackedBottomClassName : undefined}
-            />
-          ) : null}
-          {!superAdmin ? (
-            <AiAssistantLauncherButton
-              open={assistantOpen}
-              onOpenChange={(open) => {
-                if (open) {
-                  setMoreSheetOpen(false);
-                  setNotificationsOpen(false);
-                }
-                setAssistantOpen(open);
-              }}
-            />
-          ) : null}
-        </BottomBarSlotProvider>
-      </AdminMobileHeroProvider>
+        ) : null}
+      </BottomBarSlotProvider>
     </>
   );
 }
 
 function AdminMobileTopBar({ superAdmin }: { superAdmin: boolean }) {
-  const heroOwned = useAdminMobileHeroOwned();
-  if (heroOwned) return null;
-
   return (
-    <header className="border-border/50 bg-background/80 supports-[backdrop-filter]:bg-background/65 sticky top-0 z-20 flex min-h-14 shrink-0 items-center gap-2 border-b px-3 py-2 backdrop-blur-xl lg:hidden">
+    <header className="admin-mobile-fallback-topbar border-border/50 bg-background/80 supports-[backdrop-filter]:bg-background/65 sticky top-0 z-20 flex min-h-14 shrink-0 items-center gap-2 border-b px-3 py-2 backdrop-blur-xl lg:hidden">
       <div className="min-w-0 flex-1">
         {superAdmin ? (
           <SuperAdminSidebarScope collapsed={false} />
@@ -727,8 +724,6 @@ function AdminMainColumn({
   pathname: string;
   showHostAnnouncements: boolean;
 }) {
-  const heroOwned = useAdminMobileHeroOwned();
-
   return (
     <main
       className={cn(
@@ -741,19 +736,18 @@ function AdminMainColumn({
          * would shrink the flex area into a dead white gap and clip mid-card. */
         withTabBarOffset={!fillMain}
         className={cn(
-          /* Prefer px/pt over `p-*` so MobileAppShell tab-bar `pb` is not twMerged away. */
-          'native-page-canvas mx-auto w-full max-w-7xl',
-          /* Brand hero owns the top edge — no shell gutter that shows as a white frame. */
-          heroOwned
-            ? 'max-lg:bg-transparent max-lg:px-0 max-lg:pt-0 max-lg:[background-image:none] lg:px-8 lg:py-5'
-            : 'px-3.5 pt-3.5 sm:px-4 sm:pt-4 md:px-6 md:pt-6 lg:px-8 lg:py-5',
+          /* Mobile px/pt live in index.css (`.admin-mobile-main-shell`) — not Tailwind utilities,
+           * or pt-3.5 wins over the hero-page :has() zero-padding rule in the bundle. */
+          'admin-mobile-main-shell native-page-canvas mx-auto w-full max-w-7xl lg:px-8 lg:py-5',
           fillMain && 'flex min-h-0 flex-1 flex-col'
         )}
       >
         <PageTransition
           transitionKey={adminPageTransitionKey(pathname)}
           className={cn(
-            fillMain ? 'flex min-h-0 flex-1 flex-col' : 'space-y-3 sm:space-y-4 lg:space-y-6'
+            fillMain
+              ? 'flex min-h-0 flex-1 flex-col'
+              : 'space-y-3 max-lg:space-y-0 sm:space-y-4 lg:space-y-6'
           )}
         >
           {showHostAnnouncements ? <AdminAnnouncementBanner /> : null}
@@ -772,6 +766,7 @@ type AdminSidebarContentProps = {
   propertySettingsHasIssues: boolean;
   parkingSettingsHasIssues: boolean;
   orgSettingsHasIssues: boolean;
+  hostAnnouncementsHaveUnread: boolean;
   displayName: string;
   avatarUrl: string | null;
   initials: string;
@@ -794,6 +789,7 @@ function AdminSidebarContent({
   propertySettingsHasIssues,
   parkingSettingsHasIssues,
   orgSettingsHasIssues,
+  hostAnnouncementsHaveUnread,
   displayName,
   avatarUrl,
   initials,
@@ -846,6 +842,13 @@ function AdminSidebarContent({
                     ((propertySettingsHasIssues && isPropertyAdminPath(pathname)) ||
                       (parkingSettingsHasIssues && isParkingAdminPath(pathname)) ||
                       (orgSettingsHasIssues && isOrgAdminPath(pathname)));
+                  const showAnnouncementsBadge =
+                    label === 'Announcements' && hostAnnouncementsHaveUnread;
+                  const collapsedNavHint = showSettingsIssue
+                    ? `${label} — items need attention`
+                    : showAnnouncementsBadge
+                      ? `${label} — unread announcements`
+                      : label;
 
                   if (disabled || !href) {
                     return (
@@ -873,13 +876,7 @@ function AdminSidebarContent({
                       onClick={onClose}
                       title={collapsed ? label : undefined}
                       aria-current={active ? 'page' : undefined}
-                      aria-label={
-                        collapsed
-                          ? showSettingsIssue
-                            ? `${label} — items need attention`
-                            : label
-                          : undefined
-                      }
+                      aria-label={collapsed ? collapsedNavHint : undefined}
                       className={cn(
                         'group relative z-[1] flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-200',
                         collapsed ? 'justify-center px-2' : 'gap-3',
@@ -899,10 +896,12 @@ function AdminSidebarContent({
                       {!collapsed && (
                         <span className="flex min-w-0 flex-1 items-center gap-2">
                           <span className="truncate">{label}</span>
-                          {showSettingsIssue ? <SectionNavIssueDot className="ml-auto" /> : null}
+                          {showAnnouncementsBadge || showSettingsIssue ? (
+                            <SectionNavIssueDot className="ml-auto" />
+                          ) : null}
                         </span>
                       )}
-                      {collapsed && showSettingsIssue ? (
+                      {collapsed && (showAnnouncementsBadge || showSettingsIssue) ? (
                         <SectionNavIssueDot className="absolute right-1.5 top-1.5" />
                       ) : null}
                     </Link>

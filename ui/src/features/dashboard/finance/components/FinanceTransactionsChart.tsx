@@ -24,7 +24,11 @@ import {
 
 import { FinanceChartCard } from '@/components/charts/FinanceChartCard';
 import { Skeleton } from '@/components/ui/skeleton';
-import { SegmentedControl } from '@/components/ui/sliding-tabs';
+import {
+  SegmentedControl,
+  cardHeaderSegmentedListClassName,
+  cardHeaderSegmentedTriggerClassName,
+} from '@/components/ui/sliding-tabs';
 import { useIsBelowMd } from '@/hooks/useMediaQuery';
 import {
   CHART_EXPENSE_COLOR,
@@ -361,19 +365,20 @@ export function FinanceTransactionsChart({
         title="Breakdown"
         description="By category"
         action={
-          <div className="max-w-full overflow-x-auto">
-            <SegmentedControl
-              value={pieChartType}
-              onChange={setPieChartType}
-              listClassName="w-max min-w-0"
-              triggerClassName="h-7 px-2.5 text-xs sm:px-3"
-              options={[
-                { value: 'all', label: 'All' },
-                { value: 'income', label: 'Income' },
-                { value: 'expenses', label: 'Expenses' },
-              ]}
-            />
-          </div>
+          <SegmentedControl
+            value={pieChartType}
+            onChange={setPieChartType}
+            size="dense"
+            equalSegments
+            listClassName={cardHeaderSegmentedListClassName}
+            triggerClassName={cardHeaderSegmentedTriggerClassName}
+            aria-label="Breakdown filter"
+            options={[
+              { value: 'all', label: 'All' },
+              { value: 'income', label: 'Income' },
+              { value: 'expenses', label: 'Expenses' },
+            ]}
+          />
         }
       >
         {isLoading ? (

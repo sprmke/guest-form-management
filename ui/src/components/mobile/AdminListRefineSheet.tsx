@@ -36,15 +36,15 @@ export function AdminMobileFilterButton({
       aria-expanded={open}
       aria-haspopup="dialog"
       className={cn(
-        'border-border relative inline-flex size-12 shrink-0 items-center justify-center rounded-2xl border transition-colors',
-        'native-press min-h-[48px] min-w-[48px]',
+        'border-border relative inline-flex size-11 shrink-0 items-center justify-center rounded-xl border transition-colors',
+        'native-press min-h-[44px] min-w-[44px]',
         active
           ? 'border-primary/30 bg-primary/10 text-primary'
           : 'bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground border-border',
         className
       )}
     >
-      <SlidersHorizontal className="size-5" aria-hidden />
+      <SlidersHorizontal className="size-4" aria-hidden />
       {count > 0 ? (
         <span className="bg-primary text-primary-foreground absolute -right-1 -top-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums">
           {count > 9 ? '9+' : count}

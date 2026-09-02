@@ -1,10 +1,10 @@
 import { statusTone, type StatusTone } from '@/features/dashboard/bookings/lib/bookingStatus';
 
-import { parseHexRgb } from '@/lib/theme/colorConvert';
-import { STATUS_TONE_HEX } from '@/lib/statusToneColors';
 
 import type { PdfRgb } from '@/lib/pdf/pdfTheme';
 import { PDF_COLORS } from '@/lib/pdf/pdfTheme';
+import { STATUS_TONE_HEX } from '@/lib/statusToneColors';
+import { parseHexRgb } from '@/lib/theme/colorConvert';
 
 /** Darken a 500-level tone hex for readable body text on white (matches badge -800 intent). */
 function darkenToneRgb(hex: string, factor = 0.62): PdfRgb {
