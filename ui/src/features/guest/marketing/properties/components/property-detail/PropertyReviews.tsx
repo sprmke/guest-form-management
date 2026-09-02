@@ -354,7 +354,9 @@ export function PropertyReviews({ rating, totalReviews, reviews = [] }: Property
           <h2 id="property-reviews-heading" className="sr-only">
             Reviews
           </h2>
-          <span className="text-foreground text-4xl font-bold tabular-nums">{rating}</span>
+          <span className="text-foreground text-3xl font-bold tabular-nums sm:text-4xl">
+            {rating}
+          </span>
           <p className="text-muted-foreground">
             {countLabel} review{countLabel === 1 ? '' : 's'}
           </p>

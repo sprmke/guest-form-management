@@ -16,6 +16,12 @@ import {
 import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 
+import { GuestVoucherEstimateSummary } from '@/features/guest/account/components/GuestVoucherUi';
+import { useGuestVouchersQuery } from '@/features/guest/account/hooks/useGuestVouchersQuery';
+import {
+  computePercentDiscountPhp,
+  formatVoucherOfferLabel,
+} from '@/features/guest/account/lib/voucherDiscount';
 import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
 import { guestEdgeAuthHeaders } from '@/features/guest/auth/lib/guestEdgeAuthHeaders';
 import {
@@ -28,10 +34,9 @@ import {
   GuestFormOptionCard,
 } from '@/features/guest/form/components/GuestFormOptionCard';
 import { GuestFormPaymentStepContent } from '@/features/guest/form/components/GuestFormPaymentStepContent';
-import { GuestVoucherEstimateSummary } from '@/features/guest/account/components/GuestVoucherUi';
-import { GuestFormVoucherPicker } from '@/features/guest/form/components/GuestFormVoucherPicker';
 import { GuestFormStepNavigation } from '@/features/guest/form/components/GuestFormStepNavigation';
 import { GuestFormStepper } from '@/features/guest/form/components/GuestFormStepper';
+import { GuestFormVoucherPicker } from '@/features/guest/form/components/GuestFormVoucherPicker';
 import {
   defaultFormValues,
   getGuestFormDefaultValuesFromSearchParams,
@@ -88,11 +93,6 @@ import {
   guestFormPath,
   guestSuccessPath,
 } from '@/features/guest/lib/guestPublicPaths';
-import { useGuestVouchersQuery } from '@/features/guest/account/hooks/useGuestVouchersQuery';
-import {
-  computePercentDiscountPhp,
-  formatVoucherOfferLabel,
-} from '@/features/guest/account/lib/voucherDiscount';
 import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/hooks/usePublicPropertyDetail';
 import { GuestStayContextBar } from '@/features/guest/property/components/GuestStayContextBar';
 
@@ -102,6 +102,7 @@ import {
 } from '@/features/dashboard/pricing/lib/pricingCompute';
 
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
+import { useAntiSpamSubmit } from '@/components/security/useAntiSpamSubmit';
 import { GuestFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -127,6 +128,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { TimePicker } from '@/components/ui/time-picker';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
 import { prepareUpload } from '@/lib/media/prepareUpload';
+import { antiSpamErrorMessage, isAntiSpamFailure } from '@/lib/security/antiSpamResponse';
 import { cn } from '@/lib/utils';
 import { generateRandomData, setDummyFile } from '@/utils/dev/mockData';
 import {
@@ -283,6 +285,11 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
   const isCompletionMode = Boolean(completionToken);
   const [completionError, setCompletionError] = useState<string | null>(null);
   const [completionReady, setCompletionReady] = useState(!isCompletionMode);
+  // Invisible anti-spam (Turnstile + honeypot/timing). The Turnstile `action`
+  // must match the edge scope. Plan: docs/workflow/for-testing/captcha-anti-spam-hardening.md
+  const antiSpam = useAntiSpamSubmit({
+    action: isCompletionMode ? 'submit-form-completion' : 'submit-form',
+  });
   const navigate = useNavigate();
   const skipAuthGate = Boolean(embed?.skipAuthGate);
   const { status: guestAuthStatus, requireGuestAuth, formSubmitResumeTick } = useGuestAuth();
@@ -1050,6 +1057,11 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
       if (isCompletionMode && completionToken) {
         formData.append('complete', completionToken);
       }
+      // Invisible bot check — waits for a Turnstile token (if configured) then
+      // stamps the honeypot + timing fields. Degrades to '' when unconfigured.
+      const antiSpamFields = await antiSpam.collect();
+      antiSpam.applyToFormData(formData, antiSpamFields);
+
       const submitFnName = isCompletionMode ? 'submit-form-completion' : 'submit-form';
       const queryParamsString = queryParams.toString() ? `?${queryParams.toString()}` : '';
       const apiUrlWithParams = `${apiUrl}/${submitFnName}${queryParamsString}`;
@@ -1062,7 +1074,10 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
+        if (isAntiSpamFailure(response.status, errorData)) {
+          throw new Error(antiSpamErrorMessage(response.status, errorData));
+        }
         throw new Error(
           errorData.error ||
             errorData.message ||
@@ -1250,6 +1265,8 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
         });
       }
     } finally {
+      // Turnstile tokens are single-use — always re-arm for the next attempt.
+      antiSpam.reset();
       setIsSubmitting(false);
     }
   }
@@ -1419,7 +1436,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
   if (isCompletionMode && completionError) {
     return (
       <div className="flex flex-col items-center justify-center space-y-3 px-4 py-20 text-center">
-        <h2 className="text-destructive text-2xl font-bold">Link unavailable</h2>
+        <h2 className="text-destructive text-lg font-bold sm:text-xl">Link unavailable</h2>
         <p className="text-muted-foreground max-w-md text-sm">{completionError}</p>
       </div>
     );
@@ -1453,7 +1470,9 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
         ) : invalidBookingId ? (
           <div className="flex flex-col items-center justify-center space-y-4 py-20">
             <div className="text-center">
-              <h2 className="text-destructive mb-2 text-2xl font-bold">Booking Not Found</h2>
+              <h2 className="text-destructive mb-2 text-lg font-bold sm:text-xl">
+                Booking Not Found
+              </h2>
               <p className="text-muted-foreground max-w-md">
                 Invalid booking link or no form data. Screenshot this and contact us{' '}
                 {guestContactChannelLabel(isAirbnb, isFacebook)}.
@@ -2653,6 +2672,8 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
                 )}
               </div>
             </fieldset>
+
+            {antiSpam.render}
 
             {(!bookingId || guestCanUpdate) && !embed?.onNavChange ? (
               <GuestFormStepNavigation

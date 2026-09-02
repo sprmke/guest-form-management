@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Star, Users, Bed, Bath, Building2, Award, Shield, Clock, Home } from 'lucide-react';
 
+import { resolveOrgDisplayName } from '@/features/guest/form/lib/guestFormBranding';
 import {
   developmentDetailPath,
   resolvePublicDevelopment,
@@ -18,7 +19,6 @@ import { ListingPlaceMeta } from '@/features/guest/marketing/shared/components/L
 import { ListingRecommendedBadge } from '@/features/guest/marketing/shared/components/ListingRecommendedBadge';
 import { ListingStatItem } from '@/features/guest/marketing/shared/components/ListingStatItem';
 import { buildPropertyPlacementLabels } from '@/features/guest/marketing/shared/lib/listingPlacement';
-import { resolveOrgDisplayName } from '@/features/guest/form/lib/guestFormBranding';
 
 import type { ResolvedCancellationPolicyDisplay } from '@/features/dashboard/org/lib/propertyCancellationPolicy';
 
@@ -146,7 +146,7 @@ export function PropertyOverview({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="text-foreground @xl:text-3xl @5xl:text-4xl mb-2 break-words text-2xl font-bold"
+          className="text-foreground @xl:text-3xl @5xl:text-4xl mb-2 break-words text-xl font-bold sm:text-2xl"
         >
           {name}
         </motion.h1>
@@ -266,7 +266,7 @@ export function PropertyOverview({
           transition={{ delay: 0.35 }}
           className="space-y-4"
         >
-          <h2 className="text-foreground text-xl font-semibold">About this place</h2>
+          <h2 className="text-foreground text-lg font-semibold sm:text-xl">About this place</h2>
           <ListingExpandableText text={description} maxLines={8} />
         </motion.div>
       )}

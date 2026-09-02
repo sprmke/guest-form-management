@@ -309,7 +309,9 @@ export function BookingCard({
         <div className="border-border border-b p-6">
           <div className="mb-2 flex items-baseline justify-between">
             <div>
-              <span className="text-foreground text-2xl font-bold">{formatCurrency(baseRate)}</span>
+              <span className="text-foreground text-xl font-bold tabular-nums sm:text-2xl">
+                {formatCurrency(baseRate)}
+              </span>
               <span className="text-muted-foreground"> / night</span>
             </div>
             {showRating ? (

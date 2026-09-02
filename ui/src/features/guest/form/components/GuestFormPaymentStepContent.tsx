@@ -199,7 +199,7 @@ export function GuestFormPaymentStepContent({
           ) : null}
           <div className="border-primary/15 flex items-center justify-between gap-3 border-t pt-2">
             <dt className="text-foreground font-semibold">Total due now</dt>
-            <dd className="text-primary text-lg font-bold tabular-nums tracking-tight">
+            <dd className="text-primary text-base font-bold tabular-nums tracking-tight sm:text-lg">
               {formatMoney(breakdown.total)}
             </dd>
           </div>

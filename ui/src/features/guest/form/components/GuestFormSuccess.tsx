@@ -130,14 +130,16 @@ export function GuestFormSuccess() {
             {/* Booking Summary Card */}
             <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
               <div className="border-separator border-b px-6 py-3">
-                <h2 className="text-foreground text-lg font-semibold">Booking Summary</h2>
+                <h2 className="text-foreground text-base font-semibold sm:text-lg">
+                  Booking Summary
+                </h2>
               </div>
 
               <div className="space-y-6 p-6 text-left">
                 {/* Total Nights Badge */}
                 <div className="flex justify-center">
                   <div className="bg-primary/10 text-primary inline-flex items-center gap-2 rounded-full px-4 py-2">
-                    <span className="text-3xl font-bold">{numberOfNights}</span>
+                    <span className="text-2xl font-bold tabular-nums">{numberOfNights}</span>
                     <span className="font-medium">{numberOfNights === 1 ? 'Night' : 'Nights'}</span>
                   </div>
                 </div>

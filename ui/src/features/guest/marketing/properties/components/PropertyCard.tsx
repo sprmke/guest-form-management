@@ -263,7 +263,7 @@ export const PropertyCard = memo(function PropertyCard({
 
             <div className="border-border flex items-center justify-between border-t pt-3">
               <div>
-                <span className="text-foreground text-xl font-bold">
+                <span className="text-foreground text-lg font-bold tabular-nums">
                   ₱{property.price.toLocaleString()}
                 </span>
                 <span className="text-muted-foreground text-sm"> / night</span>

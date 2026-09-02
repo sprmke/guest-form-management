@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Award } from 'lucide-react';
 
-import { guestHostPath } from '@/features/guest/lib/guestPublicPaths';
 import { resolveOrgDisplayName } from '@/features/guest/form/lib/guestFormBranding';
+import { guestHostPath } from '@/features/guest/lib/guestPublicPaths';
 import { ListingRecommendedBadge } from '@/features/guest/marketing/shared/components/ListingRecommendedBadge';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 

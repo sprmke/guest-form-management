@@ -1,6 +1,7 @@
 import type { GuestPaymentInfo } from '@/features/guest/form/hooks/useGuestPaymentInfo';
 import { DEFAULT_GUEST_PAYMENT_INFO } from '@/features/guest/form/hooks/useGuestPaymentInfo';
 import { DEFAULT_ORG_LOGO_URL } from '@/features/guest/marketing/properties/lib/mapPublicPropertyDetail';
+
 import { PLATFORM_APP_NAME, resolveOrgDisplayName } from '@/lib/platformBranding';
 
 export {

@@ -5,9 +5,10 @@ import { Link, useLocation } from 'react-router-dom';
 import { Facebook, Instagram, Twitter, Mail, MapPin, Phone } from 'lucide-react';
 
 import { getAppModeFromPath } from '@/features/guest/auth/config/mode-switch';
-import { useModeSwitchTransition } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
 import { MarketingBrandLogo } from '@/features/guest/marketing/shared/components/MarketingBrandLogo';
+import { useModeSwitchTransition } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
 import { marketingGuestNavLinks } from '@/features/guest/marketing/shared/lib/marketingGuestNavLinks';
+
 import { PLATFORM_CONTACT_EMAIL, platformCopyrightLine } from '@/lib/platformBranding';
 
 const footerLinks = {

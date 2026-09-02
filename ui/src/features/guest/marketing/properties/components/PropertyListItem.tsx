@@ -148,7 +148,7 @@ export function PropertyListItem({ property, index = 0 }: PropertyListItemProps)
                     {property.type}
                   </span>
                 </div>
-                <h3 className="text-foreground group-hover:text-primary text-lg font-semibold transition-colors md:text-xl">
+                <h3 className="text-foreground group-hover:text-primary text-base font-semibold transition-colors md:text-lg">
                   {property.name}
                 </h3>
               </div>
@@ -212,7 +212,7 @@ export function PropertyListItem({ property, index = 0 }: PropertyListItemProps)
             {/* Footer */}
             <div className="border-border flex items-center justify-between border-t pt-4">
               <div>
-                <span className="text-foreground text-2xl font-bold">
+                <span className="text-foreground text-lg font-bold tabular-nums sm:text-xl">
                   ₱{property.price.toLocaleString()}
                 </span>
                 <span className="text-muted-foreground"> / night</span>
