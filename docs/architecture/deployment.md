@@ -79,7 +79,8 @@ Aliases: informal **NEW_PROD** in older docs meant **MULTI_TENANT_DEV** during e
 | **Dev / Preview** | [`dev-staging-environment.md`](../archive/operations/dev-staging-environment.md) — **`kame-homes`** + hosted dev Supabase, local mode picker                 |
 | **Migrations**    | [`migration-runbook.md`](../archive/operations/migration-runbook.md)                                                                                         |
 
-- `ui/vercel.json`: SPA rewrites to `index.html`, Vite build output `dist`.
+- `ui/vercel.json`: SPA rewrites to `index.html`, Vite build output `dist`. Also a `headers` block for the PWA — `sw.js` served `no-cache` + `Service-Worker-Allowed: /`; `manifest.webmanifest` / `offline.html` / `pwa-version.json` served `no-cache`/`no-store`. One file, applied to **both** Vercel projects.
+- **PWA deploy:** the service worker + manifest ship with the normal Vercel UI build (nothing extra). Push needs Supabase migrations + secrets + Vault `push_fanout_secret` + `VITE_VAPID_PUBLIC_KEY` per Vercel project — full checklist in [`pwa.md`](pwa.md) §9. Kill-switch: [`pwa.md`](pwa.md) §10.
 - **Dev deploy:** `bun run deploy:supabase:dev` (reads `supabase/.env.dev.local`) — multi-tenant **dev** project, never assume it is Vercel Production.
 - **Backups & rollback:** `bun run backup:supabase:<dev|prod>`, `rollback:supabase:<dev|prod>`, `rollback:functions:<dev|prod>` — see `production-deployment.md` §1/§12.
 - **Env / migration status:** `bun run env:status`, `migrations:status:dev`, `migrations:status:prod` (read-only).

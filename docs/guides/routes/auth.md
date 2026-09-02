@@ -58,6 +58,7 @@ On the **host dashboard**, the sidebar footer account menu shows the same avatar
 - No phone sign-in, no passwords
 - `/register` is a thin copy-only alias of `/login` — same form, same behavior. Since OTP verification auto-creates the account on first code entry, there's no way (or need) to distinguish "logging in" from "signing up"; a returning user who lands on `/register` by mistake just signs in normally
 - The email step and the code-entry step are mutually exclusive views — once a code is sent, the Google button, divider, and register/login cross-link are hidden so the code-entry step stays focused (just Back, the 6-digit input, Verify, and a Resend link with a 30s cooldown)
+- **Invisible human verification:** a Cloudflare Turnstile widget (`useCaptchaToken`, `action: auth-email-otp`) is mounted for the whole login flow — kept alive on both the email and the code-entry steps so **Resend** (which lives on the code step) always has a fresh single-use token. Real users see nothing; a suspicious session gets an inline challenge before **Continue** / **Resend** proceeds. The token is passed as `options.captchaToken` on `signInWithOtp` and verified by Supabase Auth's native Turnstile (`supabase/config.toml` `[auth.captcha]`; hosted: Dashboard → Authentication → Attack Protection). Fully degrades (no widget, OTP still sends) when `VITE_TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` are unset. Google OAuth is unaffected. See [PROJECT.md → Anti-spam & CAPTCHA](../../PROJECT.md).
 
 Resume after OAuth (guest): `sessionStorage` (`guestAuthResume.ts`) restores navigation to the form, contact-host sheet, booking-form modal, or auto-submits after social/email auth when the modal was the entry point. On the standalone guest page, OAuth/OTP success simply navigates to `?redirect=` (or `/`) once the session becomes authenticated.
 
@@ -126,6 +127,7 @@ Hosts and guests can both sign in with a one-time code sent to their email, or w
 
 - **Google OAuth:** `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (host + guest)
 - Email OTP must be enabled in the Supabase Auth dashboard for hosted projects (both audiences depend on it)
+- **Turnstile CAPTCHA (optional):** `VITE_TURNSTILE_SITE_KEY` (UI) + `TURNSTILE_SECRET_KEY` (edge). Local: add the secret to `ui/.env.development`, set `VITE_TURNSTILE_SITE_KEY`, flip `[auth.captcha] enabled = true` in `supabase/config.toml`, restart. Hosted: Dashboard → Authentication → Attack Protection → enable Turnstile with the secret. Test keys in [`validation-and-env.md`](../../architecture/validation-and-env.md) §11.
 - Facebook OAuth was removed — `FACEBOOK_CLIENT_ID`/`FACEBOOK_CLIENT_SECRET` and the `[auth.external.facebook]` block in `supabase/config.toml` no longer exist. Not supported; do not reintroduce it.
 
 ---

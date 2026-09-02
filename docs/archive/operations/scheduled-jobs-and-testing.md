@@ -37,6 +37,10 @@ There are Edge Functions meant to run on a **recurring schedule** in production 
 
 The Gmail and SD jobs defer to **`WorkflowOrchestrator`**; Telegram does **not** touch booking state.
 
+### 1.0b Trigger-driven (not scheduled): `push-fanout`
+
+`push-fanout` uses the same **Vault + `pg_net`** plumbing but is fired by `AFTER INSERT` + guarded `AFTER UPDATE` triggers on `public.notifications` (`trg_notifications_push_fanout_ins` / `_upd` → `notify_push_fanout()`), not `pg_cron`. Migrations `20261303120100_push_fanout_trigger.sql` + `20261303120300_push_fanout_on_coalesce.sql` (triggers) + `20261303120000_push_subscriptions.sql` (table). Needs Vault secrets **`project_url`**, **`anon_key`** (shared with the crons above) and **`push_fanout_secret`** (= the Supabase Edge secret `PUSH_FANOUT_SECRET`, sent as header `X-Push-Fanout-Secret`). Also set Edge secrets `VAPID_KEYS` + `VAPID_SUBJECT`. Non-fatal: `notify_push_fanout()` has `EXCEPTION WHEN OTHERS THEN RETURN NEW`, and on any environment without pg_net/Vault the trigger is a silent no-op. See [`../../architecture/pwa.md`](../../architecture/pwa.md) §5.
+
 ### 1.1 One-time historical approval backfill (`gmail-backfill-approvals`)
 
 **Not scheduled.** This is an **admin-only** `POST` (`verifyAdminJwt`) used once (or in small batches) after Gmail is connected, so older Azure approval threads are recovered **without** turning the listener into a full-inbox scanner.
