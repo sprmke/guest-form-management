@@ -19,7 +19,7 @@ kind: plan
 
 **Tech Stack:** Postgres migrations, Deno edge (`_shared/`), Vite React admin UI, existing `app-settings` / `transition-booking` endpoints.
 
-**Parent audit/design:** [`booking-workflow-multi-tenancy.md`](../in-progress/booking-workflow-multi-tenancy.md)
+**Parent audit/design:** [`booking-workflow-multi-tenancy.md`](./booking-workflow-multi-tenancy.md)
 
 ## Global Constraints
 

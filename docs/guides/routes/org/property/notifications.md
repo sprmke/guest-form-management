@@ -2,7 +2,7 @@
 title: 'Notifications — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-18
+updated: 2026-09-02
 ---
 
 # Notifications — operator guide
@@ -20,6 +20,7 @@ Deep links:
 
 | Section     | E2E save | Validation | Docs       | Notes                                      |
 | ----------- | -------- | ---------- | ---------- | ------------------------------------------ |
+| This device | ⏳       | n/a        | Documented | PWA OS-push opt-in + offline-changes queue |
 | Activity    | ✅       | ✅         | Documented | In-app bell feed (org-wide, paginated)     |
 | Chat        | ✅       | ✅         | Documented | Inbound guest web chat → Telegram template |
 | Marketing   | ✅       | ✅         | Documented | Gated setup + manage cards                 |
@@ -33,6 +34,16 @@ Deep links:
 ## Overview
 
 Single hub for **in-app activity** (booking workflow + inbox events in the bell) and **Telegram notification bots** on a property.
+
+### This device (PWA)
+
+Above the Activity feed (only when the app runs as an installed PWA and/or there are queued changes):
+
+- **Notifications on this device** — a single toggle to receive OS push notifications (booking, message, and workflow alerts) on this device even when the app is closed. Per **device**, not per account. Turning it on asks the browser for permission; turning it off unsubscribes. Delivered for **every** Notification Center event to the org owner + active org team members who opted in.
+  - **Desktop Chrome/Edge/Firefox and Android**: works in a normal browser tab too.
+  - **iPhone/iPad**: only after you **Add to Home Screen** — the toggle shows "Add this app to your Home Screen, then turn on notifications from the installed app" until then.
+  - If notifications were blocked in browser settings, the card says so and the toggle is disabled until you re-allow them.
+- **Offline changes** (Sync Center) — appears only when you made changes while offline (currently: inbox text replies). Lists what is **waiting to sync** and anything that **failed**, with **Sync now**, **Retry**, and **Discard**. Queued changes replay automatically when you reconnect; a failed item shows the server's reason and the affected view refreshes to the real state. A thin top banner also shows "Offline — N changes will sync when you reconnect".
 
 ### In-app activity
 
@@ -110,6 +121,12 @@ Notifications is the one place to review in-app alerts and set up Telegram for t
 
 **Common host questions**
 
+- Q: How do I get alerts on my phone when the app is closed?
+  A: Turn on **Notifications on this device** at the top of this page. On iPhone/iPad you first need to **Add to Home Screen** (Share → Add to Home Screen), then open the installed app and turn it on there.
+- Q: I turned it on but get nothing.
+  A: Check the phone's notification settings for the app/site, make sure you didn't block notifications, and confirm you opened the **installed** app (not a browser tab) on iPhone. Each device opts in separately.
+- Q: I replied to a guest with no signal — did it send?
+  A: It's queued. The **Offline changes** card shows it "waiting to sync" and it sends automatically when you're back online. If it fails, the card shows why and you can retry or discard.
 - Q: Where do I see everything the bell showed me?
   A: Open **Notifications** from the sidebar or **More** on a phone, then **Activity**. Or tap **View all** in the bell when you have more than five items.
 - Q: Where did the bell go on my phone?
@@ -162,28 +179,30 @@ Credentials unlock logic: `telegramCredentialsReady()` — saved token **and** c
 
 ## Implementation map
 
-| Concern                                            | Path                                                                                                                               |
-| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Page                                               | `ui/src/features/dashboard/bookings/pages/NotificationsPage.tsx`                                                                   |
-| In-app list (bell + page)                          | `ui/src/features/dashboard/notifications/components/InAppNotificationsPanel.tsx`, `InAppNotificationsSection.tsx`                  |
-| Bell (5-item preview + View all)                   | `ui/src/features/dashboard/notifications/components/NotificationBell.tsx` (desktop FAB in `AdminLayout`; mobile Notifications tab) |
-| Shared bot token card                              | `…/telegram-notifications/TelegramGlobalBotTokenCard.tsx`                                                                          |
-| Help dialogs                                       | `…/telegram-notifications/TelegramHelpDialog.tsx`, `…/lib/telegramHelpContent.ts`                                                  |
-| Global bot hook + context                          | `…/hooks/useTelegramGlobalBotToken.ts`, `…/TelegramNotificationsGlobalBotContext.tsx`                                              |
-| Edge: shared token                                 | `supabase/functions/telegram-global-settings/index.ts`                                                                             |
-| Chat settings card                                 | `ui/src/features/dashboard/bookings/components/TelegramChatSettingsCard.tsx`                                                       |
-| Chat notify (inbound)                              | `supabase/functions/_shared/telegramChat.ts` → `notifyTelegramChatInbound`                                                         |
-| Module shell (enable → credentials → manage cards) | `ui/src/features/dashboard/bookings/components/telegram-notifications/TelegramNotificationModuleLayout.tsx`                        |
-| Module loading skeleton                            | `…/TelegramNotificationModuleSkeleton.tsx`                                                                                         |
-| Manage summary card                                | `…/TelegramSettingsManageCard.tsx`                                                                                                 |
-| Manage / template dialogs                          | `…/TelegramManageDialog.tsx`, `…/TelegramTemplatesManageDialog.tsx`                                                                |
-| Credential auto-save on Connect                    | `ui/src/features/dashboard/bookings/hooks/useTelegramCredentialAutoSave.ts`                                                        |
-| Stacked placeholders modal                         | `…/TelegramPlaceholdersNestedDialog.tsx`                                                                                           |
-| Credentials helpers                                | `…/telegramCredentials.ts`                                                                                                         |
-| Chat ID scan + picker (setup)                      | `…/telegram-notifications/TelegramChatIdField.tsx` — inline scan; dropdown after scan; masked label when **Connected**             |
-| Friendly credential mask + reveal                  | `…/telegram-notifications/TelegramSecretInput.tsx`, `…/lib/telegramConnectionLabels.ts`                                            |
-| Section nav                                        | `ui/src/features/dashboard/bookings/components/AdminSectionNavLayout.tsx`                                                          |
-| Dialog stacking (`overlayClassName`)               | `ui/src/components/ui/dialog.tsx`                                                                                                  |
+| Concern                                            | Path                                                                                                                                                                                  |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page                                               | `ui/src/features/dashboard/bookings/pages/NotificationsPage.tsx`                                                                                                                      |
+| In-app list (bell + page)                          | `ui/src/features/dashboard/notifications/components/InAppNotificationsPanel.tsx`, `InAppNotificationsSection.tsx`                                                                     |
+| OS push opt-in card                                | `ui/src/features/dashboard/notifications/components/PushNotificationsCard.tsx` + `hooks/usePushNotifications.ts` + `ui/src/lib/pwa/push.ts` · pipeline: `docs/architecture/pwa.md` §5 |
+| Offline changes (Sync Center)                      | `ui/src/features/dashboard/offline/components/SyncCenterCard.tsx` + `store/offlineSyncStore.ts` · engine: `ui/src/lib/pwa/syncEngine.ts` · `docs/architecture/pwa.md` §6              |
+| Bell (5-item preview + View all)                   | `ui/src/features/dashboard/notifications/components/NotificationBell.tsx` (desktop FAB in `AdminLayout`; mobile Notifications tab)                                                    |
+| Shared bot token card                              | `…/telegram-notifications/TelegramGlobalBotTokenCard.tsx`                                                                                                                             |
+| Help dialogs                                       | `…/telegram-notifications/TelegramHelpDialog.tsx`, `…/lib/telegramHelpContent.ts`                                                                                                     |
+| Global bot hook + context                          | `…/hooks/useTelegramGlobalBotToken.ts`, `…/TelegramNotificationsGlobalBotContext.tsx`                                                                                                 |
+| Edge: shared token                                 | `supabase/functions/telegram-global-settings/index.ts`                                                                                                                                |
+| Chat settings card                                 | `ui/src/features/dashboard/bookings/components/TelegramChatSettingsCard.tsx`                                                                                                          |
+| Chat notify (inbound)                              | `supabase/functions/_shared/telegramChat.ts` → `notifyTelegramChatInbound`                                                                                                            |
+| Module shell (enable → credentials → manage cards) | `ui/src/features/dashboard/bookings/components/telegram-notifications/TelegramNotificationModuleLayout.tsx`                                                                           |
+| Module loading skeleton                            | `…/TelegramNotificationModuleSkeleton.tsx`                                                                                                                                            |
+| Manage summary card                                | `…/TelegramSettingsManageCard.tsx`                                                                                                                                                    |
+| Manage / template dialogs                          | `…/TelegramManageDialog.tsx`, `…/TelegramTemplatesManageDialog.tsx`                                                                                                                   |
+| Credential auto-save on Connect                    | `ui/src/features/dashboard/bookings/hooks/useTelegramCredentialAutoSave.ts`                                                                                                           |
+| Stacked placeholders modal                         | `…/TelegramPlaceholdersNestedDialog.tsx`                                                                                                                                              |
+| Credentials helpers                                | `…/telegramCredentials.ts`                                                                                                                                                            |
+| Chat ID scan + picker (setup)                      | `…/telegram-notifications/TelegramChatIdField.tsx` — inline scan; dropdown after scan; masked label when **Connected**                                                                |
+| Friendly credential mask + reveal                  | `…/telegram-notifications/TelegramSecretInput.tsx`, `…/lib/telegramConnectionLabels.ts`                                                                                               |
+| Section nav                                        | `ui/src/features/dashboard/bookings/components/AdminSectionNavLayout.tsx`                                                                                                             |
+| Dialog stacking (`overlayClassName`)               | `ui/src/components/ui/dialog.tsx`                                                                                                                                                     |
 
 ---
 

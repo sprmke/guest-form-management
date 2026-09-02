@@ -129,6 +129,18 @@ Per-module pin (open the assistant from that page; icon ≥ 44×44px; chip appea
 
 10. Open the bookmark pin → module list first, then drill into a module. Item rows show a leading visual (guest initials, platform badge, finance amount, marketing thumb when saved, video play badge + first-scene still when available, etc.) plus a **Load more** control when the list exceeds 12 rows. **Pricing** opens a lite month grid (rates, booked, blocked) from `property-pricing` — tap a date to pin. Use the top search bar or **Cmd/Ctrl+K** for cross-module search.
 
+### 2.5 Apply chat file onto a booking + workflow emails
+
+1. Pin a booking in **Pending Documents** (or open its detail page). Attach an **approved GAF PDF** via paperclip → File. Ask: **"Apply this as the approved GAF and mark GAF complete."**
+2. Expect a Confirm card naming the file, booking host label, **Approved GAF**, and that it will mark complete. If a GAF already exists, expect overwrite wording.
+3. Confirm — expect the Files tab to show the new approved GAF and the nested GAF step complete (same rules as the workflow modal). Audit card on booking detail lists the action.
+4. Attach a **valid ID** image and ask to apply it as Valid ID on the same booking — Confirm → Files tab updates; if status was past Pending Review, expect revert-to-review rules identical to admin upload.
+5. Ask: **"Send the booking acknowledgement email for this booking."** Expect a destructive **Send** confirm (external_send). Confirm → email sends (or a clear prerequisite/cooldown error). Repeat for GAF request / pet / ready-for-check-in / Check-out Instructions as eligible.
+6. On a follow-up message **without** re-attaching, ask to apply the earlier file by referring to it — expect the assistant to use the stored `attachmentPath` from conversation context (or ask you to re-attach if the file was removed).
+7. Attach an image and ask to set it as the **organization logo** — Confirm → org logo updates.
+8. Attach an image on a property settings/media context and ask to **add it to the gallery** (optionally as primary) — Confirm → media list grows.
+9. Attach a GAF signature image and ask to set the **unit owner signature** — Confirm → building forms signature updates.
+
 ---
 
 ## 3. Tier 0 — read questions (#2)
@@ -230,7 +242,13 @@ If the assistant instead proposes and waits for confirmation, check whether the 
 
 ## 10. API-level smoke test (what's actually been verified so far)
 
-No browser pass exists yet — this is the exact curl-based verification already run against local Supabase, useful for a fast backend-only regression check without touching the UI. Requires local Supabase (`bun run start:supabase` + `bun run dev:api`) and a self-minted local JWT (HS256, signed with the local `JWT_SECRET` from `bun run status:supabase`) for a known org owner.
+Backend execute paths for §11–13 attachment parity are covered by **`bun run test:assistant-parity`** (38 tests) and confirm-card UI by **`bun run test:e2e:assistant`** (8 tests, no Gemini). Live browser §11–13 is signed off — see [`docs/workflow/done/ai-assistant-attachment-actions-and-coverage.md`](../../workflow/done/ai-assistant-attachment-actions-and-coverage.md).
+
+**Catalog + integration:** `bun run test:assistant-parity` (37 tests; requires local Supabase; skips integration with `SKIP_ASSISTANT_INTEGRATION=1`). Includes compound GAF apply+mark-complete, booking/org/GCash attachment execute, D.2–D.5 property/parking media + GAF signature + template + org verification/listing auth execute, web inbox attachment propose+execute, support ticket create with attachment, Meta publish from `attachmentPath` (propose + marketing row staging), overwrite warn copy, Meta inbox attachment refusal, and OTP-required GCash messaging. The integration suite normalizes agent shells that export an empty `SUPABASE_SERVICE_ROLE_KEY` or a `SUPABASE_URL` ending in `/functions/v1`.
+
+**Live Gemini (browser, optional):** `bun run test:e2e:assistant:live` (**8 tests**; real Supabase auth + real Gemini in the assistant panel; requires `./dev.sh` or local stack, `GEMINI_API_KEY(S)` in `supabase/.env.local`, and `PLAYWRIGHT_ASSISTANT_LIVE=1`). Covers §12.3, §13.2, §13.1, §11.3, §11.4, §12.2, §11.2, §11.1. Tests run **serially** with a 35s pause between turns to stay under Gemini free-tier rate limits (~20 req/min). Still not a substitute for the full §11–13 sign-off table — §12.1 web inbox execute, §13.3 Meta publish execute, and compound GAF **Confirm→execute** still need manual or expanded live coverage.
+
+**Playwright (mocked UI):** `bun run test:e2e:assistant` (8 tests) — confirm-card **Send** vs **Confirm**, overwrite copy, Meta refusal text, GCash OTP copy, web inbox attachment **Send**, Meta publish **Send**.
 
 ```bash
 JWT=<self-minted local JWT>
@@ -265,3 +283,85 @@ curl -s -X POST "http://127.0.0.1:54321/functions/v1/dashboard-assistant-confirm
 ```
 
 Pass when: the Tier-0 call returns a real number matching the DB; the propose call returns `status: "proposed"` **and does not change the booking's status**; the first confirm call flips the booking to `CANCELLED`; the second confirm call returns `{"status":"executed","alreadyResolved":true}`.
+
+---
+
+## 11. Phases 1–3 — booking apply, workflow emails, media & verification
+
+### 11.1 Apply booking attachment + compound mark-complete
+
+1. Open a booking in **PENDING_DOCUMENTS** (or status where GAF upload is valid).
+2. Attach an approved GAF PDF in the assistant (same conversation).
+3. Ask: **"Apply this as the approved GAF and mark GAF complete."**
+4. Expect Tier-2 confirm listing file name + overwrite warning if a GAF already exists + both upload and mark-complete steps.
+5. After confirm, booking Files tab shows the PDF and GAF step reflects completion per workflow rules.
+
+### 11.2 Workflow email (external send)
+
+1. Pin a booking with prerequisites met (e.g. acknowledgement eligible).
+2. Ask: **"Send the booking acknowledgement email for this stay."**
+3. Expect destructive-styled **Send** confirm (not generic Confirm).
+4. After confirm, guest receives email; resend within Free cooldown should surface a grounded error.
+
+### 11.3 Org logo / property media
+
+1. Attach a square logo PNG.
+2. Ask: **"Set this as our org team logo."**
+3. Confirm → org settings / emails reflect new logo.
+
+### 11.4 GCash QR stage (OTP not bypassed)
+
+1. Attach a GCash QR image on a property with payment settings access.
+2. Ask: **"Stage this as the property GCash QR."**
+3. Confirm stages the file; payment methods row is **unchanged** until Payment settings OTP commit in UI.
+
+---
+
+## 12. Phase 4 — inbox attachments, support tickets, announcements, plans
+
+### 12.1 Inbox web attachment send
+
+1. Open **Guest Inbox** on a property with a **website chat** thread (not Messenger/Instagram).
+2. Attach a screenshot in the assistant composer (same conversation).
+3. Ask: **"Send this screenshot to the guest in thread `<conversationId>` with a short note."**
+4. Expect Tier-2 **Send** confirm listing text + attachment count.
+5. After confirm, refresh the inbox thread — outbound message shows the attachment.
+6. Repeat on a **Meta DM** thread with an attachment request — expect a grounded refusal (text-only on Meta).
+
+### 12.2 Support ticket create
+
+1. Attach a screenshot in the assistant.
+2. Ask: **"File a bug report: subject 'Assistant test', describe the issue, attach this screenshot."**
+3. Expect `propose_create_support_ticket` confirm card.
+4. After confirm, open **Help & Support → Tickets** — new ticket appears with attachment on the first message.
+
+### 12.3 Announcements + plan snapshot (read)
+
+1. Ask: **"What platform announcements are active right now?"** — expect `list_host_announcements` data matching the dashboard banner.
+2. Ask: **"What plan are we on and which features does it include?"** — expect `get_org_plan_snapshot` with plan name, status, enrolled properties, and feature flags (no checkout URL or payment actions).
+
+---
+
+## 13. Phase 5/6 — notifications, Telegram, booking/import guidance, Meta attachment publish
+
+### 13.1 Notifications + Telegram (read / deep-link only)
+
+1. Ask: **"Am I opted in to push notifications on this device?"** — expect `get_notification_preferences` with `webPush.activeDeviceCount` / `optedIn`.
+2. Ask: **"How do I turn on Telegram for marketing?"** — expect `guide_telegram_settings` or `guide_notification_settings` with a `settingsPath` / `modulePath` under `/notifications` (no credential values in the reply).
+3. Ask: **"Is Telegram chat connected?"** — expect `get_telegram_notification_settings` with per-module `enabled` + `credentials.connected` booleans only.
+
+Pass when: assistant never claims it changed Telegram credentials or push prefs without a confirm card (there should be none for these tools).
+
+### 13.2 Create booking + import (deep-link only)
+
+1. Ask: **"How do I add a new booking?"** — expect `guide_create_booking` with `bookingsPath` and checklist; must mention **New booking** modal, not a chat-created row.
+2. Ask: **"Import bookings from a spreadsheet."** — expect `guide_import_bookings` pointing to **Import** on Bookings; must not call `import-commit` or claim rows were imported.
+
+### 13.3 Meta publish from chat attachment
+
+1. Attach a JPEG in the assistant on a property with Marketing Studio + a connected Meta channel.
+2. Ask: **"Publish this image to Instagram as a post with caption 'Test from assistant'."**
+3. Expect Tier-2 external-send confirm referencing the chat file (attachment path or uploaded media).
+4. After confirm, check Marketing publish history for a new row.
+
+Pass when: publish uses `attachmentPath` upload on confirm (not a model-invented URL) and canvas/template edits are still deferred to Marketing Studio UI.

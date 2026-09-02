@@ -110,6 +110,7 @@ Skipped when the property has **`vouchers_enabled = false`** (guest goes review 
 
 - **Cash pickup** shows a note that cash refunds require on-site staff and asks the guest to message the host first before leaving.
 - This step is blocked (shows the same wait card as step 2) while `awaiting_balance_settlement` is still true.
+- **Invisible human check (anti-spam):** each protected action mounts its own invisible Cloudflare Turnstile widget — `submit-guest-review` (Step 1), `claim-sd-voucher` (Step 2 reveal), `submit-sd-form` (Step 3), plus honeypot + timing fields. Tokens are verified server-side (`_shared/antiSpam.ts`); failure surfaces a "Please complete the verification and try again." / "Too many attempts…" toast and the step stays put. Inert without `VITE_TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` (durable rate limit still applies). See [PROJECT.md → Anti-spam & CAPTCHA](../../PROJECT.md).
 
 ---
 

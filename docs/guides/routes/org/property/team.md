@@ -192,7 +192,8 @@ When access is revoked (deactivated member, removed from property, or lost org m
 - Non-org members: role badge (read-only) and a single **Manage** dropdown — **Host details**, **Permissions** (role + permission tree), **Deactivate** / **Activate**, **Remove from Property**.
 - Deactivated members: **Disabled** badge; **Permissions** disabled until reactivated. Deactivated by team-seat reconciliation instead of an admin: **Plan limit** badge (tooltip explains why) instead of the plain Disabled one.
 - When 1+ members are currently plan-limited, a banner above the list shows the count with an **Upgrade** button (opens the upgrade modal targeted at `teamManagement`).
-- Org owner and org admins (virtual, `fromOrg: true`): **Org** badge; **Manage in org** link to `/org/:orgSlug/team` when viewer has `org:team:view` (no property-level contact edit).
+- Org owner and org admins (virtual, `fromOrg: true`): no separate Org badge (role + status already convey access). **Manage in org** goes to `/org/:orgSlug/team` when viewer has `org:team:view` — full outline button on `sm+`, compact **⋯** menu on phone (no property-level contact edit).
+- Property-managed members: **Manage** outline control on `sm+`; phone uses the same menu behind **⋯**.
 - Property members: **Manage** dropdown when caller has `team.members:edit` and/or `team.members:delete`; role changes via **Permissions** in that menu (not an inline select). Custom-role CRUD when `team.customRoles:*`.
 - Guest-facing contact resolves from the first active property member with team management leaves (`team.members:*` / `team.customRoles:*`), then org owner team row, then legacy settings.
 - Cannot deactivate/remove yourself or the last active member with team management access (org owner still has implicit access).

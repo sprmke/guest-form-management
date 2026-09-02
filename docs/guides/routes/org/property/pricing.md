@@ -2,7 +2,7 @@
 title: 'Pricing — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-30
+updated: 2026-09-03
 ---
 
 # Pricing — operator guide
@@ -135,8 +135,10 @@ If Airbnb reports a night that already has a live Kame booking or manual block, 
 
 ## Pricing grid
 
-Month grid titled **Rates & availability** (_Manage pricing and availability_ on desktop), with the legend under the grid. Close the date
+Month grid titled **Rates & availability** (_Manage pricing and availability_ on desktop), with the legend under the grid on **`lg+` only** (hidden on phone/tablet to save vertical space). Close the date
 modal with the X or Escape (no Cancel button).
+
+**Selecting a range:** desktop uses **click-drag** across day cells. On phone/tablet (`max-lg`) there is no pointer drag, so the grid switches to a **two-tap** model — tap the first date (cell shows a thick primary border; no tip banner — it caused layout shift), then tap the end date to commit and open the date modal. Tap a booked/locked cell to clear an armed start without committing. Tapping the same date twice sets a single-day selection. Selected / armed / today cells use a **border-only** highlight below `sm` (no outer ring) so the box does not clip against neighbors or stay pills; desktop keeps the soft ring. Day cells are shorter (`min-h-[3.5rem]`) below `sm`. Mobile chrome: card title shortens to **Pricing**, month nav uses **MMM yyyy** (e.g. Sep 2026), and booked-stay pills use a denser ~20px lane (avatar + label) so they fit the small cells. Same handlers as desktop (`onDateMouseDown` → `onDateMouseEnter` → `onSelectionEnd`); shared `PricingCalendarGrid` so parking + property behave identically.
 
 ### Available nights
 
