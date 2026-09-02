@@ -37,6 +37,9 @@ jobs:
       - name: Filename conventions
         run: bun run check:filenames
 
+      - name: Unit tests (Vitest)
+        run: bun run test
+
       - name: Build UI
         env:
           # Vite chunk rendering exceeds default ~2GB Node heap on ubuntu-latest.
