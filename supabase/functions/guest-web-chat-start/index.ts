@@ -4,6 +4,7 @@
  */
 
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
+import { identityFromRequest, rateLimitGate } from '../_shared/rateLimit.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { startGuestWebChat } from '../_shared/webGuestChatService.ts';
 
@@ -11,6 +12,16 @@ serveAuthenticated('guest-web-chat-start', async (req, user) => {
   if (req.method !== 'POST') {
     return jsonError(req, 'Method not allowed', 405);
   }
+
+  // Durable per-user rate limit — thread starts fan out to Resend + Telegram.
+  // Plan: docs/workflow/for-testing/captcha-anti-spam-hardening.md
+  const limited = await rateLimitGate(req, {
+    scope: 'guest-web-chat-start',
+    identity: identityFromRequest(req, user),
+    limit: 10,
+    windowSec: 3600,
+  });
+  if (limited) return limited;
 
   const body = await readJsonBody(req);
   const propertySlug = String(body.propertySlug ?? body.property_slug ?? '').trim();

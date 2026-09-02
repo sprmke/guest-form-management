@@ -99,7 +99,7 @@ serve(async (req) => {
     return jsonSuccess(req, result);
   } catch (e) {
     console.error('[meta-inbox-backfill]', e);
-    await capturePostHogException(e, { logPrefix: 'meta-inbox-backfill' });
+    await capturePostHogException(e, { logPrefix: 'meta-inbox-backfill', request: req });
     return jsonError(req, (e as Error).message, 500);
   }
 });

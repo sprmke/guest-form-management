@@ -4,6 +4,7 @@
  */
 
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
+import { identityFromRequest, rateLimitGate } from '../_shared/rateLimit.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import {
   editGuestWebMessage,
@@ -36,6 +37,16 @@ serveAuthenticated('guest-web-chat-messages', async (req, user) => {
   }
 
   if (req.method === 'POST') {
+    // Durable per-user write rate limit — sends fan out to Resend + Telegram.
+    // Plan: docs/workflow/for-testing/captcha-anti-spam-hardening.md
+    const limited = await rateLimitGate(req, {
+      scope: 'guest-web-chat-messages',
+      identity: identityFromRequest(req, user),
+      limit: 40,
+      windowSec: 300,
+    });
+    if (limited) return limited;
+
     const body = await readJsonBody(req);
     const action = String(body.action ?? '').trim();
 

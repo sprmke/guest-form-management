@@ -21,9 +21,10 @@ import {
   requireTeamParkingAccess,
   resendParkingInvitation,
 } from '../_shared/parkingTeamService.ts';
+import { identityFromRequest, rateLimitGate } from '../_shared/rateLimit.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
-serveAuthenticated('parking-team-invitations', async (req) => {
+serveAuthenticated('parking-team-invitations', async (req, user) => {
   const url = new URL(req.url);
   const body = req.method === 'GET' ? {} : await readJsonBody(req);
   const parkingId = readTeamParkingId(url, body);
@@ -41,6 +42,17 @@ serveAuthenticated('parking-team-invitations', async (req) => {
   if (req.method === 'POST') {
     requireHttpMethod(req, 'POST');
     const action = parseAction(body);
+
+    // Durable rate limit on invite/resend — per user + parking.
+    // Plan: docs/workflow/for-testing/captcha-anti-spam-hardening.md
+    const isResend = action === 'resend';
+    const limited = await rateLimitGate(req, {
+      scope: `parking-team-invitations:${isResend ? 'resend' : 'invite'}`,
+      identity: `${identityFromRequest(req, user)}:${parkingId || 'na'}`,
+      limit: isResend ? 10 : 20,
+      windowSec: 3600,
+    });
+    if (limited) return limited;
 
     if (action === 'resend') {
       const ctx = await requireTeamParkingAccess(

@@ -5,6 +5,10 @@
  */
 
 import { createServiceClient, verifyOrgAccess } from '../_shared/orgAuth.ts';
+import {
+  reconcilePendingOrgPaymentTransaction,
+  recoverExpiredOrgPaymentIfPaidOnPaymongo,
+} from '../_shared/orgPaymentReconcile.ts';
 import { parsePlanFeatures } from '../_shared/planFeatures.ts';
 import {
   normalizePlanDiscountPercent,
@@ -123,9 +127,33 @@ serveAuthenticated('org-plan', async (req) => {
     assignedPropertyIds = (slots ?? []).map((row) => row.property_id as string);
   }
 
+  const { data: pendingCheckoutRow } = await supabase
+    .from('org_payment_transactions')
+    .select('id, checkout_url, provider_reference, plan_id')
+    .eq('organization_id', organizationId)
+    .eq('status', 'pending')
+    .not('checkout_url', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (pendingCheckoutRow?.id) {
+    try {
+      await reconcilePendingOrgPaymentTransaction(pendingCheckoutRow.id as string);
+    } catch (err) {
+      console.error('[org-plan] pending checkout reconcile failed', err);
+    }
+  }
+
+  try {
+    await recoverExpiredOrgPaymentIfPaidOnPaymongo(organizationId);
+  } catch (err) {
+    console.error('[org-plan] mislabeled checkout recovery failed', err);
+  }
+
   const { data: pendingCheckout } = await supabase
     .from('org_payment_transactions')
-    .select('checkout_url')
+    .select('checkout_url, plan_id')
     .eq('organization_id', organizationId)
     .eq('status', 'pending')
     .not('checkout_url', 'is', null)
@@ -135,7 +163,9 @@ serveAuthenticated('org-plan', async (req) => {
 
   const { data: transactions, error: transactionsError } = await supabase
     .from('org_payment_transactions')
-    .select('id, amount, currency, status, payment_method_type, created_at, paid_at, checkout_url')
+    .select(
+      'id, plan_id, amount, currency, status, payment_method_type, created_at, paid_at, checkout_url'
+    )
     .eq('organization_id', organizationId)
     .order('created_at', { ascending: false })
     .limit(20);
@@ -153,6 +183,7 @@ serveAuthenticated('org-plan', async (req) => {
     assignedPropertyIds,
     transactions: (transactions ?? []).map((row) => ({
       id: row.id as string,
+      planId: row.plan_id as string,
       amount: Number(row.amount ?? 0),
       currency: row.currency as string,
       status: row.status as string,
@@ -162,5 +193,6 @@ serveAuthenticated('org-plan', async (req) => {
       paidAt: (row.paid_at as string | null) ?? null,
     })),
     pendingCheckoutUrl: (pendingCheckout?.checkout_url as string | null) ?? null,
+    pendingCheckoutPlanId: (pendingCheckout?.plan_id as string | null) ?? null,
   });
 });

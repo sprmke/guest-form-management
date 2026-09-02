@@ -117,7 +117,7 @@ serve(async (req) => {
     );
   } catch (e) {
     console.error('[meta-inbox-oauth-callback]', e);
-    await capturePostHogException(e, { logPrefix: 'meta-inbox-oauth-callback' });
+    await capturePostHogException(e, { logPrefix: 'meta-inbox-oauth-callback', request: req });
     const dest = buildMetaOAuthErrorRedirect(
       st.return_origin,
       st.return_path,

@@ -22,9 +22,10 @@ import {
   resendOrgInvitation,
 } from '../_shared/orgTeamService.ts';
 import { catchPlanFeatureError } from '../_shared/planEntitlements.ts';
+import { identityFromRequest, rateLimitGate } from '../_shared/rateLimit.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
-serveAuthenticated('org-team-invitations', async (req) => {
+serveAuthenticated('org-team-invitations', async (req, user) => {
   const url = new URL(req.url);
   const body = req.method === 'GET' ? {} : await readJsonBody(req);
   const orgId = readTeamOrgId(url, body);
@@ -39,6 +40,17 @@ serveAuthenticated('org-team-invitations', async (req) => {
   if (req.method === 'POST') {
     requireHttpMethod(req, 'POST');
     const action = parseAction(body);
+
+    // Durable rate limit on invite/resend — per user + org.
+    // Plan: docs/workflow/for-testing/captcha-anti-spam-hardening.md
+    const isResend = action === 'resend';
+    const limited = await rateLimitGate(req, {
+      scope: `org-team-invitations:${isResend ? 'resend' : 'invite'}`,
+      identity: `${identityFromRequest(req, user)}:${orgId || orgSlug || 'na'}`,
+      limit: isResend ? 10 : 20,
+      windowSec: 3600,
+    });
+    if (limited) return limited;
 
     if (action === 'resend') {
       const ctx = await requireOrgTeamContext(req, orgId, orgSlug, {

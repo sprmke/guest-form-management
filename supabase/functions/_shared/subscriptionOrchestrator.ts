@@ -10,7 +10,7 @@ import {
   createOrgSubscription,
   reconcileTeamSeatsForProperty,
 } from './planEntitlements.ts';
-import { isPaymongoTestMode } from './paymongoClient.ts';
+import { isPaymongoTestMode, getPaymongoProviderPaymentState } from './paymongoClient.ts';
 import { createOrgSubscriptionCheckoutLink } from './orgSubscriptionCheckout.ts';
 import {
   getPlatformPaymentSettings,
@@ -107,6 +107,53 @@ export async function markOrgPaymentFailed(
     .eq('id', transactionId)
     .eq('status', 'pending');
   if (error) throw new Error(error.message);
+}
+
+/** When fulfillment partially applied (plan changed) but the txn row was left pending/failed. */
+async function tryRepairOrgPaymentLedger(input: {
+  transactionId: string;
+  organizationId: string;
+  planId: string;
+  providerReference?: string | null;
+  paymentMethodType?: string | null;
+  paidAt?: string | null;
+  rawPayload?: Record<string, unknown>;
+}): Promise<boolean> {
+  const sb = db();
+  const { data: sub } = await sb
+    .from('org_subscriptions')
+    .select('id, plan_id, status')
+    .eq('organization_id', input.organizationId)
+    .in('status', ['active', 'trialing'])
+    .maybeSingle();
+  if (!sub || String(sub.plan_id) !== input.planId) return false;
+
+  const providerRef = input.providerReference?.trim() ?? '';
+  if (providerRef) {
+    const paymongoState = await getPaymongoProviderPaymentState(providerRef);
+    if (paymongoState !== 'paid') return false;
+  } else if (!input.paidAt) {
+    return false;
+  }
+
+  const paidAt = input.paidAt ?? new Date().toISOString();
+  const { data: paidRow, error } = await sb
+    .from('org_payment_transactions')
+    .update({
+      status: 'paid',
+      org_subscription_id: sub.id as string,
+      provider_reference: input.providerReference ?? null,
+      payment_method_type: input.paymentMethodType ?? null,
+      paid_at: paidAt,
+      failure_reason: null,
+      raw_webhook_payload: input.rawPayload ?? null,
+    })
+    .eq('id', input.transactionId)
+    .in('status', ['pending', 'failed'])
+    .select('id')
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return Boolean(paidRow);
 }
 
 type OrgPaymentTransactionRow = {
@@ -252,6 +299,19 @@ export async function fulfillOrgSubscriptionPayment(input: {
       console.error('[subscriptionOrchestrator] receipt email failed', err);
     }
   } catch (err) {
+    const repaired = await tryRepairOrgPaymentLedger({
+      transactionId: input.transactionId,
+      organizationId,
+      planId,
+      providerReference: input.providerReference ?? (txn.provider_reference as string | null),
+      paymentMethodType: input.paymentMethodType ?? null,
+      paidAt: input.paidAt ?? null,
+      rawPayload: input.rawPayload,
+    });
+    if (repaired) {
+      console.error('[subscriptionOrchestrator] fulfillment error recovered', err);
+      return;
+    }
     await markOrgPaymentFailed(
       input.transactionId,
       `Fulfillment error (payment was collected — needs manual review): ${(err as Error).message}`,
@@ -273,6 +333,20 @@ export async function resolveOrgTransactionFromWebhookPayload(
       .from('org_payment_transactions')
       .select('*')
       .eq('id', transactionId)
+      .maybeSingle();
+    return (data as OrgPaymentTransactionRow | null) ?? null;
+  }
+
+  const checkoutSessionId =
+    (inner?.type === 'checkout_session' ? String(inner.id ?? '') : '') ||
+    readMetadataString(metadata, 'checkout_session_id');
+  if (checkoutSessionId) {
+    const { data } = await sb
+      .from('org_payment_transactions')
+      .select('*')
+      .eq('provider_reference', checkoutSessionId)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
     return (data as OrgPaymentTransactionRow | null) ?? null;
   }
@@ -313,6 +387,24 @@ export async function handlePaymongoWebhookEvent(
   if (normalized === 'payment.failed') {
     const orgTxn = await resolveOrgTransactionFromWebhookPayload(payload);
     if (!orgTxn || orgTxn.status !== 'pending') return { handled: false };
+
+    const paymongoState = await getPaymongoProviderPaymentState(orgTxn.provider_reference);
+    if (paymongoState === 'paid') {
+      const { innerAttrs, metadata } = extractWebhookInner(payload);
+      const initiatedBy = readMetadataString(metadata, 'initiated_by');
+      const source = innerAttrs?.source as Record<string, unknown> | undefined;
+      const paymentMethodType = typeof source?.type === 'string' ? source.type : null;
+      await fulfillOrgSubscriptionPayment({
+        transactionId: orgTxn.id,
+        providerReference: orgTxn.provider_reference,
+        paymentMethodType,
+        paidAt: new Date().toISOString(),
+        rawPayload: payload,
+        assignedByUserId: initiatedBy,
+      });
+      return { handled: true, action: 'fulfilled_org_subscription_after_stale_failed_event' };
+    }
+
     await markOrgPaymentFailed(orgTxn.id, 'Payment failed', payload);
     try {
       const ctx = await loadOrgBillingContext(orgTxn.organization_id);

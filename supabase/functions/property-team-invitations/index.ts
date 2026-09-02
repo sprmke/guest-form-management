@@ -22,9 +22,10 @@ import {
   requireTeamPropertyAccess,
   resendPropertyInvitation,
 } from '../_shared/propertyTeamService.ts';
+import { identityFromRequest, rateLimitGate } from '../_shared/rateLimit.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
-serveAuthenticated('property-team-invitations', async (req) => {
+serveAuthenticated('property-team-invitations', async (req, user) => {
   const url = new URL(req.url);
   const body = req.method === 'GET' ? {} : await readJsonBody(req);
   const propertyId = readTeamPropertyId(url, body);
@@ -42,6 +43,17 @@ serveAuthenticated('property-team-invitations', async (req) => {
   if (req.method === 'POST') {
     requireHttpMethod(req, 'POST');
     const action = parseAction(body);
+
+    // Durable rate limit on invite/resend — per user + property.
+    // Plan: docs/workflow/for-testing/captcha-anti-spam-hardening.md
+    const isResend = action === 'resend';
+    const limited = await rateLimitGate(req, {
+      scope: `property-team-invitations:${isResend ? 'resend' : 'invite'}`,
+      identity: `${identityFromRequest(req, user)}:${propertyId || 'na'}`,
+      limit: isResend ? 10 : 20,
+      windowSec: 3600,
+    });
+    if (limited) return limited;
 
     if (action === 'resend') {
       const ctx = await requireTeamPropertyAccess(

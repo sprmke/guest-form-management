@@ -473,7 +473,7 @@ serve(async (req) => {
       return error;
     }
     console.error('[sd-refund-cron] Fatal error:', error);
-    await capturePostHogException(error, { logPrefix: 'cron:sd-refund-cron' });
+    await capturePostHogException(error, { logPrefix: 'cron:sd-refund-cron', request: req });
     return new Response(JSON.stringify({ success: false, error: (error as Error).message }), {
       status: 500,
       headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
