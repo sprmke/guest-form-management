@@ -5,6 +5,8 @@ import { GuestEmbedPreviewEffect } from '@/features/guest/components/GuestEmbedP
 import { SavedPropertiesSync } from '@/features/guest/marketing/properties/components/SavedPropertiesSync';
 import { ModeSwitchTransitionProvider } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
 
+import { PwaProvider } from '@/components/pwa/PwaProvider';
+import { PwaQueryPersistence } from '@/components/pwa/PwaQueryPersistence';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 import { AppRoutes } from '@/routes';
@@ -24,12 +26,14 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <PwaQueryPersistence />
       <TooltipProvider delayDuration={200}>
         <GuestAuthProvider>
           {/* Global so the curtain survives AdminLayout ↔ MarketingLayoutShell remounts. */}
           <ModeSwitchTransitionProvider>
             <GuestEmbedPreviewEffect />
             <SavedPropertiesSync />
+            <PwaProvider />
             <AppRoutes />
           </ModeSwitchTransitionProvider>
         </GuestAuthProvider>

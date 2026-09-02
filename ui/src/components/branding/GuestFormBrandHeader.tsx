@@ -38,7 +38,9 @@ export function GuestFormBrandHeader({
       </div>
       <div className="text-center">
         {eyebrowText ? <p className="section-eyebrow mb-2">{eyebrowText}</p> : null}
-        <h2 className="text-foreground text-2xl font-bold tracking-tight md:text-3xl">{title}</h2>
+        <h2 className="text-foreground text-xl font-bold tracking-tight sm:text-2xl md:text-3xl">
+          {title}
+        </h2>
       </div>
     </div>
   );

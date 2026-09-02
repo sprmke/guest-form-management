@@ -4,6 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Stays</title>
+
+    <!-- PWA / installable web app -->
+    <meta name="application-name" content="Stays" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Stays" />
+    <meta name="theme-color" content="#f5f6f8" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f5f6f8" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#121212" />
+    <!-- vite-plugin-pwa injects <link rel="manifest"> + the register script -->
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <script>
       (function () {
         var key = 'kame-ui-theme';
@@ -30,8 +42,6 @@
     <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
     <link rel="shortcut icon" href="/favicon/favicon.ico" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
-    <link rel="manifest" href="/favicon/site.webmanifest" />
   </head>
   <body class="font-sans antialiased">
     <div id="root"></div>

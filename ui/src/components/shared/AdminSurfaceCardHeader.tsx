@@ -6,7 +6,7 @@ import type { LucideIcon } from 'lucide-react';
 
 type Props = {
   icon?: LucideIcon;
-  title: string;
+  title: ReactNode;
   /** Desktop-only supporting line — hidden below `lg`. */
   description?: string;
   action?: ReactNode;
@@ -16,8 +16,9 @@ type Props = {
 
 /**
  * Title row for admin surface cards (charts, calendar, transactions, …).
- * Mobile/tablet: compact icon well + vertically centered title (no subtitle).
- * Desktop: larger well; start-aligned when a description is present.
+ * Title left + action right on one row at every breakpoint (segmented toggles stay
+ * compact and right-aligned on phone — never stacked under the title).
+ * Desktop: larger icon well; start-aligned when a description is present.
  */
 export function AdminSurfaceCardHeader({
   icon: Icon,
@@ -30,14 +31,14 @@ export function AdminSurfaceCardHeader({
   return (
     <div
       className={cn(
-        'mb-2.5 flex shrink-0 flex-col gap-2 sm:mb-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3',
+        'mb-2.5 flex shrink-0 items-center justify-between gap-2 sm:mb-3 sm:gap-3',
         description ? 'lg:mb-3.5 lg:items-start' : null,
         className
       )}
     >
       <div
         className={cn(
-          'flex min-w-0 gap-2.5',
+          'flex min-w-0 flex-1 gap-2.5',
           /* Center through tablet — description only appears at lg. */
           description ? 'items-center lg:items-start' : 'items-center'
         )}
@@ -54,7 +55,7 @@ export function AdminSurfaceCardHeader({
           </div>
         ) : null}
         <div className="flex min-w-0 flex-col justify-center">
-          <p className="text-section-title leading-none lg:text-lg lg:leading-snug">{title}</p>
+          <p className="text-card-title">{title}</p>
           {description ? (
             <p className="text-muted-foreground mt-1 hidden text-xs leading-snug lg:block">
               {description}
@@ -62,9 +63,7 @@ export function AdminSurfaceCardHeader({
           ) : null}
         </div>
       </div>
-      {action ? (
-        <div className="shrink-0 self-start sm:self-center lg:self-start">{action}</div>
-      ) : null}
+      {action ? <div className="shrink-0 self-center lg:self-start">{action}</div> : null}
     </div>
   );
 }

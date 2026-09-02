@@ -30,15 +30,17 @@ export function AdminViewToggle<T extends string>({
     <SegmentedControl
       value={value}
       onChange={onChange}
+      size="dense"
+      fullWidth
       options={options.map(({ value: optionValue, label, Icon }) => ({
         value: optionValue,
         label,
         icon: Icon,
       }))}
       hideValues={hideValues}
-      className={cn('w-full shrink-0 sm:w-auto', className)}
-      listClassName="!w-full max-w-none justify-between sm:!w-fit sm:justify-start lg:h-10 lg:min-h-[44px] lg:p-0.5"
-      triggerClassName="min-w-0 flex-1 px-2 sm:min-w-[36px] sm:flex-initial lg:min-w-0 lg:px-2.5"
+      className={cn('w-full shrink-0 lg:w-auto', className)}
+      listClassName="lg:w-fit"
+      triggerClassName="gap-1 px-2 lg:flex-initial lg:px-2.5"
       aria-label={ariaLabel}
     />
   );

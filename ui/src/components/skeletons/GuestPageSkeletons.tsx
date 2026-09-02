@@ -10,7 +10,9 @@ function GuestFormBrandHeaderSkeleton({ title }: { title?: string }) {
       <div className="space-y-2 text-center">
         <Skeleton className="mx-auto h-3 w-36 max-w-[80%] rounded-full" />
         {title ? (
-          <h2 className="text-foreground text-2xl font-bold tracking-tight md:text-3xl">{title}</h2>
+          <h2 className="text-foreground text-xl font-bold tracking-tight sm:text-2xl md:text-3xl">
+            {title}
+          </h2>
         ) : (
           <Skeleton className="mx-auto h-8 w-48 max-w-[80%] rounded-lg" />
         )}

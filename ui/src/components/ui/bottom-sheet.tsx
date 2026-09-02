@@ -21,8 +21,10 @@ type BottomSheetContentProps = Omit<
   /**
    * `scroll` — single padded scroll region (simple sheets).
    * `split` — no body wrapper; caller owns sticky header / scroll / footer.
-   *          Uses a definite height so `flex-1 min-h-0 overflow-y-auto` children scroll
-   *          (max-height alone often fails to create a scrollport on mobile WebKit).
+   *          Pass a definite height (e.g. `h-[92dvh]`) on tall sheets so
+   *          `flex-1 min-h-0 overflow-y-auto` children scroll and footers stay pinned.
+   *          Do not use `h-[min(92dvh,max-content)]` — mobile WebKit treats that as
+   *          content height and scrolls the whole sheet.
    */
   layout?: 'scroll' | 'split';
 };
@@ -41,16 +43,9 @@ const BottomSheetContent = React.forwardRef<
     hideClose={hideClose}
     showHandle
     className={cn(
-      'min-h-0 w-full max-w-none',
-      /**
-       * Split: short when content is short (`max-content`), definite `92dvh` when
-       * overflowing so `flex-1 min-h-0 overflow-y-auto` children can scroll.
-       * max-height alone often clips without a scrollport on mobile WebKit.
-       */
-      layout === 'split' &&
-        'flex h-[min(92dvh,max-content)] max-h-[min(92dvh,100%)] flex-col overflow-hidden',
-      /* Scroll layout: same max-content height trick so the flex-1 body scrolls when tall. */
-      layout === 'scroll' && 'flex h-[min(92dvh,max-content)] max-h-[min(92dvh,100%)] flex-col',
+      'flex min-h-0 w-full max-w-none flex-col overflow-hidden',
+      /* Cap only — callers that need a scrollport (Admin More) pass explicit `h-[…dvh]`. */
+      'max-h-[92dvh]',
       className,
       /* Always edge-to-edge — callers often pass Dialog-oriented max-w tokens. */
       '!inset-x-0 !w-full !max-w-none'
@@ -58,7 +53,8 @@ const BottomSheetContent = React.forwardRef<
     {...props}
   >
     {layout === 'split' ? (
-      children
+      /* Fills space under the drag handle so flex-1 + min-h-0 children get a real scrollport. */
+      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">{children}</div>
     ) : (
       <div
         className={cn(

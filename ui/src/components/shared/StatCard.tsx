@@ -79,7 +79,7 @@ export function StatCard({
               className={cn(
                 valueClassName?.includes('line-clamp')
                   ? 'font-bold tracking-tight'
-                  : 'truncate text-lg font-bold tabular-nums tracking-tight sm:text-2xl',
+                  : 'text-stat-value truncate',
                 valueClassName ?? 'text-foreground'
               )}
             >
