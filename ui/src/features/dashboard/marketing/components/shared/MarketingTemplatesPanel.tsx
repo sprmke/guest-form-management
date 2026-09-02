@@ -30,9 +30,9 @@ import {
 import { useMarketingTemplateThumbnails } from '@/features/dashboard/marketing/hooks/useMarketingTemplateThumbnails';
 import { DESIGN_CUSTOM_SOURCE_PRESET_ID } from '@/features/dashboard/marketing/lib/designAutosave';
 import type { DesignBinding } from '@/features/dashboard/marketing/lib/designCanvasTypes';
-import type { MarketingGuestReview } from '@/features/dashboard/marketing/lib/marketingGuestReview';
 import { isHiddenCategoryId } from '@/features/dashboard/marketing/lib/marketingCatalogHidden';
 import { resolveFormatOptionDimensions } from '@/features/dashboard/marketing/lib/marketingFormats';
+import type { MarketingGuestReview } from '@/features/dashboard/marketing/lib/marketingGuestReview';
 import {
   isDesignCustomTemplate,
   marketingSavedTemplateCategoryId,

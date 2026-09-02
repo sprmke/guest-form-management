@@ -121,8 +121,8 @@ export function VideoPlaybackControls({
   };
 
   return (
-    <div className="border-border bg-background shrink-0 border-t px-3 py-2 sm:px-4">
-      <div className="mx-auto w-full max-w-3xl space-y-2">
+    <div className="border-border bg-background shrink-0 border-t px-3 py-2 max-lg:py-1 sm:px-4">
+      <div className="mx-auto w-full max-w-3xl space-y-2 max-lg:space-y-0.5">
         <VideoSeekSlider
           min={0}
           max={scrubMax}
@@ -142,8 +142,9 @@ export function VideoPlaybackControls({
           }}
         />
 
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="text-muted-foreground text-xs tabular-nums sm:text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 max-lg:flex-nowrap max-lg:justify-center max-lg:gap-1">
+          {/* Time readout is redundant on mobile — the scrubber + timeline show duration. */}
+          <div className="text-muted-foreground text-xs tabular-nums max-lg:hidden sm:text-sm">
             <span className="text-foreground">
               {transport.formatTime(transport.displayCurrentSec)}
             </span>
@@ -229,7 +230,7 @@ function VideoSeekSlider({
   onScrubEnd: () => void;
 }) {
   return (
-    <div className="relative flex min-h-[44px] items-center py-1">
+    <div className="relative flex min-h-[44px] items-center py-1 max-lg:min-h-[30px] max-lg:py-0">
       <div
         className="bg-muted pointer-events-none absolute inset-x-0 h-1.5 overflow-hidden rounded-full"
         aria-hidden
@@ -299,7 +300,7 @@ function PreviewModeChip({
       onClick={onClick}
       aria-pressed={selected}
       className={cn(
-        'min-h-[36px] rounded-md px-2.5 text-xs font-medium transition-colors',
+        'min-h-[44px] rounded-md px-2.5 text-xs font-medium transition-colors max-lg:min-h-[38px] max-lg:px-2',
         selected
           ? 'bg-primary/10 text-primary'
           : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -336,7 +337,7 @@ function TransportButton({
       title={label}
       onClick={onClick}
       className={cn(
-        'text-foreground hover:bg-muted min-h-[44px] min-w-[44px]',
+        'text-foreground hover:bg-muted min-h-[44px] min-w-[44px] max-lg:size-9 max-lg:min-h-[38px] max-lg:min-w-[38px]',
         pressed && 'bg-muted',
         disabled && 'opacity-40',
         className

@@ -33,15 +33,30 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
 
 /** Timeline clip frame sized to the project format (9:16 / 1:1 / 16:9). */
-function timelineClipFrameSize(format: VideoFormat): { width: number; height: number } {
+function timelineClipFrameSize(
+  format: VideoFormat,
+  compact = false
+): { width: number; height: number } {
   const dims = VIDEO_FORMAT_DIMENSIONS[format];
   const aspect = dims.width / dims.height;
   // Portrait needs more height so 9:16 reads clearly; landscape stays shorter.
-  const height = format === 'instagram-story' ? 140 : format === 'instagram-post' ? 112 : 88;
-  const width = Math.max(64, Math.round(height * aspect));
+  // Compact = phones, where a 140px clip strip eats the whole editor.
+  const height = compact
+    ? format === 'instagram-story'
+      ? 78
+      : format === 'instagram-post'
+        ? 66
+        : 52
+    : format === 'instagram-story'
+      ? 140
+      : format === 'instagram-post'
+        ? 112
+        : 88;
+  const width = Math.max(compact ? 52 : 64, Math.round(height * aspect));
   return { width, height };
 }
 
@@ -64,9 +79,10 @@ export function VideoTimeline({
   isPlaying = false,
   brandColor,
 }: Props) {
+  const isBelowLg = useIsBelowLg();
   const totalFrames = videoProjectDurationInFrames(project);
   const formatLabel = VIDEO_FORMAT_DIMENSIONS[project.format].aspect;
-  const addFrame = timelineClipFrameSize(project.format);
+  const addFrame = timelineClipFrameSize(project.format, isBelowLg);
   const { getSceneThumbnailUrl, isSceneThumbnailLoading } = useVideoSceneThumbnails(
     project,
     brandColor
@@ -100,7 +116,9 @@ export function VideoTimeline({
 
   return (
     <div className="border-border bg-background shrink-0 border-t">
-      <div className="text-muted-foreground flex items-center justify-between gap-2 px-3 py-2 text-xs">
+      {/* Redundant on mobile (format is in the sidebar, duration on the scrubber) —
+          hidden so the video preview gets the vertical space instead. */}
+      <div className="text-muted-foreground flex items-center justify-between gap-2 px-3 py-2 text-xs max-lg:hidden">
         <span className="font-medium">{formatLabel}</span>
         <span>
           {project.scenes.length} clip{project.scenes.length === 1 ? '' : 's'} ·{' '}
@@ -108,7 +126,7 @@ export function VideoTimeline({
         </span>
       </div>
 
-      <div className="overflow-x-auto px-3 pb-3">
+      <div className="overflow-x-auto px-3 pb-3 max-lg:pb-2">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext
             items={project.scenes.map((scene) => scene.id)}
@@ -121,6 +139,7 @@ export function VideoTimeline({
                   scene={scene}
                   index={index}
                   format={project.format}
+                  compact={isBelowLg}
                   selected={selectedSceneId === scene.id}
                   playing={isPlaying && selectedSceneId === scene.id}
                   canRemove={project.scenes.length > 1}
@@ -153,6 +172,7 @@ function SortableTimelineClip({
   scene,
   index,
   format,
+  compact = false,
   selected,
   playing,
   canRemove,
@@ -164,6 +184,7 @@ function SortableTimelineClip({
   scene: VideoScene;
   index: number;
   format: VideoFormat;
+  compact?: boolean;
   selected: boolean;
   playing: boolean;
   canRemove: boolean;
@@ -176,7 +197,7 @@ function SortableTimelineClip({
     id: scene.id,
   });
 
-  const frame = timelineClipFrameSize(format);
+  const frame = timelineClipFrameSize(format, compact);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -260,7 +281,9 @@ function SortableTimelineClip({
         </span>
       </div>
 
-      {canRemove ? (
+      {/* Compact (phone): a small delete chip only on the selected clip so it never
+          blankets the tiny thumbnail. Larger screens keep the hover-reveal 44px control. */}
+      {canRemove && (!compact || selected) ? (
         <button
           type="button"
           onClick={(event) => {
@@ -269,10 +292,15 @@ function SortableTimelineClip({
           }}
           aria-label={`Remove ${scene.label}`}
           className={cn(
-            'absolute bottom-1 right-1 z-20 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md',
+            'absolute z-20 flex items-center justify-center rounded-md',
             'bg-black/55 text-white/90 backdrop-blur-sm transition-opacity',
             'hover:bg-black/75 hover:text-white',
-            'opacity-100 sm:opacity-0 sm:focus-visible:opacity-100 sm:group-hover/clip:opacity-100'
+            compact
+              ? 'right-1 top-1 size-8'
+              : cn(
+                  'bottom-1 right-1 min-h-[44px] min-w-[44px]',
+                  'opacity-100 sm:opacity-0 sm:focus-visible:opacity-100 sm:group-hover/clip:opacity-100'
+                )
           )}
         >
           <Trash2 className="size-3.5" aria-hidden />

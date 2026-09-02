@@ -24,12 +24,18 @@ export const VIDEO_FORMAT_DIMENSIONS: Record<
   },
 };
 
-/** Preview block (sub-header + player + controls). Timeline sits below this block. */
-export const VIDEO_PREVIEW_CONTAINER_MIN_HEIGHT_CLASS = 'min-h-[480px] lg:min-h-[540px]';
+/**
+ * Preview block (sub-header + player + controls). Timeline sits below this block.
+ * The mobile floor is deliberately low so the block is `flex-1`-flexible: the preview
+ * stage then claims whatever height is left after the compact controls + timeline,
+ * rather than being pinned to a tall minimum that forces the whole column to scroll.
+ */
+export const VIDEO_PREVIEW_CONTAINER_MIN_HEIGHT_CLASS =
+  'min-h-[180px] sm:min-h-[380px] lg:min-h-[540px]';
 
 /** Muted preview shell (`VideoPreviewWorkspace` root). */
 export const VIDEO_PREVIEW_SHELL_MIN_HEIGHT_CLASS =
-  'min-h-[380px] lg:min-h-[440px] xl:min-h-[480px]';
+  'min-h-[150px] sm:min-h-[360px] lg:min-h-[440px] xl:min-h-[480px]';
 
 export const VIDEO_FORMAT_OPTIONS = (Object.keys(VIDEO_FORMAT_DIMENSIONS) as VideoFormat[]).map(
   (key) => ({

@@ -4,10 +4,15 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   ChevronLeft,
   Download,
+  LayoutTemplate,
   Loader2,
   Maximize2,
   Minimize2,
+  Redo2,
+  RotateCcw,
   Send,
+  Sparkles,
+  Undo2,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
@@ -21,6 +26,7 @@ import {
 } from '@/features/dashboard/marketing/components/shared/MarketingAiGeneratePanel';
 import { MarketingAutoSaveStatus } from '@/features/dashboard/marketing/components/shared/MarketingAutoSaveStatus';
 import { MarketingEditorHistoryControls } from '@/features/dashboard/marketing/components/shared/MarketingEditorHistoryControls';
+import { MarketingEditorMobileToolbar } from '@/features/dashboard/marketing/components/shared/MarketingEditorMobileToolbar';
 import { MarketingEditorSidebar } from '@/features/dashboard/marketing/components/shared/MarketingEditorSidebar';
 import type { MarketingFormatOption } from '@/features/dashboard/marketing/components/shared/MarketingFormatPicker';
 import { MarketingPreviewHeader } from '@/features/dashboard/marketing/components/shared/MarketingPreviewHeader';
@@ -140,12 +146,13 @@ import { registerVideoThumbnailPlaybackPause } from '@/features/dashboard/market
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOrgSettings } from '@/features/dashboard/org/hooks/useOrgSettings';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
-import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
+import { TierBadge, TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
 import { formatMoneyCompact } from '@/utils/format/currency';
 
@@ -173,6 +180,10 @@ export function VideoEditor({ onPublish }: Props) {
   const queryClient = useQueryClient();
   const generateTemplate = useGenerateMarketingTemplate();
 
+  const isBelowLg = useIsBelowLg();
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+  // Picking a template on mobile drops the user back to the preview.
+  const closeMobilePanel = useCallback(() => setMobilePanelOpen(false), []);
   const [category, setCategory] = useState<string>('soft-stay');
   const [selectedId, setSelectedId] = useState('quiet-morning');
   const [savedTemplateId, setSavedTemplateId] = useState<string | null>(null);
@@ -1008,44 +1019,50 @@ export function VideoEditor({ onPublish }: Props) {
     () => (
       <>
         <MarketingAutoSaveStatus status={autoSaveStatus} errorMessage={autoSaveError} />
-        {canEditContent ? (
-          <TierBadgeAnchor feature="marketingStudio">
-            <Button
-              variant="outline"
-              className="min-h-[44px] gap-2"
-              disabled={exporting || !hasProject}
-              onClick={() => void handleDownload()}
-            >
-              {exporting ? (
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-              ) : (
-                <Download className="size-4" aria-hidden />
-              )}
-              Download MP4
-            </Button>
-          </TierBadgeAnchor>
-        ) : null}
-        {onPublish && canPublish ? (
-          <TierBadgeAnchor feature="marketingPublishLimitPerGroup">
-            <Button
-              className="min-h-[44px] gap-2"
-              disabled={exporting || !hasProject}
-              onClick={() => void handlePublish()}
-            >
-              {exporting ? (
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-              ) : (
-                <Send className="size-4" aria-hidden />
-              )}
-              {MARKETING_PUBLISH_META_LABEL}
-            </Button>
-          </TierBadgeAnchor>
-        ) : null}
+        {/* Below lg these move into MarketingEditorMobileToolbar. */}
+        {isBelowLg ? null : (
+          <>
+            {canEditContent ? (
+              <TierBadgeAnchor feature="marketingStudio">
+                <Button
+                  variant="outline"
+                  className="min-h-[44px] gap-2"
+                  disabled={exporting || !hasProject}
+                  onClick={() => void handleDownload()}
+                >
+                  {exporting ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Download className="size-4" aria-hidden />
+                  )}
+                  Download MP4
+                </Button>
+              </TierBadgeAnchor>
+            ) : null}
+            {onPublish && canPublish ? (
+              <TierBadgeAnchor feature="marketingPublishLimitPerGroup">
+                <Button
+                  className="min-h-[44px] gap-2"
+                  disabled={exporting || !hasProject}
+                  onClick={() => void handlePublish()}
+                >
+                  {exporting ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Send className="size-4" aria-hidden />
+                  )}
+                  {MARKETING_PUBLISH_META_LABEL}
+                </Button>
+              </TierBadgeAnchor>
+            ) : null}
+          </>
+        )}
       </>
     ),
     [
       autoSaveStatus,
       autoSaveError,
+      isBelowLg,
       exporting,
       hasProject,
       onPublish,
@@ -1062,6 +1079,10 @@ export function VideoEditor({ onPublish }: Props) {
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
       <MarketingEditorSidebar
         layoutKey="video"
+        mobileVariant="sheet"
+        mobileOpen={mobilePanelOpen}
+        onMobileOpenChange={setMobilePanelOpen}
+        mobileTitle={showEditorSettings ? templateDisplayName || 'Scene settings' : 'Templates'}
         header={
           showEditorSettings ? (
             <div className="flex items-center gap-2">
@@ -1114,7 +1135,10 @@ export function VideoEditor({ onPublish }: Props) {
             onCategoryChange={setCategory}
             presetTemplates={presetTemplates}
             selectedId={selectedId}
-            onSelectPreset={(templateId) => applyTemplate(templateId, false)}
+            onSelectPreset={(templateId) => {
+              applyTemplate(templateId, false);
+              closeMobilePanel();
+            }}
             onCustomizePreset={(templateId) => applyTemplate(templateId, true)}
             savedRecords={savedTemplates}
             selectedSavedId={
@@ -1122,7 +1146,10 @@ export function VideoEditor({ onPublish }: Props) {
                 ? savedTemplateId
                 : null
             }
-            onSelectSaved={applySavedVideoTemplate}
+            onSelectSaved={(record) => {
+              applySavedVideoTemplate(record);
+              closeMobilePanel();
+            }}
             onSavedTemplate={handleSavedVideoTemplateCreated}
             designJsonForSave={designJson}
             aspectPreset={format}
@@ -1145,6 +1172,7 @@ export function VideoEditor({ onPublish }: Props) {
                 }
                 return applyGuestReviewToVideoProject(prev, review, binding);
               });
+              closeMobilePanel();
             }}
             captureSaveThumbnail={async () => {
               if (!project) return null;
@@ -1154,7 +1182,7 @@ export function VideoEditor({ onPublish }: Props) {
         )}
       </MarketingEditorSidebar>
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain max-lg:pb-1.5">
         {project ? (
           <>
             <div
@@ -1165,85 +1193,89 @@ export function VideoEditor({ onPublish }: Props) {
             >
               <MarketingPreviewHeader
                 leading={
-                  <MarketingEditorHistoryControls
-                    canUndo={canUndo}
-                    canRedo={canRedo}
-                    onUndo={undo}
-                    onRedo={redo}
-                    onReset={handleResetProject}
-                  />
+                  isBelowLg ? undefined : (
+                    <MarketingEditorHistoryControls
+                      canUndo={canUndo}
+                      canRedo={canRedo}
+                      onUndo={undo}
+                      onRedo={redo}
+                      onReset={handleResetProject}
+                    />
+                  )
                 }
                 actions={
-                  <TooltipProvider delayDuration={300}>
-                    <div className="border-border bg-background flex items-center gap-1 rounded-md border px-1 py-0.5">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 min-h-[44px] w-9 min-w-[44px]"
-                            onClick={() => setRelativeZoom((prev) => stepVideoZoomOut(prev))}
-                            disabled={relativeZoom <= VIDEO_MIN_RELATIVE_ZOOM}
-                            aria-label="Zoom out"
-                          >
-                            <ZoomOut className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Zoom Out</TooltipContent>
-                      </Tooltip>
-                      <span className="min-w-[48px] text-center text-xs font-medium tabular-nums">
-                        {relativeZoom}%
-                      </span>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 min-h-[44px] w-9 min-w-[44px]"
-                            onClick={() => setRelativeZoom((prev) => stepVideoZoomIn(prev))}
-                            disabled={relativeZoom >= VIDEO_MAX_RELATIVE_ZOOM}
-                            aria-label="Zoom in"
-                          >
-                            <ZoomIn className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Zoom In</TooltipContent>
-                      </Tooltip>
-                      <div className="bg-border mx-1 hidden h-4 w-px sm:block" />
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 min-h-[44px] w-9 min-w-[44px]"
-                            onClick={handleFitToView}
-                            aria-label="Fit to view"
-                          >
-                            <Minimize2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Fit to View</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 min-h-[44px] w-9 min-w-[44px]"
-                            onClick={handleToggleFullscreen}
-                            aria-label="Fullscreen"
-                          >
-                            <Maximize2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Fullscreen</TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </TooltipProvider>
+                  isBelowLg ? undefined : (
+                    <TooltipProvider delayDuration={300}>
+                      <div className="border-border bg-background flex items-center gap-1 rounded-md border px-1 py-0.5">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 min-h-[44px] w-9 min-w-[44px]"
+                              onClick={() => setRelativeZoom((prev) => stepVideoZoomOut(prev))}
+                              disabled={relativeZoom <= VIDEO_MIN_RELATIVE_ZOOM}
+                              aria-label="Zoom out"
+                            >
+                              <ZoomOut className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Zoom Out</TooltipContent>
+                        </Tooltip>
+                        <span className="min-w-[48px] text-center text-xs font-medium tabular-nums">
+                          {relativeZoom}%
+                        </span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 min-h-[44px] w-9 min-w-[44px]"
+                              onClick={() => setRelativeZoom((prev) => stepVideoZoomIn(prev))}
+                              disabled={relativeZoom >= VIDEO_MAX_RELATIVE_ZOOM}
+                              aria-label="Zoom in"
+                            >
+                              <ZoomIn className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Zoom In</TooltipContent>
+                        </Tooltip>
+                        <div className="bg-border mx-1 hidden h-4 w-px sm:block" />
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 min-h-[44px] w-9 min-w-[44px]"
+                              onClick={handleFitToView}
+                              aria-label="Fit to view"
+                            >
+                              <Minimize2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Fit to View</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 min-h-[44px] w-9 min-w-[44px]"
+                              onClick={handleToggleFullscreen}
+                              aria-label="Fullscreen"
+                            >
+                              <Maximize2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Fullscreen</TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </TooltipProvider>
+                  )
                 }
               />
               <VideoPreviewWorkspace
@@ -1304,6 +1336,107 @@ export function VideoEditor({ onPublish }: Props) {
           </div>
         )}
       </div>
+
+      {/* Mobile editor dock (max-lg) — Templates/Scene panel toggle + zoom + overflow.
+          Hidden while the OS fullscreen preview is active. */}
+      <MarketingEditorMobileToolbar
+        panelLabel={showEditorSettings ? 'Scene' : 'Templates'}
+        panelIcon={LayoutTemplate}
+        panelOpen={mobilePanelOpen}
+        onTogglePanel={() => setMobilePanelOpen((open) => !open)}
+        controls={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-9 min-h-[44px] min-w-[44px]"
+              aria-label="Zoom out"
+              onClick={() => setRelativeZoom((prev) => stepVideoZoomOut(prev))}
+              disabled={relativeZoom <= VIDEO_MIN_RELATIVE_ZOOM}
+            >
+              <ZoomOut className="size-4" aria-hidden />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-9 min-h-[44px] min-w-[44px]"
+              aria-label="Zoom in"
+              onClick={() => setRelativeZoom((prev) => stepVideoZoomIn(prev))}
+              disabled={relativeZoom >= VIDEO_MAX_RELATIVE_ZOOM}
+            >
+              <ZoomIn className="size-4" aria-hidden />
+            </Button>
+          </>
+        }
+        overflowItems={[
+          {
+            key: 'undo',
+            label: 'Undo',
+            icon: <Undo2 className="size-5" aria-hidden />,
+            disabled: !canUndo,
+            onSelect: undo,
+          },
+          {
+            key: 'redo',
+            label: 'Redo',
+            icon: <Redo2 className="size-5" aria-hidden />,
+            disabled: !canRedo,
+            onSelect: redo,
+          },
+          {
+            key: 'fit',
+            label: 'Fit to view',
+            icon: <Minimize2 className="size-5" aria-hidden />,
+            onSelect: handleFitToView,
+          },
+          {
+            key: 'fullscreen',
+            label: 'Fullscreen preview',
+            icon: <Maximize2 className="size-5" aria-hidden />,
+            onSelect: handleToggleFullscreen,
+          },
+          {
+            key: 'reset',
+            label: 'Reset project',
+            icon: <RotateCcw className="size-5" aria-hidden />,
+            onSelect: handleResetProject,
+          },
+          {
+            key: 'ai',
+            label: 'Generate with AI',
+            icon: <Sparkles className="size-5" aria-hidden />,
+            trailing: <TierBadge feature="aiMarketingGeneration" />,
+            disabled: aiGenerateBusy || generateTemplate.isPending,
+            onSelect: () => setAiGenerateOpen(true),
+          },
+          ...(canEditContent
+            ? [
+                {
+                  key: 'download',
+                  label: exporting ? 'Exporting…' : 'Download MP4',
+                  icon: <Download className="size-5" aria-hidden />,
+                  trailing: <TierBadge feature="marketingStudio" />,
+                  disabled: exporting || !hasProject,
+                  onSelect: () => void handleDownload(),
+                },
+              ]
+            : []),
+          ...(onPublish && canPublish
+            ? [
+                {
+                  key: 'publish',
+                  label: MARKETING_PUBLISH_META_LABEL,
+                  icon: <Send className="size-5" aria-hidden />,
+                  trailing: <TierBadge feature="marketingPublishLimitPerGroup" />,
+                  disabled: exporting || !hasProject,
+                  onSelect: () => void handlePublish(),
+                },
+              ]
+            : []),
+        ]}
+      />
 
       <MarketingAiGeneratePanel
         open={aiGenerateOpen}

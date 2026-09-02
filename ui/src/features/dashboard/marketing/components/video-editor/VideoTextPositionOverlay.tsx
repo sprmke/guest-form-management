@@ -173,7 +173,11 @@ function OverlayLayerTarget({
           <span
             role="presentation"
             aria-hidden
-            className="border-primary bg-background pointer-events-auto absolute -bottom-[5px] -right-[5px] size-3 cursor-nwse-resize rounded-[2px] border-2 shadow-sm"
+            className={cn(
+              'border-primary bg-background pointer-events-auto absolute -bottom-[5px] -right-[5px] size-3 cursor-nwse-resize touch-none rounded-[2px] border-2 shadow-sm',
+              // Expand the touch target to ~44px without growing the visible dot.
+              "after:absolute after:-inset-[16px] after:content-['']"
+            )}
             onPointerDown={onResizePointerDown}
           />
         ) : null}

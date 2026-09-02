@@ -37,6 +37,7 @@ import { resolveVideoTypographyContext } from '@/features/dashboard/marketing/li
 import { scaleForVideoFormat } from '@/features/dashboard/marketing/lib/video/videoTextSlotContent';
 import { PlanGateWatermarkOverlay } from '@/features/dashboard/plans/components/PlanGateWatermarkOverlay';
 
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
 
 import type { PlayerRef } from '@remotion/player';
@@ -98,6 +99,7 @@ export const VideoPreviewWorkspace = forwardRef<VideoPreviewWorkspaceHandle, Pro
     },
     ref
   ) {
+    const isBelowLg = useIsBelowLg();
     const shellRef = useRef<HTMLDivElement>(null);
     const previewAreaRef = useRef<HTMLDivElement>(null);
     const panSessionRef = useRef<PanSession | null>(null);
@@ -112,7 +114,15 @@ export const VideoPreviewWorkspace = forwardRef<VideoPreviewWorkspaceHandle, Pro
     const [fitNonce, setFitNonce] = useState(0);
 
     const dimensions = VIDEO_FORMAT_DIMENSIONS[format];
-    const previewMaxWidth = format === 'landscape' ? 640 : format === 'instagram-post' ? 400 : 360;
+    // Desktop caps the preview so it doesn't sprawl; on phones the editor column is
+    // already narrow, so let the frame use the full available width.
+    const previewMaxWidth = isBelowLg
+      ? 4096
+      : format === 'landscape'
+        ? 640
+        : format === 'instagram-post'
+          ? 400
+          : 360;
     const compositionScale = scaleForVideoFormat(dimensions.width, dimensions.height);
     const zoomFactor = Math.max(0.5, Math.min(2, relativeZoom / 100));
 
@@ -250,26 +260,32 @@ export const VideoPreviewWorkspace = forwardRef<VideoPreviewWorkspaceHandle, Pro
       }
     }, []);
 
-    const handlePanPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-      if (event.button !== 0) return;
-      const target = event.target as Element | null;
-      // Layer drag / resize stays on the video canvas — don't steal those gestures.
-      if (target?.closest?.('[data-video-layer]')) return;
+    const handlePanPointerDown = useCallback(
+      (event: React.PointerEvent<HTMLDivElement>) => {
+        if (event.button !== 0) return;
+        const target = event.target as Element | null;
+        // Layer drag / resize stays on the video canvas — don't steal those gestures.
+        if (target?.closest?.('[data-video-layer]')) return;
+        // On touch, only hijack the gesture when there is something to pan (zoomed in) —
+        // otherwise let the page / sheet scroll normally.
+        if (event.pointerType === 'touch' && zoomFactor <= 1) return;
 
-      const node = previewAreaRef.current;
-      if (!node) return;
+        const node = previewAreaRef.current;
+        if (!node) return;
 
-      panSessionRef.current = {
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        scrollLeft: node.scrollLeft,
-        scrollTop: node.scrollTop,
-      };
-      setIsPanning(true);
-      node.setPointerCapture(event.pointerId);
-      event.preventDefault();
-    }, []);
+        panSessionRef.current = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          scrollLeft: node.scrollLeft,
+          scrollTop: node.scrollTop,
+        };
+        setIsPanning(true);
+        node.setPointerCapture(event.pointerId);
+        event.preventDefault();
+      },
+      [zoomFactor]
+    );
 
     const handlePanPointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
       const session = panSessionRef.current;
@@ -314,7 +330,9 @@ export const VideoPreviewWorkspace = forwardRef<VideoPreviewWorkspaceHandle, Pro
           className={cn(
             'relative min-h-0 flex-1 overflow-auto overscroll-contain',
             SCROLLBAR_HIDDEN_CLASS,
-            isPanning ? 'cursor-grabbing' : 'cursor-grab'
+            isPanning ? 'cursor-grabbing' : 'cursor-grab',
+            // When zoomed in on touch, take the gesture for panning instead of scroll.
+            zoomFactor > 1 && 'touch-none'
           )}
           onPointerDown={handlePanPointerDown}
           onPointerMove={handlePanPointerMove}

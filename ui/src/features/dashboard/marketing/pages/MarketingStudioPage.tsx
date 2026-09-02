@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from 'react';
 
+import { useAdminLayoutFillMain } from '@/features/dashboard/bookings/components/AdminLayout';
 import { MarketingCalendarSection } from '@/features/dashboard/marketing/components/calendar-builder/MarketingCalendarSection';
 import type { DesignExportPayload } from '@/features/dashboard/marketing/components/design-editor/DesignEditor';
 import {
@@ -43,6 +44,10 @@ function StudioTabFallback() {
 }
 
 export function MarketingStudioPage() {
+  // Immersive editor — fill the admin main column on mobile (flex chain, not viewport
+  // math) so the studio canvas gets real height instead of ~50% of `100vh`.
+  useAdminLayoutFillMain(true);
+
   const [tab, setTab] = useState('calendar');
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishMedia, setPublishMedia] = useState<PublishMedia | null>(null);
