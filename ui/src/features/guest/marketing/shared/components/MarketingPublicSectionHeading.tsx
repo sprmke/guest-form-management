@@ -21,7 +21,7 @@ export function MarketingPublicSectionHeading({
     <header className={cn(align === 'center' && 'mx-auto max-w-2xl text-center', className)}>
       <h2
         className={cn(
-          'text-foreground text-2xl font-bold tracking-tight sm:text-3xl',
+          'text-foreground text-xl font-bold tracking-tight sm:text-2xl md:text-3xl',
           titleClassName
         )}
       >

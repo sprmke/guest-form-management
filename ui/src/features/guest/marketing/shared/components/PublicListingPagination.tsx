@@ -114,7 +114,7 @@ export function PublicListingSectionHeader({
         withTopBorder && 'border-border border-t pt-8 sm:pt-10'
       )}
     >
-      <h2 className="text-foreground min-w-0 text-lg font-bold sm:text-xl">{title}</h2>
+      <h2 className="text-foreground min-w-0 text-base font-bold sm:text-lg">{title}</h2>
       <PublicListingPagination
         variant="inline"
         page={page}

@@ -1,5 +1,9 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
+import { SlidersHorizontal } from 'lucide-react';
+
+import { marketingEditorScrollClearanceClassName } from '@/features/dashboard/marketing/components/shared/marketingEditorDock';
+import { MarketingEditorMobileToolbar } from '@/features/dashboard/marketing/components/shared/MarketingEditorMobileToolbar';
 import { MarketingEditorSidebar } from '@/features/dashboard/marketing/components/shared/MarketingEditorSidebar';
 import { useMarketingSidebarLayout } from '@/features/dashboard/marketing/hooks/useMarketingSidebarLayout';
 import { PageEditorPreviewScrollProvider } from '@/features/dashboard/page-editor/lib/pageEditorPreviewScroll';
@@ -17,6 +21,7 @@ type Props = {
 
 export function PageEditorShell({ header, controls, preview, className }: Props) {
   const { setCollapsed } = useMarketingSidebarLayout('page-editor');
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
   // Always open the controls sidebar when entering the editor (mobile preview fits beside it).
   useEffect(() => {
@@ -27,7 +32,7 @@ export function PageEditorShell({ header, controls, preview, className }: Props)
     <PageEditorPreviewScrollProvider>
       <div
         className={cn(
-          'border-border bg-card flex h-[calc(100vh-120px)] min-h-[520px] flex-col overflow-hidden rounded-xl border',
+          'border-border bg-card flex min-h-0 flex-1 flex-col overflow-hidden border max-lg:rounded-none max-lg:border-x-0 lg:h-[calc(100vh-120px)] lg:min-h-[520px] lg:flex-none lg:rounded-xl',
           className
         )}
       >
@@ -37,14 +42,30 @@ export function PageEditorShell({ header, controls, preview, className }: Props)
             layoutKey="page-editor"
             fixedWidth={PAGE_EDITOR_SIDEBAR_WIDTH}
             resizable={false}
+            mobileVariant="sheet"
+            mobileOpen={mobilePanelOpen}
+            onMobileOpenChange={setMobilePanelOpen}
+            mobileTitle="Edit content"
           >
             {controls}
           </MarketingEditorSidebar>
-          <div className="bg-muted/20 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <div
+            className={cn(
+              'bg-muted/20 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
+              marketingEditorScrollClearanceClassName
+            )}
+          >
             {preview}
           </div>
         </div>
       </div>
+
+      <MarketingEditorMobileToolbar
+        panelLabel="Edit content"
+        panelIcon={SlidersHorizontal}
+        panelOpen={mobilePanelOpen}
+        onTogglePanel={() => setMobilePanelOpen((open) => !open)}
+      />
     </PageEditorPreviewScrollProvider>
   );
 }

@@ -12,11 +12,11 @@ import {
 import { getLastOrgSlug, orgDashboardPath } from '@/features/dashboard/org/lib/tenantPaths';
 
 import { useTheme } from '@/components/theme/ThemeProvider';
+import { platformWordmarkParts } from '@/lib/platformBranding';
 import {
   resolveBrandTransitionGradientStops,
   resolveBrandWordmarkTextColors,
 } from '@/lib/theme/brandColor';
-import { platformWordmarkParts } from '@/lib/platformBranding';
 import { cn } from '@/lib/utils';
 
 // Curtain close/open duration must match the `.mode-transition-curtain` transition in index.css.

@@ -177,7 +177,7 @@ serve(async (req) => {
   } catch (err) {
     if (err instanceof Response) return err;
     console.error('[calendar-sync-cron] fatal:', err);
-    await capturePostHogException(err, { logPrefix: 'cron:calendar-sync-cron' });
+    await capturePostHogException(err, { logPrefix: 'cron:calendar-sync-cron', request: req });
     return json(req, { success: false, error: (err as Error).message }, 500);
   }
 });

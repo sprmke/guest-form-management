@@ -1,3 +1,6 @@
+import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
+
 import {
   absoluteGuestParkingFindUrl,
   absoluteGuestParkingOwnDefaultUrl,
@@ -11,8 +14,6 @@ import {
 
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
-import dayjs from 'dayjs';
-import customParseFormat from 'dayjs/plugin/customParseFormat';
 
 dayjs.extend(customParseFormat);
 

@@ -248,7 +248,7 @@ export function PublicPropertyCalendar({
         <h2
           className={cn(
             'font-bold tracking-tight',
-            compact ? 'text-lg sm:text-xl' : embedded ? 'text-xl' : 'text-2xl',
+            compact ? 'text-base sm:text-lg' : embedded ? 'text-lg' : 'text-xl sm:text-2xl',
             isCustom ? 'text-green-900' : 'text-foreground'
           )}
         >

@@ -9,6 +9,7 @@ import { PropertyDetailPage } from '@/features/guest/marketing/pages/PropertyDet
 import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/hooks/usePublicPropertyDetail';
 import type { PropertyLandingSectionConfig } from '@/features/guest/marketing/properties/types/publicProperty';
 
+import { useAdminLayoutFillMain } from '@/features/dashboard/bookings/components/AdminLayout';
 import {
   appSettingsToFormValues,
   useAppSettings,
@@ -82,6 +83,10 @@ const PAGE_EDITOR_META = {
 } as const;
 
 function PageEditorChrome({ children }: { children: ReactNode }) {
+  // Immersive editor — fill the admin main column on mobile so the preview gets real
+  // height instead of ~50% of the viewport beside the stacked controls.
+  useAdminLayoutFillMain(true);
+
   return (
     <AdminMobilePage
       title="Public Pages"

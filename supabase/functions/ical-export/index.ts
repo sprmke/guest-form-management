@@ -138,7 +138,7 @@ serve(async (req) => {
     });
   } catch (err) {
     console.error('[ical-export] error:', err);
-    await capturePostHogException(err, { logPrefix: 'ical-export' });
+    await capturePostHogException(err, { logPrefix: 'ical-export', request: req });
     // Still a 404 — never leak internals on this public endpoint.
     return notFound(req);
   }
