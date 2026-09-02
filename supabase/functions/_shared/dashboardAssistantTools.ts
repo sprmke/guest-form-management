@@ -60,7 +60,7 @@ import { resolveInboxAccess } from './inboxAccess.ts';
 import {
   InboxSendReplyError,
   loadInboxConversationInScope,
-  sendInboxTextReply,
+  sendInboxReply,
 } from './inboxSendReplyAction.ts';
 import { resolveMetaConnectionIdsForScope } from './metaInboxScope.ts';
 import { loadParkingPricing, saveParkingPricing } from './parkingPricing.ts';
@@ -153,19 +153,123 @@ import {
   firstAttachedPropertyId,
   type AttachedContextItem,
 } from './dashboardAssistantAttachedContext.ts';
+import {
+  APPLY_BOOKING_ATTACHMENT_TOOL_DECLARATION,
+  SEND_WORKFLOW_EMAIL_TOOL_DECLARATION,
+  executeApplyBookingAttachment,
+  executeSendWorkflowEmail,
+  toolProposeApplyBookingAttachment,
+  toolProposeSendWorkflowEmail,
+} from './dashboardAssistantBookingAssetTools.ts';
+import {
+  APPLY_APP_SETTINGS_ATTACHMENT_TOOL_DECLARATION,
+  APPLY_ORG_LOGO_TOOL_DECLARATION,
+  APPLY_PARKING_MEDIA_TOOL_DECLARATION,
+  APPLY_PROPERTY_MEDIA_TOOL_DECLARATION,
+  APPLY_TEMPLATE_ATTACHMENT_TOOL_DECLARATION,
+  executeApplyAppSettingsAttachment,
+  executeApplyOrgLogo,
+  executeApplyParkingMedia,
+  executeApplyPropertyMedia,
+  executeApplyTemplateAttachment,
+  toolProposeApplyAppSettingsAttachment,
+  toolProposeApplyOrgLogo,
+  toolProposeApplyParkingMedia,
+  toolProposeApplyPropertyMedia,
+  toolProposeApplyTemplateAttachment,
+} from './dashboardAssistantHostMediaTools.ts';
+import {
+  APPLY_LISTING_AUTHORIZATION_ATTACHMENT_TOOL_DECLARATION,
+  APPLY_ORG_VERIFICATION_ATTACHMENT_TOOL_DECLARATION,
+  STAGE_GCASH_QR_TOOL_DECLARATION,
+  SUBMIT_LISTING_AUTHORIZATION_TOOL_DECLARATION,
+  SUBMIT_ORG_VERIFICATION_TOOL_DECLARATION,
+  executeApplyListingAuthorizationAttachment,
+  executeApplyOrgVerificationAttachment,
+  executeStageGcashQr,
+  executeSubmitListingAuthorization,
+  executeSubmitOrgVerification,
+  toolProposeApplyListingAuthorizationAttachment,
+  toolProposeApplyOrgVerificationAttachment,
+  toolProposeStageGcashQr,
+  toolProposeSubmitListingAuthorization,
+  toolProposeSubmitOrgVerification,
+} from './dashboardAssistantVerificationTools.ts';
+import {
+  executeCreateSupportTicket,
+  GET_HOST_ANNOUNCEMENT_TOOL_DECLARATION,
+  GET_ORG_PLAN_SNAPSHOT_TOOL_DECLARATION,
+  GET_SUPPORT_TICKET_TOOL_DECLARATION,
+  LIST_HOST_ANNOUNCEMENTS_TOOL_DECLARATION,
+  LIST_SUPPORT_TICKETS_TOOL_DECLARATION,
+  PROPOSE_CREATE_SUPPORT_TICKET_TOOL_DECLARATION,
+  resolveInboxReplyAttachments,
+  toolGetHostAnnouncement,
+  toolGetOrgPlanSnapshot,
+  toolGetSupportTicket,
+  toolListHostAnnouncements,
+  toolListSupportTickets,
+  toolProposeCreateSupportTicket,
+} from './dashboardAssistantPhase4Tools.ts';
+import {
+  GET_CHANNEL_SYNC_STATUS_TOOL_DECLARATION,
+  GET_PUBLIC_PAGES_STATUS_TOOL_DECLARATION,
+  RUN_CHANNEL_SYNC_TOOL_DECLARATION,
+  UPDATE_PUBLIC_PAGE_TEMPLATE_TOOL_DECLARATION,
+  executeRunChannelSync,
+  executeUpdatePublicPageTemplate,
+  toolGetChannelSyncStatus,
+  toolGetPublicPagesStatus,
+  toolProposeRunChannelSync,
+  toolProposeUpdatePublicPageTemplate,
+} from './dashboardAssistantOpsTools.ts';
+import {
+  DELETE_FINANCE_LINE_ITEM_TOOL_DECLARATION,
+  DELETE_MAINTENANCE_ITEM_TOOL_DECLARATION,
+  UPDATE_FINANCE_LINE_ITEM_TOOL_DECLARATION,
+  UPDATE_MAINTENANCE_ITEM_TOOL_DECLARATION,
+  executeDeleteFinanceLineItem,
+  executeDeleteMaintenanceItem,
+  executeUpdateFinanceLineItem,
+  executeUpdateMaintenanceItem,
+  toolProposeDeleteFinanceLineItem,
+  toolProposeDeleteMaintenanceItem,
+  toolProposeUpdateFinanceLineItem,
+  toolProposeUpdateMaintenanceItem,
+} from './dashboardAssistantFinanceMaintenanceTools.ts';
+import {
+  GET_NOTIFICATION_PREFERENCES_TOOL_DECLARATION,
+  GET_TELEGRAM_NOTIFICATION_SETTINGS_TOOL_DECLARATION,
+  GUIDE_CREATE_BOOKING_TOOL_DECLARATION,
+  GUIDE_IMPORT_BOOKINGS_TOOL_DECLARATION,
+  GUIDE_NOTIFICATION_SETTINGS_TOOL_DECLARATION,
+  GUIDE_TELEGRAM_SETTINGS_TOOL_DECLARATION,
+  toolGetNotificationPreferences,
+  toolGetTelegramNotificationSettings,
+  toolGuideCreateBooking,
+  toolGuideImportBookings,
+  toolGuideNotificationSettings,
+  toolGuideTelegramSettings,
+} from './dashboardAssistantGuidanceTools.ts';
+import { downloadAssistantAttachment } from './assistantAttachmentApply.ts';
+import { uploadMarketingMediaFromAssistantBytes } from './marketingMediaUpload.ts';
 
 export type ToolExecutionContext = {
   req: Request;
   organizationId: string;
   userId: string;
   userEmail: string;
-  pageContext: { propertyId?: string | null; bookingId?: string | null };
+  pageContext: { propertyId?: string | null; parkingId?: string | null; bookingId?: string | null };
   attachedContext: AttachedContextItem[];
   /** True when the model requested more than one write tool call this turn — forces Tier 2. */
   isBulk: boolean;
   /** When true, Tier-1 writes queue until end-of-turn commit (cancel-safe). */
   deferWritesUntilCommit?: boolean;
   deferredWrites?: Array<{ toolName: string; args: Record<string, unknown> }>;
+  /** Current assistant conversation — required for attachment apply path checks. */
+  conversationId?: string | null;
+  /** Storage paths attached on this user turn (host uploaded this message). */
+  turnAttachmentPaths?: string[];
 };
 
 export type ToolResult = {
@@ -2903,15 +3007,51 @@ async function toolProposeSendInboxReply(
   args: Record<string, unknown>
 ): Promise<ToolResult> {
   const conversationId = str(args, 'conversationId');
-  const text = str(args, 'text');
-  if (!conversationId || !text) return { ok: false, error: 'conversationId and text are required' };
+  const text = str(args, 'text') ?? '';
+  if (!conversationId) return { ok: false, error: 'conversationId is required' };
+  const attachmentPaths = (() => {
+    const paths: string[] = [];
+    const single = str(args, 'attachmentPath');
+    if (single) paths.push(single);
+    if (Array.isArray(args.attachmentPaths)) {
+      for (const item of args.attachmentPaths) {
+        if (typeof item === 'string' && item.trim()) paths.push(item.trim());
+      }
+    }
+    // Host attached files this turn — include them even if the model omitted attachmentPath
+    // (common when it "helpfully" strips media). Meta still refuses below.
+    if (paths.length === 0 && (ctx.turnAttachmentPaths?.length ?? 0) > 0) {
+      paths.push(...ctx.turnAttachmentPaths!);
+    }
+    return [...new Set(paths)].slice(0, 3);
+  })();
+  if (!text.trim() && attachmentPaths.length === 0) {
+    return { ok: false, error: 'text or attachmentPath(s) is required' };
+  }
   const scopeArgs = inboxScopeArgs(args);
   if (!scopeArgs.propertyId && !scopeArgs.parkingId) {
     return { ok: false, error: 'propertyId or parkingId is required' };
   }
   const inboxCtx = await resolveInboxAccess(ctx.req, 'reply', scopeArgs);
   const metaConnectionIds = await resolveMetaConnectionIdsForScope(inboxCtx.orgId, inboxCtx.scope);
-  await loadInboxConversationInScope(inboxCtx, conversationId, new Set(metaConnectionIds));
+  const conv = await loadInboxConversationInScope(
+    inboxCtx,
+    conversationId,
+    new Set(metaConnectionIds)
+  );
+
+  if (attachmentPaths.length > 0) {
+    if (!ctx.conversationId?.trim()) {
+      return { ok: false, error: 'Conversation is required to send attachments' };
+    }
+    if (conv.platform !== 'web') {
+      return {
+        ok: false,
+        error:
+          'Attachments are only supported for website chat — send text only on Messenger or Instagram',
+      };
+    }
+  }
 
   const tier = classifyActionRisk({
     toolName: 'propose_send_inbox_reply',
@@ -2920,6 +3060,9 @@ async function toolProposeSendInboxReply(
     isBulk: ctx.isBulk,
   });
 
+  const previewText = text.trim() || '(attachment)';
+  const attachmentNote = attachmentPaths.length > 0 ? ` + ${attachmentPaths.length} file(s)` : '';
+
   return {
     ok: true,
     proposed: true,
@@ -2927,9 +3070,10 @@ async function toolProposeSendInboxReply(
     data: {
       conversationId,
       text,
+      attachmentPaths,
       propertyId: scopeArgs.propertyId,
       parkingId: scopeArgs.parkingId,
-      summary: `Send this reply: "${text.length > 80 ? `${text.slice(0, 80)}…` : text}"`,
+      summary: `Send this reply: "${previewText.length > 80 ? `${previewText.slice(0, 80)}…` : previewText}"${attachmentNote}`,
     },
   };
 }
@@ -2948,20 +3092,25 @@ async function toolProposePublishToMeta(
   const propertyId = str(args, 'propertyId');
   const connectionId = str(args, 'connectionId');
   const mediaUrl = str(args, 'mediaUrl');
+  const attachmentPath = str(args, 'attachmentPath');
   const publishTypeArg = str(args, 'publishType');
-  if (
-    !propertyId ||
-    !connectionId ||
-    !mediaUrl ||
-    !publishTypeArg ||
-    !META_PUBLISH_TYPES.has(publishTypeArg)
-  ) {
+  if (!propertyId || !connectionId || !publishTypeArg || !META_PUBLISH_TYPES.has(publishTypeArg)) {
     return {
       ok: false,
       error:
-        'propertyId, connectionId, mediaUrl, and a valid publishType (facebook_post, instagram_post, instagram_story, instagram_reel) are required',
+        'propertyId, connectionId, publishType (facebook_post, instagram_post, instagram_story, instagram_reel), and mediaUrl or attachmentPath are required',
     };
   }
+  if (!mediaUrl && !attachmentPath) {
+    return { ok: false, error: 'Provide mediaUrl or attachmentPath from this conversation' };
+  }
+  if (mediaUrl && attachmentPath) {
+    return { ok: false, error: 'Provide only one of mediaUrl or attachmentPath' };
+  }
+  if (attachmentPath && !ctx.conversationId?.trim()) {
+    return { ok: false, error: 'Conversation is required to publish from a chat attachment' };
+  }
+
   const caption = str(args, 'caption') ?? '';
   const access = await verifyMarketingPropertyAccess(
     ctx,
@@ -2979,6 +3128,10 @@ async function toolProposePublishToMeta(
     isBulk: ctx.isBulk,
   });
 
+  const mediaLabel = attachmentPath
+    ? `chat file ${attachmentPath.split('/').pop() ?? attachmentPath}`
+    : mediaUrl!;
+
   return {
     ok: true,
     proposed: true,
@@ -2987,10 +3140,11 @@ async function toolProposePublishToMeta(
     data: {
       propertyId: access.propertyId,
       connectionId,
-      mediaUrl,
+      mediaUrl: mediaUrl ?? null,
+      attachmentPath: attachmentPath ?? null,
       publishType: publishTypeArg,
       caption,
-      summary: `Publish to ${publishTypeArg.replace('_', ' ')}: "${caption.length > 80 ? `${caption.slice(0, 80)}…` : caption || '(no caption)'}"`,
+      summary: `Publish to ${publishTypeArg.replace('_', ' ')}: "${caption.length > 80 ? `${caption.slice(0, 80)}…` : caption || '(no caption)'}" — media: ${mediaLabel}`,
     },
   };
 }
@@ -3907,8 +4061,16 @@ export async function executeConfirmedAction(
 
   if (toolName === 'propose_send_inbox_reply') {
     const conversationId = str(inputPayload, 'conversationId');
-    const text = str(inputPayload, 'text');
-    if (!conversationId || !text) return { ok: false, error: 'Malformed proposal payload' };
+    const text = str(inputPayload, 'text') ?? '';
+    if (!conversationId) return { ok: false, error: 'Malformed proposal payload' };
+    const attachmentPaths = Array.isArray(inputPayload.attachmentPaths)
+      ? (inputPayload.attachmentPaths as unknown[])
+          .filter((p): p is string => typeof p === 'string' && p.trim().length > 0)
+          .slice(0, 3)
+      : [];
+    if (!text.trim() && attachmentPaths.length === 0) {
+      return { ok: false, error: 'Malformed proposal payload' };
+    }
     const scopeArgs = inboxScopeArgs(inputPayload);
     if (!scopeArgs.propertyId && !scopeArgs.parkingId) {
       return { ok: false, error: 'Malformed proposal payload' };
@@ -3933,7 +4095,8 @@ export async function executeConfirmedAction(
         conversationId,
         new Set(metaConnectionIds)
       );
-      const result = await sendInboxTextReply(inboxCtx, conv, ctx.userId, text);
+      const attachments = await resolveInboxReplyAttachments(ctx, conversationId, attachmentPaths);
+      const result = await sendInboxReply(inboxCtx, conv, ctx.userId, text, { attachments });
       return { ok: true, riskTier: 'tier2_confirmed', data: { conversationId, ...result } };
     } catch (err) {
       if (err instanceof InboxSendReplyError) return { ok: false, error: err.message };
@@ -3941,17 +4104,22 @@ export async function executeConfirmedAction(
     }
   }
 
+  if (toolName === 'propose_create_support_ticket') {
+    return await executeCreateSupportTicket(ctx, inputPayload);
+  }
+
   if (toolName === 'propose_publish_to_meta') {
     const propertyId = str(inputPayload, 'propertyId');
     const connectionId = str(inputPayload, 'connectionId');
-    const mediaUrl = str(inputPayload, 'mediaUrl');
+    const mediaUrlArg = str(inputPayload, 'mediaUrl');
+    const attachmentPath = str(inputPayload, 'attachmentPath');
     const publishType = str(inputPayload, 'publishType');
     if (
       !propertyId ||
       !connectionId ||
-      !mediaUrl ||
       !publishType ||
-      !META_PUBLISH_TYPES.has(publishType)
+      !META_PUBLISH_TYPES.has(publishType) ||
+      (!mediaUrlArg && !attachmentPath)
     ) {
       return { ok: false, error: 'Malformed proposal payload' };
     }
@@ -3973,13 +4141,40 @@ export async function executeConfirmedAction(
       expectedTier: 'tier2_confirmed',
     });
 
+    let rawMediaUrl = mediaUrlArg;
+    if (attachmentPath) {
+      const conversationId = ctx.conversationId?.trim();
+      if (!conversationId) {
+        return { ok: false, error: 'Conversation is required to publish from a chat attachment' };
+      }
+      try {
+        const attachment = await downloadAssistantAttachment({
+          organizationId: ctx.organizationId,
+          userId: ctx.userId,
+          conversationId,
+          path: attachmentPath,
+        });
+        const fileName = attachment.path.split('/').pop() ?? 'attachment';
+        rawMediaUrl = await uploadMarketingMediaFromAssistantBytes(
+          createServiceClient(),
+          access.propertyId,
+          attachment.bytes,
+          attachment.mimeType,
+          fileName
+        );
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
+      }
+    }
+    if (!rawMediaUrl) return { ok: false, error: 'mediaUrl is required' };
+
     try {
       const result = await publishMarketingPost({
         propertyId: access.propertyId,
         organizationId: access.organizationId,
         connectionId,
         publishType: publishType as MetaPublishType,
-        rawMediaUrl: mediaUrl,
+        rawMediaUrl,
         caption,
         createdBy: ctx.userId,
       });
@@ -3993,6 +4188,63 @@ export async function executeConfirmedAction(
       if (err instanceof MarketingPublishError) return { ok: false, error: err.message };
       throw err;
     }
+  }
+
+  if (toolName === 'propose_apply_booking_attachment') {
+    return await executeApplyBookingAttachment(ctx, inputPayload);
+  }
+
+  if (toolName === 'propose_send_workflow_email') {
+    return await executeSendWorkflowEmail(ctx, inputPayload);
+  }
+  if (toolName === 'propose_apply_org_logo') {
+    return await executeApplyOrgLogo(ctx, inputPayload);
+  }
+  if (toolName === 'propose_apply_property_media') {
+    return await executeApplyPropertyMedia(ctx, inputPayload);
+  }
+  if (toolName === 'propose_apply_parking_media') {
+    return await executeApplyParkingMedia(ctx, inputPayload);
+  }
+  if (toolName === 'propose_apply_app_settings_attachment') {
+    return await executeApplyAppSettingsAttachment(ctx, inputPayload);
+  }
+  if (toolName === 'propose_apply_template_attachment') {
+    return await executeApplyTemplateAttachment(ctx, inputPayload);
+  }
+  if (toolName === 'propose_apply_org_verification_attachment') {
+    return await executeApplyOrgVerificationAttachment(ctx, inputPayload);
+  }
+  if (toolName === 'propose_submit_org_verification') {
+    return await executeSubmitOrgVerification(ctx, inputPayload);
+  }
+  if (toolName === 'propose_apply_listing_authorization_attachment') {
+    return await executeApplyListingAuthorizationAttachment(ctx, inputPayload);
+  }
+  if (toolName === 'propose_submit_listing_authorization') {
+    return await executeSubmitListingAuthorization(ctx, inputPayload);
+  }
+  if (toolName === 'propose_stage_gcash_qr') {
+    return await executeStageGcashQr(ctx, inputPayload);
+  }
+
+  if (toolName === 'propose_run_channel_sync') {
+    return await executeRunChannelSync(ctx, inputPayload);
+  }
+  if (toolName === 'propose_update_public_page_template') {
+    return await executeUpdatePublicPageTemplate(ctx, inputPayload);
+  }
+  if (toolName === 'propose_update_finance_line_item') {
+    return await executeUpdateFinanceLineItem(ctx, inputPayload);
+  }
+  if (toolName === 'propose_delete_finance_line_item') {
+    return await executeDeleteFinanceLineItem(ctx, inputPayload);
+  }
+  if (toolName === 'propose_update_maintenance_item') {
+    return await executeUpdateMaintenanceItem(ctx, inputPayload);
+  }
+  if (toolName === 'propose_delete_maintenance_item') {
+    return await executeDeleteMaintenanceItem(ctx, inputPayload);
   }
 
   return { ok: false, error: `Unknown or non-confirmable tool: ${toolName}` };
@@ -4131,6 +4383,18 @@ export async function executeTool(
         return await toolDraftInboxReply(ctx, args);
       case 'propose_send_inbox_reply':
         return await toolProposeSendInboxReply(ctx, args);
+      case 'list_support_tickets':
+        return await toolListSupportTickets(ctx, args);
+      case 'get_support_ticket':
+        return await toolGetSupportTicket(ctx, args);
+      case 'propose_create_support_ticket':
+        return await toolProposeCreateSupportTicket(ctx, args);
+      case 'list_host_announcements':
+        return await toolListHostAnnouncements(ctx, args);
+      case 'get_host_announcement':
+        return await toolGetHostAnnouncement(ctx, args);
+      case 'get_org_plan_snapshot':
+        return await toolGetOrgPlanSnapshot(ctx);
       case 'list_marketing_templates':
         return await toolListMarketingTemplates(ctx, args);
       case 'get_marketing_publish_history':
@@ -4143,6 +4407,58 @@ export async function executeTool(
         return await toolDraftMarketingTemplate(ctx, args);
       case 'propose_publish_to_meta':
         return await toolProposePublishToMeta(ctx, args);
+      case 'propose_apply_booking_attachment':
+        return await toolProposeApplyBookingAttachment(ctx, args);
+      case 'propose_send_workflow_email':
+        return await toolProposeSendWorkflowEmail(ctx, args);
+      case 'propose_apply_org_logo':
+        return await toolProposeApplyOrgLogo(ctx, args);
+      case 'propose_apply_property_media':
+        return await toolProposeApplyPropertyMedia(ctx, args);
+      case 'propose_apply_parking_media':
+        return await toolProposeApplyParkingMedia(ctx, args);
+      case 'propose_apply_app_settings_attachment':
+        return await toolProposeApplyAppSettingsAttachment(ctx, args);
+      case 'propose_apply_template_attachment':
+        return await toolProposeApplyTemplateAttachment(ctx, args);
+      case 'propose_apply_org_verification_attachment':
+        return await toolProposeApplyOrgVerificationAttachment(ctx, args);
+      case 'propose_submit_org_verification':
+        return await toolProposeSubmitOrgVerification(ctx, args);
+      case 'propose_apply_listing_authorization_attachment':
+        return await toolProposeApplyListingAuthorizationAttachment(ctx, args);
+      case 'propose_submit_listing_authorization':
+        return await toolProposeSubmitListingAuthorization(ctx, args);
+      case 'propose_stage_gcash_qr':
+        return await toolProposeStageGcashQr(ctx, args);
+      case 'get_channel_sync_status':
+        return await toolGetChannelSyncStatus(ctx, args);
+      case 'propose_run_channel_sync':
+        return await toolProposeRunChannelSync(ctx, args);
+      case 'get_public_pages_status':
+        return await toolGetPublicPagesStatus(ctx, args);
+      case 'propose_update_public_page_template':
+        return await toolProposeUpdatePublicPageTemplate(ctx, args);
+      case 'propose_update_finance_line_item':
+        return await toolProposeUpdateFinanceLineItem(ctx, args);
+      case 'propose_delete_finance_line_item':
+        return await toolProposeDeleteFinanceLineItem(ctx, args);
+      case 'propose_update_maintenance_item':
+        return await toolProposeUpdateMaintenanceItem(ctx, args);
+      case 'propose_delete_maintenance_item':
+        return await toolProposeDeleteMaintenanceItem(ctx, args);
+      case 'get_notification_preferences':
+        return await toolGetNotificationPreferences(ctx, args);
+      case 'guide_notification_settings':
+        return await toolGuideNotificationSettings(ctx, args);
+      case 'get_telegram_notification_settings':
+        return await toolGetTelegramNotificationSettings(ctx, args);
+      case 'guide_telegram_settings':
+        return await toolGuideTelegramSettings(ctx, args);
+      case 'guide_create_booking':
+        return await toolGuideCreateBooking(ctx, args);
+      case 'guide_import_bookings':
+        return await toolGuideImportBookings(ctx, args);
       default:
         return { ok: false, error: `Unhandled tool: ${toolName}` };
     }
@@ -4876,16 +5192,18 @@ export const TOOL_DECLARATIONS = [
   {
     name: 'propose_send_inbox_reply',
     description:
-      'Send a real text reply to a guest in a Guest Inbox conversation (web chat, Messenger, or Instagram DM). This sends immediately once confirmed — always requires explicit host confirmation, no exceptions.',
+      'Send a real reply to a guest in a Guest Inbox conversation (web chat, Messenger, or Instagram DM). Optional attachmentPath(s) from this assistant conversation work on website chat only — Meta DMs are text-only. This sends immediately once confirmed — always requires explicit host confirmation, no exceptions.',
     parameters: {
       type: 'object',
       properties: {
         conversationId: { type: 'string' },
         text: { type: 'string' },
+        attachmentPath: { type: 'string' },
+        attachmentPaths: { type: 'array', items: { type: 'string' } },
         propertyId: { type: 'string' },
         parkingId: { type: 'string' },
       },
-      required: ['conversationId', 'text'],
+      required: ['conversationId'],
     },
   },
   {
@@ -4956,20 +5274,56 @@ export const TOOL_DECLARATIONS = [
   {
     name: 'propose_publish_to_meta',
     description:
-      'Publish an image to a connected Facebook Page or Instagram account (post, story, or reel) with a caption. This publishes publicly and immediately once confirmed, and cannot be undone — always requires explicit host confirmation, no exceptions. Global-admin only.',
+      'Publish an image or video to a connected Facebook Page or Instagram account (post, story, or reel) with a caption. Use mediaUrl (https) or attachmentPath from this conversation. Publishes publicly once confirmed. Global-admin only.',
     parameters: {
       type: 'object',
       properties: {
         propertyId: { type: 'string' },
         connectionId: { type: 'string' },
-        mediaUrl: { type: 'string', description: 'https URL of the image to publish' },
+        mediaUrl: { type: 'string', description: 'https URL of the image/video to publish' },
+        attachmentPath: {
+          type: 'string',
+          description: 'Path from this conversation attachments (alternative to mediaUrl)',
+        },
         publishType: {
           type: 'string',
           enum: ['facebook_post', 'instagram_post', 'instagram_story', 'instagram_reel'],
         },
         caption: { type: 'string' },
       },
-      required: ['propertyId', 'connectionId', 'mediaUrl', 'publishType'],
+      required: ['propertyId', 'connectionId', 'publishType'],
     },
   },
+  APPLY_BOOKING_ATTACHMENT_TOOL_DECLARATION,
+  SEND_WORKFLOW_EMAIL_TOOL_DECLARATION,
+  APPLY_ORG_LOGO_TOOL_DECLARATION,
+  APPLY_PROPERTY_MEDIA_TOOL_DECLARATION,
+  APPLY_PARKING_MEDIA_TOOL_DECLARATION,
+  APPLY_APP_SETTINGS_ATTACHMENT_TOOL_DECLARATION,
+  APPLY_TEMPLATE_ATTACHMENT_TOOL_DECLARATION,
+  APPLY_ORG_VERIFICATION_ATTACHMENT_TOOL_DECLARATION,
+  SUBMIT_ORG_VERIFICATION_TOOL_DECLARATION,
+  APPLY_LISTING_AUTHORIZATION_ATTACHMENT_TOOL_DECLARATION,
+  SUBMIT_LISTING_AUTHORIZATION_TOOL_DECLARATION,
+  STAGE_GCASH_QR_TOOL_DECLARATION,
+  LIST_SUPPORT_TICKETS_TOOL_DECLARATION,
+  GET_SUPPORT_TICKET_TOOL_DECLARATION,
+  PROPOSE_CREATE_SUPPORT_TICKET_TOOL_DECLARATION,
+  LIST_HOST_ANNOUNCEMENTS_TOOL_DECLARATION,
+  GET_HOST_ANNOUNCEMENT_TOOL_DECLARATION,
+  GET_ORG_PLAN_SNAPSHOT_TOOL_DECLARATION,
+  GET_CHANNEL_SYNC_STATUS_TOOL_DECLARATION,
+  RUN_CHANNEL_SYNC_TOOL_DECLARATION,
+  GET_PUBLIC_PAGES_STATUS_TOOL_DECLARATION,
+  UPDATE_PUBLIC_PAGE_TEMPLATE_TOOL_DECLARATION,
+  UPDATE_FINANCE_LINE_ITEM_TOOL_DECLARATION,
+  DELETE_FINANCE_LINE_ITEM_TOOL_DECLARATION,
+  UPDATE_MAINTENANCE_ITEM_TOOL_DECLARATION,
+  DELETE_MAINTENANCE_ITEM_TOOL_DECLARATION,
+  GET_NOTIFICATION_PREFERENCES_TOOL_DECLARATION,
+  GUIDE_NOTIFICATION_SETTINGS_TOOL_DECLARATION,
+  GET_TELEGRAM_NOTIFICATION_SETTINGS_TOOL_DECLARATION,
+  GUIDE_TELEGRAM_SETTINGS_TOOL_DECLARATION,
+  GUIDE_CREATE_BOOKING_TOOL_DECLARATION,
+  GUIDE_IMPORT_BOOKINGS_TOOL_DECLARATION,
 ];
