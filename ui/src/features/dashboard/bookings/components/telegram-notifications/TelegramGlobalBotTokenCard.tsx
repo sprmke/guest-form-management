@@ -73,7 +73,7 @@ export function TelegramGlobalBotTokenCard() {
   return (
     <Card id="section-global-bot" className="scroll-mt-2">
       <CardHeader className="space-y-0">
-        <CardTitle className="flex items-center gap-2 text-lg">
+        <CardTitle className="flex items-center gap-2">
           <Bot className="size-5 shrink-0" aria-hidden />
           Shared bot token
         </CardTitle>

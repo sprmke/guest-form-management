@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 
 import { ChevronDown, ChevronRight, Loader2, Mail, RefreshCw, Timer } from 'lucide-react';
 
+import { WorkflowTriggerActionButton } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowTriggerActionButton';
 import {
   BOOKING_WORKFLOW_EMAIL_LABELS,
   type BookingWorkflowEmailKind,
@@ -28,7 +29,6 @@ import {
   SD_CHECKOUT_INSTRUCTIONS_RESEND_HELP,
   workflowEmailTriggerTooltip,
 } from '@/features/dashboard/bookings/lib/workflowEmailTriggerTooltip';
-import { WorkflowTriggerActionButton } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowTriggerActionButton';
 import { PlanGatedText } from '@/features/dashboard/plans/components/PlanUpgradeLink';
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';

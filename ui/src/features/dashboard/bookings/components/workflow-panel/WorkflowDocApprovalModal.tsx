@@ -127,7 +127,10 @@ export function WorkflowDocApprovalModal({
       >
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-5">
           <header className="space-y-2">
-            <h3 id="workflow-doc-approval-title" className="text-foreground text-lg font-semibold">
+            <h3
+              id="workflow-doc-approval-title"
+              className="text-foreground text-base font-semibold"
+            >
               Mark {label} as complete
             </h3>
             <p

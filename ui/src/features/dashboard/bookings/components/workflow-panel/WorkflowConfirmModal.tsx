@@ -89,7 +89,7 @@ export function WorkflowConfirmModal({
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <h3 className="text-foreground text-lg font-semibold sm:text-xl">{title}</h3>
+              <h3 className="text-foreground text-base font-semibold sm:text-lg">{title}</h3>
               <p className="text-muted-foreground mt-2 text-sm leading-relaxed">{description}</p>
               {effectLines && effectLines.length > 0 ? (
                 <>

@@ -143,7 +143,7 @@ export function WorkflowStageDeckHeader({
                 )}
               />
             )}
-            <span className="text-foreground truncate text-[15px] font-semibold leading-tight">
+            <span className="text-foreground truncate text-sm font-semibold leading-tight">
               {statusLabel(viewedStage)}
             </span>
           </h2>

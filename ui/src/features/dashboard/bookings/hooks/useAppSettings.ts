@@ -19,6 +19,7 @@ import {
   normalizeExternalReviewsDraft,
   type PropertyExternalReview,
 } from '@/features/dashboard/org/lib/propertyExternalReviews';
+import type { AppSettingsPatchBody } from '@/features/dashboard/org/lib/propertySettingsSave';
 import type { PropertyVoucherPrize } from '@/features/dashboard/org/lib/propertyVoucherSettings';
 import {
   voucherPrizesEqual,
@@ -26,7 +27,6 @@ import {
 } from '@/features/dashboard/org/lib/propertyVoucherSettings';
 import type { VoucherRevealStyle } from '@/features/dashboard/org/lib/voucherRevealStyle';
 import { normalizeVoucherRevealStyle } from '@/features/dashboard/org/lib/voucherRevealStyle';
-import type { AppSettingsPatchBody } from '@/features/dashboard/org/lib/propertySettingsSave';
 
 import { supabase } from '@/lib/supabase/client';
 import { propertyBrandColorFormValue, propertyBrandColorsEquivalent } from '@/lib/theme/brandColor';

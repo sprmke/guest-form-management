@@ -37,21 +37,31 @@ import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate'
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { SegmentedControl } from '@/components/ui/sliding-tabs';
 import { cn } from '@/lib/utils';
 
 type EditorTab = 'edit' | 'preview';
 
 const EDITOR_VIEW_OPTIONS = [
-  { value: 'edit' as const, label: 'Edit', icon: Pencil },
-  { value: 'preview' as const, label: 'Preview', icon: Eye },
+  {
+    value: 'edit' as const,
+    label: <span className="hidden sm:inline">Edit</span>,
+    ariaLabel: 'Edit',
+    icon: Pencil,
+  },
+  {
+    value: 'preview' as const,
+    label: <span className="hidden sm:inline">Preview</span>,
+    ariaLabel: 'Preview',
+    icon: Eye,
+  },
 ];
 
 type Props = {
@@ -254,7 +264,7 @@ export function PropertyTemplateEditorCard({
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <CardTitle className="text-lg">{template.name}</CardTitle>
+              <CardTitle>{template.name}</CardTitle>
               {isEmail || isCustom ? <TierBadge feature="customTemplates" /> : null}
               {hasChanges ? (
                 <span className="inline-flex items-center rounded-md border border-amber-500/50 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
@@ -270,37 +280,43 @@ export function PropertyTemplateEditorCard({
       </CardHeader>
 
       <CardContent className="p-0">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2 sm:px-4">
+        <div className="flex flex-nowrap items-center justify-between gap-1.5 border-b px-3 py-2 sm:gap-2 sm:px-4">
           <SegmentedControl
             value={activeTab}
             onChange={handleTabChange}
             options={EDITOR_VIEW_OPTIONS}
             size="dense"
             aria-label={`${template.name} view`}
+            listClassName="shrink-0"
+            triggerClassName="px-2 sm:px-2.5"
           />
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex shrink-0 flex-nowrap items-center justify-end gap-1.5 sm:gap-2">
             {canEdit ? (
               <>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="min-h-[44px] gap-1.5 sm:min-h-9"
+                  className="min-h-[44px] min-w-[44px] px-0 sm:min-h-9 sm:w-auto sm:gap-1.5 sm:px-3"
                   onClick={() => setPlaceholdersOpen(true)}
+                  aria-label="Placeholders"
+                  title="Placeholders"
                 >
                   <Braces className="size-4 shrink-0" aria-hidden />
-                  Placeholders
+                  <span className="hidden sm:inline">Placeholders</span>
                 </Button>
                 {!isCustom && onReset ? (
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="min-h-[44px] gap-1.5 sm:min-h-9"
+                    className="min-h-[44px] min-w-[44px] px-0 sm:min-h-9 sm:w-auto sm:gap-1.5 sm:px-3"
                     onClick={() => setResetOpen(true)}
+                    aria-label="Reset"
+                    title="Reset"
                   >
                     <RotateCcw className="size-4 shrink-0" aria-hidden />
-                    Reset
+                    <span className="hidden sm:inline">Reset</span>
                   </Button>
                 ) : null}
                 {isCustom && onDelete ? (
@@ -308,26 +324,30 @@ export function PropertyTemplateEditorCard({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="border-destructive/40 text-destructive hover:bg-destructive/10 min-h-[44px] gap-1.5 sm:min-h-9"
+                    className="border-destructive/40 text-destructive hover:bg-destructive/10 min-h-[44px] min-w-[44px] px-0 sm:min-h-9 sm:w-auto sm:gap-1.5 sm:px-3"
                     onClick={() => setDeleteOpen(true)}
+                    aria-label="Delete"
+                    title="Delete"
                   >
                     <Trash2 className="size-4 shrink-0" aria-hidden />
-                    Delete
+                    <span className="hidden sm:inline">Delete</span>
                   </Button>
                 ) : null}
                 {hasChanges ? (
                   <Button
                     type="button"
                     size="sm"
-                    className="min-h-[44px] sm:min-h-9"
+                    className="min-h-[44px] min-w-[44px] px-0 sm:min-h-9 sm:w-auto sm:px-3"
                     disabled={saving}
                     onClick={() => {
                       if (openStarterUpgradeIfNeeded()) return;
                       void onSave({ content, sectionImageUrl });
                     }}
+                    aria-label={saving ? 'Saving' : 'Save'}
+                    title={saving ? 'Saving…' : 'Save'}
                   >
-                    <Save className="mr-1.5 h-3.5 w-3.5" />
-                    {saving ? 'Saving…' : 'Save'}
+                    <Save className="size-4 shrink-0 sm:mr-1.5 sm:size-3.5" aria-hidden />
+                    <span className="hidden sm:inline">{saving ? 'Saving…' : 'Save'}</span>
                   </Button>
                 ) : null}
               </>
@@ -421,7 +441,7 @@ export function PropertyTemplateEditorCard({
         />
       </CardContent>
 
-      <Dialog
+      <ResponsiveModal
         open={resetOpen}
         onOpenChange={(open) => {
           setResetOpen(open);
@@ -432,14 +452,14 @@ export function PropertyTemplateEditorCard({
           }
         }}
       >
-        <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-          <DialogHeader>
-            <DialogTitle>Reset to default?</DialogTitle>
-            <DialogDescription>
+        <ResponsiveModalContent className="sm:max-w-[28rem]">
+          <ResponsiveModalHeader>
+            <ResponsiveModalTitle>Reset to default?</ResponsiveModalTitle>
+            <ResponsiveModalDescription>
               Your saved copy will be replaced with the original default text.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-1">
+            </ResponsiveModalDescription>
+          </ResponsiveModalHeader>
+          <ResponsiveModalFooter className="gap-1">
             <Button type="button" variant="outline" onClick={() => setResetOpen(false)}>
               Cancel
             </Button>
@@ -454,11 +474,11 @@ export function PropertyTemplateEditorCard({
             >
               Reset
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveModalFooter>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
 
-      <Dialog
+      <ResponsiveModal
         open={deleteOpen}
         onOpenChange={(open) => {
           setDeleteOpen(open);
@@ -469,11 +489,11 @@ export function PropertyTemplateEditorCard({
           }
         }}
       >
-        <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-          <DialogHeader>
-            <DialogTitle>Delete template?</DialogTitle>
-          </DialogHeader>
-          <DialogFooter className="gap-1">
+        <ResponsiveModalContent className="sm:max-w-[28rem]">
+          <ResponsiveModalHeader>
+            <ResponsiveModalTitle>Delete template?</ResponsiveModalTitle>
+          </ResponsiveModalHeader>
+          <ResponsiveModalFooter className="gap-1">
             <Button type="button" variant="outline" onClick={() => setDeleteOpen(false)}>
               Cancel
             </Button>
@@ -487,9 +507,9 @@ export function PropertyTemplateEditorCard({
             >
               Delete
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveModalFooter>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </Card>
   );
 }

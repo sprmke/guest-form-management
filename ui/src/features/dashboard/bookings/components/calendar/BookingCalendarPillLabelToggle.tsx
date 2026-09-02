@@ -1,4 +1,8 @@
-import { SegmentedControl } from '@/components/ui/sliding-tabs';
+import {
+  SegmentedControl,
+  cardHeaderSegmentedListClassName,
+  cardHeaderSegmentedTriggerClassName,
+} from '@/components/ui/sliding-tabs';
 import { cn } from '@/lib/utils';
 
 export type BookingCalendarPillLabelMode = 'name' | 'price';
@@ -15,7 +19,7 @@ export function BookingCalendarPillLabelToggle({
   value,
   onChange,
   className,
-  size = 'default',
+  size = 'toolbar',
 }: Props) {
   const toolbar = size === 'toolbar';
 
@@ -23,14 +27,11 @@ export function BookingCalendarPillLabelToggle({
     <SegmentedControl
       value={value}
       onChange={onChange}
-      size={toolbar ? 'dense' : 'compact'}
+      size="dense"
+      equalSegments
       className={className}
-      listClassName={cn('border-border/60', toolbar ? 'h-9 min-h-[36px] w-auto p-0.5' : 'w-full')}
-      triggerClassName={
-        toolbar
-          ? 'h-full min-h-0 px-2.5 py-0 text-[11px]'
-          : 'h-9 min-h-[44px] px-2.5 text-[11px] sm:h-7 sm:min-h-0'
-      }
+      listClassName={cn(cardHeaderSegmentedListClassName, !toolbar && 'sm:h-8')}
+      triggerClassName={cardHeaderSegmentedTriggerClassName}
       aria-label="Calendar pill display"
       options={[
         { value: 'name', label: 'Name' },

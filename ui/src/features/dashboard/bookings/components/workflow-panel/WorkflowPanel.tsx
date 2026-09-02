@@ -78,21 +78,19 @@ import { useWorkflowSubFormDrafts } from '@/features/dashboard/bookings/hooks/us
 import { resolveBookingPropertySlug } from '@/features/dashboard/bookings/lib/bookingListNavigation';
 import { shouldWarnPastBookingStayForProceed } from '@/features/dashboard/bookings/lib/bookingPastPipelineManila';
 import {
-  BOOKING_WORKFLOW_EMAIL_LABELS,
-  type BookingWorkflowEmailKind,
-} from '@/features/dashboard/bookings/lib/bookingWorkflowEmail';
-import {
   isEditableWorkflowProgressContent,
   progressSavePayloadForView,
 } from '@/features/dashboard/bookings/lib/bookingProgressEditPayload';
-import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
-import { PlanGatedText } from '@/features/dashboard/plans/components/PlanUpgradeLink';
 import {
   kanbanDropIntentNestedKey,
   resolveKanbanDropTransition,
   type KanbanDropTransition,
 } from '@/features/dashboard/bookings/lib/bookingStages';
 import { statusLabel, type BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
+import {
+  BOOKING_WORKFLOW_EMAIL_LABELS,
+  type BookingWorkflowEmailKind,
+} from '@/features/dashboard/bookings/lib/bookingWorkflowEmail';
 import { DEFAULT_DOCUMENT_REQUIREMENTS } from '@/features/dashboard/bookings/lib/documentRequirements';
 import { pendingDocStepUsesApprovalModal } from '@/features/dashboard/bookings/lib/pendingDocApproval';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
@@ -126,11 +124,14 @@ import {
   type WorkflowEmailDevControlKey,
 } from '@/features/dashboard/bookings/lib/workflowTransitionEmailControls';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { PlanGatedText } from '@/features/dashboard/plans/components/PlanUpgradeLink';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 import { usePropertyPricingDefaults } from '@/features/dashboard/pricing/hooks/usePropertyPricing';
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
 import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { friendlyToastError, sdRefundCronSuccessMessage } from '@/lib/feedback/toastMessages';
+import { isPostHogEnabled, posthog } from '@/lib/posthog/client';
 import { cn } from '@/lib/utils';
 
 // ─── Confirm dialog ───────────────────────────────────────────────────────────
@@ -643,6 +644,12 @@ function WorkflowPanelInner({
         ...(devControls ? { devControls } : {}),
         manual: true,
       });
+      if (isPostHogEnabled) {
+        posthog.capture('booking_workflow_transitioned', {
+          from_status: status,
+          to_status: toStatus,
+        });
+      }
       toast.success(`Moved to ${statusLabel(toStatus)}`);
       if (kanbanTargetStatus) dismissKanbanFlow();
     } catch (err: unknown) {
@@ -681,6 +688,11 @@ function WorkflowPanelInner({
         payload,
         manual: true,
       });
+      if (isPostHogEnabled) {
+        posthog.capture('booking_document_step_completed', {
+          document_step: subStatus,
+        });
+      }
       toast.success(`Marked ${label} as complete`);
       if (kanbanTargetStatus) {
         dismissKanbanFlow();
@@ -707,6 +719,9 @@ function WorkflowPanelInner({
     setCancelConfirm(false);
     try {
       await cancelMut.mutateAsync({ bookingId: booking.id });
+      if (isPostHogEnabled) {
+        posthog.capture('booking_cancelled', { previous_status: status });
+      }
       toast.success('Booking cancelled');
     } catch (err: any) {
       toast.error(friendlyToastError(err, 'Could not cancel booking'));

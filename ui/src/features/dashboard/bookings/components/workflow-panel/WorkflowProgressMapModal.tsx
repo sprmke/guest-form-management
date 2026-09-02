@@ -14,8 +14,8 @@ import type {
   PendingDocNestedKey,
   ViewedWorkflowStep,
 } from '@/features/dashboard/bookings/lib/workflow';
-import { PlanGatedText } from '@/features/dashboard/plans/components/PlanUpgradeLink';
 import { WORKFLOW_PLAN_PREVIEW_SUMMARY } from '@/features/dashboard/bookings/lib/workflowAdvanceMode';
+import { PlanGatedText } from '@/features/dashboard/plans/components/PlanUpgradeLink';
 
 import {
   ResponsiveModal,

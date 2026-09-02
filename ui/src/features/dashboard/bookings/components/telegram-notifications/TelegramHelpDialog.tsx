@@ -8,13 +8,13 @@ import {
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalClose,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+  ResponsiveModalTrigger,
+} from '@/components/ui/responsive-modal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 
@@ -83,8 +83,8 @@ export function TelegramHelpDialog({
   const helpLabel = defaultTab === 'chat-id' ? 'How to get chat ID' : 'How to get bot token';
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
+    <ResponsiveModal>
+      <ResponsiveModalTrigger asChild>
         {variant === 'icon' ? (
           <button
             type="button"
@@ -107,26 +107,27 @@ export function TelegramHelpDialog({
             {triggerLabel}
           </Button>
         )}
-      </DialogTrigger>
-      <DialogContent
+      </ResponsiveModalTrigger>
+      <ResponsiveModalContent
+        sheetLayout="split"
         showCloseButton={false}
         className={cn(
-          'flex max-h-[min(90dvh,52rem)] w-full max-w-[min(calc(100vw-1.5rem),42rem)] flex-col gap-0 overflow-hidden !py-3',
+          'flex max-h-[min(90dvh,52rem)] w-full max-w-[min(calc(100vw-1.5rem),42rem)] flex-col gap-0 overflow-hidden !p-0 sm:!py-3',
           'sm:max-w-[min(92vw,42rem)]'
         )}
       >
-        <div className="border-border/60 flex shrink-0 items-center gap-3 border-b">
-          <DialogHeader className="min-h-[56px] flex-1 justify-center space-y-0 py-3.5 pr-0">
-            <DialogTitle className="text-left text-base leading-snug sm:text-lg">
+        <div className="border-border/60 flex shrink-0 items-center gap-3 border-b px-4 sm:px-0">
+          <ResponsiveModalHeader className="min-h-[56px] flex-1 justify-center space-y-0 py-3.5 pr-0">
+            <ResponsiveModalTitle className="text-left text-base leading-snug sm:text-lg">
               Telegram setup help
-            </DialogTitle>
-          </DialogHeader>
-          <DialogClose
+            </ResponsiveModalTitle>
+          </ResponsiveModalHeader>
+          <ResponsiveModalClose
             className="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
             aria-label="Close"
           >
             <X className="size-5 shrink-0" aria-hidden />
-          </DialogClose>
+          </ResponsiveModalClose>
         </div>
 
         <Tabs defaultValue={defaultTab} className="flex min-h-0 flex-1 flex-col">
@@ -156,7 +157,7 @@ export function TelegramHelpDialog({
             </TabsContent>
           </div>
         </Tabs>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

@@ -90,11 +90,9 @@ export function WorkflowPendingReviewAck({
             <SegmentedControl
               value={method}
               onChange={setMethod}
-              size="compact"
+              size="dense"
+              fullWidth
               aria-label={REVIEW_METHOD_LABEL}
-              className="w-full"
-              listClassName="flex w-full"
-              triggerClassName="min-w-0 flex-1"
               options={[
                 { value: 'manual', label: 'Manual' },
                 { value: 'ai', label: 'AI check', icon: Sparkles },
