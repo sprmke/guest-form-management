@@ -1047,7 +1047,10 @@ export async function acceptOrgInvitation(
 
   const inviteEmail = normalizeInviteEmail(invite.email as string);
   if (normalizeInviteEmail(userEmail) !== inviteEmail) {
-    throw new Error(`Signed-in email does not match the invitation email (${inviteEmail}).`);
+    // Never interpolate the invitee's email into this message — it's returned verbatim
+    // to whichever (mismatched) account is signed in and would otherwise disclose a
+    // third party's email address to an unauthorized caller.
+    throw new Error('Signed-in email does not match the invitation email.');
   }
 
   const organizationId = invite.organization_id as string;

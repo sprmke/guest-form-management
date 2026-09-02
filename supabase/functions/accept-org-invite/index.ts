@@ -27,7 +27,7 @@ serveAuthenticated('accept-org-invite', async (req, user) => {
     const msg = e instanceof Error ? e.message : 'Accept failed';
     const status = msg.includes('not found')
       ? 404
-      : msg.includes('email must match')
+      : msg.includes('email must match') || msg.includes('does not match')
         ? 403
         : msg.includes('expired') || msg.includes('no longer valid')
           ? 410
