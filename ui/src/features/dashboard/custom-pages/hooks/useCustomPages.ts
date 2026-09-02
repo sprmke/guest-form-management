@@ -4,7 +4,7 @@ import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org
 
 import { supabase } from '@/lib/supabase/client';
 
-export type CustomPageType = 'stay_guide';
+export type CustomPageType = 'stay_guide' | 'property_showcase';
 
 export type CustomPageDto = {
   pageType: CustomPageType;

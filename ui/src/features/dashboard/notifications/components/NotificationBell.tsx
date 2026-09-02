@@ -201,7 +201,7 @@ export function NotificationBell({
           <BottomSheetContent
             layout="split"
             overlayClassName={NOTIFICATIONS_PANEL_Z}
-            className={NOTIFICATIONS_PANEL_Z}
+            className={cn(NOTIFICATIONS_PANEL_Z, 'h-[min(85dvh,40rem)] overflow-hidden')}
           >
             {panelBody}
           </BottomSheetContent>

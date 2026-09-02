@@ -252,7 +252,7 @@ export function ImportStatStrip({
             <span className="text-muted-foreground block text-left text-xs">{stat.label}</span>
             <span
               className={cn(
-                'mt-0.5 block text-left text-xl font-semibold tabular-nums',
+                'mt-0.5 block text-left text-lg font-semibold tabular-nums sm:text-xl',
                 STAT_TONES[stat.tone ?? 'neutral']
               )}
             >

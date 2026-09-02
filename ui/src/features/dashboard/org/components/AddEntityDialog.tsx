@@ -93,8 +93,9 @@ function KindToggle({
     <SegmentedControl
       value={kind}
       onChange={onKindChange}
-      listClassName="w-full"
-      triggerClassName="min-h-[44px] flex-1 gap-2 px-3"
+      size="dense"
+      fullWidth
+      triggerClassName="gap-2 px-3"
       aria-label="Asset type"
       options={[
         { value: 'property', label: 'Property', icon: Home },

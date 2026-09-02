@@ -36,7 +36,7 @@ const sheetVariants = cva(
       side: {
         top: 'data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top inset-x-0 top-0 border-b p-6',
         bottom:
-          'data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 flex max-h-[min(92dvh,100%)] min-h-0 w-full max-w-none flex-col rounded-t-2xl border-t p-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]',
+          'data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 flex max-h-[min(92dvh,100%)] min-h-0 w-full max-w-none flex-col overflow-hidden rounded-t-2xl border-t p-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]',
         left: 'data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left inset-y-0 left-0 h-full w-3/4 border-r p-6 sm:max-w-sm',
         right:
           'data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right inset-y-0 right-0 h-full w-3/4 border-l p-6 sm:max-w-sm',
@@ -120,7 +120,7 @@ const SheetTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Title
     ref={ref}
-    className={cn('text-foreground text-lg font-semibold', className)}
+    className={cn('text-foreground text-base font-semibold', className)}
     {...props}
   />
 ));

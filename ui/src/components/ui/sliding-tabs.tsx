@@ -23,19 +23,24 @@ type SlidingTabsListContextValue = {
 const SlidingTabsListContext = React.createContext<SlidingTabsListContextValue | null>(null);
 
 const slidingTabsListClass: Record<SlidingTabsSize, string> = {
-  primary: 'inline-flex h-9 items-center justify-center rounded-lg p-1',
+  /* Page section tabs (Team Members / Invitations). Same track height as compact. */
+  primary:
+    'inline-flex h-9 max-w-full items-stretch justify-start overflow-x-auto overflow-y-hidden rounded-lg p-0.5',
+  /* Multi-option strips (booking detail, inbox). ~36px track. Never min-h-[44px] on triggers. */
   compact:
-    'inline-flex h-auto w-fit max-w-full items-center justify-start overflow-x-auto overflow-y-hidden rounded-lg p-0.5',
-  dense: 'inline-flex h-auto w-fit max-w-full items-center justify-start rounded-lg p-0.5',
+    'inline-flex h-9 w-fit max-w-full items-stretch justify-start overflow-x-auto overflow-y-hidden rounded-lg p-0.5',
+  /* Form / toolbar toggles (Sign·Upload, GAF·Pet, Card·Calendar). ~32px track. */
+  dense: 'inline-flex h-8 w-fit max-w-full items-stretch justify-start rounded-lg p-0.5',
 };
 
 const slidingTabsTriggerClass: Record<SlidingTabsSize, string> = {
   primary:
-    'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium',
+    'inline-flex h-full min-h-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-0 text-[13px] font-medium leading-none lg:px-3 lg:text-sm',
   compact:
-    'inline-flex min-h-[44px] items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium lg:h-8 lg:min-h-0 lg:gap-1 lg:px-2.5 lg:py-1 lg:text-[13px]',
+    'inline-flex h-full min-h-0 items-center justify-center gap-1 whitespace-nowrap rounded-md px-2.5 py-0 text-xs font-medium leading-none sm:text-[13px]',
+  /* Fill the padded track — never fixed h-* taller than the track. */
   dense:
-    'inline-flex h-7 items-center justify-center gap-1 whitespace-nowrap rounded-md px-2 text-[11px] font-semibold sm:h-8 sm:px-2.5',
+    'inline-flex h-full min-h-0 items-center justify-center gap-1 whitespace-nowrap rounded-md px-2 py-0 text-[11px] font-semibold leading-none sm:px-2.5',
 };
 
 function useSlidingTabsContext(): SlidingTabsContextValue {
@@ -204,11 +209,23 @@ export type SegmentedControlOption<T extends string = string> = {
   className?: string;
 };
 
+/** Dense equal-width segments for `AdminSurfaceCardHeader` actions (Name/Price, All/Income…). */
+export const cardHeaderSegmentedListClassName = 'border-border/60 h-7 max-w-full p-0.5';
+export const cardHeaderSegmentedTriggerClassName =
+  'px-2 text-[11px] font-medium leading-none sm:px-2.5';
+
 type SegmentedControlProps<T extends string> = {
   value: T;
   onChange: (value: T) => void;
   options: SegmentedControlOption<T>[];
   size?: SlidingTabsSize;
+  /** Stretch track + equal-width triggers (Sign/Upload, Card/Calendar, etc.). */
+  fullWidth?: boolean;
+  /**
+   * Equal-width triggers inside a `w-fit` track (card-header All/Income/Expenses,
+   * Name/Price). Prefer with `size="dense"` for surface-card actions.
+   */
+  equalSegments?: boolean;
   className?: string;
   listClassName?: string;
   triggerClassName?: string;
@@ -223,6 +240,8 @@ export function SegmentedControl<T extends string>({
   onChange,
   options,
   size = 'compact',
+  fullWidth = false,
+  equalSegments = false,
   className,
   listClassName,
   triggerClassName,
@@ -235,9 +254,10 @@ export function SegmentedControl<T extends string>({
     : options;
 
   const handleValueChange = React.useCallback((next: string) => onChange(next as T), [onChange]);
-  const iconClassName = size === 'dense' ? 'size-3 shrink-0' : 'size-4 shrink-0';
+  const iconClassName = 'size-3.5 shrink-0';
   const resolvedPillClassName =
     pillClassName ?? (size === 'dense' ? 'bg-card rounded-md shadow-sm' : undefined);
+  const equalWidthTriggers = fullWidth || equalSegments;
 
   return (
     <SlidingTabs value={value} onValueChange={handleValueChange} className={className}>
@@ -245,6 +265,7 @@ export function SegmentedControl<T extends string>({
         size={size}
         className={cn(
           size === 'dense' ? 'border-border/70 bg-muted/40 border' : 'segment-shell',
+          fullWidth && 'w-full max-w-none',
           listClassName
         )}
         pillClassName={resolvedPillClassName}
@@ -253,6 +274,8 @@ export function SegmentedControl<T extends string>({
           visible.length,
           value,
           size,
+          fullWidth,
+          equalSegments,
           visible.map((option) => option.ariaLabel ?? '').join('|'),
         ]}
       >
@@ -276,6 +299,7 @@ export function SegmentedControl<T extends string>({
                 title={accessibleName}
                 className={cn(
                   size !== 'dense' && 'segment-item',
+                  equalWidthTriggers && 'flex-1 basis-0 justify-center',
                   triggerClassName,
                   optionClassName
                 )}

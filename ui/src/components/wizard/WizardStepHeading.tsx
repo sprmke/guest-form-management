@@ -21,7 +21,7 @@ export function WizardStepHeading({
       <h2
         ref={headingRef}
         tabIndex={-1}
-        className="text-foreground text-[15px] font-semibold leading-snug outline-none"
+        className="text-foreground text-sm font-semibold leading-snug outline-none"
       >
         {title}
       </h2>
