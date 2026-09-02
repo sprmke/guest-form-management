@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 
 type Props = {
   open: boolean;
@@ -48,11 +48,11 @@ export function MarketingNameDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[min(calc(100vw-1.5rem),24rem)]">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent className="sm:max-w-[24rem]">
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>{title}</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
         <div className="space-y-2">
           <Label htmlFor="marketing-name-input">{label}</Label>
           <Input
@@ -65,15 +65,15 @@ export function MarketingNameDialog({
             }}
           />
         </div>
-        <DialogFooter className="gap-2">
+        <ResponsiveModalFooter className="gap-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button type="button" onClick={handleConfirm}>
             {confirmLabel}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

@@ -13,6 +13,10 @@ import {
   Send,
   ChevronLeft as ChevronLeftIcon,
   Sparkles,
+  Redo2,
+  RotateCcw,
+  Undo2,
+  LayoutTemplate,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -27,6 +31,7 @@ import {
 } from '@/features/dashboard/marketing/components/shared/MarketingAiGeneratePanel';
 import { MarketingAutoSaveStatus } from '@/features/dashboard/marketing/components/shared/MarketingAutoSaveStatus';
 import { MarketingEditorHistoryControls } from '@/features/dashboard/marketing/components/shared/MarketingEditorHistoryControls';
+import { MarketingEditorMobileToolbar } from '@/features/dashboard/marketing/components/shared/MarketingEditorMobileToolbar';
 import { MarketingEditorSidebar } from '@/features/dashboard/marketing/components/shared/MarketingEditorSidebar';
 import { MarketingPreviewHeader } from '@/features/dashboard/marketing/components/shared/MarketingPreviewHeader';
 import { useMarketingStudioHeaderActions } from '@/features/dashboard/marketing/components/shared/MarketingStudioHeaderActions';
@@ -84,10 +89,11 @@ import {
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { PlanGateWatermarkOverlay } from '@/features/dashboard/plans/components/PlanGateWatermarkOverlay';
-import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
+import { TierBadge, TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
 
 import { CalendarFormatPicker } from './CalendarFormatPicker';
@@ -172,6 +178,11 @@ export function CalendarBuilder({
   isExporting = false,
 }: CalendarBuilderProps) {
   const { canGenerate } = useMarketingPermissions();
+  const isBelowLg = useIsBelowLg();
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+  // Picking a template from the mobile sheet should drop the user straight back
+  // to the canvas — close the panel so the editor is visible.
+  const closeMobilePanel = useCallback(() => setMobilePanelOpen(false), []);
   const { data: appSettings } = useAppSettings();
   const { data: publicProperty } = usePublicPropertyDetail(propertySlug);
   const orgBrandColor = useOrgBrandColor();
@@ -986,38 +997,44 @@ export function CalendarBuilder({
         {calendarAutosaveEnabled ? (
           <MarketingAutoSaveStatus status={autoSaveStatus} errorMessage={autoSaveError} />
         ) : null}
-        {manualSaveEnabled ? (
-          <SaveMarketingTemplateButton
-            contentType="calendar"
-            designJson={customDesignJson}
-            defaultName="Custom calendar"
-            aspectPreset={calendarAspectPreset}
-            buttonLabel="Save Template"
-            updateLabel="Save Template"
-            onSaved={handleCustomTemplateSaved}
-          />
-        ) : null}
-        {onExport ? (
-          <TierBadgeAnchor feature="marketingStudio">
-            <Button
-              variant="outline"
-              className="min-h-[44px] gap-2"
-              onClick={onExport}
-              disabled={isExporting}
-            >
-              <Download className="size-4" aria-hidden />
-              {isExporting ? 'Exporting…' : 'Download PNG'}
-            </Button>
-          </TierBadgeAnchor>
-        ) : null}
-        {onPublish ? (
-          <TierBadgeAnchor feature="marketingPublishLimitPerGroup">
-            <Button className="min-h-[44px] gap-2" onClick={onPublish} disabled={isExporting}>
-              <Send className="size-4" aria-hidden />
-              {MARKETING_PUBLISH_META_LABEL}
-            </Button>
-          </TierBadgeAnchor>
-        ) : null}
+        {/* Below lg the builder header would wrap these into a tall second row and eat
+            canvas height — Download / Publish / Save move into MarketingEditorMobileToolbar. */}
+        {isBelowLg ? null : (
+          <>
+            {manualSaveEnabled ? (
+              <SaveMarketingTemplateButton
+                contentType="calendar"
+                designJson={customDesignJson}
+                defaultName="Custom calendar"
+                aspectPreset={calendarAspectPreset}
+                buttonLabel="Save Template"
+                updateLabel="Save Template"
+                onSaved={handleCustomTemplateSaved}
+              />
+            ) : null}
+            {onExport ? (
+              <TierBadgeAnchor feature="marketingStudio">
+                <Button
+                  variant="outline"
+                  className="min-h-[44px] gap-2"
+                  onClick={onExport}
+                  disabled={isExporting}
+                >
+                  <Download className="size-4" aria-hidden />
+                  {isExporting ? 'Exporting…' : 'Download PNG'}
+                </Button>
+              </TierBadgeAnchor>
+            ) : null}
+            {onPublish ? (
+              <TierBadgeAnchor feature="marketingPublishLimitPerGroup">
+                <Button className="min-h-[44px] gap-2" onClick={onPublish} disabled={isExporting}>
+                  <Send className="size-4" aria-hidden />
+                  {MARKETING_PUBLISH_META_LABEL}
+                </Button>
+              </TierBadgeAnchor>
+            ) : null}
+          </>
+        )}
       </>
     ),
     [
@@ -1027,6 +1044,7 @@ export function CalendarBuilder({
       calendarAutosaveEnabled,
       customDesignJson,
       handleCustomTemplateSaved,
+      isBelowLg,
       isExporting,
       manualSaveEnabled,
       onExport,
@@ -1047,6 +1065,10 @@ export function CalendarBuilder({
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
             <MarketingEditorSidebar
               layoutKey="calendar"
+              mobileVariant="sheet"
+              mobileOpen={mobilePanelOpen}
+              onMobileOpenChange={setMobilePanelOpen}
+              mobileTitle={showAdvancedSettings ? 'Calendar settings' : 'Templates'}
               header={
                 showAdvancedSettings ? (
                   <div className="flex items-center gap-2">
@@ -1113,11 +1135,20 @@ export function CalendarBuilder({
                     customTemplates={customTemplates}
                     selectedKey={selectedTemplateKey}
                     canvasFormat={canvasFrame.format}
-                    onSelectPreset={handleApplyPreset}
+                    onSelectPreset={(value) => {
+                      handleApplyPreset(value);
+                      closeMobilePanel();
+                    }}
                     onCustomizePreset={handleCustomizePreset}
-                    onSelectBlank={handleSelectBlank}
+                    onSelectBlank={() => {
+                      handleSelectBlank();
+                      closeMobilePanel();
+                    }}
                     onCustomizeBlank={handleCustomizeBlank}
-                    onSelectCustom={handleSelectCustom}
+                    onSelectCustom={(id) => {
+                      handleSelectCustom(id);
+                      closeMobilePanel();
+                    }}
                     onCustomizeCustom={handleCustomizeCustom}
                     onRenameCustom={handleRenameCustom}
                     onRemoveCustom={handleRemoveCustom}
@@ -1135,121 +1166,161 @@ export function CalendarBuilder({
             >
               <MarketingPreviewHeader
                 leading={
-                  <MarketingEditorHistoryControls
-                    canUndo={canUndo()}
-                    canRedo={canRedo()}
-                    onUndo={undo}
-                    onRedo={redo}
-                    onReset={handleReset}
-                  />
-                }
-                actions={
-                  <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
-                    {/* Month Navigation */}
-                    <div className="border-border bg-background flex items-center gap-1 rounded-md border px-1 py-0.5">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 min-h-[44px] w-9 min-w-[44px]"
-                            onClick={prevMonth}
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Previous Month</TooltipContent>
-                      </Tooltip>
-                      <span className="min-w-[100px] text-center text-xs font-medium">
+                  isBelowLg ? (
+                    // Mobile: a full-width month stepper sits at the top of the canvas,
+                    // consistent with the app's other date navigators (no cramped
+                    // right-floated pill).
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="size-10 min-h-[44px] min-w-[44px] shrink-0"
+                        aria-label="Previous month"
+                        onClick={prevMonth}
+                      >
+                        <ChevronLeft className="size-4" aria-hidden />
+                      </Button>
+                      <span className="min-w-0 flex-1 truncate text-center text-sm font-semibold">
                         {previewMonth.toLocaleDateString('en-US', {
-                          month: 'short',
+                          month: 'long',
                           year: 'numeric',
                         })}
                       </span>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 min-h-[44px] w-9 min-w-[44px]"
-                            onClick={nextMonth}
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Next Month</TooltipContent>
-                      </Tooltip>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="size-10 min-h-[44px] min-w-[44px] shrink-0"
+                        aria-label="Next month"
+                        onClick={nextMonth}
+                      >
+                        <ChevronRight className="size-4" aria-hidden />
+                      </Button>
                     </div>
+                  ) : (
+                    <MarketingEditorHistoryControls
+                      canUndo={canUndo()}
+                      canRedo={canRedo()}
+                      onUndo={undo}
+                      onRedo={redo}
+                      onReset={handleReset}
+                    />
+                  )
+                }
+                actions={
+                  isBelowLg ? undefined : (
+                    <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
+                      {/* Month Navigation */}
+                      <div className="border-border bg-background flex items-center gap-1 rounded-md border px-1 py-0.5">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 min-h-[44px] w-9 min-w-[44px]"
+                              onClick={prevMonth}
+                            >
+                              <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Previous Month</TooltipContent>
+                        </Tooltip>
+                        <span className="min-w-[100px] text-center text-xs font-medium">
+                          {previewMonth.toLocaleDateString('en-US', {
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 min-h-[44px] w-9 min-w-[44px]"
+                              onClick={nextMonth}
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Next Month</TooltipContent>
+                        </Tooltip>
+                      </div>
 
-                    <div className="bg-border hidden h-5 w-px sm:block" />
+                      <div className="bg-border hidden h-5 w-px lg:block" />
 
-                    {/* Zoom Controls */}
-                    <div className="border-border bg-background flex items-center gap-1 rounded-md border px-1 py-0.5">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 min-h-[44px] w-9 min-w-[44px]"
-                            onClick={handleZoomOut}
-                            disabled={relativeZoom <= CALENDAR_MIN_RELATIVE_ZOOM}
-                          >
-                            <ZoomOut className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Zoom Out</TooltipContent>
-                      </Tooltip>
-                      <span className="min-w-[48px] text-center text-xs font-medium">
-                        {relativeZoom}%
-                      </span>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 min-h-[44px] w-9 min-w-[44px]"
-                            onClick={handleZoomIn}
-                            disabled={relativeZoom >= previewLayout.maxRelativeZoomPercent}
-                          >
-                            <ZoomIn className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Zoom In</TooltipContent>
-                      </Tooltip>
-                      <div className="bg-border mx-1 hidden h-4 w-px sm:block" />
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 min-h-[44px] w-9 min-w-[44px]"
-                            onClick={handleFitToScreen}
-                          >
-                            <Minimize2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Fit to View</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 min-h-[44px] w-9 min-w-[44px]"
-                            onClick={handleOpenFullscreen}
-                          >
-                            <Maximize2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Fullscreen</TooltipContent>
-                      </Tooltip>
+                      {/* Zoom Controls — desktop only; mobile uses MarketingEditorMobileToolbar */}
+                      <div className="border-border bg-background flex items-center gap-1 rounded-md border px-1 py-0.5 max-lg:hidden">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 min-h-[44px] w-9 min-w-[44px]"
+                              onClick={handleZoomOut}
+                              disabled={relativeZoom <= CALENDAR_MIN_RELATIVE_ZOOM}
+                            >
+                              <ZoomOut className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Zoom Out</TooltipContent>
+                        </Tooltip>
+                        <span className="min-w-[48px] text-center text-xs font-medium">
+                          {relativeZoom}%
+                        </span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 min-h-[44px] w-9 min-w-[44px]"
+                              onClick={handleZoomIn}
+                              disabled={relativeZoom >= previewLayout.maxRelativeZoomPercent}
+                            >
+                              <ZoomIn className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Zoom In</TooltipContent>
+                        </Tooltip>
+                        <div className="bg-border mx-1 hidden h-4 w-px sm:block" />
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 min-h-[44px] w-9 min-w-[44px]"
+                              onClick={handleFitToScreen}
+                            >
+                              <Minimize2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Fit to View</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 min-h-[44px] w-9 min-w-[44px]"
+                              onClick={handleOpenFullscreen}
+                            >
+                              <Maximize2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Fullscreen</TooltipContent>
+                        </Tooltip>
+                      </div>
                     </div>
-                  </div>
+                  )
                 }
               />
 
-              {/* Preview Area */}
-              <div ref={previewContainerRef} className="flex-1 overflow-auto p-4 sm:p-6">
+              {/* Preview Area — the studio shell ends just above the floating editor dock
+                  on mobile, so only a small bottom gutter is needed here. */}
+              <div
+                ref={previewContainerRef}
+                className="flex-1 overflow-auto p-4 max-lg:pb-3 sm:p-6"
+              >
                 <div className="flex min-h-full items-center justify-center">
                   <PlanGateWatermarkOverlay fit="content">
                     <CalendarPreviewScaledFrame
@@ -1276,25 +1347,138 @@ export function CalendarBuilder({
             </div>
           </div>
 
+          {/* Mobile editor dock (max-lg) — panel toggle + zoom + overflow. Replaces the
+              app bottom tab bar while the Calendar editor is open. */}
+          {!isFullscreen ? (
+            <MarketingEditorMobileToolbar
+              panelLabel={showAdvancedSettings ? 'Settings' : 'Templates'}
+              panelIcon={LayoutTemplate}
+              panelOpen={mobilePanelOpen}
+              onTogglePanel={() => setMobilePanelOpen((open) => !open)}
+              controls={
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="size-9 min-h-[44px] min-w-[44px]"
+                    aria-label="Zoom out"
+                    onClick={handleZoomOut}
+                    disabled={relativeZoom <= CALENDAR_MIN_RELATIVE_ZOOM}
+                  >
+                    <ZoomOut className="size-4" aria-hidden />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="size-9 min-h-[44px] min-w-[44px]"
+                    aria-label="Zoom in"
+                    onClick={handleZoomIn}
+                    disabled={relativeZoom >= previewLayout.maxRelativeZoomPercent}
+                  >
+                    <ZoomIn className="size-4" aria-hidden />
+                  </Button>
+                </>
+              }
+              overflowItems={[
+                {
+                  key: 'undo',
+                  label: 'Undo',
+                  icon: <Undo2 className="size-5" aria-hidden />,
+                  disabled: !canUndo(),
+                  onSelect: undo,
+                },
+                {
+                  key: 'redo',
+                  label: 'Redo',
+                  icon: <Redo2 className="size-5" aria-hidden />,
+                  disabled: !canRedo(),
+                  onSelect: redo,
+                },
+                {
+                  key: 'fit',
+                  label: 'Fit to view',
+                  icon: <Minimize2 className="size-5" aria-hidden />,
+                  onSelect: handleFitToScreen,
+                },
+                {
+                  key: 'fullscreen',
+                  label: 'Fullscreen preview',
+                  icon: <Maximize2 className="size-5" aria-hidden />,
+                  onSelect: handleOpenFullscreen,
+                },
+                {
+                  key: 'reset',
+                  label: 'Reset changes',
+                  icon: <RotateCcw className="size-5" aria-hidden />,
+                  onSelect: handleReset,
+                },
+                ...(canGenerate
+                  ? [
+                      {
+                        key: 'ai',
+                        label: 'Generate with AI',
+                        icon: <Sparkles className="size-5" aria-hidden />,
+                        trailing: <TierBadge feature="aiMarketingGeneration" />,
+                        disabled: aiGenerateBusy || generateTemplate.isPending,
+                        onSelect: () => setAiGenerateOpen(true),
+                      },
+                    ]
+                  : []),
+                ...(onExport
+                  ? [
+                      {
+                        key: 'download',
+                        label: isExporting ? 'Exporting…' : 'Download PNG',
+                        icon: <Download className="size-5" aria-hidden />,
+                        trailing: <TierBadge feature="marketingStudio" />,
+                        disabled: isExporting,
+                        onSelect: onExport,
+                      },
+                    ]
+                  : []),
+                ...(onPublish
+                  ? [
+                      {
+                        key: 'publish',
+                        label: MARKETING_PUBLISH_META_LABEL,
+                        icon: <Send className="size-5" aria-hidden />,
+                        trailing: <TierBadge feature="marketingPublishLimitPerGroup" />,
+                        disabled: isExporting,
+                        onSelect: onPublish,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          ) : null}
+
           {/* Fullscreen Overlay */}
           {isFullscreen && (
             <div className="bg-background/95 fixed inset-0 z-50 flex flex-col backdrop-blur-sm">
-              {/* Fullscreen Header */}
-              <div className="border-border bg-background flex items-center justify-between border-b px-6 py-3">
-                <div className="flex items-center gap-4">
-                  <h2 className="text-lg font-semibold">Calendar Preview</h2>
-                  <span className="text-muted-foreground text-sm">
+              {/* Fullscreen Header — wraps + tightens on mobile so the pill clusters
+                  never overflow a 375px viewport. */}
+              <div className="border-border bg-background flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b px-3 py-3 sm:px-6">
+                <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+                  <h2 className="text-base font-semibold sm:text-lg">Calendar Preview</h2>
+                  <span className="text-muted-foreground hidden truncate text-sm sm:inline">
                     {propertyName} •{' '}
                     {previewMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
                   {/* Month Navigation */}
                   <div className="border-border bg-muted/50 flex items-center gap-1 rounded-md border px-1 py-0.5">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={prevMonth}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-9 min-h-[44px] min-w-[44px]"
+                          onClick={prevMonth}
+                        >
                           <ChevronLeft className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
@@ -1308,7 +1492,12 @@ export function CalendarBuilder({
                     </span>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={nextMonth}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-9 min-h-[44px] min-w-[44px]"
+                          onClick={nextMonth}
+                        >
                           <ChevronRight className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
@@ -1323,7 +1512,7 @@ export function CalendarBuilder({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="size-9 min-h-[44px] min-w-[44px]"
                           onClick={handleFullscreenZoomOut}
                           disabled={fullscreenRelativeZoom <= CALENDAR_MIN_RELATIVE_ZOOM}
                         >
@@ -1340,7 +1529,7 @@ export function CalendarBuilder({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="size-9 min-h-[44px] min-w-[44px]"
                           onClick={handleFullscreenZoomIn}
                           disabled={
                             fullscreenRelativeZoom >= fullscreenLayout.maxRelativeZoomPercent
@@ -1357,7 +1546,7 @@ export function CalendarBuilder({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="size-9 min-h-[44px] min-w-[44px]"
                           onClick={handleFullscreenFitToScreen}
                         >
                           <Minimize2 className="h-4 w-4" />
@@ -1373,7 +1562,7 @@ export function CalendarBuilder({
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-9 w-9"
+                        className="size-9 min-h-[44px] min-w-[44px]"
                         onClick={handleCloseFullscreen}
                       >
                         <X className="h-5 w-5" />

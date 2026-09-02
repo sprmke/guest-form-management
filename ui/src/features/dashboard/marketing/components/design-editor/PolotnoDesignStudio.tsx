@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { Download, Loader2, Send } from 'lucide-react';
+import {
+  Download,
+  LayoutTemplate,
+  Loader2,
+  Redo2,
+  RotateCcw,
+  Send,
+  Sparkles,
+  Undo2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/hooks/usePublicPropertyDetail';
@@ -13,6 +22,7 @@ import {
   type MarketingAiGenerateInput,
 } from '@/features/dashboard/marketing/components/shared/MarketingAiGeneratePanel';
 import { MarketingAutoSaveStatus } from '@/features/dashboard/marketing/components/shared/MarketingAutoSaveStatus';
+import { MarketingEditorMobileToolbar } from '@/features/dashboard/marketing/components/shared/MarketingEditorMobileToolbar';
 import { MarketingEditorSidebar } from '@/features/dashboard/marketing/components/shared/MarketingEditorSidebar';
 import type { MarketingFormatOption } from '@/features/dashboard/marketing/components/shared/MarketingFormatPicker';
 import { useMarketingStudioHeaderActions } from '@/features/dashboard/marketing/components/shared/MarketingStudioHeaderActions';
@@ -86,12 +96,13 @@ import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgCon
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
 import { useOrgSettings } from '@/features/dashboard/org/hooks/useOrgSettings';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
-import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
+import { TierBadge, TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
 import { formatMoneyCompact } from '@/utils/format/currency';
 
@@ -124,6 +135,10 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
     (typeof org.settings?.emailLogoUrl === 'string' ? org.settings.emailLogoUrl.trim() : '') ||
     null;
   const storeRef = useRef<PolotnoStore | null>(null);
+  const isBelowLg = useIsBelowLg();
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+  // Choosing a template on mobile drops the user back to the canvas.
+  const closeMobilePanel = useCallback(() => setMobilePanelOpen(false), []);
   const [storeReady, setStoreReady] = useState(false);
   const [format, setFormat] = useState<DesignTemplateFormat>('instagram-post');
   const [category, setCategory] = useState<string>('promo');
@@ -694,44 +709,51 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
     () => (
       <>
         <MarketingAutoSaveStatus status={autoSaveStatus} errorMessage={autoSaveError} />
-        {canEditContent ? (
-          <TierBadgeAnchor feature="marketingStudio">
-            <Button
-              variant="outline"
-              className="min-h-[44px] gap-2"
-              disabled={!storeReady || exporting || loadingTemplate}
-              onClick={() => void handleDownload()}
-            >
-              {exporting ? (
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-              ) : (
-                <Download className="size-4" aria-hidden />
-              )}
-              Download PNG
-            </Button>
-          </TierBadgeAnchor>
-        ) : null}
-        {onPublish && canPublish ? (
-          <TierBadgeAnchor feature="marketingPublishLimitPerGroup">
-            <Button
-              className="min-h-[44px] gap-2"
-              disabled={!storeReady || exporting || loadingTemplate}
-              onClick={() => void handlePublish()}
-            >
-              {exporting ? (
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-              ) : (
-                <Send className="size-4" aria-hidden />
-              )}
-              {MARKETING_PUBLISH_META_LABEL}
-            </Button>
-          </TierBadgeAnchor>
-        ) : null}
+        {/* Below lg these move into MarketingEditorMobileToolbar so the builder header
+            stays a single compact row. */}
+        {isBelowLg ? null : (
+          <>
+            {canEditContent ? (
+              <TierBadgeAnchor feature="marketingStudio">
+                <Button
+                  variant="outline"
+                  className="min-h-[44px] gap-2"
+                  disabled={!storeReady || exporting || loadingTemplate}
+                  onClick={() => void handleDownload()}
+                >
+                  {exporting ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Download className="size-4" aria-hidden />
+                  )}
+                  Download PNG
+                </Button>
+              </TierBadgeAnchor>
+            ) : null}
+            {onPublish && canPublish ? (
+              <TierBadgeAnchor feature="marketingPublishLimitPerGroup">
+                <Button
+                  className="min-h-[44px] gap-2"
+                  disabled={!storeReady || exporting || loadingTemplate}
+                  onClick={() => void handlePublish()}
+                >
+                  {exporting ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Send className="size-4" aria-hidden />
+                  )}
+                  {MARKETING_PUBLISH_META_LABEL}
+                </Button>
+              </TierBadgeAnchor>
+            ) : null}
+          </>
+        )}
       </>
     ),
     [
       autoSaveStatus,
       autoSaveError,
+      isBelowLg,
       storeReady,
       exporting,
       loadingTemplate,
@@ -794,6 +816,10 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
       <MarketingEditorSidebar
         layoutKey="design"
+        mobileVariant="sheet"
+        mobileOpen={mobilePanelOpen}
+        onMobileOpenChange={setMobilePanelOpen}
+        mobileTitle="Templates"
         header={<p className="text-sm font-medium">Templates</p>}
       >
         <MarketingTemplatesPanel
@@ -815,6 +841,7 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
             setSavedTemplateId(null);
             appliedDocumentKeyRef.current = null;
             setSelectedId(templateId);
+            closeMobilePanel();
           }}
           savedRecords={customSavedTemplates}
           selectedSavedId={
@@ -822,12 +849,18 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
               ? savedTemplateId
               : null
           }
-          onSelectSaved={(record) => void applySavedTemplate(record)}
+          onSelectSaved={(record) => {
+            void applySavedTemplate(record);
+            closeMobilePanel();
+          }}
           onSavedTemplate={handleSavedTemplateCreated}
           onOpenAiGenerate={() => setAiGenerateOpen(true)}
           aiGenerateBusy={aiGenerateBusy || generateTemplate.isPending}
           selectedReviewId={selectedReview?.id ?? null}
-          onSelectReview={setSelectedReview}
+          onSelectReview={(review) => {
+            setSelectedReview(review);
+            closeMobilePanel();
+          }}
           designJsonForSave={designJsonForSave}
           aspectPreset={format}
           platform={format.includes('facebook') ? 'facebook' : 'instagram'}
@@ -844,6 +877,7 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
           'polotno-studio-root relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
           marketingEditorWorkspaceClassName
         )}
+        data-mobile={isBelowLg ? 'true' : undefined}
       >
         <div className="relative min-h-0 flex-1">
           {storeReady && store ? (
@@ -852,9 +886,14 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
               propertyImageUrls={propertyImageUrls}
               brandColor={accentColor}
               logoUrl={orgLogoUrl}
-              style={{ width: '100%', height: '100%' }}
+              style={{
+                width: '100%',
+                // The studio shell already ends just above the floating editor dock on mobile.
+                height: '100%',
+              }}
               onResetDesign={handleResetDesign}
               resetDisabled={loadingTemplate || (!selectedId && !savedTemplateId)}
+              hideHistory={isBelowLg}
             />
           ) : (
             <div
@@ -874,6 +913,71 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
           )}
         </div>
       </div>
+
+      {/* Mobile editor dock (max-lg). Polotno keeps its own side rail for Text/Elements/
+          Uploads/Background/Layers (panels dock as a bottom sheet via CSS); this bar adds
+          the template browser + export actions. */}
+      <MarketingEditorMobileToolbar
+        panelLabel="Templates"
+        panelIcon={LayoutTemplate}
+        panelOpen={mobilePanelOpen}
+        onTogglePanel={() => setMobilePanelOpen((open) => !open)}
+        overflowItems={[
+          {
+            key: 'undo',
+            label: 'Undo',
+            icon: <Undo2 className="size-5" aria-hidden />,
+            disabled: !store?.history.canUndo,
+            onSelect: () => store?.history.undo(),
+          },
+          {
+            key: 'redo',
+            label: 'Redo',
+            icon: <Redo2 className="size-5" aria-hidden />,
+            disabled: !store?.history.canRedo,
+            onSelect: () => store?.history.redo(),
+          },
+          {
+            key: 'reset',
+            label: 'Reset design',
+            icon: <RotateCcw className="size-5" aria-hidden />,
+            disabled: loadingTemplate || (!selectedId && !savedTemplateId),
+            onSelect: handleResetDesign,
+          },
+          {
+            key: 'ai',
+            label: 'Generate with AI',
+            icon: <Sparkles className="size-5" aria-hidden />,
+            trailing: <TierBadge feature="aiMarketingGeneration" />,
+            disabled: aiGenerateBusy || generateTemplate.isPending,
+            onSelect: () => setAiGenerateOpen(true),
+          },
+          ...(canEditContent
+            ? [
+                {
+                  key: 'download',
+                  label: exporting ? 'Exporting…' : 'Download PNG',
+                  icon: <Download className="size-5" aria-hidden />,
+                  trailing: <TierBadge feature="marketingStudio" />,
+                  disabled: !storeReady || exporting || loadingTemplate,
+                  onSelect: () => void handleDownload(),
+                },
+              ]
+            : []),
+          ...(onPublish && canPublish
+            ? [
+                {
+                  key: 'publish',
+                  label: MARKETING_PUBLISH_META_LABEL,
+                  icon: <Send className="size-5" aria-hidden />,
+                  trailing: <TierBadge feature="marketingPublishLimitPerGroup" />,
+                  disabled: !storeReady || exporting || loadingTemplate,
+                  onSelect: () => void handlePublish(),
+                },
+              ]
+            : []),
+        ]}
+      />
 
       <MarketingAiGeneratePanel
         open={aiGenerateOpen}

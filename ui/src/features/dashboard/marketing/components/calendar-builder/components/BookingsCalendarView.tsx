@@ -170,7 +170,7 @@ export function BookingsCalendarView({ bookings, propertySlug }: BookingsCalenda
     <div className="grid gap-6 lg:grid-cols-3">
       <Card className="bg-card border-border lg:col-span-2">
         <CardHeader className="flex flex-row items-center justify-between pb-4">
-          <CardTitle className="text-foreground text-lg">
+          <CardTitle className="text-foreground">
             {format(currentMonth, 'MMMM yyyy')}
           </CardTitle>
           <div className="flex gap-1">
@@ -261,7 +261,7 @@ export function BookingsCalendarView({ bookings, propertySlug }: BookingsCalenda
 
       <Card className="bg-card border-border">
         <CardHeader>
-          <CardTitle className="text-foreground text-lg">
+          <CardTitle className="text-foreground">
             {selectedDay ? format(selectedDay, 'MMMM d, yyyy') : 'Select a day'}
           </CardTitle>
         </CardHeader>

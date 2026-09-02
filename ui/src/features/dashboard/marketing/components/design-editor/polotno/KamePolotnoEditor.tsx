@@ -38,6 +38,8 @@ type Props = {
   style?: CSSProperties;
   onResetDesign?: () => void;
   resetDisabled?: boolean;
+  /** Drop the toolbar's undo/redo/reset group (relocated to the mobile editor dock). */
+  hideHistory?: boolean;
 };
 
 export function KamePolotnoEditor({
@@ -48,6 +50,7 @@ export function KamePolotnoEditor({
   style,
   onResetDesign,
   resetDisabled = false,
+  hideHistory = false,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const portalRef = useRef<HTMLDivElement>(null);
@@ -105,15 +108,17 @@ export function KamePolotnoEditor({
   const toolbarComponents = useMemo(
     () => ({
       ActionControls: null,
-      History: (props: { store: PolotnoStore }) => (
-        <KamePolotnoToolbarHistory
-          store={props.store}
-          onReset={onResetDesign}
-          resetDisabled={resetDisabled}
-        />
-      ),
+      History: hideHistory
+        ? () => null
+        : (props: { store: PolotnoStore }) => (
+            <KamePolotnoToolbarHistory
+              store={props.store}
+              onReset={onResetDesign}
+              resetDisabled={resetDisabled}
+            />
+          ),
     }),
-    [onResetDesign, resetDisabled]
+    [onResetDesign, resetDisabled, hideHistory]
   );
 
   return (

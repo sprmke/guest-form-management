@@ -404,9 +404,123 @@
   pointer-events: auto;
 }
 
+/* ------------------------------------------------------------------ *
+ * Mobile / tablet (max-lg) — re-home the fixed Blueprint chrome.
+ * The 72px icon rail stays; the 350px panel becomes a bottom sheet
+ * docked above the app's MarketingEditorMobileToolbar. The canvas
+ * takes the rest of the viewport.
+ * ------------------------------------------------------------------ */
 @media (max-width: 1023px) {
   .polotno-studio-root .kame-polotno-editor,
   .polotno-studio-root .raeditor-app-container {
-    min-height: 520px;
+    min-height: 0;
+  }
+
+  /* Icon rail — a touch-friendly vertical strip, never grows. `overflow-x: hidden`
+     kills the stray horizontal scrollbar that `overflow-y` otherwise forces on. */
+  .polotno-studio-root .raeditor-side-tabs-container {
+    min-width: 68px;
+    width: 68px !important;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  /* Full labels on one line (upstream sets `white-space: pre` at a size that clips
+     "Elements" / "Background" in the narrow rail). */
+  .polotno-studio-root .raeditor-side-panel-tab {
+    padding-block: 0.5rem;
+    padding-inline: 2px;
+    min-height: 56px;
+    height: auto;
+    white-space: normal !important;
+    overflow-wrap: break-word;
+    text-align: center;
+    font-size: 9px;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+  }
+
+  /* History (undo/redo/reset) is relocated to the app editor dock's ⋯ sheet on mobile,
+     so the toolbar collapses to nothing until an element is selected and its
+     contextual controls appear. */
+  .polotno-studio-root .raeditor-toolbar.bp5-navbar {
+    min-height: 0;
+    padding-block: 0;
+  }
+
+  /* Section panel — slide-up bottom sheet, full width, above our dock. */
+  .polotno-studio-root .kame-side-panel-wrap {
+    position: static !important;
+  }
+
+  .polotno-studio-root .raeditor-panel-container.bp5-navbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+    z-index: 45;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: 52dvh;
+    border-right: none;
+    border-top: 1px solid hsl(var(--border));
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 1rem;
+    box-shadow: 0 -12px 32px hsl(var(--foreground) / 0.14);
+    overflow-y: auto;
+  }
+
+  .polotno-studio-root .raeditor-panel-container.bp5-navbar.collapsed {
+    transform: translateY(100%);
+    max-height: 0 !important;
+    border-top: none;
+    box-shadow: none;
+  }
+
+  /* Keep the panel-close affordance reachable on touch (upstream hides it <800px). */
+  .polotno-studio-root .kame-side-panel-collapse {
+    display: flex;
+    position: fixed;
+    top: auto;
+    bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px) + 52dvh - 2.75rem);
+    right: 0.75rem;
+    left: auto;
+    transform: none;
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 0.75rem;
+    z-index: 46;
+  }
+
+  .polotno-studio-root
+    .kame-side-panel-wrap:has(.raeditor-panel-container.bp5-navbar.collapsed)
+    .kame-side-panel-collapse {
+    display: none;
+  }
+
+  /* Toolbar scrolls horizontally instead of overflowing the row. */
+  .polotno-studio-root .raeditor-toolbar.bp5-navbar {
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+  }
+
+  .polotno-studio-root .raeditor-toolbar .bp5-navbar-group {
+    flex-wrap: nowrap;
+  }
+
+  /* Konva canvas owns touch gestures (pan / pinch) — don't let the page scroll fight it. */
+  .polotno-studio-root .raeditor-workspace-wrap,
+  .polotno-studio-root .raeditor-workspace-container,
+  .polotno-studio-root .raeditor-workspace-inner {
+    touch-action: none;
+  }
+
+  /* Portaled Blueprint popovers (color / font pickers) must fit the viewport. */
+  .polotno-studio-root .kame-polotno-portal .bp5-popover,
+  .polotno-studio-root .kame-polotno-portal .bp5-tooltip {
+    max-width: calc(100vw - 24px);
   }
 }

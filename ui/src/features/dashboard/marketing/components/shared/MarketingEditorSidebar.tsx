@@ -2,6 +2,7 @@ import { useCallback, useRef, useState, type ReactNode } from 'react';
 
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
+import { MarketingEditorMobilePanel } from '@/features/dashboard/marketing/components/shared/MarketingEditorMobilePanel';
 import {
   MARKETING_SIDEBAR_COLLAPSED_WIDTH,
   useMarketingSidebarLayout,
@@ -23,6 +24,19 @@ type Props = {
   fixedWidth?: number;
   /** Drag-to-resize handle. Ignored when `fixedWidth` is set. Default true. */
   resizable?: boolean;
+  /**
+   * How the panel behaves below `lg`:
+   * - `stack` (default) — full-width block above the canvas (legacy).
+   * - `sheet` — panel content moves into a bottom sheet so the canvas goes full-bleed;
+   *   the editor owns `mobileOpen` / `onMobileOpenChange` (toggled from
+   *   `MarketingEditorMobileToolbar`).
+   */
+  mobileVariant?: 'stack' | 'sheet';
+  mobileOpen?: boolean;
+  onMobileOpenChange?: (open: boolean) => void;
+  /** Bottom-sheet title when `mobileVariant="sheet"`. */
+  mobileTitle?: string;
+  mobileDescription?: string;
 };
 
 export function MarketingEditorSidebar({
@@ -33,6 +47,11 @@ export function MarketingEditorSidebar({
   className,
   fixedWidth,
   resizable = true,
+  mobileVariant = 'stack',
+  mobileOpen = false,
+  onMobileOpenChange,
+  mobileTitle = 'Editor panel',
+  mobileDescription,
 }: Props) {
   const isBelowLg = useIsBelowLg();
   const { width, collapsed, setWidth, setCollapsed, finishResize } =
@@ -81,6 +100,23 @@ export function MarketingEditorSidebar({
     },
     [canResize, collapsed, finishResize, isBelowLg, setWidth]
   );
+
+  // Sheet variant on mobile: panel content moves into a bottom sheet so the editor
+  // canvas can go full-bleed. All hooks above still run (desktop layout unchanged).
+  if (isBelowLg && mobileVariant === 'sheet') {
+    return (
+      <MarketingEditorMobilePanel
+        open={mobileOpen}
+        onOpenChange={(next) => onMobileOpenChange?.(next)}
+        title={mobileTitle}
+        description={mobileDescription}
+        footer={footer}
+      >
+        {header ? <div className="mb-4">{header}</div> : null}
+        {children}
+      </MarketingEditorMobilePanel>
+    );
+  }
 
   return (
     <div

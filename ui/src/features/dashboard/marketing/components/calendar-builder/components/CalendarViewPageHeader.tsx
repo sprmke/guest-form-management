@@ -12,7 +12,7 @@ export function CalendarViewPageHeader({
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        <h1 className="text-foreground text-2xl font-bold tracking-tight">Calendar</h1>
+        <h1 className="text-foreground text-lg font-bold tracking-tight sm:text-xl">Calendar</h1>
         <p className="text-muted-foreground">
           View bookings by day. Click a date to see details on the right.
         </p>

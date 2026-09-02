@@ -52,6 +52,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { UPLOAD_MAX_BYTES, formatMaxBytesError } from '@/lib/media/uploadLimits';
+import { isPostHogEnabled, posthog } from '@/lib/posthog/client';
 import { formatMoneyCompact } from '@/utils/format/currency';
 
 export type PublishMedia = {
@@ -160,6 +161,13 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
       availabilityText: availabilityTextForMonth(bookedDates ?? [], new Date()),
     });
     setCaption(captionText);
+    if (isPostHogEnabled) {
+      posthog.capture('marketing_caption_generated', {
+        platform,
+        post_type: postType,
+        media_type: media?.mediaType ?? 'unknown',
+      });
+    }
   };
 
   const handlePublish = async () => {
@@ -207,17 +215,31 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
         templateId: media.templateId,
       }));
 
+      let publishedCount = 1;
+      let failedCount = 0;
       if (batchMode && payloads.length > 1) {
         const results = await publishBatchToMeta(propertyId, payloads);
-        const failed = results.filter((r) => !r.ok);
-        if (failed.length === 0) {
-          toast.success(`Published to ${results.length} channels`);
+        publishedCount = results.length;
+        failedCount = results.filter((r) => !r.ok).length;
+        if (failedCount === 0) {
+          toast.success(`Published to ${publishedCount} channels`);
         } else {
-          toast.error(`${failed.length} of ${results.length} publishes failed`);
+          toast.error(`${failedCount} of ${publishedCount} publishes failed`);
         }
       } else {
         await publishToMetaRequest(propertyId, payloads[0]!);
         toast.success('Published');
+      }
+      if (isPostHogEnabled) {
+        posthog.capture('marketing_post_published', {
+          platform,
+          post_type: postType,
+          media_type: media.mediaType,
+          channel_count: connectionIds.length,
+          batch_mode: batchMode,
+          published_count: publishedCount,
+          failed_count: failedCount,
+        });
       }
 
       void queryClient.invalidateQueries({ queryKey: ['marketing-publications', propertyId] });
