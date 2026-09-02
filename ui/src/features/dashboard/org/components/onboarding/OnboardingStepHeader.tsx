@@ -59,7 +59,7 @@ export function OnboardingStepHeader({ activeStep, verificationIntro = false }: 
 
       <div className="flex items-start justify-between gap-4 px-4 pb-5 pt-5 sm:px-6 sm:pb-6 sm:pt-6">
         <div className="min-w-0 space-y-1">
-          <h1 className="text-foreground text-xl font-semibold tracking-tight sm:text-[1.375rem]">
+          <h1 className="text-foreground text-lg font-semibold tracking-tight sm:text-xl">
             {title}
           </h1>
           <p className="text-muted-foreground text-sm leading-snug">{hint}</p>

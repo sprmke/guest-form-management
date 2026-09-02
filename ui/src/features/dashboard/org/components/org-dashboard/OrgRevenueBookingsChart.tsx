@@ -14,7 +14,11 @@ import {
 import type { DashboardTrendPoint } from '@/features/dashboard/property/lib/types';
 
 import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
-import { SegmentedControl } from '@/components/ui/sliding-tabs';
+import {
+  SegmentedControl,
+  cardHeaderSegmentedListClassName,
+  cardHeaderSegmentedTriggerClassName,
+} from '@/components/ui/sliding-tabs';
 import { useIsBelowMd } from '@/hooks/useMediaQuery';
 import {
   CHART_HEIGHT_CLASS,
@@ -87,8 +91,10 @@ export function OrgRevenueBookingsChart({ data, isLoading, className }: Props) {
           <SegmentedControl
             value={metric}
             onChange={setMetric}
-            listClassName="border p-0.5"
-            triggerClassName="min-h-[36px] px-3 text-xs font-semibold capitalize sm:min-h-[32px]"
+            size="dense"
+            equalSegments
+            listClassName={cardHeaderSegmentedListClassName}
+            triggerClassName={cn(cardHeaderSegmentedTriggerClassName, 'capitalize')}
             aria-label="Chart metric"
             options={[
               { value: 'revenue', label: 'revenue' },

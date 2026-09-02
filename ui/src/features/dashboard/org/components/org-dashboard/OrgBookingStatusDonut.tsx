@@ -105,9 +105,7 @@ export function OrgBookingStatusDonut({ slices, rangeLabel, className }: Props) 
             </ResponsiveContainer>
 
             <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center px-6 text-center">
-              <p className="text-foreground text-2xl font-bold tabular-nums tracking-tight sm:text-3xl">
-                {total}
-              </p>
+              <p className="truncate text-center text-lg font-bold tabular-nums tracking-tight sm:text-2xl">{total}</p>
               <p className="text-muted-foreground mt-0.5 text-[11px] font-medium sm:text-xs">
                 Bookings
               </p>

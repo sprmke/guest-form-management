@@ -5,16 +5,16 @@ import { AlertTriangle, Trash2 } from 'lucide-react';
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 
 export function OrgDangerZoneSection({
   orgName,
@@ -71,17 +71,19 @@ export function OrgDangerZoneSection({
         </Button>
       </div>
 
-      <Dialog
+      <ResponsiveModal
         open={deleteOpen}
         onOpenChange={(open) => {
           setDeleteOpen(open);
           if (!open) setConfirmSlug('');
         }}
       >
-        <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-          <DialogHeader>
-            <DialogTitle className="text-destructive">Delete organization</DialogTitle>
-            <DialogDescription asChild>
+        <ResponsiveModalContent className="sm:max-w-[28rem]">
+          <ResponsiveModalHeader>
+            <ResponsiveModalTitle className="text-destructive">
+              Delete organization
+            </ResponsiveModalTitle>
+            <ResponsiveModalDescription asChild>
               <div className="text-muted-foreground space-y-2 text-sm">
                 <p>Are you sure you want to delete &quot;{orgName}&quot;?</p>
                 <p>
@@ -89,8 +91,8 @@ export function OrgDangerZoneSection({
                   be undone.
                 </p>
               </div>
-            </DialogDescription>
-          </DialogHeader>
+            </ResponsiveModalDescription>
+          </ResponsiveModalHeader>
           <div className="space-y-1.5">
             <Label htmlFor="confirm-org-delete">
               Type <span className="text-foreground font-semibold">{orgSlug}</span> to confirm
@@ -106,7 +108,7 @@ export function OrgDangerZoneSection({
               spellCheck={false}
             />
           </div>
-          <DialogFooter className="flex-col gap-2 sm:flex-row">
+          <ResponsiveModalFooter className="flex-col gap-2 sm:flex-row">
             <Button
               type="button"
               variant="outline"
@@ -126,9 +128,9 @@ export function OrgDangerZoneSection({
               <Trash2 className="size-4" aria-hidden />
               {deletePending ? 'Deleting…' : 'Yes, delete organization'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveModalFooter>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </AdminSection>
   );
 }

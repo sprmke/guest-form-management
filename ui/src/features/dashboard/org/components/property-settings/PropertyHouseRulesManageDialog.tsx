@@ -1,11 +1,11 @@
 import { ChevronRight, Plus, X } from 'lucide-react';
 
+import { LimitedCountInput } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import {
   HOUSE_RULE_CATEGORIES,
   HOUSE_RULE_CUSTOM_MAX_LENGTH,
   type CustomHouseRule,
 } from '@/features/dashboard/org/lib/propertyHouseRulesConstants';
-import { LimitedCountInput } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 
 import { Button } from '@/components/ui/button';
 import { CheckboxDisplay } from '@/components/ui/checkbox';

@@ -1,12 +1,12 @@
 import { ChevronRight, Plus, X } from 'lucide-react';
 
+import { LimitedCountInput } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import {
   AMENITY_CATEGORIES,
   CUSTOM_AMENITY_MAX_LENGTH,
   type CustomAmenity,
 } from '@/features/dashboard/org/lib/propertySettingsConstants';
 
-import { LimitedCountInput } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { Button } from '@/components/ui/button';
 import { CheckboxDisplay } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';

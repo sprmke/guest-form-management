@@ -26,7 +26,11 @@ import type {
 
 import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
 import { Button } from '@/components/ui/button';
-import { SegmentedControl } from '@/components/ui/sliding-tabs';
+import {
+  SegmentedControl,
+  cardHeaderSegmentedListClassName,
+  cardHeaderSegmentedTriggerClassName,
+} from '@/components/ui/sliding-tabs';
 import { resourceKindBadgeClasses } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
 
@@ -148,21 +152,20 @@ export function OrgPropertiesPerformanceCard({
         iconClassName="bg-muted/80"
         action={
           showListingTabs ? (
-            <div className="max-w-full overflow-x-auto">
-              <SegmentedControl
-                value={listingFilter}
-                onChange={setListingFilter}
-                size="dense"
-                listClassName="w-max min-w-0"
-                triggerClassName="h-7 px-2.5 text-xs sm:px-3"
-                aria-label="Filter listings"
-                options={[
-                  { value: 'all', label: 'All' },
-                  { value: 'property', label: 'Properties' },
-                  { value: 'parking', label: 'Parkings' },
-                ]}
-              />
-            </div>
+            <SegmentedControl
+              value={listingFilter}
+              onChange={setListingFilter}
+              size="dense"
+              equalSegments
+              listClassName={cardHeaderSegmentedListClassName}
+              triggerClassName={cardHeaderSegmentedTriggerClassName}
+              aria-label="Filter listings"
+              options={[
+                { value: 'all', label: 'All' },
+                { value: 'property', label: 'Properties' },
+                { value: 'parking', label: 'Parkings' },
+              ]}
+            />
           ) : (
             <Link
               to={viewListingsHref}

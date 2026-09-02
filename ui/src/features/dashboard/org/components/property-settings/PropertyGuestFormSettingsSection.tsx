@@ -1,5 +1,6 @@
-import { ClipboardList } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
+
+import { ClipboardList } from 'lucide-react';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 import { SettingsField } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
