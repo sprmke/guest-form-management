@@ -113,6 +113,19 @@ export const READ_TOOL_NAMES = new Set([
   'search_marketing_music',
   'draft_marketing_caption',
   'draft_marketing_template',
+  'list_support_tickets',
+  'get_support_ticket',
+  'list_host_announcements',
+  'get_host_announcement',
+  'get_org_plan_snapshot',
+  'get_public_pages_status',
+  'get_channel_sync_status',
+  'get_notification_preferences',
+  'guide_notification_settings',
+  'get_telegram_notification_settings',
+  'guide_telegram_settings',
+  'guide_create_booking',
+  'guide_import_bookings',
 ]);
 
 /** Idempotent write tools with no status/financial change — tier1 by construction. */
@@ -154,6 +167,25 @@ export const TIER2_ONLY_TOOL_NAMES = new Set([
   'propose_set_parking_date_rate_override',
   'propose_send_inbox_reply',
   'propose_publish_to_meta',
+  'propose_apply_booking_attachment',
+  'propose_send_workflow_email',
+  'propose_apply_org_logo',
+  'propose_apply_property_media',
+  'propose_apply_parking_media',
+  'propose_apply_app_settings_attachment',
+  'propose_apply_template_attachment',
+  'propose_apply_org_verification_attachment',
+  'propose_submit_org_verification',
+  'propose_apply_listing_authorization_attachment',
+  'propose_submit_listing_authorization',
+  'propose_stage_gcash_qr',
+  'propose_create_support_ticket',
+  'propose_delete_maintenance_item',
+  'propose_update_maintenance_item',
+  'propose_delete_finance_line_item',
+  'propose_update_finance_line_item',
+  'propose_update_public_page_template',
+  'propose_run_channel_sync',
 ]);
 
 /**
@@ -168,6 +200,7 @@ export const TIER2_ONLY_TOOL_NAMES = new Set([
 export const EXTERNAL_SEND_TOOL_NAMES = new Set<string>([
   'propose_send_inbox_reply',
   'propose_publish_to_meta',
+  'propose_send_workflow_email',
 ]);
 
 export function isExternalSendTool(toolName: string): boolean {

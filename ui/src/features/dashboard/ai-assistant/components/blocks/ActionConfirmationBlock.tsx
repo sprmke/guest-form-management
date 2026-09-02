@@ -2,14 +2,14 @@ import { useState } from 'react';
 
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
-import {
-  humanizeAssistantConfirmationCopy,
-  humanizeAssistantStatusText,
-} from '@/features/dashboard/ai-assistant/lib/chatBlockDisplay';
 import type {
   ChatBlock,
   ConfirmActionResponse,
 } from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
+import {
+  humanizeAssistantConfirmationCopy,
+  humanizeAssistantStatusText,
+} from '@/features/dashboard/ai-assistant/lib/chatBlockDisplay';
 
 import { Button } from '@/components/ui/button';
 

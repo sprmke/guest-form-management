@@ -226,9 +226,30 @@ Bookings-specific:
 - Pending tasks and SD refund amounts come from get_booking (pendingTasks, sdRefundAmount) — copy those, do not invent an empty list.
 - For booked or available dates, call get_available_dates and use bookedStays / availableRanges.
 - When the host asks to see, provide, open, or show a booking file (approved GAF, pet form, receipt, ID, parking endorsement), call get_booking_documents (kinds: gaf/pet/receipt/id/parking) and emit a file_list using the exact url values from the tool. Never invent URLs. If documents is empty, say the file is not on this booking. Do not answer a file request with only a booking_card.
+- When the host attaches a file and wants it on a booking (approved GAF, valid ID, receipt, parking docs, etc.), call propose_apply_booking_attachment with the exact attachmentPath from Known facts — never invent paths or https URLs. Use alsoMarkComplete only for approved_gaf/approved_pet when they also want that step marked complete.
+- When the host asks to send/resend a workflow email (GAF request, pet request, acknowledgement, ready-for-check-in, Check-out Instructions), call propose_send_workflow_email with the matching kind.
+- When the host wants to set the organization logo from a chat image, call propose_apply_org_logo.
+- When they want a chat image/video on the property gallery, call propose_apply_property_media (optional setPrimary). For a parking cover photo, propose_apply_parking_media.
+- For GAF unit owner signature or external review images/stay photos, call propose_apply_app_settings_attachment (never GCash QR — that needs the payment OTP flow in Settings).
+- For standard template section/inline images, call propose_apply_template_attachment.
+- Support tickets: list_support_tickets / get_support_ticket / propose_create_support_ticket (optional attachmentPaths).
+- Announcements: list_host_announcements / get_host_announcement. Plan: get_org_plan_snapshot.
+- Inbox replies may include attachmentPaths for **web** chat only — Meta DMs stay text-only.
+- Channel sync: get_channel_sync_status then propose_run_channel_sync. Public pages: get_public_pages_status / propose_update_public_page_template.
+- Finance/maintenance updates/deletes: propose_update_finance_line_item, propose_delete_finance_line_item, propose_update_maintenance_item, propose_delete_maintenance_item.
+- Org verification: apply proofs with propose_apply_org_verification_attachment (valid ID, social proof, selfie, platform admin, etc.); when ready, propose_submit_org_verification (base or enhanced — enhanced needs platformAdminPlatform). Owner-only.
+- Listing authorization: propose_apply_listing_authorization_attachment for proof files; propose_submit_listing_authorization with relationship (+ contractEndDate when required). Owner-only.
+- GCash QR: propose_stage_gcash_qr stages an image only — never commits payment_methods. Host must still complete OTP in Payment settings.
+- Notifications: get_notification_preferences / guide_notification_settings (Web Push + deep-link; no per-event matrix API yet). Telegram: get_telegram_notification_settings / guide_telegram_settings — credential writes stay in Notifications UI.
+- New booking: guide_create_booking (deep-link to Bookings → New booking modal + checklist). No chat create/edit — booking field edits use BookingEditForm in UI only.
+- Import CSV: guide_import_bookings — wizard stays in Import modal (preview + confirm); never auto-commit from chat.
+- Marketing publish: propose_publish_to_meta accepts mediaUrl or attachmentPath (upload on confirm, same as marketing media). Canvas/template pixel edits stay in Marketing Studio UI.
 
 Other modules (same intelligence):
-- Inbox: list/get threads with list_inbox_threads / get_inbox_thread; use hostLabel (participant · platform). After opening a thread, suggest next moves (Reply, Mark read, Show older messages) — never re-offer the same thread chip the host just picked.
+- Inbox: list/get threads with list_inbox_threads / get_inbox_thread; use hostLabel (participant · platform). propose_send_inbox_reply sends a real guest message (external_send) — optional attachmentPath(s) from this conversation work on website chat only; Meta DMs are text-only. After opening a thread, suggest next moves (Reply, Mark read, Show older messages) — never re-offer the same thread chip the host just picked.
+- Help & Support: list_support_tickets / get_support_ticket; create with propose_create_support_ticket (+ optional attachmentPath(s)). Use hostLabel (subject · status).
+- Announcements: list_host_announcements / get_host_announcement for active platform/development banners hosts see in the dashboard.
+- Plans: get_org_plan_snapshot for current plan name, enrolled properties, and feature entitlements — checkout/billing changes still require the Plans page.
 - Maintenance: list items with list_maintenance_items; use hostLabel (title · state). After selecting one, suggest useful next actions (Mark complete, Edit notes, Show due this week) — not the same item chip again.
 - Team: list members/invites with list_team_members / list_property_team_members; chips use hostLabel (name · role). Follow-ups are invite/remove/role actions, not re-picking the same person.
 - Parking: list_parking_bookings / list_parkings use hostLabel the same way as property bookings.
@@ -517,7 +538,11 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
     const attachedContextLine = attachedContextPromptLines(attachedContext);
     const attachmentLine =
       storedAttachments.length > 0
-        ? `\nThe host attached ${storedAttachments.length} file(s): ${storedAttachments.map((a) => `${a.name} (${a.mimeType})`).join(', ')}. Use the file content. For payment receipts, call run_receipt_validation when they ask to check the receipt against a booking.`
+        ? `\nThe host attached ${storedAttachments.length} file(s) this turn — use these exact attachmentPath values with propose_apply_booking_attachment (never invent paths or https URLs):\n${storedAttachments
+            .map((a) => `- name: ${a.name}; mimeType: ${a.mimeType}; attachmentPath: ${a.path}`)
+            .join(
+              '\n'
+            )}\nWhen the host wants a file on a booking (approved GAF, valid ID, receipt, etc.), call propose_apply_booking_attachment. Set alsoMarkComplete=true only for approved_gaf/approved_pet when they also want that step marked complete. For "check this receipt" without uploading to the booking, run_receipt_validation is enough.`
         : '';
 
     let conversationSummary = '';
@@ -610,6 +635,8 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
         isBulk: false,
         deferWritesUntilCommit: true,
         deferredWrites,
+        conversationId: conversationId!,
+        turnAttachmentPaths: storedAttachments.map((a) => a.path).filter(Boolean),
       };
 
       const userTurnText =
@@ -623,6 +650,8 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
       let executedActions: Array<{ toolName: string; result: ToolResult }> = [];
       let journeyGuidanceIntro: string | null = null;
       let finalText = '';
+      /** Tool already produced host-facing copy (e.g. Meta attachment refuse) — skip block synth. */
+      let skipBlockSynthWithText: string | null = null;
       let turnCreditsConsumed = 0;
       const activity = new TurnActivityRecorder(emit);
       const taskPlan = new TurnTaskPlanRecorder(emit);
@@ -660,9 +689,12 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
 
         history.push({
           role: 'model',
-          parts: roundResult.toolCalls.map((tc) => ({
-            functionCall: { name: tc.name, args: tc.arguments },
-          })),
+          parts:
+            roundResult.modelParts && roundResult.modelParts.length > 0
+              ? roundResult.modelParts
+              : roundResult.toolCalls.map((tc) => ({
+                  functionCall: { name: tc.name, args: tc.arguments },
+                })),
         });
 
         const responseParts: GeminiContent['parts'] = [];
@@ -696,6 +728,15 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
 
           if (result.proposed) {
             proposedAction = { toolName: call.name, result };
+            shortCircuit = true;
+          } else if (
+            !result.ok &&
+            typeof result.error === 'string' &&
+            /Attachments are only supported for website chat/i.test(result.error)
+          ) {
+            // Deterministic Meta attachment refusal — do not open a confirm card.
+            finalText = result.error;
+            skipBlockSynthWithText = result.error;
             shortCircuit = true;
           } else if (WRITE_TOOL_NAMES.has(call.name) && result.ok && !result.deferred) {
             executedActions.push({ toolName: call.name, result });
@@ -769,6 +810,15 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
         const proposedBlocks = prependActivityTimeline(blocks, activity);
         blocks.length = 0;
         blocks.push(...prependTaskPlan(proposedBlocks, taskPlan));
+      } else if (skipBlockSynthWithText) {
+        // Host-facing tool refusal already set (e.g. Meta attachment refuse).
+        taskPlan.markSynthRunning();
+        activity.recordPhase('synthesizing', 'Prepared your answer');
+        blocks.push({ type: 'text', text: skipBlockSynthWithText.trim() });
+        taskPlan.markSynthDone();
+        const answered = prependActivityTimeline(blocks, activity);
+        blocks.length = 0;
+        blocks.push(...prependTaskPlan(answered, taskPlan));
       } else {
         taskPlan.markSynthRunning();
         activity.recordPhase('synthesizing', 'Prepared your answer');
@@ -786,8 +836,14 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
                 ? [
                     ...history,
                     {
-                      role: 'model',
-                      parts: [{ text: finalText || 'Summarize the above as blocks.' }],
+                      role: 'user',
+                      parts: [
+                        {
+                          text: finalText
+                            ? `Summarize for the host as chat blocks. Draft: ${finalText}`
+                            : 'Summarize the tool results above as chat blocks for the host.',
+                        },
+                      ],
                     },
                   ]
                 : undefined,

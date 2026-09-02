@@ -1,10 +1,10 @@
 import type { ChatBlock } from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
-import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import {
   dataTableCell,
   dataTableHasRows,
   dataTableRowCells,
 } from '@/features/dashboard/ai-assistant/lib/chatBlockDisplay';
+import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 
 import {
   Table,

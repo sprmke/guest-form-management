@@ -29,6 +29,12 @@ const HIDDEN_DETAIL_KEYS = new Set([
   'auditPropertyId',
   'auditBookingId',
   'parkingId',
+  'attachmentPath',
+  'documentCompletionTarget',
+  'alsoMarkComplete',
+  'mimeType',
+  'previousUrl',
+  'hostLabel',
 ]);
 
 /** Prefer these over camelCase-splitting for known API field keys. */

@@ -1,7 +1,7 @@
 import { Sparkles } from 'lucide-react';
 
-import { getAssistantToolAuditLabel } from '@/features/dashboard/ai-assistant/lib/assistantToolLabels';
 import { useBookingAiAssistantAudit } from '@/features/dashboard/ai-assistant/hooks/useBookingAiAssistantAudit';
+import { getAssistantToolAuditLabel } from '@/features/dashboard/ai-assistant/lib/assistantToolLabels';
 import { BookingDetailCard } from '@/features/dashboard/bookings/components/booking-detail/primitives/BookingDetailCard';
 
 import { formatRelative } from '@/utils/format/bookingDisplay';

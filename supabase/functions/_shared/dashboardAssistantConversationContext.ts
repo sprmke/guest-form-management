@@ -10,6 +10,7 @@ export type ConversationMessageRow = {
   role: string;
   content_text: string | null;
   blocks?: unknown;
+  attachments?: unknown;
   created_at?: string;
 };
 
@@ -58,7 +59,12 @@ export function assistantBlocksToSnippet(blocks: unknown): string {
 }
 
 function messageSnippet(row: ConversationMessageRow): string {
-  if (row.role === 'user') return asText(row.content_text);
+  if (row.role === 'user') {
+    const text = asText(row.content_text);
+    const attachmentNote = attachmentPathsNote(row.attachments);
+    if (text && attachmentNote) return `${text}\n${attachmentNote}`;
+    return text || attachmentNote;
+  }
   const fromText = asText(row.content_text);
   if (fromText) {
     return fromText.length <= MAX_ASSISTANT_SNIPPET
@@ -66,6 +72,21 @@ function messageSnippet(row: ConversationMessageRow): string {
       : `${fromText.slice(0, MAX_ASSISTANT_SNIPPET - 1)}…`;
   }
   return assistantBlocksToSnippet(row.blocks);
+}
+
+function attachmentPathsNote(attachments: unknown): string {
+  if (!Array.isArray(attachments) || attachments.length === 0) return '';
+  const lines: string[] = [];
+  for (const item of attachments) {
+    if (!item || typeof item !== 'object') continue;
+    const rec = item as Record<string, unknown>;
+    const name = asText(rec.name) || 'file';
+    const path = asText(rec.path);
+    const mime = asText(rec.mimeType);
+    if (!path) continue;
+    lines.push(`Attached earlier: ${name}${mime ? ` (${mime})` : ''} — attachmentPath: ${path}`);
+  }
+  return lines.join('\n');
 }
 
 /**
@@ -131,7 +152,7 @@ export async function loadConversationContext(
 ): Promise<LoadedConversationContext> {
   const { data, error } = await sb
     .from('ai_dashboard_assistant_messages')
-    .select('id, role, content_text, blocks, created_at')
+    .select('id, role, content_text, blocks, attachments, created_at')
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: false })
     .limit(MAX_PRIOR_MESSAGES + 4);

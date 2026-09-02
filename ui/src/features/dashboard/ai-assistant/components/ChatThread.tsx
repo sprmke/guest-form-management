@@ -11,10 +11,10 @@ import type {
   ChatBlock,
   ConfirmActionResponse,
 } from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
+import type { TurnProgressLiveState } from '@/features/dashboard/ai-assistant/lib/assistantStream';
 import type { AssistantSuggestion } from '@/features/dashboard/ai-assistant/lib/assistantSuggestions';
 import { isAssistantImageMime } from '@/features/dashboard/ai-assistant/lib/chatAttachments';
 
-import type { TurnProgressLiveState } from '@/features/dashboard/ai-assistant/lib/assistantStream';
 
 import { Button } from '@/components/ui/button';
 

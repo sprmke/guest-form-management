@@ -162,6 +162,7 @@ serveAuthenticated('dashboard-assistant-confirm', async (req, user) => {
       },
       attachedContext: scope?.attachedContext ?? [],
       isBulk: false,
+      conversationId: pending.conversation_id as string,
     };
 
     const result = await executeConfirmedAction(pending.tool_name as string, inputPayload, toolCtx);

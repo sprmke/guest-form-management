@@ -20,8 +20,8 @@ import {
   SUGGESTION_VISIBLE_COUNT,
   pickRandomSuggestions,
 } from '@/features/dashboard/ai-assistant/lib/assistantSuggestions';
-import { patchActionConfirmationStatus } from '@/features/dashboard/ai-assistant/lib/chatBlockDisplay';
 import type { AttachedContextItem } from '@/features/dashboard/ai-assistant/lib/attachedContext';
+import { patchActionConfirmationStatus } from '@/features/dashboard/ai-assistant/lib/chatBlockDisplay';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
