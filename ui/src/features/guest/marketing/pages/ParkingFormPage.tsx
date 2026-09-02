@@ -94,7 +94,8 @@ export function ParkingFormPage() {
 
   const handleSubmit = async (
     values: ParkingRegistrationValues,
-    linkedPropertyBookingId: string | null
+    linkedPropertyBookingId: string | null,
+    antiSpam?: { contact_time: string; formLoadedAt: string }
   ) => {
     const vehicleType =
       values.vehicleType === 'motorcycle' ? ('motorcycle' as const) : ('car' as const);
@@ -115,6 +116,7 @@ export function ParkingFormPage() {
         notes: values.notes,
         linkedPropertyBookingId: linkedPropertyBookingId ?? undefined,
         directLinkToken: directLinkToken || undefined,
+        ...(antiSpam ?? {}),
       });
       clearParkingLinkStayId();
       // Same as Reserve modal: skip the false "done" screen — status page is the real next step.

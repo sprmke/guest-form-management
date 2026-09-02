@@ -24,6 +24,7 @@ import {
   PARKING_REQUEST_FORM_STEPS,
   ParkingFlowStepper,
 } from '@/components/parking/ParkingFlowStepper';
+import { useAntiSpamFields } from '@/components/security/useAntiSpamFields';
 import { DatePicker } from '@/components/ui/date-picker';
 import {
   Form,
@@ -68,7 +69,8 @@ interface ParkingRegistrationFormProps {
   preferredLinkStayId?: string | null;
   onSubmit: (
     data: ParkingRegistrationValues,
-    linkedPropertyBookingId: string | null
+    linkedPropertyBookingId: string | null,
+    antiSpam?: { contact_time: string; formLoadedAt: string }
   ) => Promise<void>;
 }
 
@@ -111,6 +113,7 @@ export function ParkingRegistrationForm({
   onSubmit,
 }: ParkingRegistrationFormProps) {
   const reduceMotion = useReducedMotion();
+  const antiSpamFields = useAntiSpamFields();
   const [phase, setPhase] = useState<RequestPhase>(() =>
     isLinkableLoading ? 'loading' : linkableBookings.length > 0 ? 'choose' : 'manual'
   );
@@ -242,7 +245,7 @@ export function ParkingRegistrationForm({
     async (values) => {
       setIsSubmitting(true);
       try {
-        await onSubmit(values, linkedBookingId);
+        await onSubmit(values, linkedBookingId, antiSpamFields.getFields());
       } finally {
         setIsSubmitting(false);
       }
@@ -265,6 +268,7 @@ export function ParkingRegistrationForm({
   return (
     <Form {...form}>
       <form onSubmit={(e) => e.preventDefault()} className="space-y-6" noValidate>
+        {antiSpamFields.field}
         <AnimatePresence mode="wait" initial={false}>
           {phase === 'choose' ? (
             <motion.div

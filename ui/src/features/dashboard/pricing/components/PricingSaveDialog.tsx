@@ -8,12 +8,12 @@ import type {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -28,11 +28,11 @@ export function PricingSaveDialog({ open, onOpenChange, saving = false, onConfir
   const [baseRateScope, setBaseRateScope] = useState<PricingBaseRateScope>('all_future');
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-        <DialogHeader>
-          <DialogTitle>Save pricing</DialogTitle>
-        </DialogHeader>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>Save pricing</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
 
         <div className="space-y-5">
           <div className="space-y-3">
@@ -65,7 +65,7 @@ export function PricingSaveDialog({ open, onOpenChange, saving = false, onConfir
           </label>
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-2">
+        <ResponsiveModalFooter className="gap-2 sm:gap-2">
           <Button
             type="button"
             variant="outline"
@@ -83,9 +83,9 @@ export function PricingSaveDialog({ open, onOpenChange, saving = false, onConfir
           >
             Save
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }
 

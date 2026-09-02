@@ -2,6 +2,8 @@ import { useMutation } from '@tanstack/react-query';
 
 import { guestEdgeAuthHeaders } from '@/features/guest/auth/lib/guestEdgeAuthHeaders';
 
+import { antiSpamErrorMessage, isAntiSpamFailure } from '@/lib/security/antiSpamResponse';
+
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
 export type SubmitParkingBookingRequestInput = {
@@ -21,6 +23,9 @@ export type SubmitParkingBookingRequestInput = {
   linkedPropertyBookingId?: string;
   /** Phase 8 — the ?dl= token from a host's shared direct-booking link, if any. */
   directLinkToken?: string;
+  /** Anti-spam heuristics (honeypot + form-load timestamp); server reads these off the body. */
+  contact_time?: string;
+  formLoadedAt?: string;
 };
 
 export type SubmitParkingBookingRequestResult = {
@@ -38,12 +43,17 @@ async function submitParkingBookingRequest(
     headers: { 'Content-Type': 'application/json', ...authHeaders },
     body: JSON.stringify(input),
   });
-  const json = (await res.json()) as {
+  const json = (await res.json().catch(() => ({}))) as {
     success?: boolean;
     data?: SubmitParkingBookingRequestResult;
     error?: string;
+    rateLimited?: boolean;
+    retryAfterSec?: number;
   };
   if (!res.ok || !json.success || !json.data) {
+    if (isAntiSpamFailure(res.status, json)) {
+      throw new Error(antiSpamErrorMessage(res.status, json));
+    }
     throw new Error(json.error ?? 'Could not submit parking request');
   }
   return json.data;

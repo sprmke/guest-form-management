@@ -59,7 +59,8 @@ export function ParkingBookingFormModal({
 
   const handleSubmit = async (
     values: ParkingRegistrationValues,
-    linkedPropertyBookingId: string | null
+    linkedPropertyBookingId: string | null,
+    antiSpam?: { contact_time: string; formLoadedAt: string }
   ) => {
     const vehicleType =
       values.vehicleType === 'motorcycle' ? ('motorcycle' as const) : ('car' as const);
@@ -79,6 +80,7 @@ export function ParkingBookingFormModal({
         carColor: values.carColor,
         notes: values.notes,
         linkedPropertyBookingId: linkedPropertyBookingId ?? undefined,
+        ...(antiSpam ?? {}),
       });
       clearParkingLinkStayId();
       onOpenChange(false);

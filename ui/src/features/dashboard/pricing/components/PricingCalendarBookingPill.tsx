@@ -36,7 +36,8 @@ export function PricingCalendarBookingPill({
   return (
     <div
       className={cn(
-        'flex h-7 w-full min-w-0 items-center shadow-sm',
+        /* Phone cells are short — keep pills in the ~20–22px band used by bookings calendar. */
+        'flex h-5 w-full min-w-0 items-center shadow-sm sm:h-[22px]',
         'ring-1',
         isCancelled
           ? 'bg-muted text-muted-foreground ring-border'
@@ -46,18 +47,19 @@ export function PricingCalendarBookingPill({
       title={title ?? `${label} · ${statusLabel(status)}`}
     >
       {showLabel ? (
-        <span className="flex min-w-0 items-center gap-1.5 py-0.5 pl-0.5 pr-2.5">
+        <span className="flex min-w-0 items-center gap-1 py-0 pl-0.5 pr-1.5 sm:gap-1.5 sm:pr-2">
           <GuestAvatar
             name={guestName || label}
             validIdUrl={validIdUrl}
             size="xs"
-            className={
+            className={cn(
+              '!size-3.5 !text-[8px] sm:!size-4 sm:!text-[9px]',
               isCancelled
                 ? 'ring-border shadow-sm ring-1'
                 : 'ring-primary-foreground/35 shadow-sm ring-1'
-            }
+            )}
           />
-          <span className="truncate text-[11px] font-semibold leading-none tracking-tight">
+          <span className="truncate text-[10px] font-semibold leading-none tracking-tight sm:text-[11px]">
             {label}
           </span>
         </span>

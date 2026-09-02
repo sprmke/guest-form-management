@@ -67,8 +67,8 @@ import type {
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
 import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
-import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
 import { BookingsCalendarSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 

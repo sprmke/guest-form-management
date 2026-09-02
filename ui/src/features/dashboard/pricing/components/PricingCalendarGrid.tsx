@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import {
   format,
@@ -42,6 +42,7 @@ import type { PropertyPricingCalendarBooking } from '@/features/dashboard/pricin
 import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
 import { formatMoneyCompact } from '@/utils/format/currency';
 import { formatStayDateRange } from '@/utils/format/dates';
@@ -144,47 +145,76 @@ export function PricingCalendarGrid({
     [bookings]
   );
 
+  // Touch range selection: pointer drag (`onDateMouseDown` → `onDateMouseEnter` →
+  // `onSelectionEnd`) never fires on touch, so below `lg` we use a two-tap model —
+  // first tap anchors, second tap commits the range through the same handlers.
+  const isBelowLg = useIsBelowLg();
+  const [touchAnchor, setTouchAnchor] = useState<Date | null>(null);
+
+  useEffect(() => {
+    if (selectedDates.length === 0) setTouchAnchor(null);
+  }, [selectedDates]);
+
+  const handleTouchSelect = (day: Date) => {
+    if (!touchAnchor) {
+      onDateMouseDown(day);
+      setTouchAnchor(day);
+      return;
+    }
+    onDateMouseEnter(day);
+    onSelectionEnd();
+    setTouchAnchor(null);
+  };
+
   return (
     <section className="surface-card min-w-0 p-4 sm:p-5">
       <AdminSurfaceCardHeader
         icon={CalendarDays}
-        title="Pricing & Availability"
+        title={
+          <>
+            <span className="sm:hidden">Pricing</span>
+            <span className="hidden sm:inline">Pricing & Availability</span>
+          </>
+        }
         iconClassName="bg-muted/80"
         action={
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 sm:gap-1">
             <Button
               type="button"
               variant="outline"
               size="icon"
-              className="size-10 shrink-0"
+              className="size-8 shrink-0 sm:size-9"
               aria-label="Previous month"
               onClick={() => onMonthChange(subMonths(currentMonth, 1))}
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="size-3.5 sm:size-4" />
             </Button>
-            <span className="min-w-[9.5rem] text-center text-sm font-semibold tabular-nums sm:text-base">
-              {format(currentMonth, 'MMMM yyyy')}
+            <span className="min-w-[5.75rem] truncate text-center text-[13px] font-semibold tabular-nums sm:min-w-[9.5rem] sm:text-sm">
+              {format(currentMonth, isBelowLg ? 'MMM yyyy' : 'MMMM yyyy')}
             </span>
             <Button
               type="button"
               variant="outline"
               size="icon"
-              className="size-10 shrink-0"
+              className="size-8 shrink-0 sm:size-9"
               aria-label="Next month"
               onClick={() => onMonthChange(addMonths(currentMonth, 1))}
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="size-3.5 sm:size-4" />
             </Button>
           </div>
         }
       />
 
       <TooltipProvider delayDuration={200}>
+        {/* Pointer-drag selection is desktop only; touch uses the per-cell two-tap
+            handleTouchSelect, so the mouse* commit handlers must not run below lg
+            (synthetic mouse events on tap would commit a single-tap range early).
+            No tip banner below lg — it shifts the grid; armed cells use a thick border. */}
         <div
           className="select-none"
-          onMouseUp={onSelectionEnd}
-          onMouseLeave={onSelectionEnd}
-          onTouchEnd={onSelectionEnd}
+          onMouseUp={isBelowLg ? undefined : onSelectionEnd}
+          onMouseLeave={isBelowLg ? undefined : onSelectionEnd}
         >
           <div className="mb-2 grid grid-cols-7 gap-1.5 sm:gap-2">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
@@ -196,8 +226,8 @@ export function PricingCalendarGrid({
 
           <div className="flex flex-col gap-1.5 sm:gap-2">
             {weeks.map((week) => (
-              <div key={week.weekIndex} className="relative">
-                <div className="relative z-0 grid grid-cols-7 gap-1.5 sm:gap-2">
+              <div key={week.weekIndex} className="relative overflow-visible">
+                <div className="relative z-0 grid grid-cols-7 gap-1.5 overflow-visible sm:gap-2">
                   {week.days.map((day) =>
                     isSameMonth(day, currentMonth) ? (
                       <PricingDayCell
@@ -208,6 +238,10 @@ export function PricingCalendarGrid({
                           comparePricingCalendarLanes
                         )}
                         getPriceForDate={getPriceForDate}
+                        touchMode={isBelowLg}
+                        touchArmed={touchAnchor != null && isSameDay(touchAnchor, day)}
+                        onTouchSelect={handleTouchSelect}
+                        onCancelTouchAnchor={isBelowLg ? () => setTouchAnchor(null) : undefined}
                         onDateClick={onDateClick}
                         onDateMouseDown={onDateMouseDown}
                         onDateMouseEnter={onDateMouseEnter}
@@ -216,7 +250,7 @@ export function PricingCalendarGrid({
                     ) : (
                       <div
                         key={day.toISOString()}
-                        className="aspect-square min-h-[4.5rem]"
+                        className="aspect-square min-h-[3.5rem] sm:min-h-[4.5rem]"
                         aria-hidden
                       />
                     )
@@ -284,7 +318,7 @@ export function PricingCalendarGrid({
       </TooltipProvider>
 
       <div
-        className="text-muted-foreground border-border/60 mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t pt-3 text-xs"
+        className="text-muted-foreground border-border/60 mt-4 hidden flex-wrap gap-x-4 gap-y-2 border-t pt-3 text-xs lg:flex"
         role="list"
         aria-label="Pricing legend"
       >
@@ -310,6 +344,10 @@ function PricingDayCell({
   selectedDates,
   dayBookings,
   getPriceForDate,
+  touchMode = false,
+  touchArmed = false,
+  onTouchSelect,
+  onCancelTouchAnchor,
   onDateClick,
   onDateMouseDown,
   onDateMouseEnter,
@@ -319,6 +357,10 @@ function PricingDayCell({
   selectedDates: Date[];
   dayBookings: PropertyPricingCalendarBooking[];
   getPriceForDate: (date: Date) => PricingDayState;
+  touchMode?: boolean;
+  touchArmed?: boolean;
+  onTouchSelect?: (date: Date) => void;
+  onCancelTouchAnchor?: () => void;
   onDateClick: (date: Date) => void;
   onDateMouseDown: (date: Date) => void;
   onDateMouseEnter: (date: Date) => void;
@@ -338,27 +380,35 @@ function PricingDayCell({
   const stayRange = singleStay
     ? formatStayDateRange(singleStay.check_in_date, singleStay.check_out_date)
     : null;
+  const showSelectionChrome = (isSelected || touchArmed) && !isLocked;
 
   return (
     <button
       type="button"
       className={cn(
-        'border-border bg-card relative flex aspect-square min-h-[4.5rem] min-w-0 flex-col rounded-lg border p-1.5 text-left transition-colors sm:p-2',
+        'border-border bg-card relative flex aspect-square min-h-[3.5rem] min-w-0 flex-col rounded-lg border p-1 text-left transition-colors sm:min-h-[4.5rem] sm:p-2',
         isPast && !isBooked && 'cursor-not-allowed opacity-45',
         isPast && isBooked && 'bg-muted/40',
         !isLocked && isBlocked && 'bg-muted border-muted-foreground/20',
         isImported && 'bg-muted/60 border-muted-foreground/25 cursor-not-allowed border-dashed',
         (isBooked || (!isLocked && !isBlocked)) &&
           'hover:border-primary/50 cursor-pointer hover:shadow-sm',
-        isSelected &&
-          !isLocked &&
-          'border-primary bg-primary/10 ring-primary/30 opacity-100 ring-2',
-        isToday(day) && !isSelected && !isPast && 'ring-primary/60 ring-1'
+        // Mobile: thick border (no outer ring) so the highlight stays inside the cell
+        // and does not clip against neighbors / stay pills. Desktop keeps soft ring.
+        showSelectionChrome &&
+          'border-primary bg-primary/10 sm:ring-primary/30 z-[1] border-2 opacity-100 sm:border sm:ring-2',
+        touchArmed && !isSelected && !isLocked && 'border-primary',
+        isToday(day) &&
+          !showSelectionChrome &&
+          !isPast &&
+          'border-primary/70 sm:border-border sm:ring-primary/60 sm:ring-1'
       )}
       onMouseDown={() => {
+        if (touchMode) return;
         if (isInteractive) onDateMouseDown(day);
       }}
       onMouseEnter={() => {
+        if (touchMode) return;
         if (isInteractive) onDateMouseEnter(day);
       }}
       onClick={() => {
@@ -367,7 +417,17 @@ function PricingDayCell({
           return;
         }
         if (overlappingStays) return;
-        if (isInteractive) onDateClick(day);
+        if (!isInteractive) {
+          // Locked cell while a touch range is armed — clear without layout shift.
+          onCancelTouchAnchor?.();
+          return;
+        }
+        // Touch: two-tap range select (pointer drag doesn't exist on touch).
+        if (touchMode && onTouchSelect) {
+          onTouchSelect(day);
+          return;
+        }
+        onDateClick(day);
       }}
       disabled={isPast && !isBooked}
       aria-disabled={isImported || undefined}
@@ -378,13 +438,13 @@ function PricingDayCell({
           : singleStay
             ? `Open booking for ${bookingListDisplayName(singleStay)}${stayRange ? `, ${stayRange}` : ''}`
             : showPrice
-              ? `${format(day, 'MMMM d')}, ${formatMoneyCompact(price)} per night${isImported ? ', synced from OTA calendar' : isBlocked ? ', blocked' : ''}${hasHoliday ? ', holiday' : ''}${isCustom ? ', custom rate' : ''}`
+              ? `${format(day, 'MMMM d')}, ${formatMoneyCompact(price)} per night${isImported ? ', synced from OTA calendar' : isBlocked ? ', blocked' : ''}${hasHoliday ? ', holiday' : ''}${isCustom ? ', custom rate' : ''}${touchArmed ? ', range start — tap end date' : ''}`
               : `${format(day, 'MMMM d')}${isPast ? ', past' : ''}${isImported ? ', synced from OTA calendar' : isBlocked ? ', blocked' : ''}`
       }
     >
       <span
         className={cn(
-          'text-sm font-semibold leading-none',
+          'text-xs font-semibold leading-none sm:text-sm',
           (isBlocked || isPast) && 'text-muted-foreground',
           !isBlocked && !isPast && isToday(day) && 'text-primary',
           !isBlocked && !isPast && !isToday(day) && 'text-foreground'
@@ -396,10 +456,10 @@ function PricingDayCell({
       {showPrice ? (
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="bg-muted/70 dark:bg-muted/50 mt-auto flex w-full items-center justify-center rounded-md px-0.5 py-1">
+            <div className="bg-muted/70 dark:bg-muted/50 mt-auto flex w-full items-center justify-center rounded px-0.5 py-0.5 sm:rounded-md sm:py-1">
               <span
                 className={cn(
-                  'w-full truncate text-center text-[11px] font-semibold tabular-nums leading-none sm:text-xs',
+                  'w-full truncate text-center text-[10px] font-semibold tabular-nums leading-none sm:text-xs',
                   (isPast || isBlocked) && 'text-muted-foreground',
                   !isPast && !isBlocked && 'text-foreground'
                 )}

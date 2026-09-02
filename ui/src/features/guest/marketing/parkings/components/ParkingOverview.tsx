@@ -101,7 +101,7 @@ export function ParkingOverview({
           {recommendedBadge ? <ListingRecommendedBadge size="md" /> : null}
         </div>
 
-        <h1 className="text-foreground text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
+        <h1 className="text-foreground text-xl font-bold tracking-tight sm:text-2xl lg:text-3xl">
           {name}
         </h1>
 
@@ -138,7 +138,7 @@ export function ParkingOverview({
 
       {description ? (
         <div className="space-y-3">
-          <h2 className="text-foreground text-lg font-semibold">About this parking</h2>
+          <h2 className="text-foreground text-base font-semibold sm:text-lg">About this parking</h2>
           <ListingExpandableText text={description} maxLines={6} />
         </div>
       ) : null}
