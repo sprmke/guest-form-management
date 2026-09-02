@@ -13,6 +13,7 @@ import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
 import type { TransitionPayload } from '../_shared/workflowOrchestrator.ts';
 import { notifyTelegramAdminSdFormSubmitted } from '../_shared/telegramAdmin.ts';
 import { isSdRefundBank, type SdRefundBank } from '../_shared/sdRefundBank.ts';
+import { antiSpamGate } from '../_shared/antiSpam.ts';
 
 type RefundBody = {
   method: 'same_phone' | 'other_bank' | 'cash';
@@ -71,6 +72,14 @@ serve(async (req) => {
     const bookingId = (body?.bookingId ?? '').trim();
     const guestFeedback = typeof body?.guestFeedback === 'string' ? body.guestFeedback.trim() : '';
     const refund = body?.refund;
+
+    // Anti-spam: bot heuristics → Turnstile → durable rate limit.
+    // Plan: docs/workflow/for-testing/captcha-anti-spam-hardening.md
+    const antiSpamBlocked = await antiSpamGate(req, (body ?? {}) as Record<string, unknown>, {
+      scope: 'submit-sd-form',
+      rateLimit: { limit: 10, windowSec: 60 },
+    });
+    if (antiSpamBlocked) return antiSpamBlocked;
 
     if (!bookingId) throw new Error('bookingId is required');
     const errRefund = refund ? validateRefund(refund) : 'refund is required';
@@ -134,7 +143,7 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('[submit-sd-form]', error);
-    await capturePostHogException(error, { logPrefix: 'submit-sd-form' });
+    await capturePostHogException(error, { logPrefix: 'submit-sd-form', request: req });
     return new Response(JSON.stringify({ success: false, error: (error as Error).message }), {
       status: 400,
       headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },

@@ -35,6 +35,7 @@ import {
 } from '../_shared/parkingPaymentOrchestrator.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { countStayNights } from '../_shared/utils.ts';
+import { antiSpamGate } from '../_shared/antiSpam.ts';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -47,6 +48,16 @@ function toMmDdYyyy(yyyyMmDd: string): string {
 serveAuthenticated('submit-parking-booking-request', async (req, user) => {
   requireHttpMethod(req, 'POST');
   const body = await readJsonBody(req);
+
+  // Durable per-user rate limit + honeypot (no CAPTCHA — the request is already
+  // behind the guest auth wall). Plan: docs/workflow/for-testing/captcha-anti-spam-hardening.md
+  const antiSpamBlocked = await antiSpamGate(req, body, {
+    scope: 'submit-parking-booking-request',
+    user,
+    captcha: false,
+    rateLimit: { limit: 10, windowSec: 3600 },
+  });
+  if (antiSpamBlocked) return antiSpamBlocked;
 
   const parkingId = typeof body.parkingId === 'string' ? body.parkingId.trim() : '';
   const bodyOrgId = typeof body.organizationId === 'string' ? body.organizationId.trim() : '';

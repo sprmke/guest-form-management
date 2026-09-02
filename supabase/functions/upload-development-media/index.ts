@@ -253,7 +253,7 @@ serve(async (req) => {
     console.error('[upload-development-media]', error);
     const message = error instanceof Error ? error.message : 'Request failed';
     const status = message.includes('Unauthorized') || message.includes('restricted') ? 403 : 400;
-    await capturePostHogException(error, { logPrefix: 'upload-development-media' });
+    await capturePostHogException(error, { logPrefix: 'upload-development-media', request: req });
 
     return new Response(JSON.stringify({ success: false, error: message }), {
       status,

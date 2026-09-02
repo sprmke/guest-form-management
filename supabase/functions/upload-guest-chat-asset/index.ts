@@ -7,6 +7,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { assertGuestOwnsWebConversation } from '../_shared/webGuestChatService.ts';
 import type { NormalizedInboxAttachment } from '../_shared/inboxAttachments.ts';
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
+import { identityFromRequest, rateLimitGate } from '../_shared/rateLimit.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { assertWithinUploadLimit } from '../_shared/uploadLimits.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
@@ -25,6 +26,15 @@ serveAuthenticated('upload-guest-chat-asset', async (req, user) => {
   if (req.method !== 'POST') {
     return jsonError(req, 'Method not allowed', 405);
   }
+
+  // Durable per-user upload rate limit. Plan: docs/workflow/for-testing/captcha-anti-spam-hardening.md
+  const limited = await rateLimitGate(req, {
+    scope: 'upload-guest-chat-asset',
+    identity: identityFromRequest(req, user),
+    limit: 40,
+    windowSec: 600,
+  });
+  if (limited) return limited;
 
   const formData = await req.formData();
   const file = formData.get('file');

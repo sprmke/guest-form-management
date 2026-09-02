@@ -14,6 +14,7 @@ import { capturePostHogException } from '../_shared/posthog.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
 import { isBookingStatus, isPostPendingDocumentsStatus } from '../_shared/statusMachine.ts';
+import { antiSpamGate } from '../_shared/antiSpam.ts';
 
 type SubmitBody = {
   bookingId?: string;
@@ -52,6 +53,15 @@ serve(async (req) => {
     }
 
     const body = (await req.json().catch(() => null)) as SubmitBody | null;
+
+    // Anti-spam: bot heuristics → Turnstile → durable rate limit.
+    // Plan: docs/workflow/for-testing/captcha-anti-spam-hardening.md
+    const antiSpamBlocked = await antiSpamGate(req, (body ?? {}) as Record<string, unknown>, {
+      scope: 'submit-pay-parking',
+      rateLimit: { limit: 15, windowSec: 60 },
+    });
+    if (antiSpamBlocked) return antiSpamBlocked;
+
     const bookingId = (body?.bookingId ?? '').trim();
     if (!bookingId) throw new Error('bookingId is required');
 
@@ -101,7 +111,7 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('[submit-pay-parking]', error);
-    await capturePostHogException(error, { logPrefix: 'submit-pay-parking' });
+    await capturePostHogException(error, { logPrefix: 'submit-pay-parking', request: req });
     return new Response(JSON.stringify({ success: false, error: (error as Error).message }), {
       status: 400,
       headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },

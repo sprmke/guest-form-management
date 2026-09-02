@@ -26,6 +26,7 @@ import { applyVoucherToBooking, assertVoucherEligible } from '../_shared/voucher
 import { linkGuestBookingsByEmail } from '../_shared/guestProfileService.ts';
 import { checkIpRateLimit, clientIpFromRequest } from '../_shared/publicRateLimit.ts';
 import { capturePostHogException } from '../_shared/posthog.ts';
+import { antiSpamGate } from '../_shared/antiSpam.ts';
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -61,6 +62,17 @@ serve(async (req) => {
 
     // Get and process form data
     const formData = await req.formData();
+
+    // Layer 2/3 anti-spam: bot heuristics → Turnstile → durable rate limit.
+    // Returns a ready-to-send Response (with CORS + captchaFailed/rateLimited
+    // flags) when the caller should be blocked; null when they pass. The L1
+    // in-memory `checkIpRateLimit` above stays as a cheap burst dampener.
+    // Plan: docs/workflow/for-testing/captcha-anti-spam-hardening.md
+    const antiSpamBlocked = await antiSpamGate(req, formData, {
+      scope: 'submit-form',
+      rateLimit: { limit: 20, windowSec: 60 },
+    });
+    if (antiSpamBlocked) return antiSpamBlocked;
 
     /**
      * Side-effect flags: production always runs the full happy path (ignore client).
@@ -463,7 +475,7 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Error processing form submission:', error);
-    await capturePostHogException(error, { logPrefix: 'submit-form' });
+    await capturePostHogException(error, { logPrefix: 'submit-form', request: req });
 
     return new Response(
       JSON.stringify({

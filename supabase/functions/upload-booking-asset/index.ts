@@ -4,8 +4,7 @@
  *
  * Expects multipart/form-data with:
  *   bookingId   — string (UUID)
- *   assetType   — 'parking_endorsement' | 'parking_payment_receipt' | 'approved_gaf' | 'approved_pet' | 'sd_refund_receipt'
- *                 | 'guest_balance_payment_receipt'
+ *   assetType   — see BOOKING_ASSET_CONFIG in `_shared/bookingAssetUpload.ts`
  *   file        — the file to upload
  *   fileName    — original filename
  *
@@ -16,155 +15,33 @@
  * Plan:     docs/planning/NEW_FLOW_PLAN.md §3.3, §6.1 Q4.4
  */
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-import { syncPricingReviewBalanceReceipt } from '../_shared/bookingAiReviewService.ts';
-import { DatabaseService } from '../_shared/databaseService.ts';
 import {
-  pendingDocumentsClearCompletionsJsonbPatch,
-  pendingDocumentsClearPatchForGuestEditRevert,
-  shouldRevertGuestFieldEditsToPendingReview,
-} from '../_shared/statusMachine.ts';
-import { formatPublicUrl } from '../_shared/utils.ts';
-import {
-  applyReceiptSanityChecks,
-  dbPatchForDocumentAiValidation,
-  documentAiKindForAssetType,
-  type ReceiptValidationResult,
-  shouldPersistReceiptValidation,
-  validateReceiptFile,
-  validateValidIdFile,
-  type AiUsageContext,
-} from '../_shared/receiptValidationService.ts';
-import { resolveOrgIdForProperty } from '../_shared/aiUsageService.ts';
-import { notifyTelegramAdminBalanceReceiptUploaded } from '../_shared/telegramAdmin.ts';
+  applyBookingAssetFromBytes,
+  bookingAssetPermission,
+  isBookingAssetType,
+} from '../_shared/bookingAssetUpload.ts';
 import { jsonSuccess, requireHttpMethod } from '../_shared/httpResponse.ts';
 import {
   resolveScopedPropertyAccess,
   verifyBookingBelongsToProperty,
 } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
-import { bookingAssetStorageKey } from '../_shared/bookingStoragePaths.ts';
-
-const ASSET_CONFIG = {
-  // ── Workflow assets (set during transitions) ──────────────────────────────
-  parking_endorsement: {
-    bucket: 'parking-endorsements',
-    column: 'parking_endorsement_url',
-  },
-  parking_payment_receipt: {
-    bucket: 'payment-receipts',
-    column: 'parking_payment_receipt_url',
-  },
-  approved_gaf: {
-    bucket: 'approved-gafs',
-    column: 'approved_gaf_pdf_url',
-  },
-  approved_pet: {
-    bucket: 'approved-pet-forms',
-    column: 'approved_pet_pdf_url',
-  },
-  sd_refund_receipt: {
-    bucket: 'sd-refund-receipts',
-    column: 'sd_refund_receipt_url',
-  },
-  guest_balance_payment_receipt: {
-    bucket: 'sd-refund-receipts',
-    column: 'guest_balance_payment_receipt_url',
-  },
-  // ── Guest documents (replaceable by admin from the booking edit form) ─────
-  valid_id: {
-    bucket: 'valid-ids',
-    column: 'valid_id_url',
-  },
-  guest2_valid_id: {
-    bucket: 'valid-ids',
-    column: 'guest2_valid_id_url',
-  },
-  guest3_valid_id: {
-    bucket: 'valid-ids',
-    column: 'guest3_valid_id_url',
-  },
-  guest4_valid_id: {
-    bucket: 'valid-ids',
-    column: 'guest4_valid_id_url',
-  },
-  guest5_valid_id: {
-    bucket: 'valid-ids',
-    column: 'guest5_valid_id_url',
-  },
-  payment_receipt: {
-    bucket: 'payment-receipts',
-    column: 'payment_receipt_url',
-  },
-  pet_vaccination: {
-    bucket: 'pet-vaccinations',
-    column: 'pet_vaccination_url',
-  },
-  pet_image: {
-    bucket: 'pet-images',
-    column: 'pet_image_url',
-  },
-} as const;
-
-type AssetType = keyof typeof ASSET_CONFIG;
-
-function isGuestDocRevertAssetType(t: AssetType): boolean {
-  return (
-    t === 'payment_receipt' ||
-    t === 'valid_id' ||
-    t === 'guest2_valid_id' ||
-    t === 'guest3_valid_id' ||
-    t === 'guest4_valid_id' ||
-    t === 'guest5_valid_id' ||
-    t === 'pet_vaccination' ||
-    t === 'pet_image'
-  );
-}
-
-function isWorkflowAssetType(t: AssetType): boolean {
-  return (
-    t === 'parking_endorsement' ||
-    t === 'parking_payment_receipt' ||
-    t === 'approved_gaf' ||
-    t === 'approved_pet' ||
-    t === 'sd_refund_receipt' ||
-    t === 'guest_balance_payment_receipt'
-  );
-}
 
 serveAuthenticated('upload-booking-asset', async (req, user) => {
   requireHttpMethod(req, 'POST');
 
   const formData = await req.formData();
   const bookingId = formData.get('bookingId') as string;
-  const assetType = formData.get('assetType') as AssetType;
+  const assetTypeRaw = formData.get('assetType');
   const file = formData.get('file') as File;
   const fileName = (formData.get('fileName') as string) || file?.name;
 
-  if (!assetType || !ASSET_CONFIG[assetType]) throw new Error(`Invalid assetType: "${assetType}"`);
-
-  let permission:
-    | 'bookings.detail.workflow:edit'
-    | 'bookings.detail.guests:edit'
-    | 'bookings.detail.pets:edit'
-    | 'bookings.detail.pricing:edit'
-    | 'bookings.detail.stay:edit' = 'bookings.detail.stay:edit';
-  if (isWorkflowAssetType(assetType)) {
-    permission = 'bookings.detail.workflow:edit';
-  } else if (
-    assetType === 'valid_id' ||
-    assetType === 'guest2_valid_id' ||
-    assetType === 'guest3_valid_id' ||
-    assetType === 'guest4_valid_id' ||
-    assetType === 'guest5_valid_id'
-  ) {
-    permission = 'bookings.detail.guests:edit';
-  } else if (assetType === 'pet_vaccination' || assetType === 'pet_image') {
-    permission = 'bookings.detail.pets:edit';
-  } else if (assetType === 'payment_receipt') {
-    permission = 'bookings.detail.pricing:edit';
+  if (!isBookingAssetType(assetTypeRaw)) {
+    throw new Error(`Invalid assetType: "${String(assetTypeRaw)}"`);
   }
-  const { property } = await resolveScopedPropertyAccess(req, permission);
+  const assetType = assetTypeRaw;
+
+  const { property } = await resolveScopedPropertyAccess(req, bookingAssetPermission(assetType));
   const propertyId = property.id;
 
   if (!bookingId) throw new Error('bookingId is required');
@@ -172,116 +49,23 @@ serveAuthenticated('upload-booking-asset', async (req, user) => {
   if (!file) throw new Error('file is required');
   if (!fileName) throw new Error('fileName is required');
 
-  const config = ASSET_CONFIG[assetType];
-  const storagePath = bookingAssetStorageKey(propertyId, bookingId, fileName);
-
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  );
-
-  const { error: uploadError } = await supabase.storage
-    .from(config.bucket)
-    .upload(storagePath, file, { upsert: true });
-
-  if (uploadError) {
-    throw new Error(`Upload failed: ${uploadError.message}`);
-  }
-
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from(config.bucket).getPublicUrl(storagePath);
-  const safePublicUrl = formatPublicUrl(publicUrl);
-
-  const booking = await DatabaseService.getBookingById(bookingId);
-  if (!booking) {
-    throw new Error(`Booking not found: ${bookingId}`);
-  }
-
-  const workflowUpdate: Record<string, unknown> = {
-    [config.column]: safePublicUrl,
-  };
-
-  // Pet file columns enforce CHECK (url IS NULL OR (has_pets AND length(url) > 0)).
-  // Admin edit uploads often run before Save persists the Pets toggle — always
-  // set has_pets here so the row satisfies guest_submissions_check7/8.
-  if (assetType === 'pet_vaccination' || assetType === 'pet_image') {
-    workflowUpdate.has_pets = true;
-  }
-
-  let receiptValidation: ReceiptValidationResult | undefined;
-  const docAiKind = documentAiKindForAssetType(assetType);
-  if (docAiKind) {
-    try {
-      const orgId = await resolveOrgIdForProperty(propertyId);
-      const aiUsage: AiUsageContext | null = orgId
-        ? { organizationId: orgId, propertyId, actorUserId: user.id }
-        : null;
-      receiptValidation =
-        docAiKind === 'valid_id'
-          ? await validateValidIdFile(file, aiUsage)
-          : await validateReceiptFile(file, aiUsage);
-      receiptValidation = applyReceiptSanityChecks(
-        docAiKind,
-        booking as Record<string, unknown>,
-        receiptValidation
-      );
-      if (shouldPersistReceiptValidation(receiptValidation)) {
-        Object.assign(workflowUpdate, dbPatchForDocumentAiValidation(docAiKind, receiptValidation));
-      }
-      console.log(
-        `[upload-booking-asset] ${assetType} AI: ${receiptValidation.verdict} — ${receiptValidation.summary}`
-      );
-    } catch (aiErr) {
-      console.error('[upload-booking-asset] Receipt AI validation failed (non-fatal):', aiErr);
-    }
-  }
-
-  if (
-    shouldRevertGuestFieldEditsToPendingReview(booking.status) &&
-    isGuestDocRevertAssetType(assetType)
-  ) {
-    Object.assign(workflowUpdate, pendingDocumentsClearPatchForGuestEditRevert());
-    workflowUpdate.document_requirement_completions = pendingDocumentsClearCompletionsJsonbPatch(
-      booking.document_requirement_completions
-    );
-    workflowUpdate.status = 'PENDING_REVIEW';
-    workflowUpdate.status_updated_at = new Date().toISOString();
-    console.log(
-      `[upload-booking-asset] ${assetType} replaced while ${booking.status} → PENDING_REVIEW`
-    );
-  }
-  await DatabaseService.setWorkflowFields(bookingId, workflowUpdate);
-
-  if (assetType === 'guest_balance_payment_receipt') {
-    try {
-      await syncPricingReviewBalanceReceipt(bookingId);
-    } catch (aiReviewErr) {
-      console.error(
-        '[upload-booking-asset] AI Summary Pricing sync failed (non-fatal):',
-        aiReviewErr
-      );
-    }
-    try {
-      const refreshed = await DatabaseService.getBookingById(bookingId);
-      if (refreshed) {
-        await notifyTelegramAdminBalanceReceiptUploaded(refreshed as Record<string, unknown>);
-      }
-    } catch (tgErr) {
-      console.error(
-        '[upload-booking-asset] Telegram balance receipt notify failed (non-fatal):',
-        tgErr
-      );
-    }
-  }
-
-  console.log(`[upload-booking-asset] Uploaded ${assetType} for ${bookingId}: ${safePublicUrl}`);
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const result = await applyBookingAssetFromBytes({
+    bookingId,
+    propertyId,
+    assetType,
+    fileName,
+    mimeType: file.type || 'application/octet-stream',
+    bytes,
+    actorUserId: user.id,
+    logPrefix: '[upload-booking-asset]',
+  });
 
   return jsonSuccess(req, {
-    url: safePublicUrl,
-    bucket: config.bucket,
-    path: storagePath,
-    column: config.column,
-    receiptValidation: receiptValidation ?? null,
+    url: result.url,
+    bucket: result.bucket,
+    path: result.path,
+    column: result.column,
+    receiptValidation: result.receiptValidation,
   });
 });

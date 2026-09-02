@@ -17,6 +17,7 @@ import {
 } from '../_shared/guestReviewFeedbackTags.ts';
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
+import { antiSpamGate } from '../_shared/antiSpam.ts';
 
 function parseStarRating(raw: FormDataEntryValue | null): number | null {
   const n = typeof raw === 'string' ? Number.parseInt(raw, 10) : NaN;
@@ -35,6 +36,15 @@ servePublic('submit-guest-review', async (req) => {
   }
 
   const form = await req.formData();
+
+  // Anti-spam: bot heuristics → Turnstile → durable rate limit.
+  // Plan: docs/workflow/for-testing/captcha-anti-spam-hardening.md
+  const antiSpamBlocked = await antiSpamGate(req, form, {
+    scope: 'submit-guest-review',
+    rateLimit: { limit: 10, windowSec: 60 },
+  });
+  if (antiSpamBlocked) return antiSpamBlocked;
+
   const bookingId = (form.get('bookingId')?.toString() ?? '').trim();
   const starRating = parseStarRating(form.get('starRating'));
   const reviewText = (form.get('reviewText')?.toString() ?? '').trim() || null;
