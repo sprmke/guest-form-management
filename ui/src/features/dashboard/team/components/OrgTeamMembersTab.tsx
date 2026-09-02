@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 
 import {
   ChevronDown,
+  MoreHorizontal,
   Filter,
   Search,
   Sparkles,
@@ -12,8 +13,8 @@ import {
 } from 'lucide-react';
 
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
-import { TeamInviteTierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { PlanGatedText } from '@/features/dashboard/plans/components/PlanUpgradeLink';
+import { TeamInviteTierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { OrgRoleBadge } from '@/features/dashboard/team/components/OrgRoleBadge';
 import { TeamMemberStatusBadge } from '@/features/dashboard/team/components/TeamMemberStatusBadge';
 import {
@@ -162,7 +163,7 @@ export function OrgTeamMembersTab({
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base sm:text-lg">
+          <CardTitle>
             Team Members ({filteredMembers.length})
           </CardTitle>
         </CardHeader>
@@ -222,18 +223,19 @@ export function OrgTeamMembersTab({
                 </div>
 
                 {canEditContact || (!member.isOwner && canManage) ? (
-                  <div className="flex w-full flex-wrap items-center justify-end sm:ml-auto sm:w-auto">
+                  <div className="ml-auto flex shrink-0 items-center justify-end">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="min-h-[44px] sm:min-h-9"
+                          className="text-muted-foreground min-h-[44px] min-w-[44px] px-0 sm:min-h-9 sm:w-auto sm:px-3 sm:text-foreground"
                           aria-label={`Manage ${member.name}`}
                         >
-                          Manage
-                          <ChevronDown className="ml-1.5 size-3.5" aria-hidden />
+                          <MoreHorizontal className="size-4 sm:hidden" aria-hidden />
+                          <span className="hidden sm:inline">Manage</span>
+                          <ChevronDown className="ml-1.5 hidden size-3.5 sm:inline" aria-hidden />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -284,7 +286,7 @@ export function OrgTeamMembersTab({
           {filteredMembers.length === 0 ? (
             <div className="py-10 text-center sm:py-12">
               <Users className="text-muted-foreground mx-auto size-11" aria-hidden />
-              <h3 className="mt-4 text-lg font-semibold">No members found</h3>
+              <h3 className="text-card-title mt-4">No members found</h3>
               {!searchQuery && canInvite ? (
                 <TeamInviteTierBadgeAnchor canInvite={canInviteByPlan} className="mt-4">
                   <Button className="min-h-[44px]" onClick={onInvite}>

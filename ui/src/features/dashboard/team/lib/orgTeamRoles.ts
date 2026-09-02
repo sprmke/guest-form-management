@@ -1,4 +1,9 @@
 import {
+  getOrgMemberRoleColor,
+  getOrgMemberRoleLabel,
+  resolveOrgMemberTemplateRoleId,
+} from '@/features/dashboard/team/lib/orgMemberRoleDisplay';
+import {
   ORG_ROLE_PERMISSIONS,
   ORG_TEAM_PERMISSIONS,
 } from '@/features/dashboard/team/lib/orgTeamConstants';
@@ -8,11 +13,6 @@ import {
   SEEDED_ORG_TEMPLATE_NAMES,
   sortOrgTemplatesForDisplay,
 } from '@/features/dashboard/team/lib/orgTeamTemplates';
-import {
-  getOrgMemberRoleColor,
-  getOrgMemberRoleLabel,
-  resolveOrgMemberTemplateRoleId,
-} from '@/features/dashboard/team/lib/orgMemberRoleDisplay';
 import type { CustomPropertyRole } from '@/features/dashboard/team/types/propertyTeam';
 
 export const ORG_CUSTOM_ROLE_COLOR = 'bg-violet-500';

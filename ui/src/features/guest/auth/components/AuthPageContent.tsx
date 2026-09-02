@@ -7,6 +7,7 @@ import { AlertCircle, ArrowLeft } from 'lucide-react';
 import type { AuthPageConfig } from '@/features/guest/auth/config/auth-page-config';
 
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
+import { useCaptchaToken } from '@/components/security/useCaptchaToken';
 import { Button } from '@/components/ui/button';
 import { SpinnerIcon } from '@/components/ui/icons';
 import { Input } from '@/components/ui/input';
@@ -23,7 +24,7 @@ type Step = 'email' | 'otp';
 const RESEND_COOLDOWN_SECONDS = 30;
 
 export interface AuthPageActions {
-  sendEmailOtp: (email: string) => Promise<AuthError | null>;
+  sendEmailOtp: (email: string, captchaToken?: string) => Promise<AuthError | null>;
   verifyEmailOtp: (email: string, code: string) => Promise<AuthError | null>;
   signInWithGoogle: () => void | Promise<void>;
   googleLoading?: boolean;
@@ -50,6 +51,7 @@ export function AuthPageContent({ config, mode, actions }: AuthPageContentProps)
   const [isSending, setIsSending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const captcha = useCaptchaToken({ action: 'auth-email-otp' });
 
   const busy = isSending || isVerifying || Boolean(actions.googleLoading);
 
@@ -67,7 +69,9 @@ export function AuthPageContent({ config, mode, actions }: AuthPageContentProps)
     }
     setError(null);
     setIsSending(true);
-    const otpError = await actions.sendEmailOtp(trimmed);
+    const captchaToken = await captcha.ensureToken();
+    const otpError = await actions.sendEmailOtp(trimmed, captchaToken);
+    captcha.reset();
     setIsSending(false);
     if (otpError) {
       setError(otpError.message);
@@ -98,7 +102,9 @@ export function AuthPageContent({ config, mode, actions }: AuthPageContentProps)
     if (resendCooldown > 0 || isSending) return;
     setError(null);
     setIsSending(true);
-    const otpError = await actions.sendEmailOtp(email.trim());
+    const captchaToken = await captcha.ensureToken();
+    const otpError = await actions.sendEmailOtp(email.trim(), captchaToken);
+    captcha.reset();
     setIsSending(false);
     if (otpError) {
       setError(otpError.message);
@@ -133,14 +139,14 @@ export function AuthPageContent({ config, mode, actions }: AuthPageContentProps)
 
         {step === 'otp' ? (
           <>
-            <h1 className="text-2xl font-bold tracking-tight">Enter your code</h1>
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Enter your code</h1>
             <p className="text-muted-foreground mt-2">
               We sent a code to <span className="text-foreground font-medium">{email}</span>
             </p>
           </>
         ) : (
           <>
-            <h1 className="text-2xl font-bold tracking-tight">{c.title}</h1>
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{c.title}</h1>
             <p className="text-muted-foreground mt-2">{c.subtitle}</p>
           </>
         )}
@@ -187,6 +193,9 @@ export function AuthPageContent({ config, mode, actions }: AuthPageContentProps)
             error={Boolean(error)}
           />
         )}
+
+        {/* Kept mounted on both steps so Resend (OTP step) still has a fresh single-use token. */}
+        {captcha.widget}
 
         {error ? (
           <p className="text-destructive text-center text-sm" role="alert">

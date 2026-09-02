@@ -78,7 +78,7 @@ function AcceptInviteBrandHeader({ preview }: { preview: TeamInvitePreview }) {
         </div>
       </div>
       <p className="section-eyebrow mb-2">Team invitation</p>
-      <h1 className="text-foreground text-xl font-bold tracking-tight sm:text-2xl">
+      <h1 className="text-foreground text-lg font-bold tracking-tight sm:text-xl">
         {preview.orgName}
       </h1>
       {preview.kind === 'property' ? (
@@ -287,7 +287,7 @@ export function AcceptInvitePage() {
       <div className="border-border bg-card w-full max-w-[min(calc(100vw-1.5rem),24rem)] rounded-xl border p-6 pt-8 sm:p-8">
         <AcceptInviteBrandHeader preview={preview} />
 
-        <h2 className="text-foreground text-lg font-semibold tracking-tight">Accept invite</h2>
+        <h2 className="text-foreground text-base font-semibold tracking-tight">Accept invite</h2>
 
         {error ? (
           <div className="mt-4 space-y-3">

@@ -1,10 +1,10 @@
-import { findMatchingTemplate } from '@/features/dashboard/team/lib/permissionTreeState';
 import {
   findOrgTemplateIdByName,
   isSeededOrgTemplateName,
   SEEDED_ORG_TEMPLATE_NAMES,
   sortOrgTemplatesForDisplay,
 } from '@/features/dashboard/team/lib/orgTeamTemplates';
+import { findMatchingTemplate } from '@/features/dashboard/team/lib/permissionTreeState';
 import type { CustomOrgRole } from '@/features/dashboard/team/types/orgTeam';
 
 export const ORG_OWNER_ROLE_ID = 'OWNER';

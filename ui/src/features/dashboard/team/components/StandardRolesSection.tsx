@@ -44,7 +44,7 @@ export function StandardRolesSection({ roles, title = 'Roles' }: Props) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base sm:text-lg">{title}</CardTitle>
+        <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="overflow-hidden rounded-lg border">

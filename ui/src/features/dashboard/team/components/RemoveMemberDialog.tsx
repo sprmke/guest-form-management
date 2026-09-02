@@ -4,12 +4,12 @@ import type { TeamMember } from '@/features/dashboard/team/types/propertyTeam';
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 
 type Props = {
   open: boolean;
@@ -31,18 +31,18 @@ export function RemoveMemberDialog({
   confirmLabel = 'Remove Member',
 }: Props) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-        <DialogHeader>
-          <DialogTitle className="text-destructive flex items-center gap-2">
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent className="sm:max-w-[28rem]">
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle className="text-destructive flex items-center gap-2">
             <AlertTriangle className="size-5" aria-hidden />
             Remove Team Member
-          </DialogTitle>
-        </DialogHeader>
+          </ResponsiveModalTitle>
+        </ResponsiveModalHeader>
         <p className="text-muted-foreground text-sm">
           Remove {member?.name} from {scopeLabel}? They will lose access immediately.
         </p>
-        <DialogFooter className="gap-1">
+        <ResponsiveModalFooter className="gap-1">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
@@ -50,8 +50,8 @@ export function RemoveMemberDialog({
             <UserMinus className="mr-2 size-4" aria-hidden />
             {confirmLabel}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

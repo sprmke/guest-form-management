@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 
 import {
-  Building2,
   ChevronDown,
+  MoreHorizontal,
   Filter,
   Search,
   Shield,
@@ -16,17 +16,20 @@ import {
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOptionalParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
-import { TeamInviteTierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { PlanGatedText } from '@/features/dashboard/plans/components/PlanUpgradeLink';
-import { OrgManagedMemberLink } from '@/features/dashboard/team/components/OrgManagedMemberLink';
+import { TeamInviteTierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
+import {
+  OrgManagedMemberLink,
+  useCanOpenOrgTeam,
+} from '@/features/dashboard/team/components/OrgManagedMemberLink';
 import { RoleBadge } from '@/features/dashboard/team/components/RoleBadge';
 import { TeamMemberStatusBadge } from '@/features/dashboard/team/components/TeamMemberStatusBadge';
+import { planLimitedTeamBannerMessage } from '@/features/dashboard/team/lib/planLimitedTeamCopy';
 import {
   currentTeamMemberRowClassName,
   isCurrentTeamMember,
   sortTeamMembersWithCurrentUserFirst,
 } from '@/features/dashboard/team/lib/sortTeamMembersByCurrentUser';
-import { planLimitedTeamBannerMessage } from '@/features/dashboard/team/lib/planLimitedTeamCopy';
 import { isTeamMemberActive } from '@/features/dashboard/team/lib/teamMemberAccess';
 import {
   canEditPropertyMemberContact,
@@ -36,7 +39,6 @@ import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/li
 import type { CustomPropertyRole, TeamMember } from '@/features/dashboard/team/types/propertyTeam';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -54,7 +56,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -125,6 +126,7 @@ export function TeamMembersTab({
     );
   }
   const { email: currentUserEmail } = useAdminSession();
+  const canOpenOrgTeam = useCanOpenOrgTeam();
 
   const planLimitedCount = useMemo(
     () => members.filter((member) => member.status === 'inactive' && member.planLimited).length,
@@ -194,7 +196,7 @@ export function TeamMembersTab({
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base sm:text-lg">
+          <CardTitle>
             Team Members ({filteredMembers.length})
           </CardTitle>
         </CardHeader>
@@ -223,25 +225,7 @@ export function TeamMembersTab({
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                      <p className="text-foreground truncate text-sm font-semibold">
-                        {member.name}
-                      </p>
-                      {member.fromOrg ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge
-                              variant="outline"
-                              className="h-5 gap-1 px-1.5 text-[10px] font-medium"
-                            >
-                              <Building2 className="size-2.5" aria-hidden />
-                              Org
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>Inherited from organization</TooltipContent>
-                        </Tooltip>
-                      ) : null}
-                    </div>
+                    <p className="text-foreground truncate text-sm font-semibold">{member.name}</p>
                     <p className="text-muted-foreground truncate text-xs">{member.email}</p>
                     {contactLine ? (
                       <p className="text-muted-foreground truncate text-xs tabular-nums">
@@ -264,9 +248,31 @@ export function TeamMembersTab({
                   <TeamMemberStatusBadge status={member.status} planLimited={member.planLimited} />
                 </div>
 
-                <div className="flex w-full flex-wrap items-center justify-end sm:ml-auto sm:w-auto">
+                <div className="ml-auto flex shrink-0 items-center justify-end">
                   {member.fromOrg ? (
-                    <OrgManagedMemberLink orgSlug={orgSlug} />
+                    canOpenOrgTeam ? (
+                      <>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="text-muted-foreground min-h-[44px] min-w-[44px] sm:hidden"
+                              aria-label={`Manage ${member.name}`}
+                            >
+                              <MoreHorizontal className="size-4" aria-hidden />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="min-w-[11rem]">
+                            <OrgManagedMemberLink orgSlug={orgSlug} variant="menuItem" />
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <div className="hidden sm:block">
+                          <OrgManagedMemberLink orgSlug={orgSlug} />
+                        </div>
+                      </>
+                    ) : null
                   ) : canEditContact || allowEditMembers || allowDeleteMembers ? (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -274,11 +280,12 @@ export function TeamMembersTab({
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="min-h-[44px] sm:min-h-9"
+                          className="text-muted-foreground min-h-[44px] min-w-[44px] px-0 sm:min-h-9 sm:w-auto sm:px-3 sm:text-foreground"
                           aria-label={`Manage ${member.name}`}
                         >
-                          Manage
-                          <ChevronDown className="ml-1.5 size-3.5" aria-hidden />
+                          <MoreHorizontal className="size-4 sm:hidden" aria-hidden />
+                          <span className="hidden sm:inline">Manage</span>
+                          <ChevronDown className="ml-1.5 hidden size-3.5 sm:inline" aria-hidden />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -342,7 +349,7 @@ export function TeamMembersTab({
           {filteredMembers.length === 0 ? (
             <div className="py-10 text-center sm:py-12">
               <Users className="text-muted-foreground mx-auto size-11" aria-hidden />
-              <h3 className="mt-4 text-lg font-semibold">No members found</h3>
+              <h3 className="text-card-title mt-4">No members found</h3>
               {!searchQuery && canInvite ? (
                 <TeamInviteTierBadgeAnchor canInvite={canInviteByPlan} className="mt-4">
                   <Button className="min-h-[44px]" onClick={onInvite}>

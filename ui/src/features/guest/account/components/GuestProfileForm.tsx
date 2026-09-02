@@ -198,7 +198,7 @@ export function GuestProfileForm({
           <AvatarFallback
             className={cn(
               'from-primary/90 to-primary bg-gradient-to-br text-white',
-              embedded ? 'text-2xl sm:text-3xl' : 'text-2xl'
+              embedded ? 'text-xl sm:text-2xl' : 'text-xl'
             )}
           >
             {initials}
@@ -405,7 +405,7 @@ export function GuestProfileForm({
 
           <div className="min-w-0 space-y-3 text-center sm:text-left">
             <div>
-              <h2 className="text-foreground text-xl font-semibold tracking-tight sm:text-2xl">
+              <h2 className="text-foreground text-lg font-semibold tracking-tight sm:text-xl">
                 {displayNamePreview}
               </h2>
               {email ? (

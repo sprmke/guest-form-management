@@ -37,7 +37,7 @@ export function OrgTeamInvitationsTab({
   return (
     <Card>
       <CardHeader className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle className="text-base sm:text-lg">Pending Invitations</CardTitle>
+        <CardTitle>Pending Invitations</CardTitle>
       </CardHeader>
       <CardContent>
         {invitations.length > 0 ? (
@@ -97,7 +97,7 @@ export function OrgTeamInvitationsTab({
         ) : (
           <div className="py-10 text-center sm:py-12">
             <UserPlus className="text-muted-foreground mx-auto size-11" aria-hidden />
-            <h3 className="mt-4 text-lg font-semibold">No pending invitations</h3>
+            <h3 className="text-card-title mt-4">No pending invitations</h3>
             {canInvite ? (
               <TeamInviteTierBadgeAnchor canInvite={canInviteByPlan} className="mt-4">
                 <Button className="min-h-[44px]" onClick={onInvite}>
