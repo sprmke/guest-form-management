@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 import { useSearchParams } from 'react-router-dom';
 
@@ -29,6 +29,7 @@ import {
 import { normalizeVoucherRevealStyle } from '@/features/guest/sd-form/lib/voucherRevealStyle';
 
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
+import { useAntiSpamSubmit } from '@/components/security/useAntiSpamSubmit';
 import { GuestReviewPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
 
@@ -55,12 +56,19 @@ export function GuestReviewPage() {
     ? findVoucher(query.data.next_stay_voucher_code, query.data.next_stay_voucher_amount)
     : null;
 
+  const claimAntiSpam = useAntiSpamSubmit({ action: 'claim-sd-voucher' });
+
   const claimMut = useMutation({
     mutationFn: async (): Promise<Voucher> => {
-      const res = await claimSdVoucher(bookingId);
-      const v = findVoucher(res.code, res.amount);
-      if (!v) throw new Error('Received an unknown voucher code from the server.');
-      return v;
+      const fields = await claimAntiSpam.collect();
+      try {
+        const res = await claimSdVoucher(bookingId, fields);
+        const v = findVoucher(res.code, res.amount);
+        if (!v) throw new Error('Received an unknown voucher code from the server.');
+        return v;
+      } finally {
+        claimAntiSpam.reset();
+      }
     },
     onError: (err: Error) => {
       toast.error(friendlyToastError(err, 'Could not reveal your voucher'));
@@ -113,6 +121,7 @@ export function GuestReviewPage() {
       existingVoucher={existingVoucher}
       isClaiming={claimMut.isPending}
       onClaim={() => claimMut.mutateAsync()}
+      claimWidget={claimAntiSpam.render}
       onReviewSubmitted={() => setPhase(query.data.vouchers_enabled === false ? 'done' : 'voucher')}
       onVoucherDone={() => setPhase('done')}
     />
@@ -127,6 +136,7 @@ function GuestReviewContent({
   existingVoucher,
   isClaiming,
   onClaim,
+  claimWidget,
   onReviewSubmitted,
   onVoucherDone,
 }: {
@@ -137,6 +147,7 @@ function GuestReviewContent({
   existingVoucher: Voucher | null;
   isClaiming: boolean;
   onClaim: () => Promise<Voucher>;
+  claimWidget: ReactNode;
   onReviewSubmitted: () => void;
   onVoucherDone: () => void;
 }) {
@@ -176,6 +187,8 @@ function GuestReviewContent({
           style={normalizeVoucherRevealStyle(data.voucher_reveal_style)}
         />
       ) : null}
+
+      {phase === 'voucher' ? claimWidget : null}
 
       {phase === 'done' ? (
         <div className="border-border/60 bg-muted/20 flex flex-col items-center gap-3 rounded-xl border px-4 py-10 text-center">

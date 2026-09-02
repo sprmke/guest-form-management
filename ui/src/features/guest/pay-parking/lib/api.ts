@@ -3,6 +3,9 @@ import {
   type GuestPayParkingPathOptions,
 } from '@/features/guest/lib/guestPublicPaths';
 
+import { withAntiSpam, type AntiSpamRequestFields } from '@/lib/security/antiSpamRequest';
+import { antiSpamErrorMessage, isAntiSpamFailure } from '@/lib/security/antiSpamResponse';
+
 import type { PayParkingVehicleValues } from './payParkingSchema';
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
@@ -79,24 +82,33 @@ export type SubmitPayParkingResult = {
 export async function submitPayParking(
   bookingId: string,
   values: PayParkingVehicleValues,
-  options: SubmitPayParkingOptions = {}
+  options: SubmitPayParkingOptions = {},
+  antiSpam?: AntiSpamRequestFields
 ): Promise<SubmitPayParkingResult> {
   const sendParkingBroadcast = options.sendParkingBroadcast !== false;
   const parkingOwnerEmail = (options.parkingOwnerEmail ?? '').trim();
   const res = await fetch(`${FUNCTIONS_URL}/submit-pay-parking`, {
     method: 'POST',
     headers: fnHeaders(),
-    body: JSON.stringify({
-      bookingId,
-      carPlateNumber: values.carPlateNumber,
-      carBrandModel: values.carBrandModel,
-      carColor: values.carColor,
-      sendParkingBroadcast,
-      ...(parkingOwnerEmail ? { parkingOwnerEmail } : {}),
-    }),
+    body: JSON.stringify(
+      withAntiSpam(
+        {
+          bookingId,
+          carPlateNumber: values.carPlateNumber,
+          carBrandModel: values.carBrandModel,
+          carColor: values.carColor,
+          sendParkingBroadcast,
+          ...(parkingOwnerEmail ? { parkingOwnerEmail } : {}),
+        },
+        antiSpam
+      )
+    ),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json.success) {
+    if (isAntiSpamFailure(res.status, json)) {
+      throw new Error(antiSpamErrorMessage(res.status, json));
+    }
     throw new Error(json.error ?? json.message ?? `Submit failed (${res.status})`);
   }
   const broadcastSent = json.data?.broadcastSent === true;

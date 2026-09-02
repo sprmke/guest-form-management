@@ -34,7 +34,7 @@ export function PayParkingIntro({ data }: { data: PayParkingBootstrap }) {
   return (
     <PayParkingSectionShell icon={CalendarDays} title="Booking Info" ariaLabel="Booking Info">
       <div className="space-y-1.5">
-        <p className="text-foreground text-lg font-bold">{data.primary_guest_name}</p>
+        <p className="text-foreground text-base font-bold">{data.primary_guest_name}</p>
         <p className="text-foreground text-sm font-medium leading-snug">
           {formatStayDateRange(data.check_in_date, data.check_out_date)}
         </p>
@@ -63,9 +63,7 @@ function PayParkingDetailsCard({ data }: { data: PayParkingBootstrap }) {
           {formatStayDateRange(data.parking_check_in_date, data.parking_check_out_date)}
         </p>
         <div className="border-border/60 flex items-end justify-between gap-4 border-t pt-3">
-          <span className="text-foreground text-2xl font-bold tabular-nums tracking-tight sm:text-3xl">
-            {formatMoney(totalEstimate)}
-          </span>
+          <span className="truncate text-lg font-bold tabular-nums tracking-tight sm:text-2xl">{formatMoney(totalEstimate)}</span>
           <p className="text-muted-foreground text-sm">{formatMoney(ratePerNight)} / night</p>
         </div>
       </div>

@@ -186,20 +186,22 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Quiet defaults — surfaces that need display scale set sizes explicitly
+   * (marketing heroes, showcase). Admin uses text-admin-* / text-card-* tokens. */
   h1 {
-    @apply text-3xl font-bold tracking-tight sm:text-4xl;
+    @apply text-lg font-bold tracking-tight sm:text-xl md:text-2xl;
   }
 
   h2 {
-    @apply text-2xl font-semibold tracking-tight;
+    @apply text-base font-semibold tracking-tight sm:text-lg;
   }
 
   h3 {
-    @apply text-xl font-semibold tracking-tight;
+    @apply text-sm font-semibold tracking-tight sm:text-base;
   }
 
   h4 {
-    @apply text-lg font-semibold;
+    @apply text-sm font-semibold;
   }
 
   p {
@@ -828,6 +830,45 @@
 
   /** Teal brand hero band — native mobile shell (max-lg only). */
   @media (max-width: 1023px) {
+    /* AdminMobilePage owns the switcher — hide duplicate fallback topbar on first paint. */
+    .admin-mobile-shell-column:has([data-admin-mobile-page]) > .admin-mobile-fallback-topbar {
+      display: none;
+    }
+
+    .admin-mobile-main-shell:has([data-admin-mobile-page]) {
+      background: transparent;
+      background-image: none;
+      padding-top: 0;
+      padding-left: 0;
+      padding-right: 0;
+    }
+
+    .admin-mobile-main-shell:has([data-admin-mobile-page]) [data-admin-mobile-page] {
+      margin-top: 0;
+    }
+
+    /* Default mobile shell gutter — non-hero pages only (hero rule above wins via :has). */
+    .admin-mobile-main-shell {
+      padding-top: 0.875rem;
+      padding-left: 0.875rem;
+      padding-right: 0.875rem;
+    }
+
+    @media (min-width: 640px) {
+      .admin-mobile-main-shell {
+        padding-top: 1rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
+    }
+
+    @media (min-width: 768px) {
+      .admin-mobile-main-shell {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+      }
+    }
+
     .mobile-brand-hero {
       @apply bg-primary text-primary-foreground relative z-0 overflow-visible;
       @apply pt-[max(0.75rem,env(safe-area-inset-top))];
@@ -1070,7 +1111,10 @@
     @apply text-primary text-xs font-semibold uppercase tracking-[0.1em];
   }
 
-  /* Typography scale — single source for UI copy hierarchy */
+  /* Typography scale — single source for UI copy hierarchy.
+   * Admin phone density (see `.cursor/rules/mobile-responsive.mdc` §4 / 4af):
+   * page title 18 · section 14 · card title 16 · body 14 · KPI 16 · list amount 15.
+   * Do not reintroduce max-sm title bumps (e.g. 1.65rem) — oversized vs native apps. */
   .text-display {
     @apply text-foreground text-2xl font-bold tracking-tight;
   }
@@ -1079,26 +1123,27 @@
     @apply text-foreground text-2xl font-bold tracking-tight md:text-3xl;
   }
 
-  /** Admin shell page titles (Bookings, Finance, Settings, …). Larger only below `sm`. */
+  /** Admin shell page titles (Bookings, Finance, Settings, …). */
   .text-admin-page-title {
-    @apply text-foreground text-lg font-bold tracking-tight max-sm:text-[1.65rem] max-sm:leading-tight sm:text-xl md:text-2xl;
+    @apply text-foreground text-lg font-bold tracking-tight sm:text-xl md:text-2xl;
   }
 
   .text-admin-page-subtitle {
     @apply text-muted-foreground text-sm sm:text-[15px];
   }
 
-  /** In-card section headers — below page title scale. */
+  /** In-card headers (card chrome, AdminSection titles). */
   .text-card-title {
-    @apply text-foreground text-xl font-semibold leading-none tracking-tight;
+    @apply text-foreground text-base font-semibold leading-none tracking-tight sm:text-lg;
   }
 
   .text-page-subtitle {
     @apply text-muted-foreground;
   }
 
+  /** Group / band labels above card stacks (“In-app notifications”). */
   .text-section-title {
-    @apply text-foreground text-[15px] font-semibold leading-none tracking-tight sm:text-base;
+    @apply text-foreground text-sm font-semibold leading-none tracking-tight sm:text-[15px];
   }
 
   /** Primary interactive / toolbar copy (filters, buttons, menu items). */
@@ -1109,6 +1154,16 @@
   /** Dense toolbar controls (filter bar, sort, date chips). */
   .text-toolbar {
     @apply text-foreground/80 text-xs font-semibold leading-none;
+  }
+
+  /** KPI / stat values on dashboard cards. */
+  .text-stat-value {
+    @apply text-foreground text-base font-bold tabular-nums tracking-tight sm:text-xl md:text-2xl;
+  }
+
+  /** Money / amounts in list rows. */
+  .text-list-amount {
+    @apply text-foreground text-[15px] font-semibold tabular-nums leading-none sm:text-base;
   }
 
   /** Emphasized values in lists, tables, and cards. */

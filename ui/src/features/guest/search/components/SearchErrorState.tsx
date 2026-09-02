@@ -19,7 +19,7 @@ export function SearchErrorState({
       <span className="bg-destructive/10 text-destructive mb-5 flex size-14 items-center justify-center rounded-2xl">
         <AlertCircle className="h-6 w-6" aria-hidden />
       </span>
-      <h2 className="text-foreground text-lg font-semibold sm:text-xl">Couldn’t load results</h2>
+      <h2 className="text-foreground text-base font-semibold sm:text-lg">Couldn’t load results</h2>
       <p className="text-muted-foreground mt-2 max-w-md text-sm leading-relaxed">{message}</p>
       <button
         type="button"

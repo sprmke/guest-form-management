@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { isPostHogEnabled, posthog } from '@/lib/posthog/client';
 import { supabase } from '@/lib/supabase/client';
@@ -9,21 +9,33 @@ import { supabase } from '@/lib/supabase/client';
  * guard mounted first. Mount once near the app root.
  */
 export function PostHogIdentitySync() {
+  const identifiedUserId = useRef<string | null>(null);
+
   useEffect(() => {
     if (!isPostHogEnabled) return;
 
-    supabase.auth.getSession().then(({ data }) => {
-      const user = data.session?.user;
-      if (user) posthog.identify(user.id, { email: user.email });
+    const identifySessionUser = (user: { id: string; email?: string } | null | undefined) => {
+      if (!user || identifiedUserId.current === user.id) return;
+
+      // A different session on a shared device must not inherit the prior user's identity.
+      if (identifiedUserId.current) posthog.reset();
+
+      posthog.identify(user.id, { email: user.email });
+      identifiedUserId.current = user.id;
+    };
+
+    void supabase.auth.getSession().then(({ data }) => {
+      identifySessionUser(data.session?.user);
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         posthog.reset();
+        identifiedUserId.current = null;
         return;
       }
-      const user = session?.user;
-      if (user) posthog.identify(user.id, { email: user.email });
+
+      identifySessionUser(session?.user);
     });
 
     return () => subscription.subscription.unsubscribe();

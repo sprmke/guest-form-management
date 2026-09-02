@@ -10,8 +10,8 @@ import { usePublicDevelopments } from '@/features/guest/marketing/developments/h
 import { EMPTY_DEVELOPMENTS_FACETS } from '@/features/guest/marketing/developments/lib/developmentsQuery';
 import type { DevelopmentsListingQuery } from '@/features/guest/marketing/developments/lib/developmentsQuery';
 import type { PublicDevelopmentListItem } from '@/features/guest/marketing/developments/lib/developmentsQuery';
-import { usePublicParkings } from '@/features/guest/marketing/parkings/hooks/usePublicParkings';
 import { useCaptureParkingLinkStay } from '@/features/guest/marketing/parkings/hooks/useCaptureParkingLinkStay';
+import { usePublicParkings } from '@/features/guest/marketing/parkings/hooks/usePublicParkings';
 import {
   EMPTY_PARKINGS_FACETS,
   parkingsQueryToFilterState,

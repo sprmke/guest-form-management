@@ -14,10 +14,12 @@ import { GuestReviewStarRating } from '@/features/guest/sd-form/components/Guest
 import { submitGuestReview } from '@/features/guest/sd-form/lib/api';
 import { filterGuestReviewTagsForRating } from '@/features/guest/sd-form/lib/guestReviewFeedbackTags';
 
+import { useAntiSpamSubmit } from '@/components/security/useAntiSpamSubmit';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
+import { isPostHogEnabled, posthog } from '@/lib/posthog/client';
 
 export interface SdFormReviewSectionProps {
   bookingId: string;
@@ -34,6 +36,7 @@ export function SdFormReviewSection({
   const [reviewText, setReviewText] = useState('');
   const [feedbackTagIds, setFeedbackTagIds] = useState<string[]>([]);
   const [mediaItems, setMediaItems] = useState<GuestReviewMediaItem[]>([]);
+  const antiSpam = useAntiSpamSubmit({ action: 'submit-guest-review' });
 
   useEffect(() => {
     setFeedbackTagIds((prev) => filterGuestReviewTagsForRating(starRating, prev));
@@ -41,15 +44,30 @@ export function SdFormReviewSection({
 
   const submitMut = useMutation({
     mutationFn: async () => {
-      await submitGuestReview({
-        bookingId,
-        starRating,
-        reviewText,
-        feedbackTags: feedbackTagIds,
-        media: guestReviewMediaFiles(mediaItems),
-      });
+      const fields = await antiSpam.collect();
+      try {
+        await submitGuestReview(
+          {
+            bookingId,
+            starRating,
+            reviewText,
+            feedbackTags: feedbackTagIds,
+            media: guestReviewMediaFiles(mediaItems),
+          },
+          fields
+        );
+      } finally {
+        antiSpam.reset();
+      }
     },
     onSuccess: () => {
+      if (isPostHogEnabled) {
+        posthog.capture('guest_review_submitted', {
+          star_rating: starRating,
+          feedback_tag_count: feedbackTagIds.length,
+          media_count: mediaItems.length,
+        });
+      }
       toast.success('Thanks for your review');
       onReviewSubmitted();
     },
@@ -119,6 +137,8 @@ export function SdFormReviewSection({
           'Submit review & continue'
         )}
       </Button>
+
+      {antiSpam.render}
     </section>
   );
 }

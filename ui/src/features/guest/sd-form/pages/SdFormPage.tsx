@@ -44,6 +44,7 @@ import {
 import { normalizeVoucherRevealStyle } from '@/features/guest/sd-form/lib/voucherRevealStyle';
 
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
+import { useAntiSpamSubmit } from '@/components/security/useAntiSpamSubmit';
 import { SdFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -81,6 +82,11 @@ export function SdFormPage() {
   const [bank, setBank] = useState<string>(SD_BANKS[0]);
   const [accountName, setAccountName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
+
+  // Invisible anti-spam — a widget per protected action (Turnstile `action`
+  // must match the server `scope`). Plan: docs/workflow/for-testing/captcha-anti-spam-hardening.md
+  const claimAntiSpam = useAntiSpamSubmit({ action: 'claim-sd-voucher' });
+  const submitAntiSpam = useAntiSpamSubmit({ action: 'submit-sd-form' });
 
   const query = useQuery({
     queryKey: ['sd-form', bookingId],
@@ -136,12 +142,17 @@ export function SdFormPage() {
 
   const claimMut = useMutation({
     mutationFn: async (): Promise<Voucher> => {
-      const res = await claimSdVoucher(bookingId);
-      const v = findVoucher(res.code, res.amount);
-      if (!v) {
-        throw new Error('Received an unknown voucher code from the server.');
+      const fields = await claimAntiSpam.collect();
+      try {
+        const res = await claimSdVoucher(bookingId, fields);
+        const v = findVoucher(res.code, res.amount);
+        if (!v) {
+          throw new Error('Received an unknown voucher code from the server.');
+        }
+        return v;
+      } finally {
+        claimAntiSpam.reset();
       }
-      return v;
     },
     onError: (err: Error) => {
       toast.error(friendlyToastError(err, 'Could not reveal your voucher'));
@@ -182,10 +193,18 @@ export function SdFormPage() {
                 accountNumber: r.accountNumber,
               }
             : { method: 'cash' };
-      await submitSdForm({
-        bookingId: data.bookingId,
-        refund: refundBody,
-      });
+      const fields = await submitAntiSpam.collect();
+      try {
+        await submitSdForm(
+          {
+            bookingId: data.bookingId,
+            refund: refundBody,
+          },
+          fields
+        );
+      } finally {
+        submitAntiSpam.reset();
+      }
     },
     onSuccess: () => {
       setStep('done');
@@ -327,19 +346,22 @@ export function SdFormPage() {
       )}
 
       {step === 2 && step2Phase === 'voucher' && !data.awaiting_balance_settlement && (
-        <VoucherReveal
-          existingVoucher={existingVoucher}
-          isClaiming={claimMut.isPending}
-          onClaim={() => claimMut.mutateAsync()}
-          onContinue={() => setStep(3)}
-          primaryGuestName={data.primary_guest_name}
-          checkInDate={data.check_in_date}
-          checkOutDate={data.check_out_date}
-          prizePool={
-            data.voucher_prizes?.length ? prizesToVouchers(data.voucher_prizes) : undefined
-          }
-          style={normalizeVoucherRevealStyle(data.voucher_reveal_style)}
-        />
+        <>
+          <VoucherReveal
+            existingVoucher={existingVoucher}
+            isClaiming={claimMut.isPending}
+            onClaim={() => claimMut.mutateAsync()}
+            onContinue={() => setStep(3)}
+            primaryGuestName={data.primary_guest_name}
+            checkInDate={data.check_in_date}
+            checkOutDate={data.check_out_date}
+            prizePool={
+              data.voucher_prizes?.length ? prizesToVouchers(data.voucher_prizes) : undefined
+            }
+            style={normalizeVoucherRevealStyle(data.voucher_reveal_style)}
+          />
+          {claimAntiSpam.render}
+        </>
       )}
 
       {step === 3 && data.awaiting_balance_settlement && (
@@ -360,20 +382,23 @@ export function SdFormPage() {
       )}
 
       {step === 3 && !data.awaiting_balance_settlement && (
-        <StepTwo
-          data={data}
-          method={method}
-          onMethodChange={setMethod}
-          bank={bank}
-          onBankChange={setBank}
-          accountName={accountName}
-          onAccountNameChange={setAccountName}
-          accountNumber={accountNumber}
-          onAccountNumberChange={setAccountNumber}
-          onBack={() => setStep(2)}
-          onSubmit={() => submitMut.mutate(data)}
-          isSubmitting={submitMut.isPending}
-        />
+        <>
+          <StepTwo
+            data={data}
+            method={method}
+            onMethodChange={setMethod}
+            bank={bank}
+            onBankChange={setBank}
+            accountName={accountName}
+            onAccountNameChange={setAccountName}
+            accountNumber={accountNumber}
+            onAccountNumberChange={setAccountNumber}
+            onBack={() => setStep(2)}
+            onSubmit={() => submitMut.mutate(data)}
+            isSubmitting={submitMut.isPending}
+          />
+          {submitAntiSpam.render}
+        </>
       )}
     </div>
   );

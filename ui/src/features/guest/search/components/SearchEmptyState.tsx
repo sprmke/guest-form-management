@@ -29,7 +29,7 @@ export function SearchEmptyState({
         <span className="bg-muted text-muted-foreground mb-5 flex size-14 items-center justify-center rounded-2xl">
           <MapPin className="h-6 w-6" aria-hidden />
         </span>
-        <h2 className="text-foreground text-lg font-semibold sm:text-xl">Location needed</h2>
+        <h2 className="text-foreground text-base font-semibold sm:text-lg">Location needed</h2>
         <p className="text-muted-foreground mt-2 max-w-md text-sm leading-relaxed">
           Allow location to see stays and parking near you.
         </p>
@@ -52,7 +52,7 @@ export function SearchEmptyState({
       <span className="bg-muted text-muted-foreground mb-5 flex size-14 items-center justify-center rounded-2xl">
         <Search className="h-6 w-6" aria-hidden />
       </span>
-      <h2 className="text-foreground text-lg font-semibold sm:text-xl">No matches</h2>
+      <h2 className="text-foreground text-base font-semibold sm:text-lg">No matches</h2>
       {where ? (
         <p className="text-muted-foreground mt-2 max-w-md text-sm leading-relaxed">
           Nothing available for “{where}”. Try another place or dates.

@@ -1,4 +1,10 @@
 import { prepareUpload } from '@/lib/media/prepareUpload';
+import {
+  appendAntiSpamToFormData,
+  withAntiSpam,
+  type AntiSpamRequestFields,
+} from '@/lib/security/antiSpamRequest';
+import { antiSpamErrorMessage, isAntiSpamFailure } from '@/lib/security/antiSpamResponse';
 
 import type { SdBank } from './sdFormSchema';
 import type { VoucherRevealStyle } from './voucherRevealStyle';
@@ -74,14 +80,20 @@ export type ClaimVoucherResponse = {
   alreadyAwarded: boolean;
 };
 
-export async function claimSdVoucher(bookingId: string): Promise<ClaimVoucherResponse> {
+export async function claimSdVoucher(
+  bookingId: string,
+  antiSpam?: AntiSpamRequestFields
+): Promise<ClaimVoucherResponse> {
   const res = await fetch(`${FUNCTIONS_URL}/claim-sd-voucher`, {
     method: 'POST',
     headers: fnHeaders(),
-    body: JSON.stringify({ bookingId }),
+    body: JSON.stringify(withAntiSpam({ bookingId }, antiSpam)),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json.success || !json.data) {
+    if (isAntiSpamFailure(res.status, json)) {
+      throw new Error(antiSpamErrorMessage(res.status, json));
+    }
     throw new Error(json.error ?? json.message ?? `Could not claim voucher (${res.status})`);
   }
   return json.data as ClaimVoucherResponse;
@@ -114,13 +126,16 @@ export type SubmitSdRefundBody = {
   };
 };
 
-export async function submitGuestReview(input: {
-  bookingId: string;
-  starRating: number;
-  reviewText?: string;
-  feedbackTags?: string[];
-  media?: File[];
-}): Promise<void> {
+export async function submitGuestReview(
+  input: {
+    bookingId: string;
+    starRating: number;
+    reviewText?: string;
+    feedbackTags?: string[];
+    media?: File[];
+  },
+  antiSpam?: AntiSpamRequestFields
+): Promise<void> {
   const form = new FormData();
   form.set('bookingId', input.bookingId);
   form.set('starRating', String(input.starRating));
@@ -136,6 +151,7 @@ export async function submitGuestReview(input: {
     if (prepared.error) throw new Error(prepared.error);
     form.append('media', prepared.file);
   }
+  appendAntiSpamToFormData(form, antiSpam);
 
   const res = await fetch(`${FUNCTIONS_URL}/submit-guest-review`, {
     method: 'POST',
@@ -147,18 +163,27 @@ export async function submitGuestReview(input: {
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json.success) {
+    if (isAntiSpamFailure(res.status, json)) {
+      throw new Error(antiSpamErrorMessage(res.status, json));
+    }
     throw new Error(json.error ?? json.message ?? `Review submit failed (${res.status})`);
   }
 }
 
-export async function submitSdForm(body: SubmitSdRefundBody): Promise<void> {
+export async function submitSdForm(
+  body: SubmitSdRefundBody,
+  antiSpam?: AntiSpamRequestFields
+): Promise<void> {
   const res = await fetch(`${FUNCTIONS_URL}/submit-sd-form`, {
     method: 'POST',
     headers: fnHeaders(),
-    body: JSON.stringify(body),
+    body: JSON.stringify(withAntiSpam({ ...body }, antiSpam)),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json.success) {
+    if (isAntiSpamFailure(res.status, json)) {
+      throw new Error(antiSpamErrorMessage(res.status, json));
+    }
     throw new Error(json.error ?? json.message ?? `Submit failed (${res.status})`);
   }
 }
