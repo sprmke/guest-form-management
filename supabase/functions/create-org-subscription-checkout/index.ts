@@ -1,5 +1,5 @@
 /**
- * create-org-subscription-checkout — Org owner creates a PayMongo Payment Link for their org
+ * create-org-subscription-checkout — Org owner creates a PayMongo Hosted Checkout Session
  * subscription at the chosen tier. Billing covers every property in the organization automatically.
  * This is the only subscription checkout in the system (billing is org-level only) — handles first
  * purchase, renewal, and mid-cycle changes (property count and/or tier) via the same function; see

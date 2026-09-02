@@ -6,7 +6,15 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
-import { createPaymongoPaymentLink, phpToCentavos } from './paymongoClient.ts';
+import {
+  createPaymongoCheckoutSession,
+  getPaymongoProviderPaymentState,
+  isPaymongoCheckoutSessionRef,
+  isPaymongoPaymentLinkRef,
+  phpToCentavos,
+} from './paymongoClient.ts';
+import { orgPlansBillingCheckoutUrl } from './orgBillingUrls.ts';
+import { reconcilePendingOrgPaymentTransaction } from './orgPaymentReconcile.ts';
 import {
   computeOrgSubscriptionTotalPhp,
   discountedPlanPricePhp,
@@ -52,7 +60,7 @@ export async function createOrgSubscriptionCheckoutLink(input: {
 
   const { data: org, error: orgError } = await sb
     .from('organizations')
-    .select('id, name')
+    .select('id, name, slug')
     .eq('id', input.organizationId)
     .maybeSingle();
   if (orgError) throw new Error(orgError.message);
@@ -168,22 +176,55 @@ export async function createOrgSubscriptionCheckoutLink(input: {
   }
 
   const orgName = String(org.name ?? 'Organization').trim();
+  const orgSlug = String(org.slug ?? '').trim();
+  if (!orgSlug) throw new Error('Organization slug is missing');
 
   if (!input.forceNew) {
     const { data: pendingExisting } = await sb
       .from('org_payment_transactions')
-      .select('id, checkout_url')
+      .select('id, checkout_url, provider_reference')
       .eq('organization_id', input.organizationId)
       .eq('plan_id', input.planId)
       .eq('status', 'pending')
       .maybeSingle();
 
+    if (pendingExisting?.id) {
+      const reconcileResult = await reconcilePendingOrgPaymentTransaction(
+        pendingExisting.id as string
+      );
+      if (reconcileResult === 'fulfilled') {
+        throw new Error('Payment already received — refresh Plans & Billing');
+      }
+      if (reconcileResult === 'expired') {
+        pendingExisting.checkout_url = null;
+      }
+    }
+
     if (pendingExisting?.checkout_url) {
-      return {
-        checkoutUrl: pendingExisting.checkout_url as string,
-        transactionId: pendingExisting.id as string,
-        reused: true,
-      };
+      const providerRef = String(pendingExisting.provider_reference ?? '');
+      if (isPaymongoCheckoutSessionRef(providerRef)) {
+        const paymongoState = await getPaymongoProviderPaymentState(providerRef);
+        if (paymongoState === 'open' || paymongoState === 'unknown') {
+          return {
+            checkoutUrl: pendingExisting.checkout_url as string,
+            transactionId: pendingExisting.id as string,
+            reused: true,
+          };
+        }
+        if (paymongoState === 'expired') {
+          await sb
+            .from('org_payment_transactions')
+            .update({ status: 'expired' })
+            .eq('id', pendingExisting.id as string)
+            .eq('status', 'pending');
+        }
+      } else if (isPaymongoPaymentLinkRef(providerRef)) {
+        await sb
+          .from('org_payment_transactions')
+          .update({ status: 'expired' })
+          .eq('id', pendingExisting.id as string)
+          .eq('status', 'pending');
+      }
     }
   } else {
     await sb
@@ -213,11 +254,16 @@ export async function createOrgSubscriptionCheckoutLink(input: {
     purpose === 'renewal' ? ' renewal' : proration ? ' — mid-cycle change' : '';
 
   try {
-    await getPlatformPaymentSettings();
-    const link = await createPaymongoPaymentLink({
+    const paymentSettings = await getPlatformPaymentSettings();
+    const lineItemName = `${plan.name} plan (${uniquePropertyIds.length} propert${uniquePropertyIds.length === 1 ? 'y' : 'ies'})`;
+    const session = await createPaymongoCheckoutSession({
       amountCentavos: phpToCentavos(amountPhp),
-      description: `${orgName} — ${plan.name} plan (${uniquePropertyIds.length} propert${uniquePropertyIds.length === 1 ? 'y' : 'ies'})${descriptionSuffix}`,
-      remarks: `organization:${input.organizationId}`,
+      lineItemName,
+      description: `${orgName} — ${lineItemName}${descriptionSuffix}`,
+      successUrl: orgPlansBillingCheckoutUrl(orgSlug, 'success'),
+      cancelUrl: orgPlansBillingCheckoutUrl(orgSlug, 'cancelled'),
+      paymentMethodTypes: paymentSettings.enabledPaymentMethods,
+      referenceNumber: transactionId.replace(/-/g, '').slice(0, 32),
       metadata: {
         kind: 'org_subscription',
         transaction_id: transactionId,
@@ -232,13 +278,13 @@ export async function createOrgSubscriptionCheckoutLink(input: {
     const { error: updateError } = await sb
       .from('org_payment_transactions')
       .update({
-        provider_reference: link.id,
-        checkout_url: link.checkoutUrl,
+        provider_reference: session.id,
+        checkout_url: session.checkoutUrl,
       })
       .eq('id', transactionId);
     if (updateError) throw new Error(updateError.message);
 
-    return { checkoutUrl: link.checkoutUrl, transactionId, reused: false, proration };
+    return { checkoutUrl: session.checkoutUrl, transactionId, reused: false, proration };
   } catch (err) {
     await sb
       .from('org_payment_transactions')
