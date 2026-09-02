@@ -2,7 +2,7 @@
 title: 'Form validation and environment variables'
 status: active
 tags: [architecture]
-updated: 2026-08-27
+updated: 2026-09-01
 ---
 
 # Form validation and environment variables
@@ -65,6 +65,10 @@ Production hosted secrets: Supabase Dashboard → Edge Functions → Secrets. UI
 | `VITE_SUPABASE_PROJECT_URL`       | No         | Override Supabase JS project URL (hybrid `dev:remote-api`)                                                                                                                                                                                                                                                                                                                                                  |
 | `VITE_SUPER_ADMIN_EMAILS`         | No         | Comma-separated — `/admin/*` UX only; server uses `SUPER_ADMIN_EMAILS`                                                                                                                                                                                                                                                                                                                                      |
 | `VITE_GOOGLE_MAPS_API_KEY`        | No         | Property Settings location picker                                                                                                                                                                                                                                                                                                                                                                           |
+| `VITE_POSTHOG_KEY`                | No         | PostHog project API key — error tracking, product analytics, session replay, feature flags. Unset → `ui/src/lib/posthog/client.ts` no-ops (no `posthog.init`)                                                                                                                                                                                                                                               |
+| `VITE_POSTHOG_HOST`               | No         | PostHog Cloud region host. Defaults to `https://us.i.posthog.com`; use `https://eu.i.posthog.com` for EU data residency                                                                                                                                                                                                                                                                                     |
+| `POSTHOG_PERSONAL_API_KEY`        | No         | **Build-time only** (Vercel/CI build env — no `VITE_` prefix, never bundled to the browser). PostHog **personal** API key (error tracking write scope) so `vite.config.ts` uploads readable production source maps via `@posthog/rollup-plugin`. Deliberately a different var from edge's `POSTHOG_API_KEY` (project key) — unset → plugin skipped, `build.sourcemap` stays `false`                         |
+| `POSTHOG_PROJECT_ID`              | No         | Pairs with `POSTHOG_PERSONAL_API_KEY` for source map upload — from PostHog project settings                                                                                                                                                                                                                                                                                                                 |
 | `VITE_INBOX_MOCK_DATA`            | No         | `true` → inbox mock mode                                                                                                                                                                                                                                                                                                                                                                                    |
 | `VITE_PLATFORM_APP_NAME`          | No         | Operator/product name for marketing site, legal pages, app-level tab titles, and super-admin chrome. **UI only** — set in `ui/.env*` / Vercel; not read from `supabase/.env.local`. Unset → generic copy (`Stays`, org/property names on tenant surfaces).                                                                                                                                                  |
 | `VITE_PLATFORM_CONTACT_EMAIL`     | No         | Support/legal contact email on marketing and legal pages. **UI only.** Defaults to `support@example.com` when unset.                                                                                                                                                                                                                                                                                        |
@@ -150,6 +154,13 @@ When invoking `supabase functions serve` manually, `./dev.sh` / `bun run dev:api
 | Variable            | Notes                               |
 | ------------------- | ----------------------------------- |
 | `JAMENDO_CLIENT_ID` | Marketing Studio video music browse |
+
+#### Observability (optional)
+
+| Variable          | Notes                                                                                                                                                                                                                                                                         |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POSTHOG_API_KEY` | Server-side exception capture (`_shared/posthog.ts`). Unset → no-op. Wired into `httpResponse.ts#handleEdgeError` (all `serveAdmin`/`serveSuperAdmin`/`serveAuthenticated`/`servePublic` functions) and `serveEdge.ts#serveCronPost` — never call it from individual handlers |
+| `POSTHOG_HOST`    | Defaults to `https://us.i.posthog.com`; use `https://eu.i.posthog.com` to match EU data residency                                                                                                                                                                             |
 
 #### Platform email branding (optional)
 
