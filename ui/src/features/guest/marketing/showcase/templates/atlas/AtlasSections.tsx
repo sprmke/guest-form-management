@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
-import { ShowcaseSectionLink } from '@/features/guest/marketing/showcase/components/ShowcaseSectionLink';
 
 import { motion, useTransform } from 'framer-motion';
 import { ChevronDown, Compass, Navigation } from 'lucide-react';
@@ -11,6 +10,7 @@ import { ShowcaseMapEmbed } from '@/features/guest/marketing/showcase/components
 import { ShowcaseReveal } from '@/features/guest/marketing/showcase/components/ShowcaseMotion';
 import { ShowcasePreviewMockBanner } from '@/features/guest/marketing/showcase/components/ShowcasePreviewMockBanner';
 import { ShowcaseSectionHeading } from '@/features/guest/marketing/showcase/components/ShowcaseSectionHeading';
+import { ShowcaseSectionLink } from '@/features/guest/marketing/showcase/components/ShowcaseSectionLink';
 import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
 import { useShowcaseContainedChrome } from '@/features/guest/marketing/showcase/lib/showcaseChrome';
 import {

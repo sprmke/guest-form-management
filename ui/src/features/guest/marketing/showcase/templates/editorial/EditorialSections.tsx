@@ -1,4 +1,3 @@
-import { ShowcaseSectionLink } from '@/features/guest/marketing/showcase/components/ShowcaseSectionLink';
 
 import { motion } from 'framer-motion';
 
@@ -14,6 +13,7 @@ import { ShowcaseLocationSection } from '@/features/guest/marketing/showcase/com
 import { ShowcaseReveal } from '@/features/guest/marketing/showcase/components/ShowcaseMotion';
 import { ShowcaseReviewsCarousel } from '@/features/guest/marketing/showcase/components/ShowcaseReviewsCarousel';
 import { ShowcaseSectionIntro } from '@/features/guest/marketing/showcase/components/ShowcaseSectionIntro';
+import { ShowcaseSectionLink } from '@/features/guest/marketing/showcase/components/ShowcaseSectionLink';
 import { useShowcaseStyle } from '@/features/guest/marketing/showcase/components/ShowcaseStyleProvider';
 import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
 import { useShowcaseContainedChrome } from '@/features/guest/marketing/showcase/lib/showcaseChrome';

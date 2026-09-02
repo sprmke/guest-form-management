@@ -1,6 +1,7 @@
 import { Link, type LinkProps } from 'react-router-dom';
 
 import { useSmoothScroll } from '@/features/guest/marketing/showcase/components/SmoothScrollProvider';
+
 import { usePageEditorPreviewScroll } from '@/features/dashboard/page-editor/lib/pageEditorPreviewScroll';
 
 /** In-page `#section` href used by Stay Guide hero CTAs and shell nav. */

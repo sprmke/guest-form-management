@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
 
-import { ShowcaseSectionLink } from '@/features/guest/marketing/showcase/components/ShowcaseSectionLink';
 
 import { ArrowUpRight, Mail, MessageCircle, Phone } from 'lucide-react';
 
 import { HostPublicSocialLinks } from '@/features/guest/marketing/hosts/components/HostPublicSocialLinks';
 import { ShowcaseReveal } from '@/features/guest/marketing/showcase/components/ShowcaseMotion';
 import { ShowcaseSectionHeading } from '@/features/guest/marketing/showcase/components/ShowcaseSectionHeading';
+import { ShowcaseSectionLink } from '@/features/guest/marketing/showcase/components/ShowcaseSectionLink';
 import { useShowcaseStyle } from '@/features/guest/marketing/showcase/components/ShowcaseStyleProvider';
 import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
 import { resolveShowcaseHostContent } from '@/features/guest/marketing/showcase/lib/showcaseHostContent';

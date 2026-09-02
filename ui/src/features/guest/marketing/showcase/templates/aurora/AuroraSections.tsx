@@ -1,6 +1,5 @@
 import { useRef } from 'react';
 
-import { ShowcaseSectionLink } from '@/features/guest/marketing/showcase/components/ShowcaseSectionLink';
 
 import { motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
@@ -17,6 +16,7 @@ import { ShowcasePreviewMockBanner } from '@/features/guest/marketing/showcase/c
 import { ShowcaseReviewsCarousel } from '@/features/guest/marketing/showcase/components/ShowcaseReviewsCarousel';
 import { ShowcaseSectionHeading } from '@/features/guest/marketing/showcase/components/ShowcaseSectionHeading';
 import { ShowcaseSectionIntro } from '@/features/guest/marketing/showcase/components/ShowcaseSectionIntro';
+import { ShowcaseSectionLink } from '@/features/guest/marketing/showcase/components/ShowcaseSectionLink';
 import { useShowcaseStyle } from '@/features/guest/marketing/showcase/components/ShowcaseStyleProvider';
 import { useShowcaseTheme } from '@/features/guest/marketing/showcase/components/ShowcaseThemeProvider';
 import { useSmoothScroll } from '@/features/guest/marketing/showcase/components/SmoothScrollProvider';
