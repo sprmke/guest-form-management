@@ -1,8 +1,8 @@
 import { Megaphone } from 'lucide-react';
 
-import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 import { HostAnnouncementEditor } from '@/features/dashboard/announcements/components/HostAnnouncementEditor';
 import type { HostAnnouncementDraft } from '@/features/dashboard/announcements/lib/hostAnnouncementTypes';
+import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 
 type Props = {
   announcements: HostAnnouncementDraft[];

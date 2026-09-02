@@ -16,17 +16,17 @@ import {
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+  ResponsiveModalTrigger,
+} from '@/components/ui/responsive-modal';
 import {
   Table,
   TableBody,
@@ -48,20 +48,20 @@ function MarkDisbursedDialog({ transaction }: { transaction: ParkingPayoutTransa
   const markDisbursed = useMarkParkingPayoutDisbursed();
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <ResponsiveModal open={open} onOpenChange={setOpen}>
+      <ResponsiveModalTrigger asChild>
         <Button type="button" variant="outline" size="sm" className="min-h-[44px]">
           Mark disbursed
         </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Mark payout as disbursed</DialogTitle>
-          <DialogDescription>
+      </ResponsiveModalTrigger>
+      <ResponsiveModalContent>
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>Mark payout as disbursed</ResponsiveModalTitle>
+          <ResponsiveModalDescription>
             Confirms {formatPhp(transaction.hostNetTotal)} was manually paid out to the host for
             this booking. Reference is optional (e.g. bank transfer/GCash reference number).
-          </DialogDescription>
-        </DialogHeader>
+          </ResponsiveModalDescription>
+        </ResponsiveModalHeader>
         <div className="space-y-1.5">
           <Label htmlFor="disbursement-reference">Reference (optional)</Label>
           <Input
@@ -70,7 +70,7 @@ function MarkDisbursedDialog({ transaction }: { transaction: ParkingPayoutTransa
             onChange={(event) => setReference(event.target.value)}
           />
         </div>
-        <DialogFooter>
+        <ResponsiveModalFooter>
           <Button
             type="button"
             disabled={markDisbursed.isPending}
@@ -86,9 +86,9 @@ function MarkDisbursedDialog({ transaction }: { transaction: ParkingPayoutTransa
           >
             Confirm disbursed
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }
 
@@ -99,20 +99,20 @@ function RecordClawbackDialog({ transaction }: { transaction: ParkingPayoutTrans
   const recordClawback = useRecordParkingPayoutClawback();
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <ResponsiveModal open={open} onOpenChange={setOpen}>
+      <ResponsiveModalTrigger asChild>
         <Button type="button" variant="outline" size="sm" className="min-h-[44px]">
           Record clawback
         </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Record a clawback</DialogTitle>
-          <DialogDescription>
+      </ResponsiveModalTrigger>
+      <ResponsiveModalContent>
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>Record a clawback</ResponsiveModalTitle>
+          <ResponsiveModalDescription>
             Audit trail only (e.g. a chargeback after disbursement) — no automated collection
             happens here.
-          </DialogDescription>
-        </DialogHeader>
+          </ResponsiveModalDescription>
+        </ResponsiveModalHeader>
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label htmlFor="clawback-amount">Amount (₱)</Label>
@@ -134,7 +134,7 @@ function RecordClawbackDialog({ transaction }: { transaction: ParkingPayoutTrans
             />
           </div>
         </div>
-        <DialogFooter>
+        <ResponsiveModalFooter>
           <Button
             type="button"
             variant="destructive"
@@ -153,9 +153,9 @@ function RecordClawbackDialog({ transaction }: { transaction: ParkingPayoutTrans
           >
             Confirm clawback
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }
 

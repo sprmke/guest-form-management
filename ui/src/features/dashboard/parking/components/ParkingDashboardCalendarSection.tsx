@@ -10,6 +10,8 @@ import {
 import { calendarSupportsPillLabelToggle } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
 import { FinanceTransactionsChart } from '@/features/dashboard/finance/components/FinanceTransactionsChart';
 import { buildFinanceChartData } from '@/features/dashboard/finance/lib/financeChartData';
+import { useParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
+import { parkingSectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { DashboardTransactionsDueCard } from '@/features/dashboard/property/components/DashboardTransactionsDueCard';
 
 import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
@@ -23,10 +25,12 @@ type Props = {
 };
 
 export function ParkingDashboardCalendarSection({ from, to, datePreset }: Props) {
+  const { orgSlug, parkingSlug } = useParkingContext();
   const rangeFrom = fromIsoDate(from);
   const rangeTo = fromIsoDate(to);
   const rangeLabel =
     rangeFrom && rangeTo ? formatDateRangeDisplay(rangeFrom, rangeTo, datePreset) : '';
+  const financeHref = `${parkingSectionPath(orgSlug, parkingSlug, 'finance')}?from=${from}&to=${to}`;
 
   const chartData = useMemo(() => buildFinanceChartData([], [], from, to, 'completed'), [from, to]);
 
@@ -78,6 +82,7 @@ export function ParkingDashboardCalendarSection({ from, to, datePreset }: Props)
           to={to}
           rangeLabel={rangeLabel}
           datePreset={datePreset}
+          transactionsHref={financeHref}
           syncedHeight={calendarCardHeight}
           isLoading={false}
           isRefreshing={false}

@@ -9,7 +9,6 @@ import { toast } from 'sonner';
 import { ParkingRegistrationForm } from '@/features/guest/marketing/parkings/components/ParkingRegistrationForm';
 import { useSubmitParkingBookingRequest } from '@/features/guest/marketing/parkings/hooks/useSubmitParkingBookingRequest';
 import type { ParkingRegistrationValues } from '@/features/guest/marketing/parkings/lib/parkingRegistrationSchema';
-import { GuestDialogShell } from '@/features/guest/marketing/shared/components/GuestDialogShell';
 
 import {
   AdminBookingSuccessSummary,
@@ -18,7 +17,13 @@ import {
 import { BOOKINGS_QUERY_KEY } from '@/features/dashboard/bookings/hooks/useBookings';
 import { parkingBookingDetailPath } from '@/features/dashboard/org/lib/tenantPaths';
 
-import { DialogTitle } from '@/components/ui/dialog';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
+import { cn } from '@/lib/utils';
 import { formatDateToLongFormat } from '@/utils/format/dates';
 
 /** Server error codes/messages mapped to admin-facing copy — mirrors the public parking modal. */
@@ -131,26 +136,37 @@ export function AdminParkingNewBookingModal({
   }, [navigate, onOpenChange, orgSlug, parkingSlug, result]);
 
   return (
-    <GuestDialogShell
-      open={open}
-      onOpenChange={handleOpenChange}
-      title={
-        <DialogTitle className="text-foreground text-base font-semibold">New booking</DialogTitle>
-      }
-      sizeClassName="max-w-[min(calc(100vw-1.5rem),36rem)] sm:max-w-[min(90vw,40rem)]"
-      heightClassName="max-h-[min(92dvh,48rem)]"
-      bodyClassName="px-5 py-4 sm:px-6"
-    >
-      {view === 'success' && result ? (
-        <AdminBookingSuccessSummary
-          title="Booking created"
-          rows={toSuccessRows(result.values)}
-          onAddAnother={handleAddAnother}
-          onViewBooking={handleViewBooking}
-        />
-      ) : open ? (
-        <ParkingRegistrationForm key={formKey} towerLabel={towerLabel} onSubmit={handleSubmit} />
-      ) : null}
-    </GuestDialogShell>
+    <ResponsiveModal open={open} onOpenChange={handleOpenChange}>
+      <ResponsiveModalContent
+        sheetLayout="split"
+        className={cn(
+          'flex h-[min(90dvh,48rem)] max-h-[min(90dvh,48rem)] w-[min(calc(100vw-1.5rem),36rem)] max-w-none flex-col gap-0 overflow-hidden p-0',
+          'sm:w-[min(90vw,40rem)] sm:max-w-[40rem] sm:p-0'
+        )}
+      >
+        <ResponsiveModalHeader className="border-border shrink-0 border-b px-5 pb-3 pt-4 text-left sm:px-6">
+          <ResponsiveModalTitle className="text-foreground text-base font-semibold">
+            New booking
+          </ResponsiveModalTitle>
+        </ResponsiveModalHeader>
+
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 [-webkit-overflow-scrolling:touch] sm:px-6">
+          {view === 'success' && result ? (
+            <AdminBookingSuccessSummary
+              title="Booking created"
+              rows={toSuccessRows(result.values)}
+              onAddAnother={handleAddAnother}
+              onViewBooking={handleViewBooking}
+            />
+          ) : open ? (
+            <ParkingRegistrationForm
+              key={formKey}
+              towerLabel={towerLabel}
+              onSubmit={handleSubmit}
+            />
+          ) : null}
+        </div>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

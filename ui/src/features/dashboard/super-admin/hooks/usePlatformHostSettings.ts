@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
 import type { HostAnnouncementDraft } from '@/features/dashboard/announcements/lib/hostAnnouncementTypes';
+import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
 
 const PLATFORM_HOST_SETTINGS_KEY = ['super-admin', 'platform-host-settings'] as const;
 
