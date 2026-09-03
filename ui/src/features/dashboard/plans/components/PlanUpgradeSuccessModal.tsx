@@ -90,7 +90,7 @@ export function PlanUpgradeSuccessModal({
             </div>
 
             <ResponsiveModalHeader className="mt-5 space-y-2 p-0 text-center sm:text-center">
-              <ResponsiveModalTitle className="text-lg font-semibold tracking-tight sm:text-xl">
+              <ResponsiveModalTitle className="text-base font-semibold tracking-tight sm:text-xl">
                 {title}
               </ResponsiveModalTitle>
             </ResponsiveModalHeader>
