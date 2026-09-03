@@ -65,19 +65,19 @@ export function InstallPrompt() {
         aboveBottomTabBarOverlayClassName()
       )}
     >
-      <div className="border-border bg-background flex w-full max-w-sm items-center gap-3 rounded-xl border p-3 shadow-lg">
-        <span className="bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
-          <Download className="h-4.5 w-4.5" />
+      <div className="border-border bg-background flex w-full max-w-sm items-center gap-2.5 rounded-xl border px-3 py-2.5 shadow-lg">
+        <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-lg">
+          <Download className="size-3.5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-foreground text-sm font-semibold">Install Stays</p>
+          <p className="text-foreground text-[13px] font-semibold leading-tight">Install Stays</p>
           {canPrompt ? (
-            <p className="text-muted-foreground text-xs">
+            <p className="text-muted-foreground text-[11px] leading-snug">
               Add it to your device for a full-screen app with notifications.
             </p>
           ) : (
-            <p className="text-muted-foreground inline-flex flex-wrap items-center gap-1 text-xs">
-              Tap <Share className="inline h-3.5 w-3.5" /> then “Add to Home Screen”.
+            <p className="text-muted-foreground inline-flex flex-wrap items-center gap-1 text-[11px] leading-snug">
+              Tap <Share className="inline size-3" /> then “Add to Home Screen”.
             </p>
           )}
         </div>
@@ -85,7 +85,7 @@ export function InstallPrompt() {
           <button
             type="button"
             onClick={() => void promptInstall().then(dismiss)}
-            className="bg-primary text-primary-foreground rounded-lg px-3 py-2 text-sm font-semibold"
+            className="bg-primary text-primary-foreground rounded-lg px-2.5 py-1.5 text-xs font-semibold"
           >
             Install
           </button>
@@ -94,9 +94,9 @@ export function InstallPrompt() {
           type="button"
           aria-label="Dismiss"
           onClick={dismiss}
-          className="text-muted-foreground hover:text-foreground"
+          className="admin-overflow-trigger"
         >
-          <X className="h-4 w-4" />
+          <X className="size-3.5" />
         </button>
       </div>
     </div>
