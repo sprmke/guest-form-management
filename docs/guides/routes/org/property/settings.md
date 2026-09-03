@@ -274,6 +274,8 @@ Social URL fields in `app_settings` (empty = inherit org). Also editable in the 
 
 **Validation:** at least one effective social URL (property or org).
 
+**Mobile density:** Social rows use `settings-field-label` + `h-8` inputs; **Customize** / **Use org** stay on one row with the field (`settings-action` = visual `h-8`, hit pad ≥44 — never `min-h-[44px]` on the chrome). Same token as other Settings **Manage** actions.
+
 ---
 
 ## Reviews & vouchers

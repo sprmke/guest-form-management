@@ -135,24 +135,25 @@ Since parking type, residence, tower, level, and slot number can't change in Set
 
 ## Implementation map
 
-| Concern                    | Path                                                                                                           |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Page                       | `ui/src/features/dashboard/parking/pages/ParkingSettingsPage.tsx`                                              |
-| Card                       | `ui/src/features/dashboard/parking/components/ParkingSettingsCard.tsx`                                         |
-| Field label + help         | `ui/src/components/forms/FieldLabel.tsx`                                                                       |
-| Details section            | `ui/src/features/dashboard/parking/components/ParkingDetailsSection.tsx`                                       |
-| Features section           | `ui/src/features/dashboard/parking/components/ParkingFeaturesSection.tsx`                                      |
-| Booking automation section | `ui/src/features/dashboard/parking/components/ParkingBookingAutomationSection.tsx`                             |
-| Form draft                 | `ui/src/features/dashboard/parking/lib/parkingSettingsForm.ts`                                                 |
-| Completion / validation    | `ui/src/features/dashboard/parking/lib/parkingSettingsCompletion.ts`                                           |
-| Field error resolver       | `ui/src/features/dashboard/parking/lib/parkingSettingsFieldError.ts`                                           |
-| Completion hooks           | `ui/src/features/dashboard/parking/hooks/useParkingSettingsCompletion.ts`                                      |
-| Sidebar issues store       | `ui/src/features/dashboard/parking/lib/parkingSettingsIssuesStore.ts`                                          |
-| Sidebar issues sync        | `ui/src/features/dashboard/parking/components/ParkingSettingsIssuesSync.tsx`                                   |
-| Shell (mounts issues sync) | `ui/src/features/dashboard/org/components/ParkingAdminShell.tsx`                                               |
-| Payment OTP dialog         | `ui/src/features/dashboard/org/components/property-settings/SensitiveSettingsOtpDialog.tsx`                    |
-| OTP hook / fingerprint     | `ui/src/features/dashboard/org/hooks/useSettingsVerification.ts`, `.../lib/settingsVerificationFingerprint.ts` |
-| Verification edge          | `supabase/functions/settings-verification/index.ts`, `_shared/settingsVerification.ts`                         |
-| Brand resolve (edge)       | `supabase/functions/_shared/parkingBranding.ts`                                                                |
-| Public API                 | `get-public-parking` → `loadPublicParkingBySlug`                                                               |
-| Public UI                  | `ParkingDetailPage`, `ParkingOverview`, `ParkingPublicBrandShell`                                              |
+| Concern                    | Path                                                                                                                   |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Page                       | `ui/src/features/dashboard/parking/pages/ParkingSettingsPage.tsx`                                                      |
+| Card                       | `ui/src/features/dashboard/parking/components/ParkingSettingsCard.tsx`                                                 |
+| Dense settings CTAs        | `settings-action` / `settings-field-label` in `ui/src/index.css` (Danger Zone, Features Add, shared with org/property) |
+| Field label + help         | `ui/src/components/forms/FieldLabel.tsx`                                                                               |
+| Details section            | `ui/src/features/dashboard/parking/components/ParkingDetailsSection.tsx`                                               |
+| Features section           | `ui/src/features/dashboard/parking/components/ParkingFeaturesSection.tsx`                                              |
+| Booking automation section | `ui/src/features/dashboard/parking/components/ParkingBookingAutomationSection.tsx`                                     |
+| Form draft                 | `ui/src/features/dashboard/parking/lib/parkingSettingsForm.ts`                                                         |
+| Completion / validation    | `ui/src/features/dashboard/parking/lib/parkingSettingsCompletion.ts`                                                   |
+| Field error resolver       | `ui/src/features/dashboard/parking/lib/parkingSettingsFieldError.ts`                                                   |
+| Completion hooks           | `ui/src/features/dashboard/parking/hooks/useParkingSettingsCompletion.ts`                                              |
+| Sidebar issues store       | `ui/src/features/dashboard/parking/lib/parkingSettingsIssuesStore.ts`                                                  |
+| Sidebar issues sync        | `ui/src/features/dashboard/parking/components/ParkingSettingsIssuesSync.tsx`                                           |
+| Shell (mounts issues sync) | `ui/src/features/dashboard/org/components/ParkingAdminShell.tsx`                                                       |
+| Payment OTP dialog         | `ui/src/features/dashboard/org/components/property-settings/SensitiveSettingsOtpDialog.tsx`                            |
+| OTP hook / fingerprint     | `ui/src/features/dashboard/org/hooks/useSettingsVerification.ts`, `.../lib/settingsVerificationFingerprint.ts`         |
+| Verification edge          | `supabase/functions/settings-verification/index.ts`, `_shared/settingsVerification.ts`                                 |
+| Brand resolve (edge)       | `supabase/functions/_shared/parkingBranding.ts`                                                                        |
+| Public API                 | `get-public-parking` → `loadPublicParkingBySlug`                                                                       |
+| Public UI                  | `ParkingDetailPage`, `ParkingOverview`, `ParkingPublicBrandShell`                                                      |

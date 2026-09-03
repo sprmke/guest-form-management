@@ -91,7 +91,7 @@ Platform-level control panel, distinct from org/property admin and the legacy `A
 
 | Route                                                                                                            | Guide                                          | Status                                                                   |
 | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------ |
-| `/`                                                                                                              | [index-landing.md](./index-landing.md)         | Documented — UI only                                                     |
+| `/` · `/explore-preview`                                                                                         | [index-landing.md](./index-landing.md)         | Documented — UI only; `/explore-preview` holds a redesign pending swap   |
 | `/for-hosts` · `/for-hosts/pricing` · `/for-hosts/preview`                                                       | [for-hosts.md](./for-hosts.md)                 | Documented — UI only; `/for-hosts/preview` holds a redesign pending swap |
 | `/services`                                                                                                      | [services.md](./services.md)                   | Documented — UI-only coming soon                                         |
 | `/search`                                                                                                        | [search.md](./search.md)                       | Documented — live typeahead + availability results                       |

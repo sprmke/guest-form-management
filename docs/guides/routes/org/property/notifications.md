@@ -55,7 +55,7 @@ Above the Activity feed (only when the app runs as an installed PWA and/or there
 - The bell **unread badge** uses the same collapse rule as the list: one unread per inbox conversation (plus each unread booking event). Legacy per-message `inbox_new_message` rows for one thread count as **1**, not N. `notifications-list` computes `unreadCount` from the recent capped window with `type` + `conversation_id` selected so collapse can run.
 - When available, a **stay date range** appears under the name (e.g. `Aug 14 - 15, 2026` for inquiry or booked dates).
 - The realtime **toast** uses the same guest name as the title with an inline **channel pill** (**Chat**, **Facebook**, or **Instagram**) for inbox rows, a **channel glyph** for inbox or a **category glyph** for booking events, the message preview in the body, and the stay range beneath it. Its **View** action uses the brand primary colour, and repeat messages in one conversation replace the open toast instead of stacking.
-- List is capped in height inside the **Activity** card; scroll within the card loads the next page (20 per request) — not a full-page dump.
+- List is capped in height inside the **Activity** card; scroll within the card loads the next page (20 per request) — not a full-page dump. Phone rows are dense (13px title, single-line body preview, tighter padding); card chrome uses shared `text-card-title` / `text-card-description` tokens so Telegram headings and in-app descriptions stay the same size.
 
 ### Telegram notifications
 
