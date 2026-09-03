@@ -21,7 +21,7 @@ export function HelpEmptyState({ icon: Icon, title, action, compact = false }: P
       <div className="bg-primary/10 text-primary mb-4 flex size-14 items-center justify-center rounded-2xl">
         <Icon className="size-6" aria-hidden />
       </div>
-      <p className="text-foreground max-w-sm text-base font-semibold leading-snug [overflow-wrap:anywhere]">
+      <p className="text-foreground max-w-sm text-sm font-semibold leading-snug [overflow-wrap:anywhere]">
         {title}
       </p>
       {action ? <div className="mt-5">{action}</div> : null}
