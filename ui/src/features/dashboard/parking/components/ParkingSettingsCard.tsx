@@ -951,13 +951,13 @@ export function ParkingSettingsCard() {
             description="Archive or permanently delete this slot."
             className="border-destructive/50"
           >
-            <div className="space-y-4">
-              <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">
+            <div className="space-y-3">
+              <div className="flex flex-col gap-2.5 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+                <div className="space-y-0.5">
+                  <p className="text-xs font-semibold sm:text-sm">
                     {isArchived ? 'Restore parking' : 'Archive parking'}
                   </p>
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-card-description">
                     {isArchived
                       ? 'Sets status to Active — shows this slot on the public listing again.'
                       : 'Sets status to Inactive — hides this slot from the public listing. Bookings and settings are kept.'}
@@ -967,8 +967,9 @@ export function ParkingSettingsCard() {
                   <Button
                     type="button"
                     variant="outline"
+                    size="sm"
                     disabled={busy || updateParking.isPending}
-                    className="min-h-[44px] shrink-0"
+                    className="settings-action w-full sm:w-auto"
                     onClick={() => setRestoreOpen(true)}
                   >
                     {updateParking.isPending ? 'Restoring…' : 'Restore'}
@@ -977,8 +978,9 @@ export function ParkingSettingsCard() {
                   <Button
                     type="button"
                     variant="outline"
+                    size="sm"
                     disabled={busy || updateParking.isPending}
-                    className="min-h-[44px] shrink-0"
+                    className="settings-action w-full sm:w-auto"
                     onClick={() => setArchiveOpen(true)}
                   >
                     {updateParking.isPending ? 'Archiving…' : 'Archive'}
@@ -986,18 +988,21 @@ export function ParkingSettingsCard() {
                 )}
               </div>
 
-              <div className="border-destructive/50 flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1">
-                  <p className="text-destructive text-sm font-medium">Delete parking</p>
-                  <p className="text-muted-foreground text-sm">
+              <div className="border-destructive/50 flex flex-col gap-2.5 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+                <div className="space-y-0.5">
+                  <p className="text-destructive text-xs font-semibold sm:text-sm">
+                    Delete parking
+                  </p>
+                  <p className="text-card-description">
                     Permanently removes this parking slot and its settings. This cannot be undone.
                   </p>
                 </div>
                 <Button
                   type="button"
                   variant="destructive"
+                  size="sm"
                   disabled={busy || deleteParking.isPending}
-                  className="min-h-[44px] shrink-0"
+                  className="settings-action w-full sm:w-auto"
                   onClick={() => setDeleteOpen(true)}
                 >
                   {deleteParking.isPending ? 'Deleting…' : 'Delete parking'}

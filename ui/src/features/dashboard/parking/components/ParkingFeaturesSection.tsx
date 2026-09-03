@@ -197,11 +197,12 @@ export function ParkingFeaturesSection({
               <Button
                 type="button"
                 variant="outline"
+                size="sm"
                 disabled={disabled || !newCustomInput.trim()}
                 onClick={addCustomAmenity}
-                className="min-h-[44px] shrink-0"
+                className="settings-action"
               >
-                <Plus className="mr-1 size-4" aria-hidden />
+                <Plus className="mr-1 size-3.5" aria-hidden />
                 Add
               </Button>
             </div>
