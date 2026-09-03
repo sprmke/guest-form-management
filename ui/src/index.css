@@ -847,6 +847,30 @@
       margin-top: 0;
     }
 
+    /**
+     * Phone-only brand hero on a bespoke page (booking detail): below md the page
+     * renders its own `MobileBrandHero` (`md:hidden`), so drop the fallback white
+     * topbar + shell gutter to let it sit full-bleed. Tablet/desktop keep the
+     * standard `AdminLayout` chrome untouched.
+     */
+    @media (max-width: 767px) {
+      .admin-mobile-shell-column:has([data-page-brand-hero]) > .admin-mobile-fallback-topbar {
+        display: none;
+      }
+
+      .admin-mobile-main-shell:has([data-page-brand-hero]) {
+        background: transparent;
+        background-image: none;
+        padding-top: 0;
+        padding-left: 0;
+        padding-right: 0;
+      }
+
+      .admin-mobile-main-shell:has([data-page-brand-hero]) [data-page-brand-hero] {
+        margin-top: 0;
+      }
+    }
+
     /* Default mobile shell gutter — non-hero pages only (hero rule above wins via :has). */
     .admin-mobile-main-shell {
       padding-top: 0.875rem;
@@ -873,11 +897,12 @@
       @apply bg-primary text-primary-foreground relative z-0 overflow-visible;
       @apply pt-[max(0.75rem,env(safe-area-inset-top))];
       @apply px-3 sm:px-4 md:px-6;
-      /* Collapse progress 0→1: tighten bottom pad + flatten the arc (parallax). */
+      /* Straight bottom edge (no arc). Collapse progress 0→1 still drives the
+       * parallax: bottom pad tightens + title translates/fades on scroll. */
       --hero-collapse: 0;
       padding-bottom: calc(2.5rem - (var(--hero-collapse) * 1.65rem));
-      border-bottom-left-radius: 50% calc(2rem * (1 - (var(--hero-collapse) * 0.72)));
-      border-bottom-right-radius: 50% calc(2rem * (1 - (var(--hero-collapse) * 0.72)));
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
       background-image: linear-gradient(
         185deg,
         hsl(var(--primary)) 0%,
@@ -891,21 +916,31 @@
     }
 
     /**
-     * Soft primary glow under the arc — fades as the hero collapses so it
-     * doesn’t sit under scrolled content.
+     * No floating toolbar straddles the edge (pages without a date-range picker):
+     * the tall bottom pad only exists to seat a float, so tighten it — the title
+     * sits just above the white canvas, not over an empty green band. Parallax is
+     * still respected (smaller travel).
+     */
+    .mobile-brand-hero--flush {
+      padding-bottom: calc(0.9rem - (var(--hero-collapse) * 0.4rem));
+    }
+
+    /**
+     * Soft primary drop under the straight edge — full-width so it reads as an
+     * even seam shadow. Fades as the hero collapses so it doesn’t sit under
+     * scrolled content.
      */
     .mobile-brand-hero::after {
       content: '';
-      @apply pointer-events-none absolute -bottom-2 left-[12%] right-[12%] z-0 h-6;
-      border-radius: 50%;
+      @apply pointer-events-none absolute inset-x-0 -bottom-2 z-0 h-5;
       opacity: calc(1 - var(--hero-collapse));
-      background: radial-gradient(
-        ellipse at center,
-        hsl(var(--primary) / 0.28) 0%,
-        hsl(var(--primary) / 0.1) 50%,
-        transparent 72%
+      background: linear-gradient(
+        to bottom,
+        hsl(var(--primary) / 0.22) 0%,
+        hsl(var(--primary) / 0.08) 45%,
+        transparent 100%
       );
-      filter: blur(8px);
+      filter: blur(6px);
     }
 
     .mobile-brand-hero--compact {
@@ -925,9 +960,9 @@
      */
     .mobile-sticky-chrome {
       @apply text-primary-foreground;
-      /* Match floating toolbar roundness (~1.1rem) on the bottom edge. */
-      border-bottom-left-radius: 1.1rem;
-      border-bottom-right-radius: 1.1rem;
+      /* Straight bottom edge — matches the non-pinned hero (no arc). */
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
       background-image: linear-gradient(
         185deg,
         hsl(var(--primary)) 0%,
@@ -941,12 +976,12 @@
 
     /* Densify hero action + switcher avatar in the sticky band. */
     .mobile-sticky-chrome .mobile-hero-action {
-      @apply size-9 shadow-[0_2px_8px_-2px_hsl(var(--shadow-color)/0.2)];
+      @apply size-8 shadow-[0_2px_8px_-2px_hsl(var(--shadow-color)/0.2)];
     }
 
     .mobile-sticky-chrome .mobile-hero-action svg {
-      width: 1rem;
-      height: 1rem;
+      width: 0.875rem;
+      height: 0.875rem;
     }
 
     .mobile-sticky-chrome-scope .size-11 {
@@ -1078,8 +1113,9 @@
   }
 
   /** Colored icon tile for metric cards — matches prior desktop size from `sm`. */
+  /** Decorative KPI icon well — callers set display (`hidden lg:flex`, etc.). */
   .native-icon-tile {
-    @apply flex size-8 shrink-0 items-center justify-center rounded-lg sm:size-10 sm:rounded-xl;
+    @apply size-8 shrink-0 items-center justify-center rounded-lg sm:size-10 sm:rounded-xl;
   }
 
   /** Vertical section rhythm for admin pages (phone → desktop). */
@@ -1112,8 +1148,8 @@
   }
 
   /* Typography scale — single source for UI copy hierarchy.
-   * Admin phone density (see `.cursor/rules/mobile-responsive.mdc` §4 / 4af):
-   * page title 18 · section 14 · card title 16 · body 14 · KPI 16 · list amount 15.
+   * Admin phone density (see `.cursor/rules/mobile-responsive.mdc` §4 / 4af–4aj):
+   * page title 18 · section 14 · card title 14 · body 14 · KPI 16 · list amount 15.
    * Do not reintroduce max-sm title bumps (e.g. 1.65rem) — oversized vs native apps. */
   .text-display {
     @apply text-foreground text-2xl font-bold tracking-tight;
@@ -1132,9 +1168,9 @@
     @apply text-muted-foreground text-sm sm:text-[15px];
   }
 
-  /** In-card headers (card chrome, AdminSection titles). */
+  /** In-card headers (card chrome, AdminSection titles). Phone matches section title. */
   .text-card-title {
-    @apply text-foreground text-base font-semibold leading-none tracking-tight sm:text-lg;
+    @apply text-foreground text-sm font-semibold leading-none tracking-tight sm:text-base;
   }
 
   .text-page-subtitle {
@@ -1144,6 +1180,38 @@
   /** Group / band labels above card stacks (“In-app notifications”). */
   .text-section-title {
     @apply text-foreground text-sm font-semibold leading-none tracking-tight sm:text-[15px];
+  }
+
+  /** Card / panel supporting copy — always quieter than titles on phone. */
+  .text-card-description {
+    @apply text-muted-foreground text-xs leading-snug sm:text-sm;
+  }
+
+  /**
+   * Compact overflow (⋯) control: 32px visual, ≥44px hit via invisible pad.
+   * Prefer over outline / min-h-[44px] boxes that look oversized on phone.
+   */
+  .admin-overflow-trigger {
+    @apply text-muted-foreground hover:bg-muted/60 hover:text-foreground relative inline-flex size-8 shrink-0 items-center justify-center rounded-md transition-colors;
+    @apply before:absolute before:-inset-1.5 before:content-[''] sm:before:content-none;
+  }
+
+  /**
+   * Settings secondary actions (Manage, Customize link, Test connection, Archive).
+   * Visual h-8 + text-xs — do NOT use min-h-[44px] on the chrome (that kept buttons looking huge).
+   * ≥44px hit via invisible pad on phone (same idea as admin-overflow-trigger / hero actions).
+   */
+  .settings-action {
+    @apply relative !h-8 min-h-0 shrink-0 px-2.5 text-xs font-medium leading-none;
+    @apply border; /* beat outline border-2 so chrome stays light */
+    @apply before:absolute before:-inset-x-1.5 before:-inset-y-2 before:content-[''] sm:before:content-none;
+  }
+
+  /**
+   * In-card field labels (Facebook, street, etc.) — quieter than CardTitle.
+   */
+  .settings-field-label {
+    @apply text-muted-foreground sm:text-foreground text-xs font-medium leading-none sm:text-sm;
   }
 
   /** Primary interactive / toolbar copy (filters, buttons, menu items). */

@@ -196,11 +196,9 @@ export function TeamMembersTab({
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle>
-            Team Members ({filteredMembers.length})
-          </CardTitle>
+          <CardTitle>Team Members ({filteredMembers.length})</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-1.5 sm:space-y-2">
           {filteredMembers.map((member) => {
             const isActive = isTeamMemberActive(member);
             const isCurrentUser = isCurrentTeamMember(member.email, currentUserEmail);
@@ -211,44 +209,52 @@ export function TeamMembersTab({
               <div
                 key={member.id}
                 className={cn(
-                  'border-border/60 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border p-3 sm:gap-4 sm:p-4',
+                  'border-border/60 flex items-center gap-2.5 rounded-lg border px-2.5 py-2 sm:gap-3 sm:p-3',
                   isCurrentUser && currentTeamMemberRowClassName,
                   !isActive && 'opacity-80'
                 )}
                 aria-current={isCurrentUser ? 'true' : undefined}
               >
-                <div className="flex min-w-0 flex-1 basis-[min(100%,12rem)] items-center gap-3">
-                  <Avatar className={cn('size-10 shrink-0', !isActive && 'grayscale')}>
-                    <AvatarImage src={member.avatar ?? undefined} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                      {memberInitials(member.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0">
-                    <p className="text-foreground truncate text-sm font-semibold">{member.name}</p>
-                    <p className="text-muted-foreground truncate text-xs">{member.email}</p>
-                    {contactLine ? (
-                      <p className="text-muted-foreground truncate text-xs tabular-nums">
-                        {contactLine}
-                      </p>
-                    ) : null}
+                <Avatar className={cn('size-8 shrink-0 sm:size-9', !isActive && 'grayscale')}>
+                  <AvatarImage src={member.avatar ?? undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-[10px] sm:text-xs">
+                    {memberInitials(member.name)}
+                  </AvatarFallback>
+                </Avatar>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-foreground truncate text-[13px] font-semibold leading-tight sm:text-sm">
+                    {member.name}
+                  </p>
+                  <p className="text-muted-foreground truncate text-[11px] leading-tight sm:text-xs">
+                    {member.email}
+                  </p>
+                  {contactLine ? (
+                    <p className="text-muted-foreground truncate text-[11px] tabular-nums leading-tight sm:text-xs">
+                      {contactLine}
+                    </p>
+                  ) : null}
+                  <div
+                    className={cn(
+                      'mt-1 flex flex-wrap items-center gap-1',
+                      !isActive && 'opacity-50'
+                    )}
+                    title={!isActive ? 'Role applies when member is active' : undefined}
+                  >
+                    <RoleBadge
+                      scope={scope}
+                      roleId={member.role}
+                      customRoles={customRoles}
+                      muted={!isActive || member.planLimited}
+                    />
+                    <TeamMemberStatusBadge
+                      status={member.status}
+                      planLimited={member.planLimited}
+                    />
                   </div>
                 </div>
 
-                <div
-                  className={cn('flex flex-wrap items-center gap-1.5', !isActive && 'opacity-50')}
-                  title={!isActive ? 'Role applies when member is active' : undefined}
-                >
-                  <RoleBadge
-                    scope={scope}
-                    roleId={member.role}
-                    customRoles={customRoles}
-                    muted={!isActive || member.planLimited}
-                  />
-                  <TeamMemberStatusBadge status={member.status} planLimited={member.planLimited} />
-                </div>
-
-                <div className="ml-auto flex shrink-0 items-center justify-end">
+                <div className="flex shrink-0 items-center justify-end">
                   {member.fromOrg ? (
                     canOpenOrgTeam ? (
                       <>
@@ -257,11 +263,11 @@ export function TeamMembersTab({
                             <Button
                               type="button"
                               variant="ghost"
-                              size="icon"
-                              className="text-muted-foreground min-h-[44px] min-w-[44px] sm:hidden"
+                              size="icon-sm"
+                              className="admin-overflow-trigger sm:hidden"
                               aria-label={`Manage ${member.name}`}
                             >
-                              <MoreHorizontal className="size-4" aria-hidden />
+                              <MoreHorizontal className="size-3.5" aria-hidden />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="min-w-[11rem]">
@@ -278,14 +284,17 @@ export function TeamMembersTab({
                       <DropdownMenuTrigger asChild>
                         <Button
                           type="button"
-                          variant="outline"
-                          size="sm"
-                          className="text-muted-foreground min-h-[44px] min-w-[44px] px-0 sm:min-h-9 sm:w-auto sm:px-3 sm:text-foreground"
+                          variant="ghost"
+                          size="icon-sm"
+                          className={cn(
+                            'admin-overflow-trigger',
+                            'sm:border-input sm:bg-card sm:hover:bg-accent sm:text-foreground sm:h-8 sm:w-auto sm:gap-1.5 sm:rounded-lg sm:border sm:px-3'
+                          )}
                           aria-label={`Manage ${member.name}`}
                         >
-                          <MoreHorizontal className="size-4 sm:hidden" aria-hidden />
-                          <span className="hidden sm:inline">Manage</span>
-                          <ChevronDown className="ml-1.5 hidden size-3.5 sm:inline" aria-hidden />
+                          <MoreHorizontal className="size-3.5 sm:hidden" aria-hidden />
+                          <span className="hidden text-xs font-semibold sm:inline">Manage</span>
+                          <ChevronDown className="hidden size-3.5 sm:inline" aria-hidden />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">

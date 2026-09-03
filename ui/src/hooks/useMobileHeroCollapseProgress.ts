@@ -41,7 +41,7 @@ export function resolveMobileHeroScrollTarget(from: HTMLElement | null): HTMLEle
 }
 
 /**
- * 0 = expanded brand hero, 1 = title/arc fully compressed (parallax).
+ * 0 = expanded brand hero, 1 = title + bottom pad fully compressed (parallax).
  * Driven by the active scrollport (`main` after sticky/fillMain was removed);
  * respects prefers-reduced-motion (binary snap).
  */
