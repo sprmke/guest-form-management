@@ -336,7 +336,7 @@ export function PlanReviewDialog({
                 {propertyCount} {propertyCount === 1 ? 'property' : 'properties'}
               </span>
               <div className="text-right">
-                <p className="text-foreground text-lg font-semibold tabular-nums">
+                <p className="text-foreground text-base font-semibold tabular-nums sm:text-lg">
                   {planPrice({ ...plan, chargedPricePhp: targetTotalPhp }).amount}
                   <span className="text-muted-foreground text-sm font-normal">/month</span>
                 </p>

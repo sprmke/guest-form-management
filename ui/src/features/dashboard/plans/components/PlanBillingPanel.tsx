@@ -88,7 +88,7 @@ export function PlanBillingPanel({ plan, subscription, transactions }: PlanBilli
                 Amount
               </p>
               {price ? (
-                <p className="truncate text-lg font-bold tabular-nums tracking-tight sm:text-2xl mt-1">
+                <p className="mt-1 truncate text-base font-bold tabular-nums tracking-tight sm:text-2xl">
                   {price.amount}
                   {price.suffix ? (
                     <span className="text-muted-foreground ml-1 text-sm font-medium">

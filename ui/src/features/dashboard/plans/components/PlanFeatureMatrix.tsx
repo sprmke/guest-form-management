@@ -34,7 +34,7 @@ function MatrixValue({ value }: { value: PlanFeatureValue }) {
   if (value.kind === 'on') {
     return (
       <>
-        <Check className="text-primary mx-auto size-5" strokeWidth={2.5} aria-hidden />
+        <Check className="text-primary mx-auto size-3.5 sm:size-4" strokeWidth={2.5} aria-hidden />
         <span className="sr-only">Included</span>
       </>
     );
@@ -43,13 +43,13 @@ function MatrixValue({ value }: { value: PlanFeatureValue }) {
   if (value.kind === 'off') {
     return (
       <>
-        <Minus className="text-muted-foreground/50 mx-auto size-5" aria-hidden />
+        <Minus className="text-muted-foreground/50 mx-auto size-3.5 sm:size-4" aria-hidden />
         <span className="sr-only">Not included</span>
       </>
     );
   }
 
-  return <span className="text-sm font-semibold tabular-nums">{value.text}</span>;
+  return <span className="text-xs font-semibold tabular-nums sm:text-sm">{value.text}</span>;
 }
 
 /** Full capability comparison across tiers — the detail behind the cards. */
@@ -74,7 +74,7 @@ export function PlanFeatureMatrix({
       </h2>
 
       <div className="scrollbar-thin overflow-x-auto">
-        <table className="w-full min-w-[44rem] border-separate border-spacing-0 text-sm">
+        <table className="w-full min-w-[40rem] border-separate border-spacing-0 text-xs sm:min-w-[44rem] sm:text-sm">
           <caption className="sr-only">
             Feature availability for each subscription tier, with the current plan marked.
           </caption>
@@ -85,10 +85,10 @@ export function PlanFeatureMatrix({
                 scope="col"
                 className={cn(
                   STICKY_COLUMN,
-                  'border-border z-20 border-b px-4 py-4 text-left align-bottom sm:px-5'
+                  'border-border z-20 border-b px-3 py-3 text-left align-bottom sm:px-5 sm:py-4'
                 )}
               >
-                <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+                <span className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide sm:text-xs">
                   Feature
                 </span>
               </th>
@@ -101,14 +101,14 @@ export function PlanFeatureMatrix({
                     scope="col"
                     aria-current={isCurrent ? 'true' : undefined}
                     className={cn(
-                      'border-border min-w-[8.75rem] border-y px-2 py-4 text-center align-bottom sm:min-w-[9.5rem] sm:px-3',
+                      'border-border min-w-[7.5rem] border-y px-1.5 py-3 text-center align-bottom sm:min-w-[9.5rem] sm:px-3 sm:py-4',
                       isCurrent ? CURRENT_COLUMN_BG : 'bg-card'
                     )}
                   >
-                    <div className="flex flex-col items-center gap-2">
+                    <div className="flex flex-col items-center gap-1 sm:gap-2">
                       <span
                         className={cn(
-                          'block text-sm font-semibold leading-tight',
+                          'block text-xs font-semibold leading-tight sm:text-sm',
                           isCurrent && 'text-primary'
                         )}
                       >
@@ -131,10 +131,10 @@ export function PlanFeatureMatrix({
                   className={cn(
                     STICKY_COLUMN,
                     GROUP_HEADER_BG,
-                    'border-border/70 border-b px-5 py-2 text-left'
+                    'border-border/70 border-b px-3 py-1.5 text-left sm:px-5 sm:py-2'
                   )}
                 >
-                  <span className="text-muted-foreground text-xs font-semibold tracking-wide">
+                  <span className="text-muted-foreground text-[10px] font-semibold tracking-wide sm:text-xs">
                     {group.label}
                   </span>
                 </th>
@@ -143,7 +143,7 @@ export function PlanFeatureMatrix({
                     key={plan.id}
                     aria-hidden
                     className={cn(
-                      'border-border/70 border-b py-2',
+                      'border-border/70 border-b py-1.5 sm:py-2',
                       isCurrent ? CURRENT_COLUMN_BG : GROUP_HEADER_BG
                     )}
                   />
@@ -160,7 +160,7 @@ export function PlanFeatureMatrix({
                       scope="row"
                       className={cn(
                         STICKY_COLUMN,
-                        'group-hover/row:bg-muted/40 border-border/60 border-b px-4 py-3 text-left align-middle text-sm font-medium transition-colors sm:px-5'
+                        'group-hover/row:bg-muted/40 border-border/60 border-b px-3 py-2 text-left align-middle text-xs font-medium leading-snug transition-colors sm:px-5 sm:py-3 sm:text-sm'
                       )}
                     >
                       {row.label}
@@ -181,7 +181,7 @@ export function PlanFeatureMatrix({
                         <td
                           key={plan.id}
                           className={cn(
-                            'border-border/60 border-b px-2 py-3 text-center align-middle transition-colors sm:px-3',
+                            'border-border/60 border-b px-1.5 py-2 text-center align-middle transition-colors sm:px-3 sm:py-3',
                             isCurrent ? CURRENT_COLUMN_BG : 'group-hover/row:bg-muted/40'
                           )}
                         >
@@ -198,13 +198,19 @@ export function PlanFeatureMatrix({
           {canSelect ? (
             <tfoot>
               <tr>
-                <th scope="row" className={cn(STICKY_COLUMN, 'px-5 py-4 text-left')}>
+                <th
+                  scope="row"
+                  className={cn(STICKY_COLUMN, 'px-3 py-3 text-left sm:px-5 sm:py-4')}
+                >
                   <span className="sr-only">Change plan</span>
                 </th>
                 {tiers.map(({ plan, isCurrent, direction }) => (
                   <td
                     key={plan.id}
-                    className={cn('px-2 py-4 align-middle', isCurrent && CURRENT_COLUMN_BG)}
+                    className={cn(
+                      'px-1.5 py-3 align-middle sm:px-2 sm:py-4',
+                      isCurrent && CURRENT_COLUMN_BG
+                    )}
                   >
                     <Button
                       type="button"
@@ -217,7 +223,7 @@ export function PlanFeatureMatrix({
                           ? `${planDisplayName(plan)} is your current plan`
                           : `${planActionLabel(direction, hasCurrentPlan, plan.code)} to ${planDisplayName(plan)}`
                       }
-                      className="w-full"
+                      className="settings-action w-full"
                     >
                       {isCurrent
                         ? 'Current'

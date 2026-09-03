@@ -342,7 +342,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                   <RefreshCw className="size-5" aria-hidden />
                 </span>
                 <div className="min-w-0 space-y-1">
-                  <ResponsiveModalTitle className="text-lg font-semibold">
+                  <ResponsiveModalTitle className="text-base font-semibold sm:text-lg">
                     Request changes
                   </ResponsiveModalTitle>
                   <p className="text-muted-foreground truncate text-xs">
@@ -357,7 +357,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                   <Ban className="size-5" aria-hidden />
                 </span>
                 <div className="min-w-0 space-y-1">
-                  <ResponsiveModalTitle className="text-lg font-semibold">
+                  <ResponsiveModalTitle className="text-base font-semibold sm:text-lg">
                     Reject
                   </ResponsiveModalTitle>
                   <p className="text-muted-foreground truncate text-xs">
@@ -369,7 +369,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
             ) : (
               <>
                 <div className="flex flex-wrap items-center gap-2">
-                  <ResponsiveModalTitle className="text-lg font-semibold">
+                  <ResponsiveModalTitle className="text-base font-semibold sm:text-lg">
                     {approval.organizationName}
                   </ResponsiveModalTitle>
                   {!dualTierQueue ? (

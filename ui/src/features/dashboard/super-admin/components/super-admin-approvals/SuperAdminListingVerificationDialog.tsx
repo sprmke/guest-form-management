@@ -399,7 +399,7 @@ export function SuperAdminListingVerificationDialog({ approval, onOpenChange }: 
                   <RefreshCw className="size-5" aria-hidden />
                 </span>
                 <div className="min-w-0 space-y-1">
-                  <ResponsiveModalTitle className="text-lg font-semibold">
+                  <ResponsiveModalTitle className="text-base font-semibold sm:text-lg">
                     Request changes
                   </ResponsiveModalTitle>
                   <p className="text-muted-foreground truncate text-xs">
@@ -413,7 +413,7 @@ export function SuperAdminListingVerificationDialog({ approval, onOpenChange }: 
                   <Ban className="size-5" aria-hidden />
                 </span>
                 <div className="min-w-0 space-y-1">
-                  <ResponsiveModalTitle className="text-lg font-semibold">
+                  <ResponsiveModalTitle className="text-base font-semibold sm:text-lg">
                     Reject
                   </ResponsiveModalTitle>
                   <p className="text-muted-foreground truncate text-xs">
@@ -424,7 +424,7 @@ export function SuperAdminListingVerificationDialog({ approval, onOpenChange }: 
             ) : (
               <>
                 <div className="flex flex-wrap items-center gap-2">
-                  <ResponsiveModalTitle className="text-lg font-semibold">
+                  <ResponsiveModalTitle className="text-base font-semibold sm:text-lg">
                     {approval.listingName}
                   </ResponsiveModalTitle>
                   {!dualTierQueue ? (

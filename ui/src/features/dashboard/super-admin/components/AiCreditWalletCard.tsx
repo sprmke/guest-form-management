@@ -93,7 +93,7 @@ export function AiCreditWalletCard() {
         <div className="space-y-4">
           <div>
             <p className="text-sm font-medium">{wallet.organizationName}</p>
-            <p className="truncate text-lg font-bold tabular-nums tracking-tight sm:text-2xl">
+            <p className="truncate text-base font-bold tabular-nums tracking-tight sm:text-2xl">
               {Math.round(wallet.balanceCredits).toLocaleString()}{' '}
               <span className="text-muted-foreground text-sm font-normal">credits</span>
             </p>

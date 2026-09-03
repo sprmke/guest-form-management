@@ -19,6 +19,7 @@ import { OrgRecentBookingsList } from '@/features/dashboard/org/components/org-d
 import { OrgRevenueBookingsChart } from '@/features/dashboard/org/components/org-dashboard/OrgRevenueBookingsChart';
 import { useOrganizations } from '@/features/dashboard/org/hooks/useOrganizations';
 import { useOrgDashboardStats } from '@/features/dashboard/org/hooks/useOrgDashboardStats';
+import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 import {
   canCreateParkingsInOrg,
   canCreatePropertiesInOrg,
@@ -57,11 +58,12 @@ export function OrgDashboardPage() {
   const [addAssetOpen, setAddAssetOpen] = useState(false);
   const isBelowMd = useIsBelowMd();
   const { data: orgsData } = useOrganizations();
+  const { data: orgAccess } = useOrgPermissions();
   const { data, isLoading, error, refetch } = useOrgDashboardStats();
 
   const org = orgsData?.organizations.find((o) => o.slug === orgSlug);
-  const canAddProperty = canCreatePropertiesInOrg(org?.accessKind);
-  const canAddParking = canCreateParkingsInOrg(org?.accessKind);
+  const canAddProperty = canCreatePropertiesInOrg(org?.accessKind, orgAccess?.canCreateProperties);
+  const canAddParking = canCreateParkingsInOrg(org?.accessKind, orgAccess?.canCreateParkings);
   const canAddAsset = Boolean(org && (canAddProperty || canAddParking));
 
   const period = useMemo(() => resolveDashboardPeriod(searchParams), [searchParams]);

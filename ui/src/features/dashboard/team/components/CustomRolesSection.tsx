@@ -152,11 +152,11 @@ function RoleRow({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                size="icon"
-                className="text-muted-foreground min-h-[44px] min-w-[44px] shrink-0"
+                size="icon-sm"
+                className="admin-overflow-trigger"
                 aria-label={`Actions for ${role.name}`}
               >
-                <MoreHorizontal className="size-4" aria-hidden />
+                <MoreHorizontal className="size-3.5" aria-hidden />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-[10rem]">

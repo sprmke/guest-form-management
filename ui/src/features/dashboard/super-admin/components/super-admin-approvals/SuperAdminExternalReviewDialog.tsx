@@ -111,7 +111,7 @@ export function SuperAdminExternalReviewDialog({ approval, onOpenChange }: Props
               </span>
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <ResponsiveModalTitle className="text-lg font-semibold">
+                  <ResponsiveModalTitle className="text-base font-semibold sm:text-lg">
                     {approval.propertyName}
                   </ResponsiveModalTitle>
                   <SuperAdminExternalReviewSourceBadge source={approval.source} />

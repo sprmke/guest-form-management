@@ -338,18 +338,27 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
             onValueChange={(value) => setActiveTab(value as PlansTab)}
             className="min-w-0"
           >
-            <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto p-1 sm:w-auto">
+            <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto p-1 max-lg:h-9 sm:w-auto">
               {!isPropertyMirror ? (
-                <TabsTrigger value="billing" className="gap-2 px-3 py-2">
+                <TabsTrigger
+                  value="billing"
+                  className="gap-2 px-3 py-2 max-lg:gap-1.5 max-lg:px-2.5 max-lg:py-0 max-lg:text-[13px]"
+                >
                   <Receipt className="size-4 shrink-0" aria-hidden />
                   <span>Billing</span>
                 </TabsTrigger>
               ) : null}
-              <TabsTrigger value="plans" className="gap-2 px-3 py-2">
+              <TabsTrigger
+                value="plans"
+                className="gap-2 px-3 py-2 max-lg:gap-1.5 max-lg:px-2.5 max-lg:py-0 max-lg:text-[13px]"
+              >
                 <LayoutGrid className="size-4 shrink-0" aria-hidden />
                 <span>Plans</span>
               </TabsTrigger>
-              <TabsTrigger value="compare" className="gap-2 px-3 py-2">
+              <TabsTrigger
+                value="compare"
+                className="gap-2 px-3 py-2 max-lg:gap-1.5 max-lg:px-2.5 max-lg:py-0 max-lg:text-[13px]"
+              >
                 <FileText className="size-4 shrink-0" aria-hidden />
                 <span>Compare</span>
               </TabsTrigger>

@@ -50,12 +50,14 @@ export function PlanPriceLine({ price, variant = 'card', className }: PlanPriceL
           <div className={COMPACT_COMPARE_ROW_MIN_H} aria-hidden />
         )}
 
-        <p className="flex flex-nowrap items-baseline justify-center gap-1">
-          <span className="text-foreground text-sm font-semibold tabular-nums tracking-tight">
+        <p className="flex flex-nowrap items-baseline justify-center gap-0.5 sm:gap-1">
+          <span className="text-foreground text-xs font-semibold tabular-nums tracking-tight sm:text-sm">
             {price.amount}
           </span>
           {price.suffix ? (
-            <span className="text-muted-foreground text-xs font-medium">{price.suffix}</span>
+            <span className="text-muted-foreground text-[10px] font-medium sm:text-xs">
+              {price.suffix}
+            </span>
           ) : null}
         </p>
       </div>
