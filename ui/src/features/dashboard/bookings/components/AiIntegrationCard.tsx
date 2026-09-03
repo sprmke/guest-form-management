@@ -75,7 +75,7 @@ export function AiIntegrationCard({
       <div className="flex min-w-0 items-start gap-3">
         <div
           className={cn(
-            'border-border bg-background flex size-10 shrink-0 items-center justify-center rounded-lg border sm:size-11',
+            'border-border bg-background flex size-9 shrink-0 items-center justify-center rounded-lg border sm:size-10',
             connected && provider === 'gemini' && 'border-blue-500/20 bg-blue-500/10',
             connected && provider === 'groq' && 'border-[#F55036]/25 bg-[#F55036]/10',
             !connected &&
@@ -92,8 +92,8 @@ export function AiIntegrationCard({
           <AiProviderIcon provider={provider} />
         </div>
         <div className="min-w-0">
-          <h3 className="text-sidebar-foreground text-sm font-bold sm:text-[14px]">AI services</h3>
-          <p className="text-muted-foreground mt-0.5 text-xs leading-snug sm:text-[12px]">
+          <h3 className="text-card-title">AI services</h3>
+          <p className="text-card-description mt-0.5">
             Document checks, validations, and other AI-powered features.
           </p>
           {!keysConfigured ? (
@@ -142,13 +142,13 @@ export function AiIntegrationCard({
             : 'Set primary AI API keys in Edge secrets first'
         }
         className={cn(
-          'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-3 sm:px-4',
-          'border-sidebar-border bg-background border text-sm font-semibold sm:text-[13px]',
+          'settings-action inline-flex items-center justify-center gap-1.5 rounded-lg',
+          'border-sidebar-border bg-background border',
           'hover:bg-sidebar-accent/40 transition-colors',
-          'w-full disabled:pointer-events-none disabled:opacity-40 sm:w-auto sm:shrink-0'
+          'w-full disabled:pointer-events-none disabled:opacity-40 sm:w-auto'
         )}
       >
-        <Activity className="size-4 shrink-0" aria-hidden />
+        <Activity className="size-3.5 shrink-0" aria-hidden />
         {busy ? 'Testing…' : 'Test connection'}
       </button>
     </div>

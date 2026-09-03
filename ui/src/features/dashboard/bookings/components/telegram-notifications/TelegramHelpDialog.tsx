@@ -101,9 +101,12 @@ export function TelegramHelpDialog({
             type="button"
             variant="ghost"
             size="sm"
-            className={cn('text-muted-foreground hover:text-foreground gap-1.5 px-2.5', className)}
+            className={cn(
+              'text-muted-foreground hover:text-foreground h-8 gap-1 px-2 text-xs font-medium',
+              className
+            )}
           >
-            <HelpCircle className="size-4 shrink-0" aria-hidden />
+            <HelpCircle className="size-3.5 shrink-0" aria-hidden />
             {triggerLabel}
           </Button>
         )}

@@ -119,6 +119,26 @@ export function canCancelBookingAtStatus(status: string | null | undefined): boo
   return CANCELLABLE_STATUSES.has(String(status ?? '').trim() as BookingStatus);
 }
 
+/**
+ * Reschedule (booking-detail `⋯` → **Reschedule**) is offered up to — but not
+ * including — Ready for Check-out: once the stay is underway there is nothing
+ * left to move. It forces the row back to Pending Documents (or Pending Review
+ * for a property with no configured document requirements) — see
+ * `hooks/useRescheduleBooking.ts` and `.cursor/rules/booking-workflow.mdc` §6.
+ */
+const RESCHEDULABLE_STATUSES: ReadonlySet<BookingStatus> = new Set([
+  'PENDING_REVIEW',
+  'PENDING_DOCUMENTS',
+  'PENDING_GAF',
+  'PENDING_PARKING_REQUEST',
+  'PENDING_PET_REQUEST',
+  'READY_FOR_CHECKIN',
+]);
+
+export function canRescheduleBookingAtStatus(status: string | null | undefined): boolean {
+  return RESCHEDULABLE_STATUSES.has(String(status ?? '').trim() as BookingStatus);
+}
+
 export function isBookingStatus(value: string): value is BookingStatus {
   return (BOOKING_STATUSES as ReadonlyArray<string>).includes(value);
 }

@@ -48,13 +48,24 @@ import { cn } from '@/lib/utils';
 
 export const PROPERTY_TEMPLATE_RICH_TEXT_CLASS = 'property-template-rich-text';
 
+/** Compact icon control for editor chrome / TipTap toolbar (32px visual, expanded phone hit). */
+export const richTextChromeIconButtonClassName =
+  'relative size-8 shrink-0 rounded-md before:absolute before:-inset-1.5 before:content-[""] sm:before:content-none';
+
 const richTextStyles = `
   .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} {
     min-height: var(--editor-min-height, auto);
-    font-size: 0.9375rem;
-    line-height: 1.65;
+    font-size: 0.875rem;
+    line-height: 1.55;
     color: hsl(var(--foreground));
     background-color: hsl(var(--card));
+  }
+
+  @media (min-width: 640px) {
+    .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} {
+      font-size: 0.9375rem;
+      line-height: 1.65;
+    }
   }
 
   .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS}:focus {
@@ -62,54 +73,95 @@ const richTextStyles = `
   }
 
   .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} > * + * {
-    margin-top: 0.75em;
+    margin-top: 0.65em;
   }
 
   .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} h1 {
-    font-size: 1.875rem;
+    font-size: 1.25rem;
     font-weight: 700;
-    line-height: 1.2;
-    margin-top: 1.5rem;
-    margin-bottom: 0.5rem;
+    line-height: 1.25;
+    margin-top: 1rem;
+    margin-bottom: 0.4rem;
   }
 
   .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} h2 {
-    font-size: 1.5rem;
+    font-size: 1.125rem;
     font-weight: 600;
     line-height: 1.3;
-    margin-top: 1.25rem;
-    margin-bottom: 0.5rem;
+    margin-top: 0.9rem;
+    margin-bottom: 0.35rem;
   }
 
   .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} h3 {
-    font-size: 1.25rem;
+    font-size: 1rem;
     font-weight: 600;
-    line-height: 1.4;
-    margin-top: 1rem;
-    margin-bottom: 0.5rem;
+    line-height: 1.35;
+    margin-top: 0.75rem;
+    margin-bottom: 0.35rem;
+  }
+
+  @media (min-width: 640px) {
+    .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} h1 {
+      font-size: 1.5rem;
+      line-height: 1.2;
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} h2 {
+      font-size: 1.25rem;
+      margin-top: 1.25rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} h3 {
+      font-size: 1.125rem;
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+    }
   }
 
   .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} p {
-    margin-bottom: 0.5rem;
-    line-height: 1.65;
+    margin-bottom: 0.45rem;
+    line-height: 1.55;
+  }
+
+  @media (min-width: 640px) {
+    .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} p {
+      margin-bottom: 0.5rem;
+      line-height: 1.65;
+    }
   }
 
   .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} ul {
     list-style-type: disc;
-    padding-left: 1.5rem;
-    margin: 0.5rem 0;
+    padding-left: 1.25rem;
+    margin: 0.4rem 0;
   }
 
   .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} ol {
     list-style-type: decimal;
-    padding-left: 1.5rem;
-    margin: 0.5rem 0;
+    padding-left: 1.25rem;
+    margin: 0.4rem 0;
   }
 
   .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} li {
     display: list-item;
-    margin: 0.25rem 0;
-    line-height: 1.65;
+    margin: 0.15rem 0;
+    line-height: 1.55;
+  }
+
+  @media (min-width: 640px) {
+    .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} ul,
+    .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} ol {
+      padding-left: 1.5rem;
+      margin: 0.5rem 0;
+    }
+
+    .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} li {
+      margin: 0.25rem 0;
+      line-height: 1.65;
+    }
   }
 
   .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} li p {
@@ -133,10 +185,17 @@ const richTextStyles = `
 
   .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} blockquote {
     border-left: 2px solid hsl(var(--border));
-    padding-left: 1rem;
-    margin: 1rem 0;
+    padding-left: 0.875rem;
+    margin: 0.75rem 0;
     font-style: italic;
     color: hsl(var(--muted-foreground));
+  }
+
+  @media (min-width: 640px) {
+    .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} blockquote {
+      padding-left: 1rem;
+      margin: 1rem 0;
+    }
   }
 
   .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} strong {
@@ -159,15 +218,27 @@ const richTextStyles = `
     max-width: 100%;
     height: auto;
     border-radius: 0.5rem;
-    margin: 1rem 0;
+    margin: 0.75rem 0;
+  }
+
+  @media (min-width: 640px) {
+    .${PROPERTY_TEMPLATE_RICH_TEXT_CLASS} img {
+      margin: 1rem 0;
+    }
   }
 
   .property-template-editor [data-resize-container] {
     display: inline-flex !important;
     width: fit-content;
     max-width: 100%;
-    margin: 1rem 0;
+    margin: 0.75rem 0;
     vertical-align: top;
+  }
+
+  @media (min-width: 640px) {
+    .property-template-editor [data-resize-container] {
+      margin: 1rem 0;
+    }
   }
 
   .property-template-editor [data-resize-container].ProseMirror-selectednode,
@@ -348,7 +419,7 @@ export type RichTextEditorHandle = {
 };
 
 function ToolbarSeparator() {
-  return <div className="bg-border mx-0.5 hidden h-6 w-px shrink-0 sm:block" aria-hidden />;
+  return <div className="bg-border mx-0.5 hidden h-4 w-px shrink-0 sm:block" aria-hidden />;
 }
 
 function ToolbarButton({
@@ -368,11 +439,8 @@ function ToolbarButton({
     <Button
       type="button"
       variant="ghost"
-      size="icon"
-      className={cn(
-        'min-h-[44px] min-w-[44px] shrink-0 rounded-md sm:min-h-9 sm:min-w-9',
-        isActive && 'bg-primary/10 text-primary'
-      )}
+      size="icon-sm"
+      className={cn(richTextChromeIconButtonClassName, isActive && 'bg-primary/10 text-primary')}
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
@@ -425,15 +493,15 @@ function LinkPopover({ editor }: { editor: Editor }) {
         <Button
           type="button"
           variant="ghost"
-          size="icon"
+          size="icon-sm"
           className={cn(
-            'min-h-[44px] min-w-[44px] shrink-0 rounded-md sm:min-h-9 sm:min-w-9',
+            richTextChromeIconButtonClassName,
             editor.isActive('link') && 'bg-primary/10 text-primary'
           )}
           aria-label="Link"
           title="Link"
         >
-          <LinkIcon className="h-4 w-4" />
+          <LinkIcon className="size-3.5" />
         </Button>
       </PopoverTrigger>
       <ToolbarPopoverContent>
@@ -529,12 +597,12 @@ function ImagePopover({
         <Button
           type="button"
           variant="ghost"
-          size="icon"
-          className="min-h-[44px] min-w-[44px] shrink-0 rounded-md sm:min-h-9 sm:min-w-9"
+          size="icon-sm"
+          className={richTextChromeIconButtonClassName}
           aria-label="Image"
           title="Image"
         >
-          <ImageIcon className="h-4 w-4" />
+          <ImageIcon className="size-3.5" />
         </Button>
       </PopoverTrigger>
       <ToolbarPopoverContent>
@@ -599,34 +667,34 @@ function Toolbar({
   onImageUpload?: (file: File) => Promise<string>;
 }) {
   return (
-    <div className="border-border bg-card flex flex-wrap items-center gap-0.5 overflow-x-auto border-b px-1 py-1 sm:px-2">
+    <div className="border-border bg-card flex flex-wrap items-center gap-0 overflow-x-auto border-b px-1 py-0.5 sm:gap-0.5 sm:px-1.5 sm:py-1">
       <ToolbarButton
         label="Bold"
         onClick={() => editor.chain().focus().toggleBold().run()}
         isActive={editor.isActive('bold')}
       >
-        <Bold className="h-4 w-4" />
+        <Bold className="size-3.5" />
       </ToolbarButton>
       <ToolbarButton
         label="Italic"
         onClick={() => editor.chain().focus().toggleItalic().run()}
         isActive={editor.isActive('italic')}
       >
-        <Italic className="h-4 w-4" />
+        <Italic className="size-3.5" />
       </ToolbarButton>
       <ToolbarButton
         label="Underline"
         onClick={() => editor.chain().focus().toggleUnderline().run()}
         isActive={editor.isActive('underline')}
       >
-        <UnderlineIcon className="h-4 w-4" />
+        <UnderlineIcon className="size-3.5" />
       </ToolbarButton>
       <ToolbarButton
         label="Strikethrough"
         onClick={() => editor.chain().focus().toggleStrike().run()}
         isActive={editor.isActive('strike')}
       >
-        <Strikethrough className="h-4 w-4" />
+        <Strikethrough className="size-3.5" />
       </ToolbarButton>
 
       <ToolbarSeparator />
@@ -636,28 +704,28 @@ function Toolbar({
         onClick={() => editor.chain().focus().setParagraph().run()}
         isActive={editor.isActive('paragraph')}
       >
-        <Pilcrow className="h-4 w-4" />
+        <Pilcrow className="size-3.5" />
       </ToolbarButton>
       <ToolbarButton
         label="Heading 1"
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
         isActive={editor.isActive('heading', { level: 1 })}
       >
-        <Heading1 className="h-4 w-4" />
+        <Heading1 className="size-3.5" />
       </ToolbarButton>
       <ToolbarButton
         label="Heading 2"
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         isActive={editor.isActive('heading', { level: 2 })}
       >
-        <Heading2 className="h-4 w-4" />
+        <Heading2 className="size-3.5" />
       </ToolbarButton>
       <ToolbarButton
         label="Heading 3"
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
         isActive={editor.isActive('heading', { level: 3 })}
       >
-        <Heading3 className="h-4 w-4" />
+        <Heading3 className="size-3.5" />
       </ToolbarButton>
 
       <ToolbarSeparator />
@@ -667,21 +735,21 @@ function Toolbar({
         onClick={() => editor.chain().focus().toggleBulletList().run()}
         isActive={editor.isActive('bulletList')}
       >
-        <List className="h-4 w-4" />
+        <List className="size-3.5" />
       </ToolbarButton>
       <ToolbarButton
         label="Numbered list"
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
         isActive={editor.isActive('orderedList')}
       >
-        <ListOrdered className="h-4 w-4" />
+        <ListOrdered className="size-3.5" />
       </ToolbarButton>
       <ToolbarButton
         label="Quote"
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
         isActive={editor.isActive('blockquote')}
       >
-        <Quote className="h-4 w-4" />
+        <Quote className="size-3.5" />
       </ToolbarButton>
 
       <ToolbarSeparator />
@@ -691,21 +759,21 @@ function Toolbar({
         onClick={() => editor.chain().focus().setTextAlign('left').run()}
         isActive={editor.isActive({ textAlign: 'left' })}
       >
-        <AlignLeft className="h-4 w-4" />
+        <AlignLeft className="size-3.5" />
       </ToolbarButton>
       <ToolbarButton
         label="Align center"
         onClick={() => editor.chain().focus().setTextAlign('center').run()}
         isActive={editor.isActive({ textAlign: 'center' })}
       >
-        <AlignCenter className="h-4 w-4" />
+        <AlignCenter className="size-3.5" />
       </ToolbarButton>
       <ToolbarButton
         label="Align right"
         onClick={() => editor.chain().focus().setTextAlign('right').run()}
         isActive={editor.isActive({ textAlign: 'right' })}
       >
-        <AlignRight className="h-4 w-4" />
+        <AlignRight className="size-3.5" />
       </ToolbarButton>
 
       <ToolbarSeparator />
@@ -720,14 +788,14 @@ function Toolbar({
         onClick={() => editor.chain().focus().undo().run()}
         disabled={!editor.can().undo()}
       >
-        <Undo className="h-4 w-4" />
+        <Undo className="size-3.5" />
       </ToolbarButton>
       <ToolbarButton
         label="Redo"
         onClick={() => editor.chain().focus().redo().run()}
         disabled={!editor.can().redo()}
       >
-        <Redo className="h-4 w-4" />
+        <Redo className="size-3.5" />
       </ToolbarButton>
     </div>
   );
@@ -785,7 +853,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
         },
         editorProps: {
           attributes: {
-            class: cn(PROPERTY_TEMPLATE_RICH_TEXT_CLASS, 'px-4 py-3'),
+            class: cn(PROPERTY_TEMPLATE_RICH_TEXT_CLASS, 'px-3 py-2.5 sm:px-4 sm:py-3'),
             style: `--editor-min-height: ${minHeight}`,
           },
           handleClickOn(view, _pos, node, nodePos) {
@@ -866,7 +934,7 @@ export function RichTextDisplay({
     <>
       <style>{richTextStyles}</style>
       <div
-        className={cn(PROPERTY_TEMPLATE_RICH_TEXT_CLASS, 'px-4 py-3', className)}
+        className={cn(PROPERTY_TEMPLATE_RICH_TEXT_CLASS, 'px-3 py-2.5 sm:px-4 sm:py-3', className)}
         dangerouslySetInnerHTML={{ __html: html }}
       />
     </>

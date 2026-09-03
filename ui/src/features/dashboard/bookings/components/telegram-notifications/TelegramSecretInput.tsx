@@ -94,7 +94,7 @@ export function TelegramSecretInput({
         {showSkeleton ? (
           <div
             className={cn(
-              'border-input bg-background flex h-10 w-full items-center rounded-lg border px-3',
+              'border-input bg-background flex h-9 w-full items-center rounded-lg border px-3 sm:h-10',
               disabled && 'cursor-not-allowed opacity-50'
             )}
             aria-hidden
@@ -115,21 +115,21 @@ export function TelegramSecretInput({
               onChange(e.target.value);
             }}
             className={cn(
-              'h-10',
+              'h-9 text-sm sm:h-10',
               inputPadding,
               showFriendlyLabel && 'text-foreground cursor-default'
             )}
           />
         )}
         {showActions ? (
-          <div className="absolute right-0 top-0 flex h-10 items-center">
+          <div className="absolute right-0 top-0 flex h-9 items-center sm:h-10">
             {showSecondary ? (
               <button
                 type="button"
                 disabled={disabled}
                 aria-label={secondaryAction!.ariaLabel ?? secondaryAction!.label}
                 onClick={secondaryAction!.onClick}
-                className="text-muted-foreground hover:text-foreground flex h-10 min-w-[44px] items-center justify-center px-2 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50"
+                className="text-muted-foreground hover:text-foreground flex h-9 min-w-[40px] items-center justify-center px-2 text-[11px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 sm:h-10 sm:min-w-[44px] sm:text-xs"
               >
                 {secondaryAction!.label}
               </button>
@@ -140,7 +140,7 @@ export function TelegramSecretInput({
                 disabled={disabled || commitPending}
                 aria-label={`Save ${label}`}
                 onClick={onCommit}
-                className="text-muted-foreground hover:text-foreground flex h-10 min-w-[44px] items-center justify-center rounded-r-lg px-2.5 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50"
+                className="text-muted-foreground hover:text-foreground flex h-9 min-w-[40px] items-center justify-center rounded-r-lg px-2 text-[11px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 sm:h-10 sm:min-w-[44px] sm:px-2.5 sm:text-xs"
               >
                 Save
               </button>
@@ -150,7 +150,7 @@ export function TelegramSecretInput({
                 disabled={disabled}
                 aria-label={visible ? `Hide ${label}` : `Show ${label}`}
                 onClick={() => setVisible((v) => !v)}
-                className="text-muted-foreground hover:text-foreground flex h-10 min-w-[44px] items-center justify-center rounded-r-lg px-2.5 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50"
+                className="text-muted-foreground hover:text-foreground flex h-9 min-w-[40px] items-center justify-center rounded-r-lg px-2 text-[11px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 sm:h-10 sm:min-w-[44px] sm:px-2.5 sm:text-xs"
               >
                 {toggleLabel}
               </button>

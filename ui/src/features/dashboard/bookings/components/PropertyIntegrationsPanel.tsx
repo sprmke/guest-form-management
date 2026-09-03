@@ -43,19 +43,19 @@ function TelegramIntegrationBlock({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="border-border bg-card hover:bg-muted/20 flex w-full items-center gap-3 rounded-xl border p-4 text-left shadow-sm transition-colors"
+        className="border-border bg-card hover:bg-muted/20 flex w-full items-center gap-3 rounded-xl border p-3 text-left shadow-sm transition-colors sm:p-4"
       >
         <div
           className={cn(
             toneIconWrapClasses('blue'),
-            'flex size-10 shrink-0 items-center justify-center rounded-lg sm:size-11'
+            'flex size-9 shrink-0 items-center justify-center rounded-lg sm:size-10'
           )}
         >
           <TelegramMark className="size-5 sm:size-[22px]" />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="text-sidebar-foreground text-sm font-bold sm:text-[13px]">Telegram</h3>
-          <p className="text-muted-foreground mt-1 text-xs sm:text-[11px]">
+          <h3 className="text-card-title">Telegram</h3>
+          <p className="text-card-description mt-1">
             {channels.filter((c) => c.status.tokenConfigured && c.status.chatIdConfigured).length}{' '}
             of {channels.length} channels configured
           </p>

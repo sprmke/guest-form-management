@@ -8,6 +8,7 @@ import { PropertyTemplatePlaceholdersDialog } from '@/features/dashboard/booking
 import {
   RichTextDisplay,
   RichTextEditor,
+  richTextChromeIconButtonClassName,
   type RichTextEditorHandle,
 } from '@/features/dashboard/bookings/components/property-templates/RichTextEditor';
 import { TemplateSectionImageField } from '@/features/dashboard/bookings/components/property-templates/TemplateSectionImageField';
@@ -44,7 +45,11 @@ import {
   ResponsiveModalHeader,
   ResponsiveModalTitle,
 } from '@/components/ui/responsive-modal';
-import { SegmentedControl } from '@/components/ui/sliding-tabs';
+import {
+  SegmentedControl,
+  cardHeaderSegmentedListClassName,
+  cardHeaderSegmentedTriggerClassName,
+} from '@/components/ui/sliding-tabs';
 import { cn } from '@/lib/utils';
 
 type EditorTab = 'edit' | 'preview';
@@ -63,6 +68,11 @@ const EDITOR_VIEW_OPTIONS = [
     icon: Eye,
   },
 ];
+
+const editorChromeActionClassName = cn(
+  richTextChromeIconButtonClassName,
+  'border-input bg-card hover:bg-accent sm:h-8 sm:w-auto sm:gap-1.5 sm:px-2.5'
+);
 
 type Props = {
   template: PropertyTemplateDto;
@@ -272,7 +282,7 @@ export function PropertyTemplateEditorCard({
                 </span>
               ) : null}
             </div>
-            <CardDescription className="text-sm">
+            <CardDescription>
               {template.description ?? (isCustom ? 'Custom template for your property.' : null)}
             </CardDescription>
           </div>
@@ -280,64 +290,70 @@ export function PropertyTemplateEditorCard({
       </CardHeader>
 
       <CardContent className="p-0">
-        <div className="flex flex-nowrap items-center justify-between gap-1.5 border-b px-3 py-2 sm:gap-2 sm:px-4">
+        <div className="flex flex-nowrap items-center justify-between gap-1.5 border-b px-2.5 py-1.5 sm:gap-2 sm:px-4 sm:py-2">
           <SegmentedControl
             value={activeTab}
             onChange={handleTabChange}
             options={EDITOR_VIEW_OPTIONS}
             size="dense"
             aria-label={`${template.name} view`}
-            listClassName="shrink-0"
-            triggerClassName="px-2 sm:px-2.5"
+            listClassName={cn(cardHeaderSegmentedListClassName, 'shrink-0')}
+            triggerClassName={cn(cardHeaderSegmentedTriggerClassName, 'px-2 sm:px-2.5')}
           />
-          <div className="flex shrink-0 flex-nowrap items-center justify-end gap-1.5 sm:gap-2">
+          <div className="flex shrink-0 flex-nowrap items-center justify-end gap-1 sm:gap-1.5">
             {canEdit ? (
               <>
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
-                  className="min-h-[44px] min-w-[44px] px-0 sm:min-h-9 sm:w-auto sm:gap-1.5 sm:px-3"
+                  size="icon-sm"
+                  className={editorChromeActionClassName}
                   onClick={() => setPlaceholdersOpen(true)}
                   aria-label="Placeholders"
                   title="Placeholders"
                 >
-                  <Braces className="size-4 shrink-0" aria-hidden />
-                  <span className="hidden sm:inline">Placeholders</span>
+                  <Braces className="size-3.5 shrink-0" aria-hidden />
+                  <span className="hidden text-xs font-semibold sm:inline">Placeholders</span>
                 </Button>
                 {!isCustom && onReset ? (
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
-                    className="min-h-[44px] min-w-[44px] px-0 sm:min-h-9 sm:w-auto sm:gap-1.5 sm:px-3"
+                    size="icon-sm"
+                    className={editorChromeActionClassName}
                     onClick={() => setResetOpen(true)}
                     aria-label="Reset"
                     title="Reset"
                   >
-                    <RotateCcw className="size-4 shrink-0" aria-hidden />
-                    <span className="hidden sm:inline">Reset</span>
+                    <RotateCcw className="size-3.5 shrink-0" aria-hidden />
+                    <span className="hidden text-xs font-semibold sm:inline">Reset</span>
                   </Button>
                 ) : null}
                 {isCustom && onDelete ? (
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
-                    className="border-destructive/40 text-destructive hover:bg-destructive/10 min-h-[44px] min-w-[44px] px-0 sm:min-h-9 sm:w-auto sm:gap-1.5 sm:px-3"
+                    size="icon-sm"
+                    className={cn(
+                      editorChromeActionClassName,
+                      'border-destructive/40 text-destructive hover:bg-destructive/10'
+                    )}
                     onClick={() => setDeleteOpen(true)}
                     aria-label="Delete"
                     title="Delete"
                   >
-                    <Trash2 className="size-4 shrink-0" aria-hidden />
-                    <span className="hidden sm:inline">Delete</span>
+                    <Trash2 className="size-3.5 shrink-0" aria-hidden />
+                    <span className="hidden text-xs font-semibold sm:inline">Delete</span>
                   </Button>
                 ) : null}
                 {hasChanges ? (
                   <Button
                     type="button"
-                    size="sm"
-                    className="min-h-[44px] min-w-[44px] px-0 sm:min-h-9 sm:w-auto sm:px-3"
+                    size="icon-sm"
+                    className={cn(
+                      richTextChromeIconButtonClassName,
+                      'sm:h-8 sm:w-auto sm:gap-1.5 sm:px-2.5'
+                    )}
                     disabled={saving}
                     onClick={() => {
                       if (openStarterUpgradeIfNeeded()) return;
@@ -346,8 +362,10 @@ export function PropertyTemplateEditorCard({
                     aria-label={saving ? 'Saving' : 'Save'}
                     title={saving ? 'Saving…' : 'Save'}
                   >
-                    <Save className="size-4 shrink-0 sm:mr-1.5 sm:size-3.5" aria-hidden />
-                    <span className="hidden sm:inline">{saving ? 'Saving…' : 'Save'}</span>
+                    <Save className="size-3.5 shrink-0" aria-hidden />
+                    <span className="hidden text-xs font-semibold sm:inline">
+                      {saving ? 'Saving…' : 'Save'}
+                    </span>
                   </Button>
                 ) : null}
               </>
@@ -397,7 +415,7 @@ export function PropertyTemplateEditorCard({
                     </div>
                   ) : null}
                   <div className="flex min-w-0 flex-col justify-center p-4 sm:p-6">
-                    <h3 className="text-primary mb-4 text-xl font-bold tracking-tight sm:text-2xl">
+                    <h3 className="text-primary mb-3 text-base font-bold tracking-tight sm:mb-4 sm:text-xl">
                       {previewHeading}
                     </h3>
                     <RichTextDisplay

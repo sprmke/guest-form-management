@@ -1,7 +1,7 @@
+import type { KeyboardEvent } from 'react';
+
 import { useNavigate } from 'react-router-dom';
 
-import { ChevronRight } from 'lucide-react';
-import type { KeyboardEvent } from 'react';
 
 import { AdminTableFlagsCell } from '@/features/dashboard/bookings/components/AdminDataTable';
 import { BookingResourceLabel } from '@/features/dashboard/bookings/components/BookingResourceLabel';
@@ -114,9 +114,14 @@ function BookingCard({
         'focus-visible:ring-sidebar-primary/40 focus-visible:ring-2'
       )}
     >
-      {/* Phone: dense list row — name + amount; status · dates · nights · guests; optional flags */}
-      <div className="flex items-center gap-2.5 px-3 py-2.5 sm:hidden">
-        <GuestAvatar name={name} validIdUrl={row.valid_id_url} size="sm" className="shrink-0" />
+      {/* Phone: name + amount; status; dates + flags. No chevron / Nn / Ng. */}
+      <div className="flex items-start gap-2.5 px-3 py-2.5 sm:hidden">
+        <GuestAvatar
+          name={name}
+          validIdUrl={row.valid_id_url}
+          size="sm"
+          className="mt-0.5 shrink-0"
+        />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="text-foreground min-w-0 flex-1 truncate text-[13px] font-semibold leading-tight">
@@ -127,44 +132,34 @@ function BookingCard({
                 {formatMoney(row.booking_rate)}
               </span>
             ) : null}
-            <ChevronRight className="text-muted-foreground/50 size-3.5 shrink-0" aria-hidden />
           </div>
           <div className="mt-1 flex min-w-0 items-center gap-1.5">
-            <StatusBadge status={row.status} className="w-fit max-w-[8.5rem] shrink-0" />
-            <p className="text-muted-foreground min-w-0 flex-1 truncate text-[11px] tabular-nums leading-tight">
-              {formatBookingDateShort(row.check_in_date)}
-              <span className="text-muted-foreground/40 mx-0.5 font-light">→</span>
-              {formatBookingDate(row.check_out_date)}
-              <span className="text-muted-foreground/40 mx-1" aria-hidden>
-                ·
-              </span>
-              {row.number_of_nights}n
-              <span className="text-muted-foreground/40 mx-1" aria-hidden>
-                ·
-              </span>
-              {pax}g
-            </p>
+            <StatusBadge status={row.status} className="w-fit max-w-full shrink-0" />
             {row.status === 'PENDING_HOST_ACCEPTANCE' && row.parking_broadcast_expires_at ? (
               <ParkingBroadcastCountdown expiresAt={row.parking_broadcast_expires_at} />
             ) : null}
           </div>
-          {showProperty || hasAnyFlags ? (
-            <div className="mt-1 flex min-w-0 items-center gap-2">
-              {showProperty ? (
-                <BookingResourceLabel
-                  row={row}
-                  className="min-w-0 truncate text-[11px] font-medium"
-                />
-              ) : null}
-              {hasAnyFlags ? (
-                <AdminTableFlagsCell
-                  need_parking={row.need_parking}
-                  has_pets={row.has_pets}
-                  guest_requests_surprise_decor={row.guest_requests_surprise_decor}
-                  has_invalid_receipt_ai={hasInvalidReceiptAi}
-                />
-              ) : null}
-            </div>
+          <div className="mt-1 flex min-w-0 items-center gap-1.5">
+            <p className="text-muted-foreground min-w-0 flex-1 truncate text-[11px] tabular-nums leading-tight">
+              {formatBookingDateShort(row.check_in_date)}
+              <span className="text-muted-foreground/40 mx-0.5 font-light">→</span>
+              {formatBookingDate(row.check_out_date)}
+            </p>
+            {hasAnyFlags ? (
+              <AdminTableFlagsCell
+                need_parking={row.need_parking}
+                has_pets={row.has_pets}
+                guest_requests_surprise_decor={row.guest_requests_surprise_decor}
+                has_invalid_receipt_ai={hasInvalidReceiptAi}
+                hideEmpty
+              />
+            ) : null}
+          </div>
+          {showProperty ? (
+            <BookingResourceLabel
+              row={row}
+              className="mt-1 min-w-0 truncate text-[11px] font-medium"
+            />
           ) : null}
         </div>
       </div>

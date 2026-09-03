@@ -74,10 +74,10 @@ export function TelegramGlobalBotTokenCard() {
     <Card id="section-global-bot" className="scroll-mt-2">
       <CardHeader className="space-y-0">
         <CardTitle className="flex items-center gap-2">
-          <Bot className="size-5 shrink-0" aria-hidden />
+          <Bot className="size-4 shrink-0" aria-hidden />
           Shared bot token
         </CardTitle>
-        <CardDescription className="pt-1.5">
+        <CardDescription className="pt-1">
           One token for all modules by default. You can still configure a different bot & chat ID
           per module if needed.
         </CardDescription>

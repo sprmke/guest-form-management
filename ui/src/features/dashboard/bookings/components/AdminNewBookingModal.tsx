@@ -20,7 +20,7 @@ import {
 import { BOOKINGS_QUERY_KEY } from '@/features/dashboard/bookings/hooks/useBookings';
 import { bookingDetailPath } from '@/features/dashboard/org/lib/tenantPaths';
 
-import { DialogTitle } from '@/components/ui/dialog';
+import { ResponsiveModalTitle } from '@/components/ui/responsive-modal';
 import { formatDateToLongFormat } from '@/utils/format/dates';
 
 export interface AdminNewBookingModalProps {
@@ -116,7 +116,9 @@ export function AdminNewBookingModal({
           <div className="bg-primary/10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
             <Users className="text-primary h-3.5 w-3.5" />
           </div>
-          <DialogTitle className="text-foreground text-base font-semibold">New Booking</DialogTitle>
+          <ResponsiveModalTitle className="text-foreground text-base font-semibold">
+            New Booking
+          </ResponsiveModalTitle>
         </div>
       }
       sizeClassName="max-w-[min(calc(100vw-1.5rem),36rem)] sm:max-w-[min(90vw,40rem)]"

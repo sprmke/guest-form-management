@@ -1,4 +1,13 @@
-import { Car, ClipboardCheck, Copy, ExternalLink, PawPrint, Search, Sparkles } from 'lucide-react';
+import {
+  CalendarClock,
+  Car,
+  ClipboardCheck,
+  Copy,
+  ExternalLink,
+  PawPrint,
+  Search,
+  Sparkles,
+} from 'lucide-react';
 
 import type { BookingEditTabId } from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditTabs';
 import type { BookingGuestFormCompletionLink } from '@/features/dashboard/bookings/hooks/useBookingGuestFormCompletionLink';
@@ -14,12 +23,14 @@ export type BookingDetailAction = {
   Icon: LucideIcon;
   onSelect: () => void;
   /** Consecutive actions sharing a group render together; a change draws a divider. */
-  group: 'edit' | 'guest-links';
+  group: 'reschedule' | 'edit' | 'guest-links';
 };
 
 type Args = {
   booking: BookingRow;
   onEdit: (tab?: BookingEditTabId) => void;
+  /** Opens the reschedule calendar (`RescheduleBookingModal`). */
+  onReschedule?: () => void;
   /** Opens own-default or marketplace find (sets need_parking if needed). */
   onFindParking: () => void;
   /** Opens marketplace search even when an own default exists. */
@@ -37,6 +48,8 @@ type Args = {
   canEditPets?: boolean;
   /** When false, hide Find parking / guest parking link actions. */
   canManagePayParking?: boolean;
+  /** Show the Reschedule row — gated on stay-edit permission + a pre-check-out status. */
+  canReschedule?: boolean;
   /** Prefer "Use your parking" label when org owns an available default. */
   hasOwnDefaultParking?: boolean;
 };
@@ -49,6 +62,7 @@ type Args = {
 export function buildBookingDetailActions({
   booking,
   onEdit,
+  onReschedule,
   onFindParking,
   onSearchOtherParkings,
   onOpenAiSummary,
@@ -59,9 +73,21 @@ export function buildBookingDetailActions({
   canEditParking = true,
   canEditPets = true,
   canManagePayParking = true,
+  canReschedule = false,
   hasOwnDefaultParking = false,
 }: Args): BookingDetailAction[] {
   const actions: BookingDetailAction[] = [
+    ...(onReschedule && canReschedule
+      ? [
+          {
+            key: 'reschedule',
+            label: 'Reschedule',
+            Icon: CalendarClock,
+            onSelect: onReschedule,
+            group: 'reschedule' as const,
+          },
+        ]
+      : []),
     ...(onOpenAiSummary && canRunAiSummary
       ? [
           {
