@@ -42,11 +42,14 @@ import {
   BookingDetailShell,
   BookingDetailShellBody,
 } from '@/features/dashboard/bookings/components/booking-detail/primitives/BookingDetailShell';
+import { RescheduleBookingModal } from '@/features/dashboard/bookings/components/booking-detail/RescheduleBookingModal';
 import { BookingDetailMobileSummary } from '@/features/dashboard/bookings/components/BookingDetailMobileSummary';
 import { BookingEditForm } from '@/features/dashboard/bookings/components/BookingEditForm';
 import { BookingMetaCard } from '@/features/dashboard/bookings/components/BookingMetaCard';
 import { OwnerParkingConfirmSheet } from '@/features/dashboard/bookings/components/OwnerParkingConfirmSheet';
 import { WorkflowPanel } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowPanel';
+import { useAdminBookedDates } from '@/features/dashboard/bookings/hooks/useAdminBookedDates';
+import { useAppSettings } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { bookingDetailQueryKey, useBooking } from '@/features/dashboard/bookings/hooks/useBooking';
 import {
   invalidateBookingAiReviewQueries,
@@ -60,8 +63,14 @@ import { useEnsureNeedParking } from '@/features/dashboard/bookings/hooks/useEns
 import { useLinkedParkingBooking } from '@/features/dashboard/bookings/hooks/useLinkedParkingBooking';
 import { useOwnerDefaultParking } from '@/features/dashboard/bookings/hooks/useOwnerDefaultParking';
 import type { OwnerDefaultParkingSlot } from '@/features/dashboard/bookings/hooks/useOwnerDefaultParking';
+import {
+  useRescheduleBooking,
+  type RescheduleResetTarget,
+} from '@/features/dashboard/bookings/hooks/useRescheduleBooking';
 import { hasBookingAiReviewRun } from '@/features/dashboard/bookings/lib/bookingAiReviewProgress';
 import { buildBookingDetailActions } from '@/features/dashboard/bookings/lib/bookingDetailActions';
+import { canRescheduleBookingAtStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
+import { DEFAULT_DOCUMENT_REQUIREMENTS } from '@/features/dashboard/bookings/lib/documentRequirements';
 import {
   absoluteBookingParkingFindUrl,
   absoluteBookingParkingOwnDefaultUrl,
@@ -77,9 +86,11 @@ import {
   hasPropertyPermission,
 } from '@/features/dashboard/team/lib/propertyPermissions';
 
+import { MobileBrandHero } from '@/components/mobile/MobileBrandHero';
 import { BookingDetailPageSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { useIsBelowMd } from '@/hooks/useMediaQuery';
+import { useMobileHeroCollapseProgress } from '@/hooks/useMobileHeroCollapseProgress';
 import { propertyDashboardPageTitle, usePageTitle } from '@/lib/pageTitle';
 import { cn } from '@/lib/utils';
 
@@ -134,6 +145,8 @@ export function BookingDetailPage() {
   const [aiSummaryOpen, setAiSummaryOpen] = useState(false);
   const defaultTabAppliedFor = useRef<string | null>(null);
   const isBelowMd = useIsBelowMd();
+  const heroRef = useRef<HTMLElement | null>(null);
+  const heroCollapse = useMobileHeroCollapseProgress(heroRef, isBelowMd);
   const ensureNeedParking = useEnsureNeedParking();
   const locationSlug = useMemo(
     () => propertyCityLocationSlug(property.settings),
@@ -143,6 +156,15 @@ export function BookingDetailPage() {
   const ownerDefaultQuery = useOwnerDefaultParking(booking?.id, true);
   const hasOwnDefaultParking = Boolean(ownerDefaultQuery.data?.defaultParking?.slug);
   const [ownerParkingSheetOpen, setOwnerParkingSheetOpen] = useState(false);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const { data: appSettings } = useAppSettings();
+  const documentRequirements =
+    appSettings?.resolvedDocumentRequirements ?? DEFAULT_DOCUMENT_REQUIREMENTS;
+  const rescheduleResetTo: RescheduleResetTarget =
+    documentRequirements.length > 0 ? 'PENDING_DOCUMENTS' : 'PENDING_REVIEW';
+  const canReschedule = canEditStay && !!booking && canRescheduleBookingAtStatus(booking.status);
+  const { data: bookedDates = [] } = useAdminBookedDates(property.slug, canReschedule);
+  const rescheduleMut = useRescheduleBooking();
 
   const copyBookingIdToClipboard = useCallback(async () => {
     const id = bookingId?.trim();
@@ -340,12 +362,38 @@ export function BookingDetailPage() {
 
   const handleOpenAiSummary = useCallback(() => setAiSummaryOpen(true), []);
 
+  const handleRescheduleConfirm = useCallback(
+    (checkInDate: string, checkOutDate: string) => {
+      if (!booking) return;
+      rescheduleMut.mutate(
+        {
+          bookingId: booking.id,
+          checkInDate,
+          checkOutDate,
+          resetTo: rescheduleResetTo,
+          currentDocumentRequirementCompletions: booking.document_requirement_completions,
+        },
+        {
+          onSuccess: () => {
+            toast.success('Booking rescheduled');
+            setRescheduleOpen(false);
+          },
+          onError: (err) => {
+            toast.error(err instanceof Error ? err.message : 'Could not reschedule booking');
+          },
+        }
+      );
+    },
+    [booking, rescheduleMut, rescheduleResetTo]
+  );
+
   const hostActions = useMemo(
     () =>
       booking
         ? buildBookingDetailActions({
             booking,
             onEdit: handleStartEdit,
+            onReschedule: () => setRescheduleOpen(true),
             onFindParking: () => {
               void handleFindParking();
             },
@@ -360,6 +408,7 @@ export function BookingDetailPage() {
             canEditParking,
             canEditPets,
             canManagePayParking: canEditParking,
+            canReschedule,
             hasOwnDefaultParking,
           })
         : [],
@@ -375,13 +424,23 @@ export function BookingDetailPage() {
       canEditStay,
       canEditParking,
       canEditPets,
+      canReschedule,
       hasOwnDefaultParking,
     ]
   );
 
   return (
     <>
-      <div className="space-y-4">
+      {/* Phone-only brand hero band — matches the rest of the dashboard shell.
+       * Tablet/desktop keep the existing layout + `AdminLayout` topbar untouched. */}
+      <MobileBrandHero
+        ref={heroRef}
+        title="Booking"
+        collapseProgress={heroCollapse}
+        flush
+        className="md:hidden"
+      />
+      <div data-page-brand-hero className="space-y-4 max-md:px-3.5 max-md:pt-3">
         {/* Back nav */}
         <Link
           to="/bookings"
@@ -530,6 +589,17 @@ export function BookingDetailPage() {
         loading={previewLoading}
         onClose={closePreview}
       />
+      {booking && canReschedule && (
+        <RescheduleBookingModal
+          open={rescheduleOpen}
+          onOpenChange={setRescheduleOpen}
+          booking={booking}
+          bookedDates={bookedDates}
+          resetTo={rescheduleResetTo}
+          onConfirm={handleRescheduleConfirm}
+          isSubmitting={rescheduleMut.isPending}
+        />
+      )}
       <OwnerParkingConfirmSheet
         open={ownerParkingSheetOpen}
         onOpenChange={setOwnerParkingSheetOpen}

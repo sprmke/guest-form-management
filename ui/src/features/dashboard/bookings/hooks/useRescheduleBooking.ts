@@ -1,0 +1,102 @@
+/**
+ * useRescheduleBooking — move a booking's stay dates from the booking detail
+ * `⋯` → **Reschedule** action, then force the status back to the documents stage.
+ *
+ * Unlike the sensitive-guest-field revert in `useUpdateBooking` (which lands on
+ * `PENDING_REVIEW` and runs through the orchestrator on the next Proceed), a
+ * reschedule is a deliberate, host-confirmed reset: the modal makes the status
+ * change mandatory, so this hook writes it in the same `guest_submissions`
+ * patch. It resets to `PENDING_DOCUMENTS` when the property has at least one
+ * configured document requirement, and to `PENDING_REVIEW` when it has none
+ * (a D2 property skips `PENDING_DOCUMENTS` in the pipeline — see
+ * `bookingPipeline`), so the booking never strands on a skipped stage.
+ *
+ * This is a non-orchestrator status write — the same sanctioned exception as the
+ * guest-edit revert paths (`.cursor/rules/booking-workflow.mdc` §6). It clears
+ * nested doc completion, approved GAF/pet PDFs, parking + guest-balance
+ * settlement (`pendingDocumentsClearPatchForGuestEditRevert` +
+ * `pendingDocumentsClearCompletionsJsonbPatch`) but does **not** regenerate the
+ * GAF/pet request PDFs or send the acknowledgement email — the host re-sends
+ * those from **Automation Triggers** on the Progress rail if the new dates need
+ * fresh paperwork.
+ */
+
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+
+import { supabase } from '@/lib/supabase/client';
+import { toGuestSubmissionDate } from '@/utils/format/dates';
+
+import { countParkingNights } from '@/features/guest/pay-parking/lib/payParkingHelpers';
+
+import { BOOKING_QUERY_KEY } from './useBooking';
+import { invalidateBookingAiReviewQueries } from './useBookingAiReview';
+import {
+  pendingDocumentsClearCompletionsJsonbPatch,
+  pendingDocumentsClearPatchForGuestEditRevert,
+} from '../lib/bookingStatus';
+
+import type { BookingRow } from '../lib/types';
+
+export type RescheduleResetTarget = 'PENDING_DOCUMENTS' | 'PENDING_REVIEW';
+
+type MutationArgs = {
+  bookingId: string;
+  /** `YYYY-MM-DD` — new stay boundaries picked in the reschedule calendar. */
+  checkInDate: string;
+  checkOutDate: string;
+  /**
+   * `PENDING_DOCUMENTS` for a property with configured document requirements,
+   * `PENDING_REVIEW` for a property with none (see hook doc comment).
+   */
+  resetTo: RescheduleResetTarget;
+  /**
+   * Row's current `document_requirement_completions` value (from the loaded
+   * booking) so the reset merges the gaf/pet clear into the JSONB map instead
+   * of dropping unrelated requirement ids.
+   */
+  currentDocumentRequirementCompletions?: unknown;
+};
+
+export function useRescheduleBooking() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      bookingId,
+      checkInDate,
+      checkOutDate,
+      resetTo,
+      currentDocumentRequirementCompletions,
+    }: MutationArgs) => {
+      const nowIso = new Date().toISOString();
+      const patch: Record<string, unknown> = {
+        check_in_date: toGuestSubmissionDate(checkInDate),
+        check_out_date: toGuestSubmissionDate(checkOutDate),
+        number_of_nights: countParkingNights(checkInDate, checkOutDate),
+        ...pendingDocumentsClearPatchForGuestEditRevert(),
+        document_requirement_completions: pendingDocumentsClearCompletionsJsonbPatch(
+          currentDocumentRequirementCompletions
+        ),
+        status: resetTo,
+        status_updated_at: nowIso,
+        updated_at: nowIso,
+      };
+
+      const { data, error } = await supabase
+        .from('guest_submissions')
+        .update(patch)
+        .eq('id', bookingId)
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+      return data as BookingRow;
+    },
+
+    onSuccess: async (updated, { bookingId }) => {
+      qc.setQueryData(BOOKING_QUERY_KEY(bookingId), updated);
+      await qc.invalidateQueries({ queryKey: ['bookings'] });
+      await invalidateBookingAiReviewQueries(qc, bookingId);
+    },
+  });
+}
