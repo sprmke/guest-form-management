@@ -3,8 +3,9 @@
  * Requires `./dev.sh` or local Supabase + `GEMINI_API_KEY(S)` in supabase/.env.local.
  */
 
-import { expect, type APIRequestContext, type Page } from '@playwright/test';
 import path from 'node:path';
+
+import { expect, type APIRequestContext, type Page } from '@playwright/test';
 
 import {
   installLocalParkingHostSession,
