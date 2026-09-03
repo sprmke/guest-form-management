@@ -83,6 +83,60 @@ export function findShowcaseScrollableAncestor(start: HTMLElement | null): HTMLE
   return null;
 }
 
+/**
+ * Non-scrolling overlay host beside the Page Editor preview scrollport
+ * (`[data-page-editor-preview-chrome]`). Guest header/menu portal here with
+ * `position: absolute` so they clip to the frame and stay under admin sheets.
+ */
+export function resolveShowcaseChromeHost(scrollRoot: HTMLElement | null): HTMLElement | null {
+  if (!scrollRoot) return null;
+  const parent = scrollRoot.parentElement;
+  if (!parent) return null;
+  return parent.querySelector<HTMLElement>(':scope > [data-page-editor-preview-chrome]');
+}
+
+/**
+ * Keep a portaled overlay glued to a nested preview frame.
+ * Nested scroll does not bubble, so we listen in capture phase and skip no-op rects
+ * (scrolling inside the frame must not re-render the header).
+ */
+export function observeShowcaseFrameRect(
+  frame: HTMLElement,
+  onChange: (rect: DOMRectReadOnly) => void
+): () => void {
+  let last = { top: Number.NaN, left: Number.NaN, width: Number.NaN, height: Number.NaN };
+
+  const sync = () => {
+    const rect = frame.getBoundingClientRect();
+    if (
+      rect.top === last.top &&
+      rect.left === last.left &&
+      rect.width === last.width &&
+      rect.height === last.height
+    ) {
+      return;
+    }
+    last = { top: rect.top, left: rect.left, width: rect.width, height: rect.height };
+    onChange(rect);
+  };
+
+  sync();
+  const ro = new ResizeObserver(sync);
+  ro.observe(frame);
+  window.addEventListener('resize', sync);
+  window.addEventListener('scroll', sync, { capture: true, passive: true });
+  window.visualViewport?.addEventListener('resize', sync);
+  window.visualViewport?.addEventListener('scroll', sync);
+
+  return () => {
+    ro.disconnect();
+    window.removeEventListener('resize', sync);
+    window.removeEventListener('scroll', sync, { capture: true });
+    window.visualViewport?.removeEventListener('resize', sync);
+    window.visualViewport?.removeEventListener('scroll', sync);
+  };
+}
+
 /** Hero (or any section) belonging to the primary showcase only. */
 export function findPrimaryShowcaseSection(sectionId: string): HTMLElement | null {
   const escaped = CSS.escape(sectionId);

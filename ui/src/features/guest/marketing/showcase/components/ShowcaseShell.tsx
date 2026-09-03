@@ -413,7 +413,8 @@ function ShowcaseNav({
 
   if (!interactive) return header;
   if (!pin || typeof document === 'undefined') return null;
-  return createPortal(header, document.body);
+  // Page Editor: chrome host. Live / embed without host: body.
+  return createPortal(header, pin.portalTarget ?? document.body);
 }
 
 function DeepLinkScroll({ enabled }: { enabled: boolean }) {

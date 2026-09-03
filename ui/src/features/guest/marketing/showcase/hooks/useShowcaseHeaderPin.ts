@@ -1,7 +1,9 @@
 import { useLayoutEffect, useState, type CSSProperties } from 'react';
 
 import {
+  observeShowcaseFrameRect,
   readShowcaseScopeTheme,
+  resolveShowcaseChromeHost,
   resolveShowcaseScrollRoot,
   type ShowcaseScopeThemeSnapshot,
 } from '@/features/guest/marketing/showcase/lib/showcaseScroll';
@@ -11,13 +13,42 @@ const HEADER_Z = 90;
 export type ShowcaseHeaderPin = {
   style: CSSProperties;
   theme: ShowcaseScopeThemeSnapshot | null;
+  /**
+   * Page Editor: chrome host beside the scrollport.
+   * Embed (no host): `null` with fixed frame rect → caller uses `document.body`.
+   * Live: `null` → `document.body`.
+   */
+  portalTarget: HTMLElement | null;
+};
+
+function framePinStyle(rect: DOMRectReadOnly): CSSProperties {
+  return {
+    position: 'fixed',
+    top: rect.top,
+    left: rect.left,
+    width: rect.width,
+    zIndex: HEADER_Z,
+  };
+}
+
+const CHROME_HOST_PIN_STYLE: CSSProperties = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  right: 0,
+  zIndex: HEADER_Z,
+  pointerEvents: 'auto',
 };
 
 /**
- * Pin the showcase / stay-guide header with `position: fixed` (portaled to
- * `document.body`) so Admin PageTransition transforms, `@container` layout
- * containment, and warm-tint `filter` cannot trap sticky/fixed against a
- * scrolling ancestor. Live → viewport; Page Editor / embed → preview frame rect.
+ * Pin the showcase / stay-guide header with `position: fixed` / absolute so Admin
+ * PageTransition transforms, `@container` layout containment, and warm-tint
+ * `filter` cannot trap sticky against a scrolling ancestor.
+ *
+ * Live → viewport, portaled to `document.body`.
+ * Page Editor → absolute in `[data-page-editor-preview-chrome]` (clips to frame,
+ * stays under admin sheets).
+ * Embed without chrome host → fixed to frame rect on `document.body`.
  */
 export function useShowcaseHeaderPin(options: {
   enabled: boolean;
@@ -26,6 +57,7 @@ export function useShowcaseHeaderPin(options: {
 }): ShowcaseHeaderPin | null {
   const needsFrame = options.containedChrome || options.embed;
   const [scrollRoot, setScrollRoot] = useState<HTMLElement | null>(null);
+  const [chromeHost, setChromeHost] = useState<HTMLElement | null>(null);
   const [style, setStyle] = useState<CSSProperties | null>(() =>
     options.enabled && !needsFrame
       ? { position: 'fixed', top: 0, left: 0, right: 0, zIndex: HEADER_Z }
@@ -36,10 +68,12 @@ export function useShowcaseHeaderPin(options: {
   useLayoutEffect(() => {
     if (!options.enabled) {
       setScrollRoot(null);
+      setChromeHost(null);
       return;
     }
     if (!needsFrame) {
       setScrollRoot(null);
+      setChromeHost(null);
       return;
     }
 
@@ -56,6 +90,7 @@ export function useShowcaseHeaderPin(options: {
         return;
       }
       setScrollRoot(root);
+      setChromeHost(resolveShowcaseChromeHost(root));
     };
     bind();
     return () => {
@@ -92,33 +127,24 @@ export function useShowcaseHeaderPin(options: {
       return;
     }
 
-    const sync = () => {
-      const rect = scrollRoot.getBoundingClientRect();
-      setStyle({
-        position: 'fixed',
-        top: rect.top,
-        left: rect.left,
-        width: rect.width,
-        zIndex: HEADER_Z,
-      });
-      syncTheme();
-    };
+    syncTheme();
 
-    sync();
-    const ro = new ResizeObserver(sync);
-    ro.observe(scrollRoot);
-    window.addEventListener('resize', sync);
-    window.visualViewport?.addEventListener('resize', sync);
-    window.visualViewport?.addEventListener('scroll', sync);
+    // Page Editor chrome host: absolute pin — host does not scroll.
+    if (chromeHost) {
+      setStyle(CHROME_HOST_PIN_STYLE);
+      return;
+    }
 
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', sync);
-      window.visualViewport?.removeEventListener('resize', sync);
-      window.visualViewport?.removeEventListener('scroll', sync);
-    };
-  }, [options.enabled, needsFrame, scrollRoot]);
+    // Embed / legacy contained: fixed to the visible frame rect on body.
+    return observeShowcaseFrameRect(scrollRoot, (rect) => {
+      setStyle(framePinStyle(rect));
+    });
+  }, [options.enabled, needsFrame, scrollRoot, chromeHost]);
 
   if (!options.enabled || !style) return null;
-  return { style, theme };
+  return {
+    style,
+    theme,
+    portalTarget: chromeHost,
+  };
 }

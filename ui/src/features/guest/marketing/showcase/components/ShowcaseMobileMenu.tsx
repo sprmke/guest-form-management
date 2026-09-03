@@ -24,7 +24,9 @@ import {
   showcaseMobileMenuTitleSizeByVariant,
 } from '@/features/guest/marketing/showcase/lib/showcaseMobileMenuTypography';
 import {
+  observeShowcaseFrameRect,
   readShowcaseScopeTheme,
+  resolveShowcaseChromeHost,
   resolveShowcaseScrollRoot,
   type ShowcaseScopeThemeSnapshot,
 } from '@/features/guest/marketing/showcase/lib/showcaseScroll';
@@ -35,6 +37,14 @@ import { cn } from '@/lib/utils';
 const EASE = [0.22, 1, 0.36, 1] as const;
 const MENU_Z = 220;
 const SCROLL_LOCK_ATTR = 'data-showcase-scroll-lock';
+
+const CHROME_HOST_OVERLAY_STYLE: CSSProperties = {
+  position: 'absolute',
+  inset: 0,
+  zIndex: MENU_Z,
+  overflow: 'hidden',
+  pointerEvents: 'auto',
+};
 
 type Props = {
   open: boolean;
@@ -143,23 +153,30 @@ function lockScrollRoot(root: HTMLElement | null) {
 }
 
 /**
- * Page Editor / embed: pin the overlay to the *visible* preview frame with
- * `position: fixed` + getBoundingClientRect. `absolute inset-0` inside the
- * scrollport is anchored to the content top — after scrolling to a section the
- * menu paints off-screen while the sticky header stays faded.
+ * Page Editor: absolute overlay inside `[data-page-editor-preview-chrome]`
+ * (sibling of the scrollport — does not scroll with content, clips to frame).
+ * Embed without a chrome host: `position: fixed` + frame rect on `document.body`
+ * (`absolute inset-0` inside the scrollport anchors to content top and paints
+ * off-screen after the host scrolls to a section).
  */
 function useContainedOverlayStyle(
   _open: boolean,
   containedChrome: boolean,
   embed: boolean
-): { style: CSSProperties | null; scrollRoot: HTMLElement | null } {
+): {
+  style: CSSProperties | null;
+  scrollRoot: HTMLElement | null;
+  portalTarget: HTMLElement | null;
+} {
   const needsFrame = containedChrome || embed;
   const [scrollRoot, setScrollRoot] = useState<HTMLElement | null>(null);
+  const [chromeHost, setChromeHost] = useState<HTMLElement | null>(null);
   const [frame, setFrame] = useState<CSSProperties | null>(null);
 
   useLayoutEffect(() => {
     if (!needsFrame) {
       setScrollRoot(null);
+      setChromeHost(null);
       setFrame(null);
       return;
     }
@@ -175,6 +192,7 @@ function useContainedOverlayStyle(
         return;
       }
       setScrollRoot(root);
+      setChromeHost(resolveShowcaseChromeHost(root));
     };
 
     bind();
@@ -195,8 +213,12 @@ function useContainedOverlayStyle(
       return;
     }
 
-    const sync = () => {
-      const rect = scrollRoot.getBoundingClientRect();
+    if (chromeHost) {
+      setFrame(CHROME_HOST_OVERLAY_STYLE);
+      return;
+    }
+
+    return observeShowcaseFrameRect(scrollRoot, (rect) => {
       setFrame({
         position: 'fixed',
         top: rect.top,
@@ -206,21 +228,14 @@ function useContainedOverlayStyle(
         zIndex: MENU_Z,
         overflow: 'hidden',
       });
-    };
+    });
+  }, [needsFrame, scrollRoot, chromeHost]);
 
-    sync();
-    window.addEventListener('resize', sync);
-    window.visualViewport?.addEventListener('resize', sync);
-    window.visualViewport?.addEventListener('scroll', sync);
-
-    return () => {
-      window.removeEventListener('resize', sync);
-      window.visualViewport?.removeEventListener('resize', sync);
-      window.visualViewport?.removeEventListener('scroll', sync);
-    };
-  }, [needsFrame, scrollRoot]);
-
-  return { style: needsFrame ? frame : null, scrollRoot };
+  return {
+    style: needsFrame ? frame : null,
+    scrollRoot,
+    portalTarget: chromeHost,
+  };
 }
 
 function usePortaledShowcaseTheme(
@@ -255,11 +270,11 @@ export function ShowcaseMobileMenu({
   const reduced = data.reducedMotion || data.embed;
   const motionProps = panelMotion(config.motion, reduced);
   const needsContainedOverlay = containedChrome || data.embed;
-  const { style: frameStyle, scrollRoot } = useContainedOverlayStyle(
-    open,
-    containedChrome,
-    data.embed
-  );
+  const {
+    style: frameStyle,
+    scrollRoot,
+    portalTarget,
+  } = useContainedOverlayStyle(open, containedChrome, data.embed);
   const portaledTheme = usePortaledShowcaseTheme(open, true);
   const canShow = open && compactNav && (!needsContainedOverlay || frameStyle != null);
 
@@ -411,9 +426,10 @@ export function ShowcaseMobileMenu({
     </AnimatePresence>
   );
 
-  // Always portal so z-index stacks above the pinned header (also portaled to body).
+  // Page Editor: chrome host (clips to frame, under admin sheets).
+  // Embed / live: document.body with fixed frame / fullscreen.
   if (typeof document !== 'undefined') {
-    return createPortal(overlay, document.body);
+    return createPortal(overlay, portalTarget ?? document.body);
   }
 
   return overlay;
