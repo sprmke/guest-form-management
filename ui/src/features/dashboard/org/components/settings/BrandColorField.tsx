@@ -226,8 +226,9 @@ function BrandColorControls({
       <Button
         type="button"
         variant="outline"
+        size="sm"
         disabled={disabled || isAtResetValue}
-        className="min-h-[44px] shrink-0"
+        className="settings-action"
         onClick={() => applyPresetOrReset(resetValue)}
         aria-label="Reset brand color to default"
       >

@@ -266,12 +266,9 @@ export function OrgSocialsSection({
                 return (
                   <div
                     key={field.id}
-                    className="bg-card flex flex-col gap-2 p-3 sm:grid sm:grid-cols-[6.5rem_minmax(0,1fr)] sm:items-start sm:gap-4"
+                    className="bg-card flex flex-col gap-1 p-2 sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)] sm:items-center sm:gap-3 sm:p-2.5"
                   >
-                    <Label
-                      htmlFor={field.id}
-                      className="text-sm font-medium leading-none sm:pt-2.5"
-                    >
+                    <Label htmlFor={field.id} className="settings-field-label">
                       {field.label}
                     </Label>
                     <div className="min-w-0 space-y-1">
@@ -285,7 +282,10 @@ export function OrgSocialsSection({
                           markFieldInteracted(field.id);
                           onOperatorChange(field.key, event.target.value);
                         }}
-                        className={cn('h-10 min-w-0', socialError && 'border-destructive')}
+                        className={cn(
+                          'h-8 min-h-8 min-w-0 text-xs sm:text-sm',
+                          socialError && 'border-destructive'
+                        )}
                         placeholder={field.placeholder}
                         autoComplete="off"
                         spellCheck={false}

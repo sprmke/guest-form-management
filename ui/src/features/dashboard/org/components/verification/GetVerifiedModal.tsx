@@ -865,7 +865,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
             blockDismiss && 'pr-5 sm:pr-6'
           )}
         >
-          <ResponsiveModalTitle className="flex items-center gap-2.5 text-left text-lg font-semibold sm:text-lg">
+          <ResponsiveModalTitle className="flex items-center gap-2.5 text-left text-base font-semibold sm:text-lg">
             <span
               className={cn(
                 'flex size-9 shrink-0 items-center justify-center rounded-full',

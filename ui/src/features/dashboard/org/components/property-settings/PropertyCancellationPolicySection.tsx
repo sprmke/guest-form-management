@@ -85,12 +85,19 @@ function CancellationPolicyPreview({
         : 'text-muted-foreground';
 
   return (
-    <div className={cn('rounded-lg border p-4', toneClasses)}>
-      <div className="flex items-start gap-3">
-        <Check className={cn('mt-0.5 h-5 w-5 shrink-0', subtextClasses)} aria-hidden />
+    <div className={cn('rounded-lg border p-3 sm:p-4', toneClasses)}>
+      <div className="flex items-start gap-2.5">
+        <Check className={cn('mt-0.5 size-4 shrink-0', subtextClasses)} aria-hidden />
         <div className="min-w-0 flex-1">
-          <p className={cn('font-medium', textClasses)}>{display.title}</p>
-          <p className={cn('mt-1 text-sm', subtextClasses)}>{display.description}</p>
+          <p
+            className={cn(
+              'text-xs font-semibold leading-snug sm:text-sm sm:font-medium',
+              textClasses
+            )}
+          >
+            {display.title}
+          </p>
+          <p className={cn('mt-0.5 text-xs leading-snug', subtextClasses)}>{display.description}</p>
         </div>
         {action ? <div className="shrink-0 self-center">{action}</div> : null}
       </div>
@@ -319,7 +326,8 @@ export function PropertyCancellationPolicySection({
           <Button
             type="button"
             variant="outline"
-            className="min-h-[44px]"
+            size="sm"
+            className="settings-action"
             onClick={() => setManageOpen(true)}
           >
             Manage

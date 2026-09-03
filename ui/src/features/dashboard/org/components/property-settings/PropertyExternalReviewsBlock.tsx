@@ -598,8 +598,8 @@ export function PropertyExternalReviewsBlock({
 
   return (
     <>
-      <div className="bg-muted/40 flex min-h-[44px] w-full items-center justify-between gap-3 rounded-lg border px-4 py-3">
-        <p className="min-w-0 text-sm font-medium">
+      <div className="bg-muted/40 flex min-h-[44px] w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 sm:px-4 sm:py-3">
+        <p className="min-w-0 text-xs font-medium sm:text-sm">
           {reviewCount} of {MAX_PROPERTY_EXTERNAL_REVIEWS} external reviews
           <span className={cn('font-normal', aggregateToneClass(aggregate.tone))}>
             {' '}
@@ -609,7 +609,8 @@ export function PropertyExternalReviewsBlock({
         <Button
           type="button"
           variant="outline"
-          className="min-h-[44px] shrink-0"
+          size="sm"
+          className="settings-action"
           onClick={() => setManageOpen(true)}
         >
           Manage

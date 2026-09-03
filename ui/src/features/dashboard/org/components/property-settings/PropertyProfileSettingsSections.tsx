@@ -720,15 +720,16 @@ export function PropertyProfileMainSections({
             message={propertySettingsSectionBanner('amenities', sectionMessages)!}
           />
         ) : null}
-        <div className="bg-muted/40 flex min-h-[44px] w-full items-center justify-between gap-3 rounded-lg border px-4 py-3">
-          <p className="min-w-0 text-sm font-medium">
+        <div className="bg-muted/40 flex min-h-[44px] w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 sm:px-4 sm:py-3">
+          <p className="min-w-0 text-xs font-medium sm:text-sm">
             {draft.enabledAmenities.length} amenities selected
             {draft.customAmenities.length > 0 ? ` · ${draft.customAmenities.length} custom` : ''}
           </p>
           <Button
             type="button"
             variant="outline"
-            className="min-h-[44px] shrink-0"
+            size="sm"
+            className="settings-action"
             onClick={() => setAmenitiesManageOpen(true)}
           >
             Manage
@@ -754,15 +755,16 @@ export function PropertyProfileMainSections({
         icon={ListChecks}
         description="Rules guests see before they book."
       >
-        <div className="bg-muted/40 flex min-h-[44px] w-full items-center justify-between gap-3 rounded-lg border px-4 py-3">
-          <p className="min-w-0 text-sm font-medium">
+        <div className="bg-muted/40 flex min-h-[44px] w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 sm:px-4 sm:py-3">
+          <p className="min-w-0 text-xs font-medium sm:text-sm">
             {draft.enabledHouseRules.length} rules selected
             {draft.customHouseRules.length > 0 ? ` · ${draft.customHouseRules.length} custom` : ''}
           </p>
           <Button
             type="button"
             variant="outline"
-            className="min-h-[44px] shrink-0"
+            size="sm"
+            className="settings-action"
             onClick={() => setHouseRulesManageOpen(true)}
           >
             Manage
@@ -895,13 +897,13 @@ export function PropertyDangerZoneSection({
       description="Archive or permanently delete this property."
       className="border-destructive/50"
     >
-      <div className="space-y-4">
-        <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-medium">
+      <div className="space-y-3">
+        <div className="flex flex-col gap-2.5 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+          <div className="space-y-0.5">
+            <p className="text-xs font-semibold sm:text-sm">
               {isArchived ? 'Restore Property' : 'Archive Property'}
             </p>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-card-description">
               {isArchived
                 ? 'Sets status to Active — shows the property in active listings again.'
                 : 'Sets status to Inactive — hides the property from active listings. Booking history and settings are kept.'}
@@ -911,8 +913,9 @@ export function PropertyDangerZoneSection({
             <Button
               type="button"
               variant="outline"
+              size="sm"
               disabled={disabled || restorePending}
-              className="min-h-[44px] shrink-0"
+              className="settings-action w-full sm:w-auto"
               onClick={() => setRestoreOpen(true)}
             >
               {restorePending ? 'Restoring…' : 'Restore'}
@@ -921,8 +924,9 @@ export function PropertyDangerZoneSection({
             <Button
               type="button"
               variant="outline"
+              size="sm"
               disabled={disabled || archivePending}
-              className="min-h-[44px] shrink-0"
+              className="settings-action w-full sm:w-auto"
               onClick={() => setArchiveOpen(true)}
             >
               {archivePending ? 'Archiving…' : 'Archive'}
@@ -931,10 +935,10 @@ export function PropertyDangerZoneSection({
         </div>
 
         {showDelete ? (
-          <div className="border-destructive/50 flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <p className="text-destructive text-sm font-medium">Delete Property</p>
-              <p className="text-muted-foreground text-sm">
+          <div className="border-destructive/50 flex flex-col gap-2.5 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+            <div className="space-y-0.5">
+              <p className="text-destructive text-xs font-semibold sm:text-sm">Delete Property</p>
+              <p className="text-card-description">
                 Permanently removes this property, its gallery, integrations, and settings. Only
                 allowed when there is no booking history. This cannot be undone.
               </p>
@@ -942,8 +946,9 @@ export function PropertyDangerZoneSection({
             <Button
               type="button"
               variant="destructive"
+              size="sm"
               disabled={disabled || deletePending}
-              className="min-h-[44px] shrink-0"
+              className="settings-action w-full sm:w-auto"
               onClick={() => setDeleteOpen(true)}
             >
               {deletePending ? 'Deleting…' : 'Delete Property'}

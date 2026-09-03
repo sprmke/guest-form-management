@@ -88,7 +88,8 @@ export function PropertyPaymentMethodsSummary({
             <Button
               type="button"
               variant="outline"
-              className="min-h-[44px] shrink-0"
+              size="sm"
+              className="settings-action"
               onClick={onManage}
             >
               Manage

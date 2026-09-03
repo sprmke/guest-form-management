@@ -42,13 +42,13 @@ export function SocialLinkInheritField({
   const displayValue = inheritsOrg ? orgValue : storedValue;
 
   return (
-    <div className="bg-card flex flex-col gap-2 p-3 sm:grid sm:grid-cols-[6.5rem_minmax(0,1fr)] sm:items-start sm:gap-4">
-      <Label htmlFor={id} className="text-sm font-medium leading-none sm:pt-2.5">
+    <div className="bg-card flex flex-col gap-1 p-2 sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)] sm:items-center sm:gap-3 sm:p-2.5">
+      <Label htmlFor={id} className="settings-field-label">
         {label}
       </Label>
 
-      <div className="min-w-0 space-y-2">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="min-w-0 space-y-1">
+        <div className="flex flex-nowrap items-center gap-1.5">
           <Input
             id={id}
             type="text"
@@ -61,7 +61,7 @@ export function SocialLinkInheritField({
               onStoredChange(event.target.value);
             }}
             className={cn(
-              'h-10 min-w-0 flex-1',
+              'h-8 min-h-8 min-w-0 flex-1 text-xs sm:text-sm',
               inheritsOrg && 'bg-muted/40 text-muted-foreground',
               error && 'border-destructive'
             )}
@@ -75,29 +75,33 @@ export function SocialLinkInheritField({
             <Button
               type="button"
               variant="outline"
+              size="sm"
               disabled={disabled}
-              className="min-h-[44px] shrink-0"
+              className="settings-action"
               onClick={() => {
                 onInteract();
                 onInheritsOrgChange(false);
                 onStoredChange(orgValue.trim());
               }}
             >
-              Customize link
+              <span className="sm:hidden">Customize</span>
+              <span className="hidden sm:inline">Customize link</span>
             </Button>
           ) : (
             <Button
               type="button"
               variant="outline"
+              size="sm"
               disabled={disabled}
-              className="min-h-[44px] shrink-0"
+              className="settings-action"
               onClick={() => {
                 onInteract();
                 onInheritsOrgChange(true);
                 onStoredChange('');
               }}
             >
-              Use org link
+              <span className="sm:hidden">Use org</span>
+              <span className="hidden sm:inline">Use org link</span>
             </Button>
           )}
         </div>

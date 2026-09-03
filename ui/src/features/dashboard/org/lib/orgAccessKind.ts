@@ -8,12 +8,21 @@ export function canSelectOrgInSwitcher(accessKind: OrgAccessKind | undefined): b
   return Boolean(accessKind && !isPropertyOnlyOrgAccess(accessKind));
 }
 
-/** Owner (and platform admin) may create properties; org ADMIN does not. */
-export function canCreatePropertiesInOrg(accessKind: OrgAccessKind | undefined): boolean {
+/** Owner (and platform admin) may create properties; org ADMIN does not — unless
+ *  `canCreateProperties` from org-access is provided (honors `org.properties:create`). */
+export function canCreatePropertiesInOrg(
+  accessKind: OrgAccessKind | undefined,
+  canCreateProperties?: boolean
+): boolean {
+  if (typeof canCreateProperties === 'boolean') return canCreateProperties;
   return accessKind === 'owner' || accessKind === 'platform_admin';
 }
 
-export function canCreateParkingsInOrg(accessKind: OrgAccessKind | undefined): boolean {
+export function canCreateParkingsInOrg(
+  accessKind: OrgAccessKind | undefined,
+  canCreateParkings?: boolean
+): boolean {
+  if (typeof canCreateParkings === 'boolean') return canCreateParkings;
   return accessKind === 'owner' || accessKind === 'platform_admin';
 }
 

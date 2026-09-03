@@ -160,8 +160,8 @@ export function PropertyLocationSettingsBlock({
 
   return (
     <>
-      <div className="bg-muted/40 flex min-h-[44px] w-full items-center justify-between gap-3 rounded-lg border px-4 py-3">
-        <p className="min-w-0 truncate text-sm font-medium">{summaryAddress}</p>
+      <div className="bg-muted/40 flex min-h-0 w-full items-center justify-between gap-2 rounded-lg border px-2.5 py-2 sm:gap-3 sm:px-4 sm:py-3">
+        <p className="min-w-0 truncate text-xs font-medium sm:text-sm">{summaryAddress}</p>
         <div className="flex shrink-0 items-center gap-1">
           {canOpenMaps ? (
             <>
@@ -170,7 +170,7 @@ export function PropertyLocationSettingsBlock({
                 variant="outline"
                 size="icon"
                 disabled={disabled}
-                className="size-11 shrink-0"
+                className="settings-action !size-8 p-0"
                 asChild
               >
                 <a
@@ -180,7 +180,7 @@ export function PropertyLocationSettingsBlock({
                   aria-label="Open in Google Maps"
                   title="Open in Google Maps"
                 >
-                  <ExternalLink className="size-4" aria-hidden />
+                  <ExternalLink className="size-3.5" aria-hidden />
                 </a>
               </Button>
               <Button
@@ -188,19 +188,20 @@ export function PropertyLocationSettingsBlock({
                 variant="ghost"
                 size="icon"
                 disabled={disabled}
-                className="size-11 shrink-0"
+                className="settings-action !size-8 border-0 p-0"
                 aria-label="Copy Google Maps link"
                 title="Copy link"
                 onClick={() => void handleCopyMapsLink()}
               >
-                <Copy className="size-4" aria-hidden />
+                <Copy className="size-3.5" aria-hidden />
               </Button>
             </>
           ) : null}
           <Button
             type="button"
             variant="outline"
-            className="min-h-[44px] shrink-0"
+            size="sm"
+            className="settings-action"
             disabled={disabled}
             onClick={openManage}
           >

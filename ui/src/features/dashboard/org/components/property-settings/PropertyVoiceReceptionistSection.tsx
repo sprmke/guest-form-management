@@ -49,7 +49,9 @@ function UsageStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="border-border/40 bg-muted/15 rounded-lg border px-3 py-2.5">
       <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">{label}</p>
-      <p className="truncate text-lg font-bold tabular-nums tracking-tight sm:text-2xl mt-0.5">{value}</p>
+      <p className="mt-0.5 truncate text-base font-bold tabular-nums tracking-tight sm:text-2xl">
+        {value}
+      </p>
     </div>
   );
 }
