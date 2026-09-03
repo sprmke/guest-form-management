@@ -146,7 +146,15 @@ export function ResponsiveModalTitle({
 }: React.ComponentPropsWithoutRef<typeof DialogTitle>) {
   const useSheet = useIsBelowLg();
   if (useSheet) {
-    return <BottomSheetTitle className={className} {...props} />;
+    // Match the desktop DialogTitle scale so a modal title reads identically in
+    // sheet mode (phone/tablet) and dialog mode — BottomSheetTitle alone is only
+    // `text-base font-semibold`.
+    return (
+      <BottomSheetTitle
+        className={cn('text-base font-bold tracking-tight sm:text-lg', className)}
+        {...props}
+      />
+    );
   }
   return <DialogTitle className={className} {...props} />;
 }

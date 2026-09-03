@@ -3,7 +3,6 @@ import { BellRing, Smartphone } from 'lucide-react';
 import { usePushNotifications } from '@/features/dashboard/notifications/hooks/usePushNotifications';
 
 import { Switch } from '@/components/ui/switch';
-import { cn } from '@/lib/utils';
 
 /**
  * Per-device OS push opt-in. Web Push works on desktop Chrome/Edge/Firefox and
@@ -30,19 +29,21 @@ export function PushNotificationsCard() {
   }
 
   return (
-    <div className="border-border bg-card rounded-xl border p-4">
+    <div className="border-border bg-card rounded-xl border px-3 py-3 sm:p-4">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 gap-3">
-          <span className="bg-primary/10 text-primary mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
+        <div className="flex min-w-0 gap-2.5">
+          <span className="bg-primary/10 text-primary mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg">
             {needsInstallFirst ? (
-              <Smartphone className="h-4.5 w-4.5" />
+              <Smartphone className="size-3.5" />
             ) : (
-              <BellRing className="h-4.5 w-4.5" />
+              <BellRing className="size-3.5" />
             )}
           </span>
           <div className="min-w-0">
-            <p className="text-foreground text-sm font-semibold">Notifications on this device</p>
-            <p className={cn('text-muted-foreground mt-0.5 text-xs leading-snug')}>{status}</p>
+            <p className="text-foreground text-[13px] font-semibold leading-tight sm:text-sm">
+              Notifications on this device
+            </p>
+            <p className="text-card-description mt-0.5">{status}</p>
           </div>
         </div>
         <Switch

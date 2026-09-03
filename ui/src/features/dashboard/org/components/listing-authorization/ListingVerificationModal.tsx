@@ -616,7 +616,7 @@ export function ListingVerificationModal({
         )}
       >
         <ResponsiveModalHeader className="border-border shrink-0 space-y-3 border-b px-5 pb-3.5 pt-5 text-left sm:px-6">
-          <ResponsiveModalTitle className="flex items-center gap-2.5 text-left text-lg font-semibold">
+          <ResponsiveModalTitle className="flex items-center gap-2.5 text-left text-base font-semibold sm:text-lg">
             <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-full">
               <Home className="size-5" aria-hidden />
             </span>

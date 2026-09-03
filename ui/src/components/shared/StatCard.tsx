@@ -80,7 +80,9 @@ export function StatCard({
                 valueClassName?.includes('line-clamp')
                   ? 'font-bold tracking-tight'
                   : 'text-stat-value truncate',
-                valueClassName ?? 'text-foreground'
+                // Color override only — do not append `text-foreground` (token already
+                // sets it; a trailing text-* color used to make twMerge drop the token).
+                valueClassName
               )}
             >
               {value}

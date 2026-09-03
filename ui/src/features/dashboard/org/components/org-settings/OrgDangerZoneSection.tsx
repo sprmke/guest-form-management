@@ -52,21 +52,22 @@ export function OrgDangerZoneSection({
       description="Irreversible actions that affect your entire organization."
       className="border-destructive/50"
     >
-      <div className="border-destructive/50 flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0 space-y-1">
-          <p className="text-destructive text-sm font-medium">Delete organization</p>
-          <p className="text-muted-foreground text-sm">
+      <div className="border-destructive/50 flex flex-col gap-2.5 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="min-w-0 space-y-0.5">
+          <p className="text-destructive text-xs font-semibold sm:text-sm">Delete organization</p>
+          <p className="text-card-description">
             Permanently delete this organization and all its data. This cannot be undone.
           </p>
         </div>
         <Button
           type="button"
           variant="destructive"
+          size="sm"
           disabled={disabled || deletePending}
-          className="min-h-[44px] shrink-0 gap-1.5"
+          className="settings-action w-full gap-1.5 sm:w-auto"
           onClick={() => setDeleteOpen(true)}
         >
-          <Trash2 className="size-4" aria-hidden />
+          <Trash2 className="size-3.5" aria-hidden />
           {deletePending ? 'Deleting…' : 'Delete organization'}
         </Button>
       </div>

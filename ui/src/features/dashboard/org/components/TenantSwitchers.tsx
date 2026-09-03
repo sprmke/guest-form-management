@@ -28,6 +28,8 @@ import {
   setLastTenantContext,
 } from '@/features/dashboard/org/lib/tenantPaths';
 import type { Organization, Parking, Property } from '@/features/dashboard/org/types';
+import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
+import type { OrgAccessPayload } from '@/features/dashboard/team/lib/orgPermissions';
 
 import { TeamLogoMark } from '@/components/branding/TeamLogoMark';
 import {
@@ -136,6 +138,7 @@ function ContextSwitcherMenu({
   currentOrgId,
   currentPropertyId,
   currentParkingId,
+  orgAccess,
   onSelectOrg,
   onSelectProperty,
   onSelectParking,
@@ -149,6 +152,7 @@ function ContextSwitcherMenu({
   currentOrgId: string | undefined;
   currentPropertyId: string | undefined;
   currentParkingId: string | undefined;
+  orgAccess: OrgAccessPayload | undefined;
   onSelectOrg: (org: Organization) => void;
   onSelectProperty: (org: Organization, property: Property) => void;
   onSelectParking: (org: Organization, parking: Parking) => void;
@@ -170,9 +174,17 @@ function ContextSwitcherMenu({
         const properties = byOrgSlug.get(org.slug) ?? [];
         const parkings = byParkingOrgSlug.get(org.slug) ?? [];
         const canSelectOrg = canSelectOrgInSwitcher(org.accessKind);
+        const createFlags =
+          orgAccess?.orgId === org.id
+            ? {
+                canCreateProperties: orgAccess.canCreateProperties,
+                canCreateParkings: orgAccess.canCreateParkings,
+              }
+            : undefined;
         const canAdd =
           canSelectOrg &&
-          (canCreatePropertiesInOrg(org.accessKind) || canCreateParkingsInOrg(org.accessKind));
+          (canCreatePropertiesInOrg(org.accessKind, createFlags?.canCreateProperties) ||
+            canCreateParkingsInOrg(org.accessKind, createFlags?.canCreateParkings));
 
         return (
           <div key={org.id}>
@@ -269,6 +281,7 @@ export function SidebarTenantScope({
   const parkingTenant = useOptionalParkingContext();
   const { data: orgData } = useOrganizations();
   const { data: orgSettings } = useOrgSettings();
+  const { data: orgAccess } = useOrgPermissions();
   const organizations = orgData?.organizations ?? [];
   const { byOrgSlug, isLoading: propsLoading } = useAllOrgProperties(organizations);
   const { byOrgSlug: byParkingOrgSlug, isLoading: parkingsLoading } =
@@ -337,6 +350,7 @@ export function SidebarTenantScope({
     currentOrgId: currentOrg.id,
     currentPropertyId: currentProperty?.id,
     currentParkingId: currentParking?.id,
+    orgAccess,
     onSelectOrg: handleSelectOrg,
     onSelectProperty: handleSelectProperty,
     onSelectParking: handleSelectParking,
@@ -346,6 +360,13 @@ export function SidebarTenantScope({
   const addEntityOrg = addEntityTarget
     ? organizations.find((o) => o.id === addEntityTarget.id)
     : undefined;
+  const addEntityCreateFlags =
+    addEntityOrg && orgAccess?.orgId === addEntityOrg.id
+      ? {
+          canCreateProperties: orgAccess.canCreateProperties,
+          canCreateParkings: orgAccess.canCreateParkings,
+        }
+      : undefined;
 
   const addDialogs = addEntityTarget ? (
     <AddEntityDialog
@@ -357,8 +378,14 @@ export function SidebarTenantScope({
       orgId={addEntityTarget.id}
       orgSlug={addEntityTarget.slug}
       orgName={addEntityOrg?.name ?? addEntityTarget.slug}
-      canAddProperty={canCreatePropertiesInOrg(addEntityOrg?.accessKind)}
-      canAddParking={canCreateParkingsInOrg(addEntityOrg?.accessKind)}
+      canAddProperty={canCreatePropertiesInOrg(
+        addEntityOrg?.accessKind,
+        addEntityCreateFlags?.canCreateProperties
+      )}
+      canAddParking={canCreateParkingsInOrg(
+        addEntityOrg?.accessKind,
+        addEntityCreateFlags?.canCreateParkings
+      )}
       onPropertyCreated={(property) => {
         setLastTenantContext(addEntityTarget.slug, property.slug);
         navigate(propertySectionPath(addEntityTarget.slug, property.slug, 'dashboard'));

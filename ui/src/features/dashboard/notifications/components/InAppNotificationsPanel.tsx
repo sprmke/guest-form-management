@@ -152,27 +152,27 @@ export function InAppNotificationsPanel({
                   type="button"
                   onClick={() => handleRowClick(notification)}
                   className={cn(
-                    'hover:bg-muted/60 flex min-h-[44px] w-full items-start gap-3 px-4 py-3 text-left transition-colors',
+                    'hover:bg-muted/60 flex min-h-[44px] w-full items-start gap-2.5 px-3 py-2.5 text-left transition-colors sm:gap-3 sm:px-4',
                     !notification.isRead && 'bg-primary/5',
-                    variant === 'page' && 'py-3.5'
+                    variant === 'page' && 'sm:py-3'
                   )}
                 >
                   {notification.type === 'inbox_new_message' && inboxPlatform ? (
                     <PlatformLogo
                       platform={inboxPlatform}
                       size="xs"
-                      className="mt-0.5 size-8 shrink-0 rounded-full"
+                      className="mt-0.5 size-7 shrink-0 rounded-full sm:size-8"
                     />
                   ) : (
                     <span
                       className={cn(
-                        'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+                        'mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full sm:size-8',
                         notification.isRead
                           ? 'bg-muted text-muted-foreground'
                           : 'bg-primary/10 text-primary'
                       )}
                     >
-                      <Icon className="h-4 w-4" aria-hidden />
+                      <Icon className="size-3.5 sm:size-4" aria-hidden />
                     </span>
                   )}
                   <span className="min-w-0 flex-1">
@@ -182,14 +182,14 @@ export function InAppNotificationsPanel({
                           name={formatNotificationDisplayTitle(notification)}
                           platformLabel={platformLabel}
                           nameClassName={cn(
-                            'text-sm',
+                            'text-[13px] sm:text-sm',
                             notification.isRead ? 'font-medium' : 'font-semibold'
                           )}
                         />
                       ) : (
                         <span
                           className={cn(
-                            'truncate text-sm',
+                            'truncate text-[13px] sm:text-sm',
                             notification.isRead ? 'font-medium' : 'font-semibold'
                           )}
                         >
@@ -204,16 +204,16 @@ export function InAppNotificationsPanel({
                       ) : null}
                     </span>
                     {stayLabel ? (
-                      <span className="text-muted-foreground mt-0.5 block text-xs tabular-nums">
+                      <span className="text-muted-foreground mt-0.5 block text-[11px] tabular-nums sm:text-xs">
                         {stayLabel}
                       </span>
                     ) : null}
                     {notification.body ? (
-                      <span className="text-muted-foreground mt-0.5 line-clamp-2 block text-xs">
+                      <span className="text-muted-foreground mt-0.5 line-clamp-1 block text-[11px] sm:line-clamp-2 sm:text-xs">
                         {notification.body}
                       </span>
                     ) : null}
-                    <span className="text-muted-foreground mt-1 block text-[11px]">
+                    <span className="text-muted-foreground mt-0.5 block text-[10px] sm:mt-1 sm:text-[11px]">
                       {formatDistanceToNow(new Date(notification.created_at), {
                         addSuffix: true,
                       })}
