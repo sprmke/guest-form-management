@@ -7,6 +7,7 @@ import { extractLeadingSectionHeading } from '@/features/guest/stay-guide/lib/st
 import { PropertyTemplatePlaceholdersDialog } from '@/features/dashboard/bookings/components/property-templates/PropertyTemplatePlaceholdersDialog';
 import {
   RichTextEditor,
+  richTextChromeIconButtonClassName,
   type RichTextEditorHandle,
 } from '@/features/dashboard/bookings/components/property-templates/RichTextEditor';
 import { TemplateSectionImageField } from '@/features/dashboard/bookings/components/property-templates/TemplateSectionImageField';
@@ -134,28 +135,36 @@ export function StayGuideSectionContentCard({
             }
           />
 
-          <div className="flex flex-wrap items-center justify-end gap-1.5">
+          <div className="flex flex-wrap items-center justify-end gap-1">
             <Button
               type="button"
               variant="outline"
-              size="sm"
-              className="min-h-[44px] gap-1.5 sm:min-h-9"
+              size="icon-sm"
+              className={cn(
+                richTextChromeIconButtonClassName,
+                'border-input bg-card hover:bg-accent sm:h-8 sm:w-auto sm:gap-1.5 sm:px-2.5'
+              )}
               disabled={disabled}
               onClick={() => setPlaceholdersOpen(true)}
+              aria-label="Placeholders"
             >
               <Braces className="size-3.5 shrink-0" aria-hidden />
-              Placeholders
+              <span className="hidden text-xs font-semibold sm:inline">Placeholders</span>
             </Button>
             <Button
               type="button"
               variant="outline"
-              size="sm"
-              className="min-h-[44px] gap-1.5 sm:min-h-9"
+              size="icon-sm"
+              className={cn(
+                richTextChromeIconButtonClassName,
+                'border-input bg-card hover:bg-accent sm:h-8 sm:w-auto sm:gap-1.5 sm:px-2.5'
+              )}
               disabled={disabled}
               onClick={onResetToDefault}
+              aria-label="Reset"
             >
               <RotateCcw className="size-3.5 shrink-0" aria-hidden />
-              Reset
+              <span className="hidden text-xs font-semibold sm:inline">Reset</span>
             </Button>
           </div>
 

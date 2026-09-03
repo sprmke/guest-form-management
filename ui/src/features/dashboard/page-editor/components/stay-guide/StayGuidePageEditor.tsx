@@ -17,6 +17,7 @@ import {
 import { extractLeadingSectionHeading } from '@/features/guest/stay-guide/lib/stayGuideContent';
 import { StayGuidePage } from '@/features/guest/stay-guide/pages/StayGuidePage';
 
+import { useAdminLayoutFillMain } from '@/features/dashboard/bookings/components/AdminLayout';
 import {
   usePropertyTemplateMutations,
   usePropertyTemplates,
@@ -58,6 +59,9 @@ import { SectionContentSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
 
 function PageChrome({ children }: { children: React.ReactNode }) {
+  // Immersive editor — fill the admin main column so the preview frame gets height.
+  useAdminLayoutFillMain(true);
+
   return (
     <AdminMobilePage title="Stay Guide" titleId="stay-guide-editor-heading">
       {children}
@@ -374,6 +378,10 @@ export function StayGuidePageEditor({
   return (
     <PageChrome>
       <PageEditorShell
+        canUndo={historyIndex > 0}
+        canRedo={historyIndex < historyLength - 1}
+        onUndo={undo}
+        onRedo={redo}
         header={
           <PageEditorHeader
             pageLabel="Stay Guide"
@@ -403,12 +411,7 @@ export function StayGuidePageEditor({
           />
         }
         preview={
-          <PageEditorPreviewPane
-            canUndo={historyIndex > 0}
-            canRedo={historyIndex < historyLength - 1}
-            onUndo={undo}
-            onRedo={redo}
-          >
+          <PageEditorPreviewPane>
             <PreviewOverrideProvider value={mergedPreview}>
               <StayGuidePage />
             </PreviewOverrideProvider>

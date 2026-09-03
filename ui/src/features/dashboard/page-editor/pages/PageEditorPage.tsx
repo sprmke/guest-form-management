@@ -613,6 +613,10 @@ function PropertyLandingPageEditor({
         resolvedBrandColor={resolvedBrand}
       />
       <PageEditorShell
+        canUndo={historyIndex > 0}
+        canRedo={historyIndex < historyLength - 1}
+        onUndo={undo}
+        onRedo={redo}
         header={
           <PageEditorHeader
             pageLabel={pageMeta.label}
@@ -651,12 +655,7 @@ function PropertyLandingPageEditor({
           />
         }
         preview={
-          <PageEditorPreviewPane
-            canUndo={historyIndex > 0}
-            canRedo={historyIndex < historyLength - 1}
-            onUndo={undo}
-            onRedo={redo}
-          >
+          <PageEditorPreviewPane>
             <PreviewOverrideProvider value={mergedPreview}>
               <PropertyDetailPage />
             </PreviewOverrideProvider>

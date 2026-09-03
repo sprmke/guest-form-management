@@ -16,6 +16,7 @@ import {
   type ShowcaseTemplateKey,
 } from '@/features/guest/marketing/showcase/types/showcase';
 
+import { useAdminLayoutFillMain } from '@/features/dashboard/bookings/components/AdminLayout';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
 import { propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
@@ -66,6 +67,9 @@ export function PropertyShowcasePageEditor({
   propertySlug: string;
   propertyId: string | null;
 }) {
+  // Immersive editor — fill the admin main column so the preview frame gets height.
+  useAdminLayoutFillMain(true);
+
   const navigate = useNavigate();
   const propertyId = usePropertyIdParam();
   const { open } = useUpgradeModal();
@@ -202,6 +206,10 @@ export function PropertyShowcasePageEditor({
   return (
     <AdminMobilePage title="Showcase" titleId="showcase-editor-heading">
       <PageEditorShell
+        canUndo={historyIndex > 0}
+        canRedo={historyIndex < historyLength - 1}
+        onUndo={undo}
+        onRedo={redo}
         header={
           <PageEditorHeader
             pageLabel="Showcase"
@@ -239,12 +247,7 @@ export function PropertyShowcasePageEditor({
           />
         }
         preview={
-          <PageEditorPreviewPane
-            canUndo={historyIndex > 0}
-            canRedo={historyIndex < historyLength - 1}
-            onUndo={undo}
-            onRedo={redo}
-          >
+          <PageEditorPreviewPane>
             {mergedPreview ? (
               <PreviewOverrideProvider value={mergedPreview}>
                 <PropertyShowcasePage />
