@@ -163,7 +163,7 @@ export function PricingDateModal({
                     if (newPrice.trim()) onApply();
                   }
                 }}
-                className="h-12 pl-9 text-lg font-semibold tabular-nums"
+                className="h-11 pl-9 text-base font-semibold tabular-nums sm:h-12 sm:text-lg"
               />
             </div>
           </div>

@@ -317,8 +317,8 @@ export function ChannelSyncDialog({
                 }}
                 className="space-y-5"
               >
-                <TabsList className="grid h-10 w-full grid-cols-2">
-                  <TabsTrigger value="import" className="h-8">
+                <TabsList className="grid h-10 w-full grid-cols-2 max-lg:h-9">
+                  <TabsTrigger value="import" className="h-8 max-lg:h-7 max-lg:text-xs">
                     From Airbnb
                     {feeds.length > 0 ? (
                       <span className="text-muted-foreground ml-1.5 tabular-nums">
@@ -326,7 +326,7 @@ export function ChannelSyncDialog({
                       </span>
                     ) : null}
                   </TabsTrigger>
-                  <TabsTrigger value="export" className="h-8">
+                  <TabsTrigger value="export" className="h-8 max-lg:h-7 max-lg:text-xs">
                     To Airbnb
                   </TabsTrigger>
                 </TabsList>
