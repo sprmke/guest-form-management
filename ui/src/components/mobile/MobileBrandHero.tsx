@@ -1,6 +1,5 @@
 import { forwardRef, useRef, type CSSProperties, type ReactNode, type RefObject } from 'react';
 
-import { useAdminLayoutIsFillMain } from '@/features/dashboard/bookings/components/AdminLayout';
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { SidebarTenantScope } from '@/features/dashboard/org/components/TenantSwitchers';
 import { SuperAdminSidebarScope } from '@/features/dashboard/super-admin/components/SuperAdminSidebarScope';
@@ -25,9 +24,15 @@ type MobileBrandHeroProps = {
   superAdmin?: boolean;
   /** Scroll sentinel for sticky chrome on pages without a float overlap. */
   pinSentinelRef?: RefObject<HTMLDivElement | null>;
+  /**
+   * No floating toolbar straddles the bottom edge — tighten the bottom pad so
+   * the title sits close to the white canvas instead of over a tall green band.
+   */
+  flush?: boolean;
   className?: string;
   /**
-   * 0 = expanded, 1 = title/arc fully compressed (parallax).
+   * 0 = expanded, 1 = title fully compressed (parallax). The hero bottom edge
+   * stays a straight line at every step — only pad/title compress.
    * Driven by {@link useMobileHeroCollapseProgress} from the page scrollport.
    */
   collapseProgress?: number;
@@ -35,8 +40,8 @@ type MobileBrandHeroProps = {
 
 /**
  * Brand-colored top band — phone/tablet only (`max-lg`).
- * Scrolls with the page (not sticky). Title + arc compress via scroll parallax.
- * Desktop renders nothing (`lg:hidden`).
+ * Scrolls with the page (not sticky). Straight bottom edge; title + bottom pad
+ * compress via scroll parallax. Desktop renders nothing (`lg:hidden`).
  */
 export const MobileBrandHero = forwardRef<HTMLElement, MobileBrandHeroProps>(
   function MobileBrandHero(
@@ -48,6 +53,7 @@ export const MobileBrandHero = forwardRef<HTMLElement, MobileBrandHeroProps>(
       trailing,
       superAdmin = false,
       pinSentinelRef,
+      flush = false,
       className,
       collapseProgress = 0,
     },
@@ -74,6 +80,7 @@ export const MobileBrandHero = forwardRef<HTMLElement, MobileBrandHeroProps>(
         className={cn(
           'mobile-brand-hero relative z-0 lg:hidden',
           p > 0.02 && 'mobile-brand-hero--compact',
+          flush && 'mobile-brand-hero--flush',
           className
         )}
         style={{ ['--hero-collapse' as string]: String(p) } as CSSProperties}
@@ -135,7 +142,7 @@ type MobileHeroOverlapProps = {
   pinned?: boolean;
 };
 
-/** Floating toolbar rests on top of the hero arc (higher z than the hero). */
+/** Floating toolbar straddles the hero's straight bottom edge (higher z than the hero). */
 export function MobileHeroOverlap({
   children,
   className,
@@ -200,7 +207,7 @@ type AdminMobilePageProps = {
 /**
  * Native mobile page shell — document scroll + morphing sticky chrome (`max-lg`).
  *
- * Mobile: hero → optional float (on top of arc) → full-bleed white canvas.
+ * Mobile: hero → optional float (straddling the straight edge) → full-bleed white canvas.
  * Default pages: `main` scrolls. Fill-main pages (Settings / Notifications / Inbox /
  * Templates): this shell is a flex column so `AdminSectionNavLayout`'s inner
  * `data-admin-content-scroll` can scroll under the hero.
@@ -226,7 +233,6 @@ export function AdminMobilePage({
   children,
 }: AdminMobilePageProps) {
   const isMobileLayout = useIsBelowLg();
-  const fillMain = useAdminLayoutIsFillMain();
   const heroRef = useRef<HTMLElement | null>(null);
   const floatSentinelRef = useRef<HTMLDivElement | null>(null);
   const heroSentinelRef = useRef<HTMLDivElement | null>(null);
@@ -256,6 +262,7 @@ export function AdminMobilePage({
         superAdmin={superAdmin}
         pinSentinelRef={overlap ? undefined : heroSentinelRef}
         collapseProgress={collapseProgress}
+        flush={!overlap}
         className="shrink-0"
       />
 
@@ -271,7 +278,7 @@ export function AdminMobilePage({
         />
       ) : null}
 
-      {/* Float is a sibling of the hero (not inside the canvas) so it paints on top of the arc. */}
+      {/* Float is a sibling of the hero (not inside the canvas) so it paints on top of the edge. */}
       {isMobileLayout && overlap ? (
         <MobileHeroOverlap pinSentinelRef={floatSentinelRef} pinned={pinned}>
           {overlap}
@@ -282,23 +289,19 @@ export function AdminMobilePage({
         className={cn(
           'flex min-h-0 min-w-0 flex-1 flex-col',
           isMobileLayout &&
-            cn(
-              'bg-background relative z-0 w-full max-lg:pb-1',
-              /*
-               * Document-scroll no-float: mild tuck under the arc.
-               * Fill-main (Settings/Notifications): never tuck — negative margin
-               * pulls the inner scrollport under the hero and clips content.
-               */
-              !overlap && !fillMain && '-mt-6'
-            )
+            /*
+             * No tuck anywhere now: no-float pages tighten the hero bottom pad
+             * (`mobile-brand-hero--flush`) so the white canvas meets the straight
+             * edge flush; float pages tuck the float itself (`MobileHeroOverlap`).
+             */
+            'bg-background relative z-0 w-full max-lg:pb-1'
         )}
       >
         <MobilePageStack
           dense={dense}
           className={cn(
             'min-h-0 flex-1',
-            isMobileLayout &&
-              cn('px-3.5 sm:px-4 md:px-6', overlap ? 'pt-1' : fillMain ? 'pt-3' : 'pt-5'),
+            isMobileLayout && cn('px-3.5 sm:px-4 md:px-6', overlap ? 'pt-1' : 'pt-3'),
             'max-lg:mt-0',
             className
           )}

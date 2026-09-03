@@ -566,7 +566,7 @@ export const AdminSection = React.memo(function AdminSection({
       >
         <div className={cn(headerAction && 'min-w-0 space-y-1.5')}>
           <CardTitle className="flex items-center gap-2">
-            {Icon ? <Icon className="size-4 shrink-0 sm:size-5" aria-hidden /> : null}
+            {Icon ? <Icon className="size-4 shrink-0" aria-hidden /> : null}
             <span className="min-w-0">{title}</span>
             {badge}
           </CardTitle>
@@ -574,7 +574,7 @@ export const AdminSection = React.memo(function AdminSection({
         </div>
         {headerAction ? <div className="shrink-0">{headerAction}</div> : null}
       </CardHeader>
-      <CardContent className="space-y-6">{children}</CardContent>
+      <CardContent className="space-y-3 sm:space-y-6">{children}</CardContent>
     </Card>
   );
 });

@@ -22,8 +22,10 @@ import { cn } from '@/lib/utils';
 
 /** Shared surface for icon-only hero actions beside the tenant switcher (`max-lg`). */
 export const mobileHeroActionClassName = cn(
-  'mobile-hero-action native-press touch-manipulation',
-  'flex size-11 shrink-0 items-center justify-center rounded-full',
+  'mobile-hero-action native-press relative touch-manipulation',
+  /* Visual 36px — matches sticky chrome + filter/toolbar density; hit ≥44 via pad. */
+  'flex size-9 shrink-0 items-center justify-center rounded-full',
+  "before:absolute before:-inset-1 before:content-['']",
   /* Frosted on-primary — matches tenant avatar ring + scope icons (light + dark). */
   'bg-primary-foreground/15 text-primary-foreground',
   'ring-primary-foreground/25 ring-1',
@@ -31,7 +33,8 @@ export const mobileHeroActionClassName = cn(
   'hover:bg-primary-foreground/22',
   'focus-visible:ring-primary-foreground/40 focus-visible:ring-offset-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
   'disabled:pointer-events-none disabled:opacity-45',
-  '[&_svg]:size-[1.15rem] [&_svg]:shrink-0'
+  /* Force icon size — callers often pass size-5 which would blow out the dense chrome. */
+  '[&_svg]:!size-4 [&_svg]:shrink-0'
 );
 
 type MobileHeroActionButtonProps = ButtonHTMLAttributes<HTMLButtonElement>;
@@ -105,7 +108,7 @@ export function MobileHeroActionMenu({
         onClick={only.onSelect}
         className={className}
       >
-        <Icon className="size-5" aria-hidden />
+        <Icon className="size-4" aria-hidden />
       </MobileHeroActionButton>
     );
   }
@@ -120,7 +123,7 @@ export function MobileHeroActionMenu({
           className={className}
           onClick={() => setSheetOpen(true)}
         >
-          <TriggerIcon className="size-5" aria-hidden />
+          <TriggerIcon className="size-4" aria-hidden />
         </MobileHeroActionButton>
         <MobileChoiceSheet open={sheetOpen} onOpenChange={setSheetOpen} title={label}>
           <div role="listbox" aria-label={label}>
@@ -149,7 +152,7 @@ export function MobileHeroActionMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <MobileHeroActionButton aria-label={label} className={className}>
-          <TriggerIcon className="size-5" aria-hidden />
+          <TriggerIcon className="size-4" aria-hidden />
         </MobileHeroActionButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className={cn('w-52', contentClassName)}>
