@@ -98,6 +98,8 @@ Guest/operator **contact name, phone, and email** for templates and public surfa
 
 Properties inherit org social URLs when their `app_settings` columns are empty — see **property settings** § Socials.
 
+Mobile field chrome matches property Socials: `settings-field-label` + `h-9` inputs (`OrgSocialsSection`).
+
 ### Trust (Superhost)
 
 Read-only progress for the **earned** Superhost badge (org-wide; all properties inherit). No save path on this page.

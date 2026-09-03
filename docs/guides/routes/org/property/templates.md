@@ -29,6 +29,8 @@ Route/nav: `templates:view`. In-page: `templates.standard:edit`, `templates.emai
 
 Templates is where you customize the text guests and your team receive: stay guide sections (house rules, check-in and check-out, parking) and automated emails (booking confirmations, document requests, ready-for-check-in). Preview shows the same layout that goes out to guests, whether that's on the stay guide or in an email.
 
+**Mobile editor chrome:** Edit/Preview uses the dense card-header segment track (~28px). Placeholders / Reset / Save are compact 32px icon controls (labels from `sm+`). TipTap toolbar buttons match that size. Rich-text body/headings use a phone-scaled type set (14px body; H1 ~20px) so content doesn’t dwarf admin chrome.
+
 **Common host questions**
 
 - Q: Which templates do guests actually see?

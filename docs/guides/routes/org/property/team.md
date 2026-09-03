@@ -13,7 +13,7 @@ Route: `/org/:orgSlug/property/:propertySlug/team`
 | Section                 | E2E save | Validation     | Docs       | Notes                                                     |
 | ----------------------- | -------- | -------------- | ---------- | --------------------------------------------------------- |
 | Stats cards             | ✓        | —              | Documented | From API member/invite counts                             |
-| Members tab             | ✓        | —              | Documented | List, role change, activate/deactivate, remove            |
+| Members tab             | ✓        | —              | Documented | List, role change, activate/deactivate, remove; phone = dense rows + compact ⋯ menu |
 | Invitations tab         | ✓        | Email required | Documented | Invite, resend (email), cancel via API                    |
 | Permissions tab         | ✓        | —              | Documented | Roles list (⋯ actions) + comparison matrix                |
 | Invite dialog           | ✓        | Email required | Documented | Role picker; default Operations                           |
