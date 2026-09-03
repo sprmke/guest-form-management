@@ -9,6 +9,7 @@ import type { FinanceLedgerEntry } from '@/features/dashboard/finance/lib/financ
 import { recurrenceIntervalLabel } from '@/features/dashboard/finance/lib/recurrence';
 import type { FinanceBookingLedgerRow } from '@/features/dashboard/finance/lib/types';
 
+import { AdminListCardOverflowMenu } from '@/components/mobile/AdminListCardOverflowMenu';
 import { FinanceStaysCardGridSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { toneIconWrapClasses } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
@@ -60,6 +61,43 @@ export function FinanceLedgerCardGrid({
             onEditTransaction?.(entry);
           };
 
+          const phoneActions =
+            entry.source === 'transaction'
+              ? [
+                  ...(entry.transaction?.recurrence_series_id && onOpenSeries
+                    ? [
+                        {
+                          key: 'series',
+                          label: 'View series',
+                          icon: <Repeat className="size-5" aria-hidden />,
+                          onSelect: () => onOpenSeries(entry),
+                        },
+                      ]
+                    : []),
+                  ...(onEditTransaction
+                    ? [
+                        {
+                          key: 'edit',
+                          label: 'Edit',
+                          icon: <Pencil className="size-5" aria-hidden />,
+                          onSelect: () => onEditTransaction(entry),
+                        },
+                      ]
+                    : []),
+                  ...(onDeleteTransaction
+                    ? [
+                        {
+                          key: 'delete',
+                          label: 'Delete',
+                          icon: <Trash2 className="size-5" aria-hidden />,
+                          destructive: true,
+                          onSelect: () => onDeleteTransaction(entry),
+                        },
+                      ]
+                    : []),
+                ]
+              : [];
+
           return (
             <div
               key={entry.id}
@@ -74,10 +112,13 @@ export function FinanceLedgerCardGrid({
                 }
               }}
             >
-              {/* Phone: dense ledger row */}
-              <div className="flex items-center gap-2.5 sm:hidden">
+              {/* Phone: title + amount; status · meta; actions behind ⋯ */}
+              <div className="flex items-start gap-2.5 sm:hidden">
                 <div
-                  className={cn('size-7 shrink-0', toneIconWrapClasses(isIncome ? 'green' : 'red'))}
+                  className={cn(
+                    'mt-0.5 size-7 shrink-0',
+                    toneIconWrapClasses(isIncome ? 'green' : 'red')
+                  )}
                 >
                   {isIncome ? (
                     <ArrowUpRight
@@ -109,6 +150,7 @@ export function FinanceLedgerCardGrid({
                     </span>
                   </div>
                   <div className="mt-1 flex min-w-0 items-center gap-1.5">
+                    <FinanceLedgerStatusBadge status={entry.status} className="shrink-0" />
                     <p className="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
                       <span className="tabular-nums">{format(parseISO(entry.date), 'MMM d')}</span>
                       <span className="text-muted-foreground/40 mx-1" aria-hidden>
@@ -124,39 +166,12 @@ export function FinanceLedgerCardGrid({
                         </>
                       ) : null}
                     </p>
-                    <FinanceLedgerStatusBadge status={entry.status} />
-                    {entry.source === 'transaction' ? (
-                      <div
-                        className="flex shrink-0 items-center"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {entry.transaction?.recurrence_series_id && onOpenSeries ? (
-                          <button
-                            type="button"
-                            className="text-muted-foreground hover:bg-muted/60 hover:text-foreground inline-flex size-8 items-center justify-center rounded-md"
-                            aria-label="View recurring series"
-                            onClick={() => onOpenSeries(entry)}
-                          >
-                            <Repeat className="size-3.5" />
-                          </button>
-                        ) : null}
-                        <button
-                          type="button"
-                          className="text-muted-foreground hover:bg-muted/60 hover:text-foreground inline-flex size-8 items-center justify-center rounded-md"
-                          aria-label="Edit transaction"
-                          onClick={() => onEditTransaction?.(entry)}
-                        >
-                          <Pencil className="size-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive inline-flex size-8 items-center justify-center rounded-md"
-                          aria-label="Delete transaction"
-                          onClick={() => onDeleteTransaction?.(entry)}
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </div>
+                    {phoneActions.length > 0 ? (
+                      <AdminListCardOverflowMenu
+                        label={`Actions for ${entry.description}`}
+                        sheetTitle="Transaction"
+                        actions={phoneActions}
+                      />
                     ) : null}
                   </div>
                 </div>

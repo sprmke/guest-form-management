@@ -5,6 +5,7 @@ import { CheckCircle2, Clock3, Pencil, Repeat, Trash2 } from 'lucide-react';
 import { recurrenceIntervalLabel } from '@/features/dashboard/finance/lib/recurrence';
 import type { MaintenanceItem } from '@/features/dashboard/maintenance/lib/types';
 
+import { AdminListCardOverflowMenu } from '@/components/mobile/AdminListCardOverflowMenu';
 import { FinanceStaysCardGridSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { compactStatusBadgeClasses } from '@/lib/statusToneColors';
 import { cn } from '@/lib/utils';
@@ -90,6 +91,40 @@ function MaintenanceReminderCard({
     recurrenceLabel,
   ].filter(Boolean);
 
+  const phoneActions = [
+    ...(isRecurring && onOpenSeries
+      ? [
+          {
+            key: 'series',
+            label: 'View series',
+            icon: <Repeat className="size-5" aria-hidden />,
+            onSelect: () => onOpenSeries(),
+          },
+        ]
+      : []),
+    ...(onEdit
+      ? [
+          {
+            key: 'edit',
+            label: 'Edit',
+            icon: <Pencil className="size-5" aria-hidden />,
+            onSelect: () => onEdit(),
+          },
+        ]
+      : []),
+    ...(onDelete
+      ? [
+          {
+            key: 'delete',
+            label: 'Delete',
+            icon: <Trash2 className="size-5" aria-hidden />,
+            destructive: true,
+            onSelect: () => onDelete(),
+          },
+        ]
+      : []),
+  ];
+
   return (
     <div
       role="button"
@@ -104,59 +139,27 @@ function MaintenanceReminderCard({
         'sm:hover:border-border sm:transition-all sm:duration-200 sm:hover:-translate-y-0.5'
       )}
     >
-      {/* Phone: dense list row — title + status; date · category · recurrence; actions */}
-      <div className="flex items-center gap-2 px-3 py-2.5 sm:hidden">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="text-foreground min-w-0 flex-1 truncate text-[13px] font-semibold leading-tight">
-              {item.label}
-            </p>
-            {showStatus && item.telegram_reminder_enabled ? (
-              <MaintenanceStatusBadge isComplete={Boolean(item.completed_at)} />
-            ) : null}
-          </div>
-          <p className="text-muted-foreground mt-1 truncate text-[11px] leading-tight">
+      {/* Phone: title; status · meta; actions behind ⋯ */}
+      <div className="px-3 py-2.5 sm:hidden">
+        <div className="flex items-center gap-2">
+          <p className="text-foreground min-w-0 flex-1 truncate text-[13px] font-semibold leading-tight">
+            {item.label}
+          </p>
+          {phoneActions.length > 0 ? (
+            <AdminListCardOverflowMenu
+              label={`Actions for ${item.label}`}
+              sheetTitle="Reminder"
+              actions={phoneActions}
+            />
+          ) : null}
+        </div>
+        <div className="mt-1 flex min-w-0 items-center gap-1.5">
+          {showStatus && item.telegram_reminder_enabled ? (
+            <MaintenanceStatusBadge isComplete={Boolean(item.completed_at)} />
+          ) : null}
+          <p className="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
             {metaParts.join(' · ')}
           </p>
-        </div>
-        <div className="flex shrink-0 items-center" onClick={(e) => e.stopPropagation()}>
-          {isRecurring && onOpenSeries ? (
-            <CardIconAction
-              label="View recurring series"
-              compact
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenSeries();
-              }}
-            >
-              <Repeat className="size-3.5" />
-            </CardIconAction>
-          ) : null}
-          {onEdit ? (
-            <CardIconAction
-              label="Edit"
-              compact
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit();
-              }}
-            >
-              <Pencil className="size-3.5" />
-            </CardIconAction>
-          ) : null}
-          {onDelete ? (
-            <CardIconAction
-              label="Delete"
-              destructive
-              compact
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-            >
-              <Trash2 className="size-3.5" />
-            </CardIconAction>
-          ) : null}
         </div>
       </div>
 
@@ -253,14 +256,12 @@ function CardIconAction({
   onClick,
   destructive,
   edge,
-  compact,
   children,
 }: {
   label: string;
   onClick: (e: MouseEvent<HTMLButtonElement>) => void;
   destructive?: boolean;
   edge?: 'left' | 'right';
-  compact?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -269,12 +270,9 @@ function CardIconAction({
       aria-label={label}
       onClick={onClick}
       className={cn(
-        'inline-flex items-center justify-center transition-colors',
-        compact
-          ? 'text-muted-foreground hover:bg-muted/60 hover:text-foreground size-8 rounded-md'
-          : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground min-h-[44px] min-w-[44px] p-2.5',
+        'text-muted-foreground hover:bg-muted/80 hover:text-foreground inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2.5 transition-colors',
         destructive && 'hover:bg-destructive/10 hover:text-destructive',
-        edge === 'right' && !compact && 'rounded-br-xl'
+        edge === 'right' && 'rounded-br-xl'
       )}
     >
       {children}
@@ -285,7 +283,12 @@ function CardIconAction({
 export function MaintenanceStatusBadge({ isComplete }: { isComplete: boolean }) {
   if (isComplete) {
     return (
-      <span className={cn('inline-flex items-center gap-1', compactStatusBadgeClasses('success'))}>
+      <span
+        className={cn(
+          'inline-flex shrink-0 items-center gap-1',
+          compactStatusBadgeClasses('success')
+        )}
+      >
         <CheckCircle2 className="size-3 shrink-0" aria-hidden />
         Done
       </span>
@@ -293,7 +296,12 @@ export function MaintenanceStatusBadge({ isComplete }: { isComplete: boolean }) 
   }
 
   return (
-    <span className={cn('inline-flex items-center gap-1', compactStatusBadgeClasses('pending'))}>
+    <span
+      className={cn(
+        'inline-flex shrink-0 items-center gap-1',
+        compactStatusBadgeClasses('pending')
+      )}
+    >
       <Clock3 className="size-3 shrink-0" aria-hidden />
       Pending
     </span>
