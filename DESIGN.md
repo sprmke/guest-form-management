@@ -40,17 +40,26 @@ Hierarchy via shared utilities in `ui/src/index.css` (not one-off `text-xl` / `m
 
 **Admin / dashboard (phone density — 4af):** use the token classes, not raw sizes:
 
-| Role              | Token                      | Phone              |
-| ----------------- | -------------------------- | ------------------ |
-| Page / hero title | `text-admin-page-title`    | 18px (`text-lg`)   |
-| Section / group   | `text-section-title`       | 14px (`text-sm`)   |
-| Card title        | `text-card-title`          | 16px (`text-base`) |
-| Body / UI         | `text-sm` / `text-ui`      | 14px               |
-| KPI value         | `text-stat-value`          | 16px               |
-| List amount       | `text-list-amount`         | 15px               |
-| Meta / caption    | `text-xs` / `text-caption` | 12px               |
+| Role                   | Token                                           | Phone                                             |
+| ---------------------- | ----------------------------------------------- | ------------------------------------------------- |
+| Page / hero title      | `text-admin-page-title`                         | 18px (`text-lg`)                                  |
+| Section / group        | `text-section-title`                            | 14px (`text-sm`)                                  |
+| Card title             | `text-card-title`                               | 14px phone → 16px `sm+`                           |
+| Body / UI              | `text-sm` / `text-ui`                           | 14px                                              |
+| KPI value              | `text-stat-value`                               | 16px **bold** (`font-bold`)                       |
+| List amount            | `text-list-amount`                              | 15px                                              |
+| Meta / caption         | `text-xs` / `text-caption`                      | 12px                                              |
+| Settings field label   | `settings-field-label`                          | 12px muted → 14px `sm+`                           |
+| Settings secondary CTA | `settings-action` (+ `size="sm"`)               | visual `h-8` + hit pad (not `min-h-[44px]`)       |
+| Hero icon action       | `mobile-hero-action` / `MobileHeroActionButton` | 36px visual (`size-9`) + hit pad; sticky `size-8` |
+
+Settings surfaces (org / property / parking) must use `settings-action` for Manage / Customize / Test / Archive-style secondary actions so they match Location “Manage”, not full-width default `h-10` buttons. **Never** put `min-h-[44px]` on the visible chrome of `.settings-action` — that cancelled the density pass; hit size comes from the invisible pad only.
+
+Teal hero trailing icons must use `MobileHeroActionButton` (never raw `size-11` circles) so Bookings / Inbox / Pricing / Settings stay even.
 
 Canonical table: `.cursor/rules/mobile-responsive.mdc` §4. Marketing display heroes may stay large; do not apply that display scale to admin chrome.
+
+**`cn()` / `tailwind-merge`:** custom type tokens are named `text-*` (e.g. `text-stat-value`). Default `twMerge` treats those as text-color utilities and can drop them when a color class follows — wiping size/weight. `ui/src/lib/utils.ts` registers the type-scale tokens so they compose with colors. Always pass color overrides _after_ the token via `cn('text-stat-value', 'text-emerald-600')`, never replace the token with a color-only class.
 
 Guest heroes may use larger tracking-tight headlines; admin stays tighter and quieter.
 
