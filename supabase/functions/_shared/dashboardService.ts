@@ -135,6 +135,10 @@ export type DashboardStatsParams = {
   propertyId?: string;
   parkingId?: string;
   orgId?: string;
+  /** When set with `orgId`, limit property rollup to these ids (scoped org admin). */
+  scopedPropertyIds?: string[];
+  /** When set with `orgId`, limit parking rollup to these ids (scoped org admin). */
+  scopedParkingIds?: string[];
   /** Inclusive period range (YYYY-MM-DD, Asia/Manila calendar days). */
   from?: string | null;
   to?: string | null;
@@ -490,8 +494,20 @@ export async function computeDashboardStats(
     if (parkingsError) {
       throw new Error(`dashboard parkings query failed: ${parkingsError.message}`);
     }
-    propertyIds = (propertyRows ?? []).map((row) => String(row.id));
-    for (const row of propertyRows ?? []) {
+    const scopedPropertyFilter = params.scopedPropertyIds
+      ? new Set(params.scopedPropertyIds)
+      : null;
+    const scopedParkingFilter = params.scopedParkingIds ? new Set(params.scopedParkingIds) : null;
+
+    const filteredPropertyRows = (propertyRows ?? []).filter((row) =>
+      scopedPropertyFilter ? scopedPropertyFilter.has(String(row.id)) : true
+    );
+    const filteredParkingRows = (parkingRows ?? []).filter((row) =>
+      scopedParkingFilter ? scopedParkingFilter.has(String(row.id)) : true
+    );
+
+    propertyIds = filteredPropertyRows.map((row) => String(row.id));
+    for (const row of filteredPropertyRows) {
       propertyMetaById.set(String(row.id), {
         id: String(row.id),
         name: String(row.name ?? 'Property'),
@@ -499,8 +515,8 @@ export async function computeDashboardStats(
         location: propertyLocationFromRow(row as Record<string, unknown>),
       });
     }
-    parkingIds = (parkingRows ?? []).map((row) => String(row.id));
-    for (const row of parkingRows ?? []) {
+    parkingIds = filteredParkingRows.map((row) => String(row.id));
+    for (const row of filteredParkingRows) {
       parkingMetaById.set(String(row.id), {
         id: String(row.id),
         name: String(row.name ?? 'Parking'),
@@ -574,25 +590,31 @@ export async function computeDashboardStats(
         })),
       };
     }
-    // Scope by organization_id through an inner-joined embed — never by building an
-    // `id.in.(...)` list of every property/parking id, which blows past request URI
-    // length limits once an org has more than a couple hundred assets.
+    // Scope by organization_id through an inner-joined embed for all-listings admins —
+    // never build an `id.in.(...)` list of every property/parking id (URI length limits).
+    // Scoped org admins use `.in()` on the already-filtered id sets (small).
     const scopedQueries: any[] = [];
+    const useAssignedIdFilter =
+      params.scopedPropertyIds !== undefined || params.scopedParkingIds !== undefined;
     if (propIds.length > 0) {
       scopedQueries.push(
-        supabase
-          .from('guest_submissions')
-          .select('*, properties!inner(organization_id)')
-          .eq('properties.organization_id', params.orgId as string)
+        useAssignedIdFilter
+          ? supabase.from('guest_submissions').select('*').in('property_id', propIds)
+          : supabase
+              .from('guest_submissions')
+              .select('*, properties!inner(organization_id)')
+              .eq('properties.organization_id', params.orgId as string)
       );
     }
     if (parkIds.length > 0) {
       scopedQueries.push(
-        supabase
-          .from('guest_submissions')
-          // Disambiguate from guest_submissions.parking_pinned_id → parkings (broadcast flow).
-          .select('*, parkings!guest_submissions_parking_id_fkey!inner(organization_id)')
-          .eq('parkings.organization_id', params.orgId as string)
+        useAssignedIdFilter
+          ? supabase.from('guest_submissions').select('*').in('parking_id', parkIds)
+          : supabase
+              .from('guest_submissions')
+              // Disambiguate from guest_submissions.parking_pinned_id → parkings (broadcast flow).
+              .select('*, parkings!guest_submissions_parking_id_fkey!inner(organization_id)')
+              .eq('parkings.organization_id', params.orgId as string)
       );
     }
     const scopedResults = await Promise.all(scopedQueries);

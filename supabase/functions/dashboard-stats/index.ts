@@ -3,10 +3,12 @@
  * Property scope: ?property_id=…
  * Parking scope: ?parking_id=…
  * Org scope: ?org_slug=… or ?org_id=… (aggregates org properties + parking listings)
+ * Scoped org admins (`all_listings = false`) only aggregate assigned listings.
  */
 
 import { computeDashboardStats } from '../_shared/dashboardService.ts';
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
+import { resolveAssignedListingIdsForOrgUser } from '../_shared/orgAuth.ts';
 import {
   readOrgIdFromUrl,
   readOrgSlugFromUrl,
@@ -17,7 +19,7 @@ import {
 import { readParkingIdFromUrl, resolveScopedParkingAccess } from '../_shared/parkingScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
-serveAuthenticated('dashboard-stats', async (req, user) => {
+serveAuthenticated('dashboard-stats', async (req) => {
   if (req.method !== 'GET') {
     return jsonError(req, 'Method not allowed', 405);
   }
@@ -31,6 +33,8 @@ serveAuthenticated('dashboard-stats', async (req, user) => {
   let propertyId: string | undefined;
   let parkingId: string | undefined;
   let orgId: string | undefined;
+  let scopedPropertyIds: string[] | undefined;
+  let scopedParkingIds: string[] | undefined;
 
   if (explicitParkingId) {
     await resolveScopedParkingAccess(req, 'bookings:view');
@@ -45,6 +49,11 @@ serveAuthenticated('dashboard-stats', async (req, user) => {
   } else if (orgSlug || orgIdParam) {
     const ctx = await resolveOrgAccessContext(req, 'org:dashboard:view');
     orgId = ctx.org.id;
+    if (!ctx.canListAllProperties) {
+      const assigned = await resolveAssignedListingIdsForOrgUser(ctx.user.id, ctx.org.id);
+      scopedPropertyIds = assigned.propertyIds;
+      scopedParkingIds = assigned.parkingIds;
+    }
   } else {
     const { property } = await resolveScopedPropertyAccess(req, 'bookings:view');
     propertyId = property.id;
@@ -54,6 +63,8 @@ serveAuthenticated('dashboard-stats', async (req, user) => {
     propertyId,
     parkingId,
     orgId,
+    scopedPropertyIds,
+    scopedParkingIds,
     from: url.searchParams.get('from'),
     to: url.searchParams.get('to'),
   });

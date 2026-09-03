@@ -965,6 +965,52 @@ export type OrgAccessContext = {
   planLimited?: boolean;
 };
 
+/**
+ * Property + parking ids the user may see under an org when `all_listings` is false.
+ * Includes active memberships only (plan-limited inactive rows are omitted from hub lists).
+ * Assigned sets are typically small — safe for `.in()` filters.
+ */
+export async function resolveAssignedListingIdsForOrgUser(
+  userId: string,
+  orgId: string
+): Promise<{ propertyIds: string[]; parkingIds: string[] }> {
+  const supabase = createServiceClient();
+
+  const [{ data: propertyRows, error: propertyError }, { data: parkingRows, error: parkingError }] =
+    await Promise.all([
+      supabase
+        .from('property_members')
+        .select('property_id, properties!inner(organization_id)')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .eq('properties.organization_id', orgId),
+      supabase
+        .from('parking_members')
+        .select('parking_id, parkings!inner(organization_id)')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .eq('parkings.organization_id', orgId),
+    ]);
+
+  if (propertyError) {
+    console.error('[orgAuth] assigned property lookup failed:', propertyError.message);
+    throw forbiddenResponse('Could not verify organization access');
+  }
+  if (parkingError) {
+    console.error('[orgAuth] assigned parking lookup failed:', parkingError.message);
+    throw forbiddenResponse('Could not verify organization access');
+  }
+
+  return {
+    propertyIds: [
+      ...new Set((propertyRows ?? []).map((row) => String(row.property_id)).filter(Boolean)),
+    ],
+    parkingIds: [
+      ...new Set((parkingRows ?? []).map((row) => String(row.parking_id)).filter(Boolean)),
+    ],
+  };
+}
+
 export type OrgTeamAccessKind = 'owner' | 'platform_admin' | 'org_admin';
 
 export type OrgTeamAccessContext = {

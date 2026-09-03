@@ -719,6 +719,12 @@ export class DatabaseService {
     parkingId?: string;
     /** Org-wide scope: property stays and/or parking reservations for this org. */
     orgId?: string;
+    /**
+     * Scoped org admin — filter to assigned listing ids instead of the full org.
+     * Prefer this over `orgId` when `all_listings` is false (sets are small).
+     */
+    propertyIds?: string[];
+    parkingIds?: string[];
     includePropertyMeta?: boolean;
     includeParkingMeta?: boolean;
     bookingKind?: 'property' | 'parking' | null;
@@ -745,6 +751,8 @@ export class DatabaseService {
       propertyId,
       parkingId,
       orgId,
+      propertyIds,
+      parkingIds,
       includePropertyMeta = false,
       includeParkingMeta = false,
       bookingKind = null,
@@ -767,6 +775,7 @@ export class DatabaseService {
     // each filtered by `organization_id` through an inner-joined embed — never by
     // building an `id.in.(...)` list of every property/parking id, which blows past
     // request URI length limits once an org has more than a couple hundred assets.
+    // Scoped org admins (`propertyIds` / `parkingIds`) use `.in()` — assignment sets stay small.
     const baseRequests: any[] = [];
 
     if (parkingId) {
@@ -788,6 +797,21 @@ export class DatabaseService {
       baseRequests.push(
         this.supabase.from('guest_submissions').select('*').eq('property_id', propertyId)
       );
+    } else if (propertyIds || parkingIds) {
+      const wantProperty = bookingKind !== 'parking';
+      const wantParking = bookingKind !== 'property';
+      const scopedPropertyIds = propertyIds ?? [];
+      const scopedParkingIds = parkingIds ?? [];
+      if (wantProperty && scopedPropertyIds.length > 0) {
+        baseRequests.push(
+          this.supabase.from('guest_submissions').select('*').in('property_id', scopedPropertyIds)
+        );
+      }
+      if (wantParking && scopedParkingIds.length > 0) {
+        baseRequests.push(
+          this.supabase.from('guest_submissions').select('*').in('parking_id', scopedParkingIds)
+        );
+      }
     } else if (orgId) {
       const wantProperty = bookingKind !== 'parking';
       const wantParking = bookingKind !== 'property';

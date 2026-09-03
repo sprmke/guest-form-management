@@ -1,9 +1,15 @@
 /**
  * list-parkings — GET parkings for an org (owner/org admin with org:parkings:view).
  * Query: ?orgId=uuid OR ?orgSlug=slug
+ * Scoped org admins (`all_listings = false`) only see assigned parkings.
  */
 
-import { createServiceClient, serializeParking, verifyOrgAccess } from '../_shared/orgAuth.ts';
+import {
+  createServiceClient,
+  resolveAssignedListingIdsForOrgUser,
+  serializeParking,
+  verifyOrgAccess,
+} from '../_shared/orgAuth.ts';
 import { jsonError, jsonSuccess, requireHttpMethod } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
@@ -26,7 +32,7 @@ serveAuthenticated('list-parkings', async (req) => {
     return jsonError(req, 'orgId or orgSlug is required');
   }
 
-  const { org } = await verifyOrgAccess(
+  const { user, org, canListAllProperties } = await verifyOrgAccess(
     req,
     { orgId: orgId || undefined, orgSlug: orgSlug || undefined },
     'org:parkings:view'
@@ -44,8 +50,16 @@ serveAuthenticated('list-parkings', async (req) => {
     throw new Error('Failed to list parkings');
   }
 
+  let parkings = data ?? [];
+
+  if (!canListAllProperties) {
+    const assigned = await resolveAssignedListingIdsForOrgUser(user.id, org.id);
+    const allowed = new Set(assigned.parkingIds);
+    parkings = parkings.filter((row) => allowed.has(row.id as string));
+  }
+
   return jsonSuccess(req, {
-    parkings: (data ?? []).map((row) => ({
+    parkings: parkings.map((row) => ({
       ...serializeParking(row),
       stats: emptyParkingStats(),
     })),

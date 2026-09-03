@@ -3,11 +3,15 @@
  * Property scope: ?property_id=… (property stays only)
  * Parking scope: ?parking_id=… (parking reservations only)
  * Org scope: ?org_slug=… or ?org_id=… (property stays + parking reservations)
+ * Scoped org admins (`all_listings = false`) only see bookings for assigned listings.
  */
 
 import { DatabaseService } from '../_shared/databaseService.ts';
 import { jsonResponse, parsePageLimit } from '../_shared/httpResponse.ts';
-import { verifyParkingTeamAccess } from '../_shared/orgAuth.ts';
+import {
+  resolveAssignedListingIdsForOrgUser,
+  verifyParkingTeamAccess,
+} from '../_shared/orgAuth.ts';
 import {
   readOrgIdFromUrl,
   readOrgSlugFromUrl,
@@ -31,6 +35,8 @@ serveAuthenticated('list-bookings', async (req) => {
   let propertyId: string | undefined;
   let parkingId: string | undefined;
   let orgId: string | undefined;
+  let propertyIds: string[] | undefined;
+  let parkingIds: string[] | undefined;
   let includePropertyMeta = false;
   let includeParkingMeta = false;
 
@@ -40,7 +46,6 @@ serveAuthenticated('list-bookings', async (req) => {
     includeParkingMeta = true;
   } else if (orgSlug || orgIdParam) {
     const ctx = await resolveOrgAccessContext(req, 'org:bookings:view');
-    orgId = ctx.org.id;
     includePropertyMeta = true;
     includeParkingMeta = true;
 
@@ -54,9 +59,14 @@ serveAuthenticated('list-bookings', async (req) => {
         return jsonResponse(req, { success: false, error: 'Property not in organization' }, 403);
       }
       propertyId = property.id;
-      orgId = undefined;
       includePropertyMeta = true;
       includeParkingMeta = false;
+    } else if (ctx.canListAllProperties) {
+      orgId = ctx.org.id;
+    } else {
+      const assigned = await resolveAssignedListingIdsForOrgUser(ctx.user.id, ctx.org.id);
+      propertyIds = assigned.propertyIds;
+      parkingIds = assigned.parkingIds;
     }
   } else if (explicitPropertyId) {
     const { property } = await resolveScopedPropertyAccess(
@@ -95,6 +105,8 @@ serveAuthenticated('list-bookings', async (req) => {
     propertyId,
     parkingId,
     orgId,
+    propertyIds,
+    parkingIds,
     includePropertyMeta,
     includeParkingMeta,
     bookingKind,
