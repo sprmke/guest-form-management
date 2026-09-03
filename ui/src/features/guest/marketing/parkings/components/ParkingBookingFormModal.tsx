@@ -16,7 +16,7 @@ import {
 import type { ParkingRegistrationValues } from '@/features/guest/marketing/parkings/lib/parkingRegistrationSchema';
 import { GuestDialogShell } from '@/features/guest/marketing/shared/components/GuestDialogShell';
 
-import { DialogTitle } from '@/components/ui/dialog';
+import { ResponsiveModalTitle } from '@/components/ui/responsive-modal';
 import { dateToString } from '@/utils/format/dates';
 
 /** Server error codes/messages mapped to guest-facing copy — anything unmapped falls back to a generic message. */
@@ -96,9 +96,9 @@ export function ParkingBookingFormModal({
       open={open}
       onOpenChange={onOpenChange}
       title={
-        <DialogTitle className="text-foreground text-base font-semibold">
+        <ResponsiveModalTitle className="text-foreground text-base font-semibold">
           Request parking
-        </DialogTitle>
+        </ResponsiveModalTitle>
       }
       sizeClassName="max-w-[min(calc(100vw-1.5rem),36rem)] sm:max-w-[min(90vw,40rem)]"
       heightClassName="max-h-[min(92dvh,48rem)]"
