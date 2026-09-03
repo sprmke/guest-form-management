@@ -1,6 +1,7 @@
 import { Navigate, Route, useParams } from 'react-router-dom';
 
 import { guestAccountRoutes } from '@/features/guest/account/routes';
+import { ExplorePreviewPage } from '@/features/guest/marketing/explore-preview/pages/ExplorePreviewPage';
 import { AboutPage } from '@/features/guest/marketing/pages/AboutPage';
 import { ContactPage } from '@/features/guest/marketing/pages/ContactPage';
 import { CookiesPage } from '@/features/guest/marketing/pages/CookiesPage';
@@ -49,6 +50,8 @@ export const marketingRoutes = [
     <Route path="for-hosts/pricing" element={<ForHostsPricingPage />} />
     {/* Ground-up redesign preview — swap into `for-hosts` below once approved. */}
     <Route path="for-hosts/preview" element={<ForHostsPreviewPage />} />
+    {/* Guest landing redesign preview — manual review, not linked from nav. */}
+    <Route path="explore-preview" element={<ExplorePreviewPage />} />
     <Route path="for-hosts" element={<ForHostsPage />} />
     <Route path="services" element={<ServicesPage />} />
     <Route path="hosts/:orgSlug" element={<HostPublicPage />} />

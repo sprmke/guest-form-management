@@ -4,7 +4,7 @@ import { GuestDialogShell } from '@/features/guest/marketing/shared/components/G
 import { PublicPropertyCalendar } from '@/features/guest/property/components/PublicPropertyCalendar';
 
 import { Button } from '@/components/ui/button';
-import { DialogTitle } from '@/components/ui/dialog';
+import { ResponsiveModalTitle } from '@/components/ui/responsive-modal';
 import { cn } from '@/lib/utils';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -81,11 +81,11 @@ export function BookingCalendarModal({
               <CalendarDays className="text-primary h-3.5 w-3.5" />
             )}
           </div>
-          <DialogTitle
+          <ResponsiveModalTitle
             className={cn('text-base font-semibold', hasRange ? 'text-primary' : 'text-foreground')}
           >
             {stepTitle}
-          </DialogTitle>
+          </ResponsiveModalTitle>
         </div>
       }
       footer={

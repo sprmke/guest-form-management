@@ -6,7 +6,7 @@ import { GuestForm, type GuestFormEmbedNav } from '@/features/guest/form/compone
 import { GuestFormStepNavigation } from '@/features/guest/form/components/GuestFormStepNavigation';
 import { GuestDialogShell } from '@/features/guest/marketing/shared/components/GuestDialogShell';
 
-import { DialogTitle } from '@/components/ui/dialog';
+import { ResponsiveModalTitle } from '@/components/ui/responsive-modal';
 import { dateToString } from '@/utils/format/dates';
 
 export interface GuestBookingFormModalProps {
@@ -56,7 +56,9 @@ export function GuestBookingFormModal({
           <div className="bg-primary/10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
             <User className="text-primary h-3.5 w-3.5" />
           </div>
-          <DialogTitle className="text-foreground text-base font-semibold">Guest Form</DialogTitle>
+          <ResponsiveModalTitle className="text-foreground text-base font-semibold">
+            Guest Form
+          </ResponsiveModalTitle>
         </div>
       }
       // Comfortable form width — wider than calendar, not full desktop.

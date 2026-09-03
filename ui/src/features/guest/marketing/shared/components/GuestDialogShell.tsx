@@ -2,7 +2,12 @@ import type { ReactNode } from 'react';
 
 import { X } from 'lucide-react';
 
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import {
+  ResponsiveModal,
+  ResponsiveModalClose,
+  ResponsiveModalContent,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { cn } from '@/lib/utils';
 
 export type GuestDialogShellProps = {
@@ -14,8 +19,9 @@ export type GuestDialogShellProps = {
   /** Pinned action row under a top border (Clear / Save, Back / Continue, …). */
   footer?: ReactNode;
   /**
-   * Width override. Must include both base and `sm:` max-width so we beat
-   * DialogContent’s default `sm:max-w-[min(90vw,28rem)]`.
+   * Desktop (`lg+`) width override. Must include both base and `sm:` max-width so
+   * we beat DialogContent’s default `sm:max-w-[min(90vw,28rem)]`. Ignored below
+   * `lg`, where the shell renders edge-to-edge as a bottom sheet.
    */
   sizeClassName?: string;
   /** Height override. Defaults to a comfortable laptop-safe cap. */
@@ -28,9 +34,10 @@ export type GuestDialogShellProps = {
 };
 
 /**
- * Consistent guest-facing dialog chrome: edge-to-edge header + optional footer
- * separators, scrollable body, DialogContent padding killed.
- * Close control lives in the header flex row so it aligns with the title.
+ * Consistent guest-facing modal chrome: edge-to-edge header + optional footer
+ * separators, scrollable body, content padding killed. Centered `Dialog` on
+ * `lg+`, bottom sheet below `lg` (via `ResponsiveModal`). Close control lives in
+ * the header flex row so it aligns with the title.
  */
 export function GuestDialogShell({
   open,
@@ -46,8 +53,9 @@ export function GuestDialogShell({
   dismissLocked = false,
 }: GuestDialogShellProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent
+        sheetLayout="split"
         showCloseButton={false}
         onPointerDownOutside={(event) => {
           if (dismissLocked) event.preventDefault();
@@ -73,20 +81,20 @@ export function GuestDialogShell({
         >
           <div className="min-w-0 flex-1">
             {typeof title === 'string' ? (
-              <DialogTitle className="text-foreground text-base font-semibold tracking-tight">
+              <ResponsiveModalTitle className="text-foreground text-base font-semibold tracking-tight">
                 {title}
-              </DialogTitle>
+              </ResponsiveModalTitle>
             ) : (
               title
             )}
           </div>
 
-          <DialogClose
+          <ResponsiveModalClose
             className="text-muted-foreground ring-offset-background hover:bg-muted focus:ring-ring flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl opacity-80 transition-all hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none"
             aria-label="Close"
           >
             <X className="size-5 shrink-0" aria-hidden />
-          </DialogClose>
+          </ResponsiveModalClose>
         </div>
 
         <div
@@ -108,7 +116,7 @@ export function GuestDialogShell({
             {footer}
           </div>
         ) : null}
-      </DialogContent>
-    </Dialog>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }
