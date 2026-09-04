@@ -1,11 +1,8 @@
 import { OnboardingProofUpload } from '@/features/dashboard/org/components/onboarding/OnboardingProofUpload';
 import { OnboardingVerificationRightsFields } from '@/features/dashboard/org/components/onboarding/OnboardingVerificationRightsFields';
-import { SocialPlatformSelect } from '@/features/dashboard/org/components/verification/GetVerifiedModal';
 import {
-  propertyAccessScreenshotHelp,
   validateVerificationFile,
   verificationRightsProofHelp,
-  type OrgSocialProofPlatform,
   type OrgVerificationRights,
 } from '@/features/dashboard/org/lib/orgVerification';
 
@@ -23,11 +20,6 @@ type Props = {
   proofPreview: string | null;
   proofError: string | null;
   onProofChange: (file: File | null, preview: string | null) => void;
-  platformLabel: string;
-  platformHelp: string;
-  platformValue: OrgSocialProofPlatform | '';
-  onPlatformChange: (value: OrgSocialProofPlatform) => void;
-  platformError: string | null;
   screenshotFile: File | null;
   screenshotPreview: string | null;
   screenshotError: string | null;
@@ -49,11 +41,6 @@ export function OnboardingHostAccessVerificationSection({
   proofPreview,
   proofError,
   onProofChange,
-  platformLabel,
-  platformHelp,
-  platformValue,
-  onPlatformChange,
-  platformError,
   screenshotFile,
   screenshotPreview,
   screenshotError,
@@ -98,18 +85,10 @@ export function OnboardingHostAccessVerificationSection({
           onProofChange(file, preview);
         }}
       />
-      <SocialPlatformSelect
-        id={`${sectionId}-platform`}
-        label={platformLabel}
-        help={platformHelp}
-        value={platformValue}
-        onChange={onPlatformChange}
-        error={platformError}
-      />
       <OnboardingProofUpload
         id={`${sectionId}-access-screenshot`}
         label="Access screenshot"
-        help={propertyAccessScreenshotHelp(platformValue, kind)}
+        help="Screenshot showing you are logged in as owner or admin of that Page or listing."
         file={screenshotFile}
         previewUrl={screenshotPreview}
         error={screenshotError}

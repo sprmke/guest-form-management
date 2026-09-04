@@ -236,6 +236,7 @@ export function ListingVerificationModal({
     assetsQuery.data?.authorization ?? readListingAuthorizationSummary(listingSettings);
 
   const { upload, submitBase, submitRecommended } = useListingAuthorizationMutations({
+    orgId: _orgId,
     orgSlug,
     listingKind,
     listingId,

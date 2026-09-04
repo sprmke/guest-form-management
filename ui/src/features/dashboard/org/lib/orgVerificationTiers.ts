@@ -93,7 +93,6 @@ const HOST_TIER_DOCUMENT_ITEM_IDS = new Set(['valid-id', 'facebook-page']);
 
 /** Recommended Tier 2 checklist rows backed by an uploaded file. */
 const RECOMMENDED_TIER_DOCUMENT_ITEM_IDS = new Set([
-  'facebook-page',
   'selfie',
   'platform-admin',
   'legitimacy-check',
@@ -293,12 +292,7 @@ export function buildHostTierChecklist(detail: OrgVerificationDetail): Verificat
 export function buildVerifiedTierChecklist(
   detail: OrgVerificationDetail
 ): VerificationChecklistItem[] {
-  return [
-    {
-      id: 'facebook-page',
-      label: 'Facebook Page screenshot',
-      complete: Boolean(detail.assets.socialProofPath),
-    },
+  const items: VerificationChecklistItem[] = [
     {
       id: 'selfie',
       label: VERIFICATION_TIER2_DOC_LABELS.selfie,
@@ -307,21 +301,25 @@ export function buildVerifiedTierChecklist(
     {
       id: 'platform-admin',
       label: VERIFICATION_TIER2_DOC_LABELS.platformAdmin,
-      complete: Boolean(detail.assets.platformAdminProofPath && detail.platformAdminPlatform),
-    },
-    {
-      id: 'legitimacy-check',
-      label: VERIFICATION_TIER2_DOC_LABELS.legitimacyCheck,
-      complete: Boolean(detail.assets.legitimacyCheckProofPath),
-      optional: true,
-    },
-    {
-      id: 'business-permit',
-      label: VERIFICATION_TIER2_DOC_LABELS.businessPermit,
-      complete: Boolean(detail.assets.businessPermitOrBirPath),
+      complete: Boolean(detail.assets.platformAdminProofPath),
       optional: true,
     },
   ];
+  if (detail.assets.legitimacyCheckProofPath) {
+    items.push({
+      id: 'legitimacy-check',
+      label: VERIFICATION_TIER2_DOC_LABELS.legitimacyCheck,
+      complete: true,
+      optional: true,
+    });
+  }
+  items.push({
+    id: 'business-permit',
+    label: VERIFICATION_TIER2_DOC_LABELS.businessPermit,
+    complete: Boolean(detail.assets.businessPermitOrBirPath),
+    optional: true,
+  });
+  return items;
 }
 
 export function buildVerificationTiers(
@@ -410,18 +408,13 @@ export function isHostVerificationChangesRequested(
 export function canSubmitVerifiedTier(
   detail: OrgVerificationDetail,
   slots: {
-    socialProof: boolean;
     selfie: boolean;
-    platformAdmin: boolean;
-    platformAdminPlatform: OrgSocialProofPlatform | '';
   }
 ): boolean {
   if (detail.enhancedStatus === 'approved' || detail.enhancedStatus === 'pending') {
     return false;
   }
-  return (
-    slots.socialProof && slots.selfie && slots.platformAdmin && Boolean(slots.platformAdminPlatform)
-  );
+  return slots.selfie;
 }
 
 /** Client-side gate for Tier 1 — Valid ID + Facebook Page (mirrors server `canSubmitBaseVerification`). */
