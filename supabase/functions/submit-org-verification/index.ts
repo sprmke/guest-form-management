@@ -79,20 +79,18 @@ serveAuthenticated('submit-org-verification', async (req) => {
 
     const platformRaw =
       typeof body.platformAdminPlatform === 'string' ? body.platformAdminPlatform.trim() : '';
-    if (!ORG_SOCIAL_PROOF_PLATFORMS.includes(platformRaw as OrgSocialProofPlatform)) {
-      return jsonError(req, 'platformAdminPlatform must be facebook, instagram, or airbnb');
+    if (platformRaw) {
+      if (!ORG_SOCIAL_PROOF_PLATFORMS.includes(platformRaw as OrgSocialProofPlatform)) {
+        return jsonError(req, 'platformAdminPlatform must be facebook, instagram, or airbnb');
+      }
+      verification = {
+        ...verification,
+        platformAdminPlatform: platformRaw as OrgSocialProofPlatform,
+      };
     }
-    verification = {
-      ...verification,
-      platformAdminPlatform: platformRaw as OrgSocialProofPlatform,
-    };
 
     if (!canSubmitEnhancedVerification(verification)) {
-      const missing: string[] = [];
-      if (!verification.assets.socialProofPath) missing.push('Facebook Page screenshot');
-      if (!verification.assets.selfieWithIdPath) missing.push('selfie with ID');
-      if (!verification.assets.platformAdminProofPath) missing.push('platform admin screenshot');
-      return jsonError(req, `Required: ${missing.join(', ')}`);
+      return jsonError(req, 'Required: selfie with ID');
     }
 
     verification = {

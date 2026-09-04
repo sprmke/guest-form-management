@@ -37,19 +37,23 @@ Deno.test('host base submit requires Valid ID and Facebook Page screenshot', () 
   assert(canSubmitBaseVerification(withHostBaseDocs()));
 });
 
-Deno.test('host Recommended still requires Facebook Page, selfie, and platform admin', () => {
+Deno.test('host Recommended requires selfie; Facebook and platform admin are optional', () => {
   const ready: OrgVerificationState = {
     ...withHostBaseDocs(),
-    platformAdminPlatform: 'instagram',
     assets: {
       ...withHostBaseDocs().assets,
       selfieWithIdPath: 'org/id/selfie_with_id/s.jpg',
-      platformAdminProofPath: 'org/id/platform_admin_proof/ig.jpg',
     },
   };
 
   assert(canSubmitEnhancedVerification(ready));
   assertFalse(
+    canSubmitEnhancedVerification({
+      ...ready,
+      assets: { ...ready.assets, selfieWithIdPath: null },
+    })
+  );
+  assert(
     canSubmitEnhancedVerification({
       ...ready,
       assets: { ...ready.assets, socialProofPath: null },

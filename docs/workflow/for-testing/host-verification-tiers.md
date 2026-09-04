@@ -18,10 +18,10 @@ tags: [workflow, for-testing, verification, onboarding]
 
 ## Current document sets
 
-| Scope      | Tier 1 (base)                                                                                                                 | Tier 2 (Recommended)                                                                                   |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Host / org | Valid ID + Facebook Page screenshot                                                                                           | Facebook Page screenshot + selfie with ID + other-platform admin screenshot; optional legitimacy / BIR |
-| Listing    | Property Rights / Parking Rights (+ contract end when Authorized Representative or Sublessee) + ownership/authorization proof | Additional proof + Azure PMO (submit after listing Verified is approved)                               |
+| Scope      | Tier 1 (base)                                                                                                                 | Tier 2 (Recommended)                                                                     |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Host / org | Valid ID + Facebook Page screenshot                                                                                           | Selfie with ID; optional other-platform admin screenshot; optional Business permit / BIR |
+| Listing    | Property Rights / Parking Rights (+ contract end when Authorized Representative or Sublessee) + ownership/authorization proof | Additional proof + Azure PMO (submit after listing Verified is approved)                 |
 
 Contract **renewal** still requires a proof file.
 

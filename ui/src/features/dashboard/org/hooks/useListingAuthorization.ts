@@ -48,6 +48,7 @@ export function useOrgListingVerifications(orgId: string | undefined, enabled = 
 type MutationScope = {
   listingKind: ListingKind;
   listingId: string;
+  orgId?: string;
   orgSlug?: string;
 };
 
@@ -59,13 +60,14 @@ function invalidateListingQueries(
     queryKey: listingAuthorizationAssetsQueryKey(scope.listingKind, scope.listingId),
   });
   void queryClient.invalidateQueries({ queryKey: ORGANIZATIONS_QUERY_KEY });
+  if (scope.orgId) {
+    void queryClient.invalidateQueries({
+      queryKey: orgListingVerificationsQueryKey(scope.orgId),
+    });
+  }
   if (scope.orgSlug) {
     void queryClient.invalidateQueries({
       queryKey: scope.listingKind === 'parking' ? PARKINGS_QUERY_KEY : ['properties'],
-    });
-    void queryClient.invalidateQueries({
-      queryKey: orgListingVerificationsQueryKey(''),
-      exact: false,
     });
   }
 }
