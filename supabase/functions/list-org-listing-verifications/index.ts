@@ -1,6 +1,6 @@
 /**
  * list-org-listing-verifications — Rollup of every listing's verification state for one org.
- * Powers the read-only listing panel in the host Get Verified modal and the super admin queue.
+ * Powers the listing panel in the host Get Verified modal and the super admin queue.
  * Auth: super admin OR org owner.
  */
 
@@ -102,6 +102,7 @@ serveAuthenticated('list-org-listing-verifications', async (req) => {
         baseRejectionKind: authorization.baseRejectionKind,
         recommendedRejectionKind: authorization.recommendedRejectionKind,
         recommendedBadge: authorization.recommendedStatus === 'approved',
+        hasProof: Boolean(authorization.assets.proofPath),
         missingDocs: missingListingDocs(authorization),
       };
     });

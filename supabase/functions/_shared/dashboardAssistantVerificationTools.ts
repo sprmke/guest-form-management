@@ -317,23 +317,21 @@ export async function toolProposeSubmitOrgVerification(
       if (verification.enhancedStatus === 'approved') {
         return { ok: false, error: 'Enhanced verification is already approved' };
       }
-      if (!ORG_SOCIAL_PROOF_PLATFORMS.includes(platformRaw as OrgSocialProofPlatform)) {
-        return {
-          ok: false,
-          error: 'platformAdminPlatform must be facebook, instagram, or airbnb for enhanced tier',
+      if (platformRaw) {
+        if (!ORG_SOCIAL_PROOF_PLATFORMS.includes(platformRaw as OrgSocialProofPlatform)) {
+          return {
+            ok: false,
+            error: 'platformAdminPlatform must be facebook, instagram, or airbnb',
+          };
+        }
+        verification = {
+          ...verification,
+          platformAdminPlatform: platformRaw as OrgSocialProofPlatform,
         };
       }
-      verification = {
-        ...verification,
-        platformAdminPlatform: platformRaw as OrgSocialProofPlatform,
-      };
 
       if (!canSubmitEnhancedVerification(verification)) {
-        const missing: string[] = [];
-        if (!verification.assets.socialProofPath) missing.push('Facebook Page screenshot');
-        if (!verification.assets.selfieWithIdPath) missing.push('selfie with ID');
-        if (!verification.assets.platformAdminProofPath) missing.push('platform admin screenshot');
-        return { ok: false, error: `Required before submit: ${missing.join(', ')}` };
+        return { ok: false, error: 'Required before submit: selfie with ID' };
       }
     }
 
@@ -356,12 +354,9 @@ export async function toolProposeSubmitOrgVerification(
         summary: `Submit org ${tierLabel} verification for review. This notifies the platform team — you cannot undo submit from chat.`,
         payload: {
           tier,
-          platformAdminPlatform: tier === 'enhanced' ? platformRaw : null,
+          ...(tier === 'enhanced' && platformRaw ? { platformAdminPlatform: platformRaw } : {}),
         },
-        details: [
-          { label: 'Tier', value: tierLabel },
-          ...(tier === 'enhanced' ? [{ label: 'Admin platform', value: platformRaw }] : []),
-        ],
+        details: [{ label: 'Tier', value: tierLabel }],
       },
     };
   } catch (err) {
@@ -433,17 +428,22 @@ export async function executeSubmitOrgVerification(
       const platformRaw =
         typeof payload.platformAdminPlatform === 'string'
           ? payload.platformAdminPlatform.trim()
-          : (verification.platformAdminPlatform ?? '');
-      if (!ORG_SOCIAL_PROOF_PLATFORMS.includes(platformRaw as OrgSocialProofPlatform)) {
-        return { ok: false, error: 'platformAdminPlatform must be facebook, instagram, or airbnb' };
+          : '';
+      if (platformRaw) {
+        if (!ORG_SOCIAL_PROOF_PLATFORMS.includes(platformRaw as OrgSocialProofPlatform)) {
+          return {
+            ok: false,
+            error: 'platformAdminPlatform must be facebook, instagram, or airbnb',
+          };
+        }
+        verification = {
+          ...verification,
+          platformAdminPlatform: platformRaw as OrgSocialProofPlatform,
+        };
       }
-      verification = {
-        ...verification,
-        platformAdminPlatform: platformRaw as OrgSocialProofPlatform,
-      };
 
       if (!canSubmitEnhancedVerification(verification)) {
-        return { ok: false, error: 'Required proofs are missing for enhanced verification submit' };
+        return { ok: false, error: 'Required: selfie with ID' };
       }
 
       verification = {
@@ -1048,7 +1048,7 @@ export const APPLY_ORG_VERIFICATION_ATTACHMENT_TOOL_DECLARATION = {
 export const SUBMIT_ORG_VERIFICATION_TOOL_DECLARATION = {
   name: 'propose_submit_org_verification',
   description:
-    'Submit org base (Tier 1) or enhanced (Recommended badge) verification for platform review. Owner-only. Requires all proofs uploaded first. Enhanced needs platformAdminPlatform (facebook|instagram|airbnb) and recommendedBadgeEligible plan.',
+    'Submit org base (Tier 1) or enhanced (Recommended badge) verification for platform review. Owner-only. Requires proofs uploaded first. Enhanced needs a selfie with ID and recommendedBadgeEligible plan. platformAdminPlatform is optional.',
   parameters: {
     type: 'object',
     properties: {
@@ -1056,7 +1056,7 @@ export const SUBMIT_ORG_VERIFICATION_TOOL_DECLARATION = {
       platformAdminPlatform: {
         type: 'string',
         enum: [...ORG_SOCIAL_PROOF_PLATFORMS],
-        description: 'Required for enhanced tier',
+        description: 'Optional leftover platform tag for enhanced tier',
       },
     },
     required: ['tier'],

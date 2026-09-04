@@ -105,7 +105,7 @@ export type OrgVerificationAssets = {
   socialProofPath: string | null;
   /** Tier 2 — selfie holding the valid ID. */
   selfieWithIdPath: string | null;
-  /** Tier 2 — admin/owner screenshot on a second platform (see platformAdminPlatform). */
+  /** Tier 2, optional — admin/owner screenshot on another listing platform. */
   platformAdminProofPath: string | null;
   /** Tier 2, optional — any extra proof of business legitimacy. */
   legitimacyCheckProofPath: string | null;
@@ -377,17 +377,11 @@ export function canSubmitBaseVerification(state: OrgVerificationState): boolean 
 }
 
 /**
- * Tier 2 (host Recommended) — Facebook Page screenshot, selfie with ID, and a
- * second-platform admin screenshot plus its platform. Legitimacy proof and
- * business permit / BIR are optional and must never block submit.
+ * Tier 2 (host Recommended) — selfie with ID. Other-platform admin screenshot
+ * and business permit / BIR are optional and must never block submit.
  */
 export function canSubmitEnhancedVerification(state: OrgVerificationState): boolean {
-  return Boolean(
-    state.assets.socialProofPath &&
-    state.assets.selfieWithIdPath &&
-    state.assets.platformAdminProofPath &&
-    state.platformAdminPlatform
-  );
+  return Boolean(state.assets.selfieWithIdPath);
 }
 
 export function assetTypeToPathKey(

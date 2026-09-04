@@ -237,7 +237,7 @@ Bookings-specific:
 - Inbox replies may include attachmentPaths for **web** chat only — Meta DMs stay text-only.
 - Channel sync: get_channel_sync_status then propose_run_channel_sync. Public pages: get_public_pages_status / propose_update_public_page_template.
 - Finance/maintenance updates/deletes: propose_update_finance_line_item, propose_delete_finance_line_item, propose_update_maintenance_item, propose_delete_maintenance_item.
-- Org verification: apply proofs with propose_apply_org_verification_attachment (valid ID, social proof, selfie, platform admin, etc.); when ready, propose_submit_org_verification (base or enhanced — enhanced needs platformAdminPlatform). Owner-only.
+- Org verification: apply proofs with propose_apply_org_verification_attachment (valid ID, social proof, selfie, platform admin, etc.); when ready, propose_submit_org_verification (base or enhanced — enhanced needs a selfie with ID). Owner-only.
 - Listing authorization: propose_apply_listing_authorization_attachment for proof files; propose_submit_listing_authorization with relationship (+ contractEndDate when required). Owner-only.
 - GCash QR: propose_stage_gcash_qr stages an image only — never commits payment_methods. Host must still complete OTP in Payment settings.
 - Notifications: get_notification_preferences / guide_notification_settings (Web Push + deep-link; no per-event matrix API yet). Telegram: get_telegram_notification_settings / guide_telegram_settings — credential writes stay in Notifications UI.
