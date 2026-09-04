@@ -35,7 +35,7 @@ updated: 2026-09-01
 
 2. **Step 3 Valid ID + Facebook Page** — Finish setup: upload `valid_id` and `social_proof`, `submit-org-verification` `{ tier: 'base' }`, `submit-listing-authorization` with relationship + contract end. Do **not** upload listing proof files or call `submit-listing-recommended` here.
 
-3. **Host base / Recommended rules** — `canSubmitBaseVerification` = Valid ID + Facebook Page. `canSubmitEnhancedVerification` keeps selfie + platform admin and still **requires** `socialProofPath`. Facebook upload lives on onboarding (below Valid ID) and remains on Get Verified Recommended. Forced host changes-requested shows Valid ID + Facebook Page.
+3. **Host base / Recommended rules** — `canSubmitBaseVerification` = Valid ID + Facebook Page. `canSubmitEnhancedVerification` = selfie with ID. Facebook stays on onboarding / host Tier 1. Forced host changes-requested shows Valid ID + Facebook Page.
 
 4. **Listing base / Recommended rules** — `canSubmitBaseListingAuthorization` = rights (+ contract end), no proof files (so Finish setup can succeed). Listing modal **Verified** collects `proof` (including while pending). Do **not** treat an absent proof file as **Missing** after onboarding — the upload field is the next step. `canSubmitRecommendedListingAuthorization` requires listing Verified approved plus `additional_proof` and `azure_pmo_confirmation`. **Renewal** still requires the primary proof file on listing Verified.
 
@@ -50,7 +50,7 @@ updated: 2026-09-01
 - New onboarding: Step 2 Property Rights / Parking Rights required; Step 3 Valid ID + Facebook Page screenshot only; Finish setup succeeds on Free.
 - After Finish setup, listing **Verification** does not show proof of ownership as missing.
 - `/admin/approvals`: approve host ID + Facebook Page + listing rights → listing `ACTIVE`. Listing Verified review shows proof of ownership when uploaded.
-- Get Verified Recommended: Facebook Page required along with existing host Tier 2 docs.
+- Get Verified Recommended: selfie with ID required; other-platform admin screenshot and Business permit / BIR optional
 - Listing Verification **Verified**: ownership proof. Listing Recommended: additional proof + Azure PMO after listing Verified is approved.
 - Contract renewal still requires the primary proof file on listing Verified.
 - Recommended submits still open the upgrade modal on Free.

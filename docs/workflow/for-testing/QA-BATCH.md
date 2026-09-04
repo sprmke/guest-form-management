@@ -49,7 +49,7 @@ kind: reference
 - Step 3: Valid ID + Facebook Page only — Finish setup succeeds on Free
 - Listing Verification does **not** show ownership proof as "missing" immediately after onboarding
 - `/admin/approvals`: approve host ID + FB + listing rights → listing `ACTIVE`
-- Get Verified Recommended still requires Facebook Page
+- Get Verified Recommended requires selfie with ID (Facebook Page stays on Tier 1)
 
 ---
 

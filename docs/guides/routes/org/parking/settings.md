@@ -2,7 +2,7 @@
 title: 'Parking settings — operator guide'
 status: active
 tags: [guides, routes, org, parking]
-updated: 2026-08-30
+updated: 2026-09-04
 ---
 
 # Parking settings — operator guide
@@ -47,7 +47,7 @@ Parking **Settings** is where you set up a single slot before guests can book it
 - Q: Where do I connect Telegram for this parking slot?
   A: On **Notifications** for this slot. Settings here only show integration status and shortcuts, not the bot token fields.
 - Q: Where is listing verification for this slot?
-  A: Open **Verification** from the parking sidebar. Listing go-live needs your Parking Rights (and contract end when needed) plus proof of ownership or authorization on listing **Verified**. Additional proof and the Azure Property Management email confirmation are for listing **Recommended**.
+  A: Open **Verification** from the parking sidebar, or upload listing docs in org **Get Verified → Listings**. Listing go-live needs your Parking Rights (and contract end when needed) plus proof of ownership or authorization on listing **Verified**. Additional proof and the Azure Property Management email confirmation are for listing **Recommended**.
 - Q: My hosting contract is ending — what should I do?
   A: A renewal reminder may appear when you log in. Tap **Submit renewal contract** or use **Verification** in the sidebar to upload an updated contract before the grace period ends.
 
