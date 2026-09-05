@@ -186,7 +186,7 @@ const PLACEHOLDER_META: Record<string, PlaceholderMeta> = {
   },
   social_contact_mentions: {
     group: 'Contact',
-    description: '“message us on Facebook or Airbnb” — platform names linked',
+    description: '“message us on Facebook or Airbnb” (platform names linked)',
     example: 'message us on Facebook or Airbnb',
   },
   update_notice: {
@@ -422,7 +422,7 @@ const PLACEHOLDER_META: Record<string, PlaceholderMeta> = {
   sd_refund_guest_feedback: {
     group: 'SD refund',
     description: 'Guest feedback',
-    example: 'Great stay — thank you!',
+    example: 'Great stay. Thank you!',
   },
   next_bookings: {
     group: 'Summary',
@@ -559,7 +559,7 @@ export function placeholderLinesFromKeys(keys: readonly string[]): string[] {
   return keys.map((key) => {
     const token = `{{${key}}}`;
     const meta = PLACEHOLDER_META[key];
-    return meta ? `${token} — ${meta.description}` : token;
+    return meta ? `${token}: ${meta.description}` : token;
   });
 }
 
@@ -575,7 +575,7 @@ export function enrichPlaceholderLines(
 
     if (meta) {
       const example =
-        meta.example === '—' && sampleValue !== undefined
+        meta.example === '-' && sampleValue !== undefined
           ? formatPlaceholderExample(sampleValue)
           : meta.example;
       return {
@@ -589,7 +589,7 @@ export function enrichPlaceholderLines(
     return {
       token,
       description: lineDescription ?? 'Template token',
-      example: sampleValue !== undefined ? formatPlaceholderExample(sampleValue) : '—',
+      example: sampleValue !== undefined ? formatPlaceholderExample(sampleValue) : '-',
       group: inferGroupFromToken(name),
     };
   });

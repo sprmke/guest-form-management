@@ -118,6 +118,7 @@ Prefer `serveAdmin`/`servePublic`/`serveCronPost` (`_shared/serveEdge.ts`) over 
 - **Secrets**: local edge secrets in `supabase/.env.local` (gitignored); never commit or log credentials/tokens/PII.
 - **Testing**: none exist yet. If adding: Vitest + RTL for UI, Deno's test runner for edge functions — not Bun's.
 - **Mobile**: every screen works at 375/768/1024px+, 44×44px touch targets — always-on on the Cursor side (`mobile-responsive.mdc`); pull in the `mobile-responsive` skill on the Claude Code side for any UI task.
+- **Copy**: prefer no extra UI prose (`ui-minimal-copy.mdc` / `minimal-ui-copy`). When text is required, keep it short, plain, and production-grade with no AI tells and no em dashes (`human-copy.mdc` / skill `human-copy`). Claude Code: invoke `human-copy` on string changes.
 
 ## Known sharp edges
 

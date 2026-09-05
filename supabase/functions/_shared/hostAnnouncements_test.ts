@@ -5,6 +5,8 @@
 
 import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 import {
+  ensureHostAnnouncementBodyHtml,
+  hostAnnouncementBodyPlainText,
   hostAnnouncementContentKey,
   isHostAnnouncementLive,
   mergeLiveHostAnnouncements,
@@ -83,5 +85,34 @@ Deno.test('validateHostAnnouncements rejects unsafe link URLs', () => {
   assertEquals(
     validateHostAnnouncements([sampleAnnouncement({ linkUrl: 'https://example.com/docs' })]),
     null
+  );
+});
+
+Deno.test('validateHostAnnouncements treats a visually-empty WYSIWYG body as missing', () => {
+  assertEquals(
+    validateHostAnnouncements([sampleAnnouncement({ body: '<p></p>' })]),
+    'Each announcement needs a message'
+  );
+  assertEquals(
+    validateHostAnnouncements([sampleAnnouncement({ body: '<p>Scheduled downtime.</p>' })]),
+    null
+  );
+});
+
+Deno.test('hostAnnouncementBodyPlainText strips markup and decodes entities', () => {
+  assertEquals(
+    hostAnnouncementBodyPlainText('<p>Hello <strong>world</strong> &amp; friends</p>'),
+    'Hello world & friends'
+  );
+});
+
+Deno.test('ensureHostAnnouncementBodyHtml wraps legacy plain text but leaves HTML alone', () => {
+  assertEquals(
+    ensureHostAnnouncementBodyHtml('Line one\n\nLine two'),
+    '<p>Line one</p><p>Line two</p>'
+  );
+  assertEquals(
+    ensureHostAnnouncementBodyHtml('<p>Already rich text</p>'),
+    '<p>Already rich text</p>'
   );
 });

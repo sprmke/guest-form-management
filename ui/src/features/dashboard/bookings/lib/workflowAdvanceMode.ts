@@ -117,7 +117,7 @@ export function pipelineAdvanceGuide(status: BookingStatus, opts?: PipelineAdvan
           ]
         : [
             'Confirm booking details, pricing, and uploaded IDs & downpayment receipts.',
-            'Proceed when everything looks correct. Workflow emails are not automatic — send GAF, pet, or acknowledgement from Automation Triggers after you proceed. For parking, use Find parking.',
+            'Proceed when everything looks correct. Workflow emails are not automatic. Send GAF, pet, or acknowledgement from Automation Triggers after you proceed. For parking, use Find parking.',
           ];
     case 'PENDING_DOCUMENTS':
       return automated
@@ -163,7 +163,7 @@ export function pipelineAdvanceGuide(status: BookingStatus, opts?: PipelineAdvan
         : [
             'Waiting for the guest to submit the security deposit refund form.',
             'Once they submit, the booking moves to the next step automatically.',
-            'Check-out Instructions email is not automatic — send or resend it from Automation Triggers.',
+            'Check-out Instructions email is not automatic. Send or resend it from Automation Triggers.',
           ];
     case 'PENDING_SD_REFUND':
       return [
@@ -296,19 +296,19 @@ export function pipelineAdvanceDisplay(
       return advanceDisplay(
         'manual',
         WORKFLOW_ADVANCE_MODE_LABEL.manual,
-        'Confirm details and Proceed. Workflow emails are not automatic — send GAF, pet, or acknowledgement from Automation Triggers after you proceed.'
+        'Confirm details and Proceed. Workflow emails are not automatic. Send GAF, pet, or acknowledgement from Automation Triggers after you proceed.'
       );
     case 'PENDING_DOCUMENTS':
       return advanceDisplay(
         'manual',
         FREE_MANUAL_EMAILS_LABEL,
-        'Status advances when required documents are complete. Workflow emails are not automatic — send ready-for-check-in and other emails from Automation Triggers.'
+        'Status advances when required documents are complete. Workflow emails are not automatic. Send ready-for-check-in and other emails from Automation Triggers.'
       );
     case 'READY_FOR_CHECKIN':
       return advanceDisplay(
         'manual',
         WORKFLOW_ADVANCE_MODE_LABEL.manual,
-        'Proceed after guest balance is settled. Check-out Instructions email is not automatic — send from Automation Triggers.'
+        'Proceed after guest balance is settled. Check-out Instructions email is not automatic. Send from Automation Triggers.'
       );
     case 'READY_FOR_CHECKOUT':
       if (opts?.sdIsZero) {
@@ -321,7 +321,7 @@ export function pipelineAdvanceDisplay(
       return advanceDisplay(
         'manual',
         FREE_MANUAL_EMAILS_LABEL,
-        'Guest SD refund form submission moves the booking forward. Check-out Instructions email is not automatic — send from Automation Triggers.'
+        'Guest SD refund form submission moves the booking forward. Check-out Instructions email is not automatic. Send from Automation Triggers.'
       );
     default:
       return advanceDisplay(

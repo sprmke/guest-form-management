@@ -23,7 +23,7 @@ export const TELEGRAM_BOT_TOKEN_HELP: TelegramHelpSection[] = [
       },
       {
         title: 'Create the bot',
-        body: 'Send /newbot. BotFather asks for a display name (e.g. "Property alerts") — this is shown in contact lists.',
+        body: 'Send /newbot. BotFather asks for a display name (e.g. "Property alerts"). This is shown in contact lists.',
       },
       {
         title: 'Choose a username',
@@ -56,7 +56,7 @@ export const TELEGRAM_CHAT_ID_HELP: TelegramHelpSection[] = [
       },
       {
         title: 'Scan for your chat ID',
-        body: 'On the Telegram connection form, tap Scan for chats. Pick your group — the Chat ID field fills automatically.',
+        body: 'On the Telegram connection form, tap Scan for chats. Pick your group. The Chat ID field fills automatically.',
       },
     ],
     note: 'Supergroups and channels usually start with -100. You can still paste a chat ID manually if needed.',

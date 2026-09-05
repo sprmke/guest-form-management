@@ -5,6 +5,7 @@
     ".cursor/rules/ai-usage.mdc",
     ".cursor/rules/documentation-maintenance.mdc",
     ".cursor/rules/ui-minimal-copy.mdc",
+    ".cursor/rules/human-copy.mdc",
     ".cursor/rules/superpowers-opt-in.mdc",
     ".cursor/rules/git-commits.mdc",
     ".cursor/rules/no-prod-deploy.mdc",

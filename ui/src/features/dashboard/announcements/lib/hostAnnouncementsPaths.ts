@@ -32,11 +32,6 @@ export function hostAnnouncementsPathFromHelpSupport(helpSupportPath: string): s
   return helpSupportPath.replace(/\/help-support\/?$/, '/announcements');
 }
 
-/** Host archive route — not super-admin `/admin/announcements`. */
-export function isHostAnnouncementsArchivePath(pathname: string): boolean {
-  return pathname.includes('/announcements') && !pathname.startsWith('/admin');
-}
-
 export function hostAnnouncementDetailPath(basePath: string, announcementId: string): string {
   return `${basePath}/${encodeURIComponent(announcementId)}`;
 }

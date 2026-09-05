@@ -237,7 +237,7 @@ export function workflowTransitionEffectLines(
       securityDepositPositive(booking) &&
       sdRefundEmailAlreadySent(booking)
     ) {
-      lines.push('Check-out Instructions email was already sent — it will not be sent again.');
+      lines.push('Check-out Instructions email was already sent. It will not be sent again.');
     }
   }
 

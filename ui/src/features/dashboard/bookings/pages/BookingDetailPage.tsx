@@ -309,7 +309,7 @@ export function BookingDetailPage() {
       }
 
       if (ownerDefaultQuery.data?.hasOrgParkings && !ownSlug) {
-        toast.message('Your parking is booked for these dates — searching others');
+        toast.message('Your parking is booked for these dates. Searching others');
       }
 
       const url = absoluteBookingParkingFindUrl(booking, locationSlug);

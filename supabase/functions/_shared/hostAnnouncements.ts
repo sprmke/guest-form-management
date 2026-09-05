@@ -27,11 +27,43 @@ const SEVERITY_ORDER: Record<HostAnnouncementSeverity, number> = {
 };
 
 export const HOST_ANNOUNCEMENT_MAX_TITLE = 160;
+/** Message is authored as rich-text HTML — this caps the plain-text length, not raw markup. */
 export const HOST_ANNOUNCEMENT_MAX_BODY = 4000;
 export const HOST_ANNOUNCEMENT_MAX_LINK_LABEL = 80;
 
 function readString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+/** Strip tags/entities for length checks and plain-text consumers (e.g. the AI assistant). */
+export function hostAnnouncementBodyPlainText(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function looksLikeHtml(value: string): boolean {
+  return /<[a-z][\s\S]*>/i.test(value);
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/** Legacy rows stored plain text — wrap it in paragraphs so old announcements render like the
+ *  new rich-text ones instead of losing their line breaks. */
+export function ensureHostAnnouncementBodyHtml(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed || looksLikeHtml(trimmed)) return trimmed;
+  return trimmed
+    .split(/\n{2,}/)
+    .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, '<br />')}</p>`)
+    .join('');
 }
 
 function readBoolean(value: unknown, fallback = false): boolean {
@@ -63,7 +95,7 @@ export function parseHostAnnouncements(value: unknown): HostAnnouncementRecord[]
       const row = entry as Record<string, unknown>;
       const id = readString(row.id);
       const title = readString(row.title);
-      const body = readString(row.body);
+      const body = ensureHostAnnouncementBodyHtml(readString(row.body));
       if (!id || !title || !body) return null;
       const updatedAt = readNullableIso(row.updatedAt) ?? new Date().toISOString();
       return {
@@ -125,11 +157,13 @@ function isSafeAnnouncementLink(url: string): boolean {
 export function validateHostAnnouncements(announcements: HostAnnouncementRecord[]): string | null {
   for (const announcement of announcements) {
     if (!announcement.title.trim()) return 'Each announcement needs a title';
-    if (!announcement.body.trim()) return 'Each announcement needs a message';
+    if (!hostAnnouncementBodyPlainText(announcement.body)) {
+      return 'Each announcement needs a message';
+    }
     if (announcement.title.length > HOST_ANNOUNCEMENT_MAX_TITLE) {
       return `Announcement title must be ${HOST_ANNOUNCEMENT_MAX_TITLE} characters or fewer`;
     }
-    if (announcement.body.length > HOST_ANNOUNCEMENT_MAX_BODY) {
+    if (hostAnnouncementBodyPlainText(announcement.body).length > HOST_ANNOUNCEMENT_MAX_BODY) {
       return `Announcement message must be ${HOST_ANNOUNCEMENT_MAX_BODY} characters or fewer`;
     }
     if (

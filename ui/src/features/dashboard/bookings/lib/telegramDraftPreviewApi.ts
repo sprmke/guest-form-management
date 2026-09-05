@@ -32,7 +32,7 @@ const SETTINGS_ENDPOINT: Record<TelegramPreviewBot, string> = {
 async function getAdminJwt(): Promise<string> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
-  if (!token) throw new Error('No active session — please sign in');
+  if (!token) throw new Error('No active session. Please sign in');
   return token;
 }
 

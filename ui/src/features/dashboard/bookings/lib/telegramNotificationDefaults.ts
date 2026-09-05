@@ -79,7 +79,7 @@ export const ADMIN_TEMPLATE_DEFAULTS = {
   newBookingTemplate:
     '🆕 New Booking Request\n\nGuest: {{primary_guest_name}}\nPhone: {{guest_phone}}\nDates: {{check_in_date}} → {{check_out_date}}\n\n{{booking_link}}',
   pendingDocsTemplate:
-    '⚠️ Pending Documents — Check-in Today\n\nGuest: {{primary_guest_name}}\nCheck-in: {{check_in_date}} at {{check_in_time}}\nStill needed: {{pending_docs_list}}\nStatus: {{status_label}}\n\n{{booking_link}}',
+    '⚠️ Pending Documents: Check-in Today\n\nGuest: {{primary_guest_name}}\nCheck-in: {{check_in_date}} at {{check_in_time}}\nStill needed: {{pending_docs_list}}\nStatus: {{status_label}}\n\n{{booking_link}}',
   balanceReceiptTemplate:
     '💳 Balance Receipt Needed\n\nGuest: {{primary_guest_name}}\nBalance due: {{total_guest_balance}}\n\nUpload payment receipt now:\n{{booking_link}}',
   balanceReceiptUploadedTemplate:

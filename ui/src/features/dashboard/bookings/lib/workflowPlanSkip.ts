@@ -53,7 +53,7 @@ const HOST_SKIP_LABELS: Record<string, string> = {
 export function notifyAutomationSkippedByHost(skipped: string[]): void {
   if (skipped.length === 0) return;
   const labels = skipped.map((key) => HOST_SKIP_LABELS[key] ?? key);
-  toast.message(`Not sent — disabled in Email Automations: ${labels.join(', ')}`, {
+  toast.message(`Not sent. Disabled in Email Automations: ${labels.join(', ')}`, {
     description: 'Turn them on under Property Settings → Email automations.',
     duration: 8_000,
   });

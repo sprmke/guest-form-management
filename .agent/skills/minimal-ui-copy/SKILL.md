@@ -92,5 +92,6 @@ When touching a file, **do not** expand existing copy. If you add a feature, def
 ## Related
 
 - Rule: `.cursor/rules/ui-minimal-copy.mdc`
+- Skill + rule: `human-copy` (how required text must sound: short, plain, no AI tells / em dashes)
 - `frontend-design` — visual hierarchy without extra words
 - `accessibility` — required labels stay short
