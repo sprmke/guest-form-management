@@ -19,6 +19,11 @@ export type OrgAccessPayload = {
   canManageProperties: boolean;
   canCreateParkings: boolean;
   canManageParkings: boolean;
+  canEditBasicSettings: boolean;
+  canEditSocials: boolean;
+  canEditAiPlatform: boolean;
+  canEditAiAssistant: boolean;
+  /** True when any org.settings.*:edit leaf is granted. */
   canEditSettings: boolean;
   planLimited?: boolean;
 };
