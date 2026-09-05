@@ -30,7 +30,7 @@
     "type-check": "cd ui && bun run type-check",
     "test": "cd ui && bun run test",
     "test:edge": "deno test --no-check --allow-env --allow-net --ignore='supabase/functions/**/*integration_test.ts' supabase/functions/_shared/",
-    "test:assistant-parity": "bash -c 'command -v deno >/dev/null || export PATH=\"$HOME/.deno/bin:$PATH\"; deno test --no-check --allow-env --allow-net supabase/functions/tests/assistantToolCatalog.test.ts supabase/functions/tests/assistantAttachmentApply.test.ts supabase/functions/tests/assistantParityLocal.integration_test.ts'",
+    "test:assistant-parity": "bash -c 'command -v deno >/dev/null || export PATH=\"$HOME/.deno/bin:$PATH\"; deno test --no-check --allow-env --allow-net --allow-read supabase/functions/tests/assistantToolCatalog.test.ts supabase/functions/tests/assistantOrgPermissionLeaves.test.ts supabase/functions/tests/assistantAttachmentApply.test.ts supabase/functions/tests/assistantParityLocal.integration_test.ts'",
     "test:assistant-parity:live": "bash scripts/dev/run-assistant-parity-live-gemini.sh",
     "test:media:quality": "node scripts/media/quality-check.mjs",
     "media:storage-audit": "bun scripts/media/storage-audit.ts",
