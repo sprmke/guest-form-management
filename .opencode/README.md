@@ -31,7 +31,7 @@ Do **not** create `AGENTS.md` unless you intend it to replace `CLAUDE.md` (OpenC
 
 Same slash commands as Cursor / Claude Code (wired via symlinks):
 
-`/kh-help`, `/kh-create-new-ticket`, `/kh-start-work`, `/kh-pull-new-changes`, `/kh-start-app`, `/kh-check-before-pr`, `/kh-submit-for-review`, `/github-issue`, `/fix-merge-conflicts`, `/fix-migration-issues` (via skill), `/workflow-start`, `/workflow-done`, `/workflow-wont-do`, `/workflow-sync-scratchpads`, `/superpowers-*`
+`/kh-help`, `/kh-create-new-ticket`, `/kh-start-work`, `/kh-pull-new-changes`, `/kh-start-app`, `/kh-check-before-pr`, `/kh-submit-for-review`, `/self-review`, `/github-issue`, `/fix-merge-conflicts`, `/fix-migration-issues` (via skill), `/workflow-start`, `/workflow-done`, `/workflow-wont-do`, `/workflow-sync-scratchpads`, `/superpowers-*`
 
 ## Subagents
 
