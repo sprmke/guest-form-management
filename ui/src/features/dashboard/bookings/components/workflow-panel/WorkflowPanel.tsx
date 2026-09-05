@@ -796,6 +796,7 @@ function WorkflowPanelInner({
           propertyPricingDefaults={propertyPricingDefaults}
           propertyPricingDateOverrides={propertyPricingData?.dateOverrides}
           propertyPricingHolidayRules={propertyPricingData?.holidayRules}
+          propertyPricingSmartRecommendations={propertyPricingData?.smartRecommendations}
           surpriseDecorStaffAck={subFormDrafts.surpriseDecorStaffAck}
           onSurpriseDecorStaffAckChange={subFormDrafts.setSurpriseDecorStaffAck}
           parkingValues={subFormDrafts.parkingValues}
@@ -845,6 +846,7 @@ function WorkflowPanelInner({
               propertyPricingDefaults={propertyPricingDefaults}
               propertyPricingDateOverrides={propertyPricingData?.dateOverrides}
               propertyPricingHolidayRules={propertyPricingData?.holidayRules}
+              propertyPricingSmartRecommendations={propertyPricingData?.smartRecommendations}
               surpriseDecorStaffAck={subFormDrafts.surpriseDecorStaffAck}
               onSurpriseDecorStaffAckChange={subFormDrafts.setSurpriseDecorStaffAck}
               parkingValues={subFormDrafts.parkingValues}

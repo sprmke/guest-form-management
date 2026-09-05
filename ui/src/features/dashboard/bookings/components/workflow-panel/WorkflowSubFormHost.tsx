@@ -63,6 +63,7 @@ type Props = {
   propertyPricingDefaults: PropertyPricingDefaults;
   propertyPricingDateOverrides?: Record<string, number>;
   propertyPricingHolidayRules?: PricingHolidayRuleDto[];
+  propertyPricingSmartRecommendations?: Record<string, number>;
   surpriseDecorStaffAck: boolean;
   onSurpriseDecorStaffAckChange: (value: boolean) => void;
 
@@ -103,6 +104,7 @@ export function WorkflowSubFormHost({
   propertyPricingDefaults,
   propertyPricingDateOverrides,
   propertyPricingHolidayRules,
+  propertyPricingSmartRecommendations,
   surpriseDecorStaffAck,
   onSurpriseDecorStaffAckChange,
   parkingValues,
@@ -235,6 +237,7 @@ export function WorkflowSubFormHost({
             propertyDefaults={propertyPricingDefaults}
             dateOverrides={propertyPricingDateOverrides}
             holidayRules={propertyPricingHolidayRules}
+            smartRecommendations={propertyPricingSmartRecommendations}
             variant={formVariant}
           />
           {booking.guest_requests_surprise_decor ? (

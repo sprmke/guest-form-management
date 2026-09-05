@@ -88,6 +88,8 @@ type Props = {
   dateOverrides?: Record<string, number>;
   /** Holiday / peak-season premiums from Pricing settings. */
   holidayRules?: PricingHolidayRuleDto[];
+  /** Applied Smart Pricing rates — resolve below a host override, above holiday rules. */
+  smartRecommendations?: Record<string, number>;
   /** Booking edit form: always emit current values (skip strict validation gate). */
   editMode?: boolean;
   variant?: WorkflowFormVariant;
@@ -101,6 +103,7 @@ export function ReviewPricingForm({
   propertyDefaults = FALLBACK_PROPERTY_PRICING_DEFAULTS,
   dateOverrides,
   holidayRules,
+  smartRecommendations,
   editMode = false,
   variant = 'workflow',
 }: Props) {
@@ -116,7 +119,8 @@ export function ReviewPricingForm({
     booking,
     propertyDefaults,
     dateOverrides,
-    holidayRules
+    holidayRules,
+    smartRecommendations
   );
 
   const {

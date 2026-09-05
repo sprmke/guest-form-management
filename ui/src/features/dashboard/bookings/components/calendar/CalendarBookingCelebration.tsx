@@ -1,43 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { PartyPopper } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
-const CONFETTI_COLORS = [
-  'hsl(var(--chart-1))',
-  'hsl(var(--chart-2))',
-  'hsl(var(--chart-3))',
-  'hsl(var(--chart-4))',
-  'hsl(var(--chart-5))',
-];
+import { ConfettiBurst } from '@/components/shared/ConfettiBurst';
 
-const PIECE_COUNT = 28;
 const VISIBLE_MS = 2600;
-
-type ConfettiPiece = {
-  id: number;
-  left: number;
-  color: string;
-  delay: number;
-  duration: number;
-  drift: number;
-  size: number;
-  rounded: boolean;
-};
-
-function buildPieces(): ConfettiPiece[] {
-  return Array.from({ length: PIECE_COUNT }, (_, id) => ({
-    id,
-    left: Math.random() * 100,
-    color: CONFETTI_COLORS[id % CONFETTI_COLORS.length],
-    delay: Math.random() * 0.35,
-    duration: 1.8 + Math.random() * 1,
-    drift: (Math.random() - 0.5) * 80,
-    size: 6 + Math.random() * 5,
-    rounded: id % 2 === 0,
-  }));
-}
 
 export type CalendarBookingCelebrationTrigger = {
   /** Unique per occurrence (e.g. `${year}-${month}`) so repeated triggers replay cleanly. */
@@ -62,7 +31,6 @@ type Props = {
 export function CalendarBookingCelebration({ trigger, onDone }: Props) {
   const reduceMotion = useReducedMotion();
   const [visible, setVisible] = useState(false);
-  const pieces = useMemo(() => (trigger ? buildPieces() : []), [trigger]);
 
   useEffect(() => {
     if (!trigger) return;
@@ -81,32 +49,7 @@ export function CalendarBookingCelebration({ trigger, onDone }: Props) {
     <AnimatePresence>
       {visible && trigger ? (
         <div className="pointer-events-none fixed inset-0 z-[100] overflow-hidden" aria-hidden>
-          {!reduceMotion &&
-            pieces.map((piece) => (
-              <motion.span
-                key={piece.id}
-                className={piece.rounded ? 'absolute rounded-full' : 'absolute rounded-[1px]'}
-                style={{
-                  left: `${piece.left}%`,
-                  width: piece.size,
-                  height: piece.size,
-                  backgroundColor: piece.color,
-                  top: '-5%',
-                }}
-                initial={{ y: '-10vh', x: 0, opacity: 0, rotate: 0 }}
-                animate={{
-                  y: '110vh',
-                  x: piece.drift,
-                  opacity: [0, 1, 1, 0],
-                  rotate: 360,
-                }}
-                transition={{
-                  duration: piece.duration,
-                  delay: piece.delay,
-                  ease: 'easeIn',
-                }}
-              />
-            ))}
+          <ConfettiBurst />
 
           <motion.div
             className="absolute inset-x-0 top-6 flex justify-center px-4 sm:top-10"

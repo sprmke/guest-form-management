@@ -32,7 +32,7 @@ import {
   propertySectionPath,
 } from '@/features/dashboard/org/lib/tenantPaths';
 import { superAdminPaths } from '@/features/dashboard/super-admin/lib/superAdminPaths';
-import { SUPER_ADMIN_PLATFORM_DESTINATIONS } from '@/features/dashboard/super-admin/lib/superAdminPlatformNav';
+import { SUPER_ADMIN_NAV_GROUPS } from '@/features/dashboard/super-admin/lib/superAdminPlatformNav';
 import type { OrgPermissionId } from '@/features/dashboard/team/lib/orgPermissions';
 import {
   hasOrgPermission,
@@ -58,6 +58,8 @@ export type SidebarNavItem = {
 export type SidebarNavSection = {
   label: string;
   items: SidebarNavItem[];
+  /** Suppress the section heading even when multiple sections are shown. */
+  hideLabel?: boolean;
 };
 
 /** Organization context — mirrors property-management-app org nav. */
@@ -359,32 +361,23 @@ export const LEGACY_NAV_SECTIONS: SidebarNavSection[] = [
   },
 ];
 
-/** Super-admin platform nav — org-scoped items are added when an org is selected. */
-export function buildSuperAdminNavSections(orgSlug: string | null): SidebarNavSection[] {
-  const sections: SidebarNavSection[] = [
+/**
+ * Super-admin platform nav. The organization hub (`/admin/orgs/:orgSlug`) is a single
+ * scrollable page with its own in-page section nav (`AdminSectionNavLayout`) — it does not
+ * add items to this global sidebar.
+ */
+export function buildSuperAdminNavSections(): SidebarNavSection[] {
+  return [
     {
-      label: 'Platform',
-      items: [
-        { label: 'Overview', href: superAdminPaths.root, Icon: LayoutDashboard },
-        ...SUPER_ADMIN_PLATFORM_DESTINATIONS,
-      ],
+      label: 'Overview',
+      hideLabel: true,
+      items: [{ label: 'Overview', href: superAdminPaths.root, Icon: LayoutDashboard }],
     },
+    ...SUPER_ADMIN_NAV_GROUPS.map((group) => ({
+      label: group.label,
+      items: group.items.map((item) => ({ ...item })),
+    })),
   ];
-
-  if (orgSlug) {
-    sections.push({
-      label: 'Organization',
-      items: [
-        {
-          label: 'Properties',
-          href: superAdminPaths.orgProperties(orgSlug),
-          Icon: Building2,
-        },
-      ],
-    });
-  }
-
-  return sections;
 }
 
 export function isSuperAdminPath(pathname: string): boolean {
