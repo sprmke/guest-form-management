@@ -120,7 +120,7 @@ export function GuestSdRefundEditForm({
     }
   }, [values, validation.valid, editMode, onChange]);
 
-  const phoneDisplay = booking.guest_phone_number?.trim() || '—';
+  const phoneDisplay = booking.guest_phone_number?.trim() || '-';
   const submittedLabel = booking.sd_refund_form_submitted_at
     ? new Date(booking.sd_refund_form_submitted_at).toLocaleString('en-PH', {
         timeZone: 'Asia/Manila',

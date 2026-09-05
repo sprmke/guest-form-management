@@ -189,7 +189,7 @@ export function SdRefundForm({
   const netSD = baseSd + totalExpenses - totalProfits;
   const netSdError =
     submitAttempted && netSD < 0
-      ? 'Refund amount cannot be negative — adjust expenses or profits'
+      ? 'Refund amount cannot be negative. Adjust expenses or profits'
       : null;
 
   const validateForProceed = useCallback(() => {

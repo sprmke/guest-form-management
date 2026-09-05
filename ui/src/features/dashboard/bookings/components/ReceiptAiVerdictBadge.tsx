@@ -259,7 +259,7 @@ function noticeCopy(
       case 'likely_valid':
         return {
           title: 'Probably a valid ID',
-          detail: summary?.trim() || 'Some details were hard to read — review if unsure.',
+          detail: summary?.trim() || 'Some details were hard to read. Review if unsure.',
         };
       case 'unclear':
         return {
@@ -286,7 +286,7 @@ function noticeCopy(
     case 'likely_valid':
       return {
         title: 'Probably payment proof',
-        detail: summary?.trim() || 'Some details were hard to read — review if unsure.',
+        detail: summary?.trim() || 'Some details were hard to read. Review if unsure.',
       };
     case 'unclear':
       return {
@@ -392,7 +392,7 @@ export function receiptAiUploadToastMessage(
       case 'unclear':
         return {
           type: 'warning',
-          message: "Couldn't verify the ID — please review",
+          message: "Couldn't verify the ID. Please review",
         };
       case 'valid':
       case 'likely_valid':
@@ -410,7 +410,7 @@ export function receiptAiUploadToastMessage(
     case 'unclear':
       return {
         type: 'warning',
-        message: "Couldn't verify the receipt — please review",
+        message: "Couldn't verify the receipt. Please review",
       };
     case 'valid':
     case 'likely_valid':

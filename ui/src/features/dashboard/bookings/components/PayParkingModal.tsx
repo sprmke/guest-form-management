@@ -31,17 +31,12 @@ import { useSaveParkingRateGuest } from '@/features/dashboard/bookings/hooks/use
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 
+import { AdminDialogShell } from '@/components/AdminDialogShell';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
-import {
-  ResponsiveModal,
-  ResponsiveModalContent,
-  ResponsiveModalFooter,
-  ResponsiveModalHeader,
-  ResponsiveModalTitle,
-} from '@/components/ui/responsive-modal';
+import { ResponsiveModalTitle } from '@/components/ui/responsive-modal';
 import { formatBookingDate } from '@/utils/format/bookingDisplay';
 import { formatMoney } from '@/utils/format/currency';
 import { DATE_PICKER_DISPLAY_FORMAT } from '@/utils/format/dates';
@@ -170,111 +165,19 @@ export function PayParkingModal({ booking, open, onOpenChange }: Props) {
   }
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
-      <ResponsiveModalContent className="w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:w-full sm:max-w-md">
-        <ResponsiveModalHeader>
-          <ResponsiveModalTitle className="flex items-center gap-2">
-            <Car className="text-primary size-4 h-8 w-7 shrink-0" aria-hidden />
-            {viewMode ? 'Parking link' : 'Set up parking'}
-          </ResponsiveModalTitle>
-        </ResponsiveModalHeader>
-
-        <div className="space-y-4 py-1">
-          {allowCustomParkingDates ? (
-            <label className="flex cursor-pointer items-start gap-3">
-              <Checkbox
-                checked={sameAsBookingDuration}
-                disabled={isSaving}
-                onCheckedChange={(checked) => {
-                  const next = checked === true;
-                  setSameAsBookingDuration(next);
-                  if (next) {
-                    setParkingCheckIn(bookingStayRange.from);
-                    setParkingCheckOut(bookingStayRange.to);
-                  }
-                }}
-                className="mt-0.5"
-              />
-              <span className="text-foreground flex flex-col text-sm leading-snug">
-                Same dates as stay
-                {sameAsBookingDuration && (
-                  <span className="text-base font-semibold">
-                    {formatBookingDate(booking.check_in_date)} –{' '}
-                    {formatBookingDate(booking.check_out_date)}
-                  </span>
-                )}
-              </span>
-            </label>
-          ) : null}
-
-          {allowCustomParkingDates && !sameAsBookingDuration ? (
-            <>
-              <div className="space-y-1.5">
-                <Label htmlFor="pay-parking-check-in" className="text-sm">
-                  Parking check-in
-                </Label>
-                <DatePicker
-                  date={parkingCheckIn}
-                  rangeEnd={parkingCheckOut}
-                  minDate={stayBounds.minDate}
-                  maxDate={stayBounds.maxDate}
-                  disabled={() => isSaving}
-                  placeholder={DATE_PICKER_DISPLAY_FORMAT}
-                  onSelect={(date) => {
-                    if (!date) return;
-                    setParkingCheckIn(date);
-                    setParkingCheckOut((prev) =>
-                      defaultParkingCheckOutAfterCheckIn(date, prev, stayBounds.maxDate)
-                    );
-                  }}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="pay-parking-check-out" className="text-sm">
-                  Parking check-out
-                </Label>
-                <DatePicker
-                  date={parkingCheckOut}
-                  rangeEnd={parkingCheckIn}
-                  minDate={parkingCheckIn ?? stayBounds.minDate}
-                  maxDate={stayBounds.maxDate}
-                  disabled={(date) => {
-                    if (isSaving) return true;
-                    if (parkingCheckIn && date <= parkingCheckIn) return true;
-                    return false;
-                  }}
-                  placeholder={DATE_PICKER_DISPLAY_FORMAT}
-                  onSelect={(date) => {
-                    if (date) setParkingCheckOut(date);
-                  }}
-                />
-              </div>
-            </>
-          ) : null}
-
-          <div className="space-y-1.5">
-            <Label htmlFor="pay-parking-rate" className="text-sm font-medium">
-              Rate per night
-            </Label>
-            <input
-              id="pay-parking-rate"
-              type="number"
-              min={1}
-              step={10}
-              value={rate}
-              disabled={isSaving}
-              onChange={(e) => setRate(Number(e.target.value))}
-              className="border-input bg-background h-11 w-full rounded-lg border px-3 text-sm disabled:opacity-60"
-            />
-            <p className="text-muted-foreground text-sm">
-              {formatMoney(rate)} × {parkingNights} night
-              {parkingNights !== 1 ? 's' : ''} ={' '}
-              <span className="text-foreground font-semibold">{formatMoney(totalPreview)}</span>
-            </p>
-          </div>
-        </div>
-
-        <ResponsiveModalFooter className="flex-col gap-2 sm:flex-col">
+    <AdminDialogShell
+      open={open}
+      onOpenChange={onOpenChange}
+      sizeClassName="max-w-[min(calc(100vw-1.5rem),28rem)] sm:max-w-md"
+      title={
+        <ResponsiveModalTitle className="flex items-center gap-2">
+          <Car className="text-primary size-4 h-8 w-7 shrink-0" aria-hidden />
+          {viewMode ? 'Parking link' : 'Set up parking'}
+        </ResponsiveModalTitle>
+      }
+      footerClassName="flex-col gap-2 sm:flex-col"
+      footer={
+        <>
           <Button
             type="button"
             className="min-h-[44px] w-full gap-2"
@@ -302,9 +205,104 @@ export function PayParkingModal({ booking, open, onOpenChange }: Props) {
             )}
             Copy parking URL
           </Button>
-        </ResponsiveModalFooter>
-      </ResponsiveModalContent>
-    </ResponsiveModal>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        {allowCustomParkingDates ? (
+          <label className="flex cursor-pointer items-start gap-3">
+            <Checkbox
+              checked={sameAsBookingDuration}
+              disabled={isSaving}
+              onCheckedChange={(checked) => {
+                const next = checked === true;
+                setSameAsBookingDuration(next);
+                if (next) {
+                  setParkingCheckIn(bookingStayRange.from);
+                  setParkingCheckOut(bookingStayRange.to);
+                }
+              }}
+              className="mt-0.5"
+            />
+            <span className="text-foreground flex flex-col text-sm leading-snug">
+              Same dates as stay
+              {sameAsBookingDuration && (
+                <span className="text-base font-semibold">
+                  {formatBookingDate(booking.check_in_date)} –{' '}
+                  {formatBookingDate(booking.check_out_date)}
+                </span>
+              )}
+            </span>
+          </label>
+        ) : null}
+
+        {allowCustomParkingDates && !sameAsBookingDuration ? (
+          <>
+            <div className="space-y-1.5">
+              <Label htmlFor="pay-parking-check-in" className="text-sm">
+                Parking check-in
+              </Label>
+              <DatePicker
+                date={parkingCheckIn}
+                rangeEnd={parkingCheckOut}
+                minDate={stayBounds.minDate}
+                maxDate={stayBounds.maxDate}
+                disabled={() => isSaving}
+                placeholder={DATE_PICKER_DISPLAY_FORMAT}
+                onSelect={(date) => {
+                  if (!date) return;
+                  setParkingCheckIn(date);
+                  setParkingCheckOut((prev) =>
+                    defaultParkingCheckOutAfterCheckIn(date, prev, stayBounds.maxDate)
+                  );
+                }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="pay-parking-check-out" className="text-sm">
+                Parking check-out
+              </Label>
+              <DatePicker
+                date={parkingCheckOut}
+                rangeEnd={parkingCheckIn}
+                minDate={parkingCheckIn ?? stayBounds.minDate}
+                maxDate={stayBounds.maxDate}
+                disabled={(date) => {
+                  if (isSaving) return true;
+                  if (parkingCheckIn && date <= parkingCheckIn) return true;
+                  return false;
+                }}
+                placeholder={DATE_PICKER_DISPLAY_FORMAT}
+                onSelect={(date) => {
+                  if (date) setParkingCheckOut(date);
+                }}
+              />
+            </div>
+          </>
+        ) : null}
+
+        <div className="space-y-1.5">
+          <Label htmlFor="pay-parking-rate" className="text-sm font-medium">
+            Rate per night
+          </Label>
+          <input
+            id="pay-parking-rate"
+            type="number"
+            min={1}
+            step={10}
+            value={rate}
+            disabled={isSaving}
+            onChange={(e) => setRate(Number(e.target.value))}
+            className="border-input bg-background h-11 w-full rounded-lg border px-3 text-sm disabled:opacity-60"
+          />
+          <p className="text-muted-foreground text-sm">
+            {formatMoney(rate)} × {parkingNights} night
+            {parkingNights !== 1 ? 's' : ''} ={' '}
+            <span className="text-foreground font-semibold">{formatMoney(totalPreview)}</span>
+          </p>
+        </div>
+      </div>
+    </AdminDialogShell>
   );
 }
 

@@ -289,7 +289,7 @@ export function GuestBalanceSettlementForm({
     if (!receiptRequired) return null;
     if (!receiptUrl.trim()) return 'Upload a payment balance receipt';
     if (receiptAiVerdictBlocksAdmin(blockingVerdict)) {
-      return 'Replace the receipt — AI check blocked this file';
+      return 'Replace the receipt. AI check blocked this file';
     }
     return null;
   }
@@ -318,7 +318,7 @@ export function GuestBalanceSettlementForm({
       if (!receiptRequired) return null;
       if (!receiptUrl.trim()) return 'Upload a payment balance receipt';
       if (receiptAiVerdictBlocksAdmin(blockingVerdict)) {
-        return 'Replace the receipt — AI check blocked this file';
+        return 'Replace the receipt. AI check blocked this file';
       }
       return null;
     })();
@@ -433,7 +433,7 @@ export function GuestBalanceSettlementForm({
               : 'bg-muted text-foreground dark:ring-border/60 ring-slate-200'
           )}
         >
-          {totalDue === null ? 'Missing — complete pricing first' : formatMoney(totalDue)}
+          {totalDue === null ? 'Missing. Complete pricing first' : formatMoney(totalDue)}
         </span>
       </div>
 

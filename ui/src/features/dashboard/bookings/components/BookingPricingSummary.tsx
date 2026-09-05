@@ -131,14 +131,14 @@ export function BookingPricingSummary({
     {
       key: 'pet',
       label: 'Pet fee',
-      value: booking.has_pets === true ? formatMoney(booking.pet_fee as number) : '—',
+      value: booking.has_pets === true ? formatMoney(booking.pet_fee as number) : '-',
     },
     {
       key: 'additional',
       label: 'Additional guest fee',
-      value: additionalGuestFee > 0 ? formatMoney(additionalGuestFee) : '—',
+      value: additionalGuestFee > 0 ? formatMoney(additionalGuestFee) : '-',
     },
-  ].filter((row) => row.value !== '—');
+  ].filter((row) => row.value !== '-');
 
   /**
    * Parking sits in its own section because it never counts toward the guest
@@ -160,7 +160,7 @@ export function BookingPricingSummary({
           },
         ]
       : []
-  ).filter((row) => row.value !== '—');
+  ).filter((row) => row.value !== '-');
 
   return (
     <div className={cn('space-y-5', className)}>

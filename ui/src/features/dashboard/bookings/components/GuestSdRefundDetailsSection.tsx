@@ -106,7 +106,7 @@ export function GuestSdRefundDetailsSection({ booking, variant = 'edit' }: Props
                 !phoneDisplay && 'text-muted-foreground'
               )}
             >
-              {phoneDisplay || '—'}
+              {phoneDisplay || '-'}
             </span>
             <InlineCopyIconButton
               aria-label="Copy phone number to clipboard"
@@ -118,7 +118,7 @@ export function GuestSdRefundDetailsSection({ booking, variant = 'edit' }: Props
       )}
       {guestMethod === 'other_bank' && (
         <>
-          <RefundSummaryRow label="Bank">{booking.sd_refund_bank ?? '—'}</RefundSummaryRow>
+          <RefundSummaryRow label="Bank">{booking.sd_refund_bank ?? '-'}</RefundSummaryRow>
           <RefundSummaryRow label="Account name">
             <span className="inline-flex max-w-full flex-wrap items-baseline gap-x-1 gap-y-0.5">
               <span
@@ -127,7 +127,7 @@ export function GuestSdRefundDetailsSection({ booking, variant = 'edit' }: Props
                   !accountNameForCopy && 'text-muted-foreground'
                 )}
               >
-                {accountNameForCopy || '—'}
+                {accountNameForCopy || '-'}
               </span>
               <InlineCopyIconButton
                 aria-label="Copy account name to clipboard"
@@ -144,7 +144,7 @@ export function GuestSdRefundDetailsSection({ booking, variant = 'edit' }: Props
                   !accountNumberForCopy && 'text-muted-foreground'
                 )}
               >
-                {booking.sd_refund_account_number?.trim() || '—'}
+                {booking.sd_refund_account_number?.trim() || '-'}
               </span>
               <InlineCopyIconButton
                 aria-label="Copy account number to clipboard"

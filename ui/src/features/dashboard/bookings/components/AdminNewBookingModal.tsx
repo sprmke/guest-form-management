@@ -45,7 +45,7 @@ function toSuccessRows(result: GuestFormSubmitSuccess): AdminBookingSuccessRow[]
     {
       icon: CalendarDays,
       label: 'Stay dates',
-      value: `${formatDateToLongFormat(bookingData.checkInDate)} — ${formatDateToLongFormat(bookingData.checkOutDate)}`,
+      value: `${formatDateToLongFormat(bookingData.checkInDate)} - ${formatDateToLongFormat(bookingData.checkOutDate)}`,
     },
     {
       icon: User,

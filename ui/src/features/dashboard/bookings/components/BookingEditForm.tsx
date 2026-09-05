@@ -493,7 +493,7 @@ export function BookingEditForm({
     }
 
     if (revertToPendingReview) {
-      toast.success('Booking updated — moved to Pending Review');
+      toast.success('Booking updated. Moved to Pending Review');
     } else {
       toast.success('Booking updated');
     }

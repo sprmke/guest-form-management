@@ -57,7 +57,7 @@ function bookingPillLabel(row: BookingRow): string {
 /** Price mode shows the full stay total (sum of nights), not the per-night split. */
 function bookingPillPriceLabel(row: BookingRow): string {
   const stayTotal = stayTotalAmount(row.booking_rate);
-  if (stayTotal == null) return '—';
+  if (stayTotal == null) return '-';
   return formatMoneyCompact(stayTotal);
 }
 
@@ -72,7 +72,7 @@ function bookingPillTitle(row: BookingRow, resourceSuffix: string): string {
   );
   const stayPart =
     stayTotal == null
-      ? '—'
+      ? '-'
       : perNight == null
         ? formatMoneyCompact(stayTotal)
         : `${formatMoneyCompact(stayTotal)} stay (${formatMoneyCompact(perNight)}/night)`;

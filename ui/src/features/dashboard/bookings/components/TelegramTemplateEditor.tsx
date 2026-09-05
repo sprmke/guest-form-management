@@ -128,7 +128,7 @@ export function TelegramTemplateEditor({
       return 'Live preview';
     }
     if (livePreview.isError && previewContext && previewSampleSet) {
-      return `Sample data — live preview unavailable (${(livePreview.error as Error).message})`;
+      return `Sample data. Live preview unavailable (${(livePreview.error as Error).message})`;
     }
     if (livePreview.isError && previewContext) {
       return (livePreview.error as Error).message;

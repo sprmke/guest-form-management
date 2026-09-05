@@ -296,7 +296,7 @@ export function AdminTableFlagsCell({
         </span>
       ) : null}
       {!hasAny ? (
-        <span className={cn(adminTableBodyText.secondary, 'text-muted-foreground/40')}>—</span>
+        <span className={cn(adminTableBodyText.secondary, 'text-muted-foreground/40')}>-</span>
       ) : null}
     </div>
   );
