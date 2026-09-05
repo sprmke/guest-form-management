@@ -31,9 +31,7 @@ import {
   getAssistantOpenRequestId,
   subscribeAssistantOpenRequest,
 } from '@/features/dashboard/ai-assistant/lib/assistantOpenStore';
-import { AdminAnnouncementBanner } from '@/features/dashboard/announcements/components/AdminAnnouncementBanner';
 import { useHostAnnouncementHasUnread } from '@/features/dashboard/announcements/hooks/useHostAnnouncementHasUnread';
-import { isHostAnnouncementsArchivePath } from '@/features/dashboard/announcements/lib/hostAnnouncementsPaths';
 import {
   AdminBrandTheme,
   useAdminBrandThemeStyle,
@@ -101,7 +99,6 @@ import {
 } from '@/features/dashboard/parking/lib/parkingSettingsIssuesStore';
 import { UpgradeModalProvider } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { SuperAdminSidebarScope } from '@/features/dashboard/super-admin/components/SuperAdminSidebarScope';
-import { superAdminOrgSlugFromPath } from '@/features/dashboard/super-admin/lib/superAdminPaths';
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 import { useParkingPermissions } from '@/features/dashboard/team/hooks/useParkingPermissions';
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
@@ -280,7 +277,7 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
 
   const navSections = useMemo(() => {
     if (isSuperAdminPath(location.pathname)) {
-      return buildSuperAdminNavSections(superAdminOrgSlugFromPath(location.pathname));
+      return buildSuperAdminNavSections();
     }
 
     const orgSlug = tenant?.orgSlug ?? parkingTenant?.orgSlug ?? routeOrgSlug;
@@ -624,13 +621,7 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
             <div className="admin-mobile-shell-column flex min-w-0 flex-1 flex-col overflow-hidden">
               <AdminMobileTopBar superAdmin={superAdmin} />
 
-              <AdminMainColumn
-                fillMain={fillMain}
-                pathname={location.pathname}
-                showHostAnnouncements={
-                  !superAdmin && !isHostAnnouncementsArchivePath(location.pathname)
-                }
-              >
+              <AdminMainColumn fillMain={fillMain} pathname={location.pathname}>
                 {children}
               </AdminMainColumn>
             </div>
@@ -717,12 +708,10 @@ function AdminMainColumn({
   children,
   fillMain,
   pathname,
-  showHostAnnouncements,
 }: {
   children: ReactNode;
   fillMain: boolean;
   pathname: string;
-  showHostAnnouncements: boolean;
 }) {
   return (
     <main
@@ -750,7 +739,6 @@ function AdminMainColumn({
               : 'space-y-3 max-lg:space-y-0 sm:space-y-4 lg:space-y-6'
           )}
         >
-          {showHostAnnouncements ? <AdminAnnouncementBanner /> : null}
           {children}
         </PageTransition>
       </MobileAppShell>
@@ -831,85 +819,94 @@ function AdminSidebarContent({
           {navPillBounds ? (
             <SlidingActivePill bounds={navPillBounds} className="bg-primary rounded-xl shadow-sm" />
           ) : null}
-          {navSections.map((section) => (
-            <div key={section.label}>
-              <div className="space-y-1">
-                {section.items.map((item) => {
-                  const { label, href, Icon, disabled } = item;
-                  const active = href ? href === activeNavHref : false;
-                  const showSettingsIssue =
-                    label === 'Settings' &&
-                    ((propertySettingsHasIssues && isPropertyAdminPath(pathname)) ||
-                      (parkingSettingsHasIssues && isParkingAdminPath(pathname)) ||
-                      (orgSettingsHasIssues && isOrgAdminPath(pathname)));
-                  const showAnnouncementsBadge =
-                    label === 'Announcements' && hostAnnouncementsHaveUnread;
-                  const collapsedNavHint = showSettingsIssue
-                    ? `${label} — items need attention`
-                    : showAnnouncementsBadge
-                      ? `${label} — unread announcements`
-                      : label;
+          {navSections.map((section) => {
+            const showHeading =
+              !collapsed && navSections.length > 1 && Boolean(section.label) && !section.hideLabel;
+            return (
+              <div key={section.label} className={showHeading ? 'pt-3 first:pt-0' : undefined}>
+                {showHeading ? (
+                  <p className="text-sidebar-muted px-3 pb-1 text-[0.6875rem] font-semibold uppercase tracking-wider">
+                    {section.label}
+                  </p>
+                ) : null}
+                <div className="space-y-1">
+                  {section.items.map((item) => {
+                    const { label, href, Icon, disabled } = item;
+                    const active = href ? href === activeNavHref : false;
+                    const showSettingsIssue =
+                      label === 'Settings' &&
+                      ((propertySettingsHasIssues && isPropertyAdminPath(pathname)) ||
+                        (parkingSettingsHasIssues && isParkingAdminPath(pathname)) ||
+                        (orgSettingsHasIssues && isOrgAdminPath(pathname)));
+                    const showAnnouncementsBadge =
+                      label === 'Announcements' && hostAnnouncementsHaveUnread;
+                    const collapsedNavHint = showSettingsIssue
+                      ? `${label} — items need attention`
+                      : showAnnouncementsBadge
+                        ? `${label} — unread announcements`
+                        : label;
 
-                  if (disabled || !href) {
+                    if (disabled || !href) {
+                      return (
+                        <div
+                          key={label}
+                          aria-disabled="true"
+                          title={collapsed ? label : undefined}
+                          className={cn(
+                            'flex cursor-not-allowed items-center rounded-xl px-3 py-2.5 text-sm font-medium opacity-50',
+                            collapsed ? 'justify-center px-2' : 'gap-3',
+                            'text-sidebar-muted'
+                          )}
+                        >
+                          <Icon className="h-5 w-5 shrink-0" />
+                          {!collapsed && <span className="flex-1 truncate">{label}</span>}
+                        </div>
+                      );
+                    }
+
                     return (
-                      <div
-                        key={label}
-                        aria-disabled="true"
+                      <Link
+                        key={href}
+                        ref={setItemRef(href)}
+                        to={href}
+                        onClick={onClose}
                         title={collapsed ? label : undefined}
+                        aria-current={active ? 'page' : undefined}
+                        aria-label={collapsed ? collapsedNavHint : undefined}
                         className={cn(
-                          'flex cursor-not-allowed items-center rounded-xl px-3 py-2.5 text-sm font-medium opacity-50',
+                          'group relative z-[1] flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-200',
                           collapsed ? 'justify-center px-2' : 'gap-3',
-                          'text-sidebar-muted'
-                        )}
-                      >
-                        <Icon className="h-5 w-5 shrink-0" />
-                        {!collapsed && <span className="flex-1 truncate">{label}</span>}
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <Link
-                      key={href}
-                      ref={setItemRef(href)}
-                      to={href}
-                      onClick={onClose}
-                      title={collapsed ? label : undefined}
-                      aria-current={active ? 'page' : undefined}
-                      aria-label={collapsed ? collapsedNavHint : undefined}
-                      className={cn(
-                        'group relative z-[1] flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-200',
-                        collapsed ? 'justify-center px-2' : 'gap-3',
-                        active
-                          ? 'text-primary-foreground'
-                          : 'text-sidebar-foreground hover:bg-muted/60 hover:text-foreground dark:hover:bg-muted/40'
-                      )}
-                    >
-                      <Icon
-                        className={cn(
-                          'h-5 w-5 shrink-0 transition-colors',
                           active
                             ? 'text-primary-foreground'
-                            : 'text-sidebar-muted group-hover:text-foreground'
+                            : 'text-sidebar-foreground hover:bg-muted/60 hover:text-foreground dark:hover:bg-muted/40'
                         )}
-                      />
-                      {!collapsed && (
-                        <span className="flex min-w-0 flex-1 items-center gap-2">
-                          <span className="truncate">{label}</span>
-                          {showAnnouncementsBadge || showSettingsIssue ? (
-                            <SectionNavIssueDot className="ml-auto" />
-                          ) : null}
-                        </span>
-                      )}
-                      {collapsed && (showAnnouncementsBadge || showSettingsIssue) ? (
-                        <SectionNavIssueDot className="absolute right-1.5 top-1.5" />
-                      ) : null}
-                    </Link>
-                  );
-                })}
+                      >
+                        <Icon
+                          className={cn(
+                            'h-5 w-5 shrink-0 transition-colors',
+                            active
+                              ? 'text-primary-foreground'
+                              : 'text-sidebar-muted group-hover:text-foreground'
+                          )}
+                        />
+                        {!collapsed && (
+                          <span className="flex min-w-0 flex-1 items-center gap-2">
+                            <span className="truncate">{label}</span>
+                            {showAnnouncementsBadge || showSettingsIssue ? (
+                              <SectionNavIssueDot className="ml-auto" />
+                            ) : null}
+                          </span>
+                        )}
+                        {collapsed && (showAnnouncementsBadge || showSettingsIssue) ? (
+                          <SectionNavIssueDot className="absolute right-1.5 top-1.5" />
+                        ) : null}
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </nav>
 
