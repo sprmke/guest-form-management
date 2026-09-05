@@ -18,7 +18,7 @@ const guestFaqs: MarketingPublicFaqItem[] = [
   {
     question: 'What happens after I submit a booking form?',
     answer:
-      'Your stay enters host review. You may be asked for documents—ID, payment receipt, pet or parking papers. When requirements are met, the booking moves toward check-in, then check-out, and finally security-deposit refund if one was collected.',
+      'Your stay enters host review. You may be asked for documents (ID, payment receipt, pet or parking papers). When requirements are met, the booking moves toward check-in, then check-out, and finally security-deposit refund if one was collected.',
   },
   {
     question: 'Where do I upload IDs or receipts?',

@@ -26,12 +26,20 @@ export function defaultListingPropertyTemplateName(): SeededPropertyTemplateName
 
 export function resolveListingPropertyTemplateName(
   roleId: string,
-  propertyCustomRoles: CustomPropertyRole[]
+  propertyCustomRoles: CustomPropertyRole[] = []
 ): SeededPropertyTemplateName {
-  const legacy = LEGACY_PROPERTY_ROLE_TO_TEMPLATE[roleId];
+  const trimmed = roleId.trim();
+  if (isSeededTemplateName(trimmed)) {
+    const canonical = Object.values(SEEDED_PROPERTY_TEMPLATE_NAMES).find(
+      (name) => name.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (canonical) return canonical;
+  }
+
+  const legacy = LEGACY_PROPERTY_ROLE_TO_TEMPLATE[trimmed];
   if (legacy) return legacy;
 
-  const match = propertyCustomRoles.find((role) => role.id === roleId);
+  const match = propertyCustomRoles.find((role) => role.id === trimmed);
   if (match && isSeededTemplateName(match.name)) {
     return match.name as SeededPropertyTemplateName;
   }

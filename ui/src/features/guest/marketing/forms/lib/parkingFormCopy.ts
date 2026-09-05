@@ -5,4 +5,4 @@ export const PARKING_REGISTRATION_FORM_NAME = 'Parking request';
 export const PARKING_REGISTRATION_SUCCESS_TITLE = 'Request submitted';
 
 export const PARKING_REGISTRATION_SUCCESS_MESSAGE =
-  'We are matching you with a host. Track this request for updates — you will pay only after a host accepts.';
+  'We are matching you with a host. Track this request for updates. You will pay only after a host accepts.';

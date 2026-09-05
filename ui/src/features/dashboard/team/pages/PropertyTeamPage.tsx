@@ -9,10 +9,6 @@ import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate'
 import { CustomRoleFormDialog } from '@/features/dashboard/team/components/CustomRoleFormDialog';
 import { EditMemberContactDialog } from '@/features/dashboard/team/components/EditMemberContactDialog';
 import {
-  EditPermissionsDialog,
-  permissionsForRole,
-} from '@/features/dashboard/team/components/EditPermissionsDialog';
-import {
   defaultInviteRoleId,
   InviteMemberDialog,
 } from '@/features/dashboard/team/components/InviteMemberDialog';
@@ -91,7 +87,6 @@ export function PropertyTeamPage() {
   const [selectedTab, setSelectedTab] = useState<TeamTab>('members');
 
   const [showInviteDialog, setShowInviteDialog] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
   const [showContactDialog, setShowContactDialog] = useState(false);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
@@ -106,9 +101,6 @@ export function PropertyTeamPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteContactPhone, setInviteContactPhone] = useState('');
   const [inviteRoleId, setInviteRoleId] = useState<PropertyRoleId>(defaultRoleId);
-
-  const [editRoleId, setEditRoleId] = useState<PropertyRoleId>(defaultRoleId);
-  const [editPermissions, setEditPermissions] = useState<string[]>([]);
 
   const memberCountByRole = useCallback(
     (roleId: string) => countMembersWithRole(roleId, members, invitations),
@@ -184,29 +176,6 @@ export function PropertyTeamPage() {
       });
       toast.success('Member updated');
       setShowContactDialog(false);
-      setSelectedMember(null);
-    } catch {
-      /* toast handled in mutation */
-    }
-  };
-
-  const handleEditPermissions = (member: TeamMember) => {
-    setSelectedMember(member);
-    setEditRoleId(member.role);
-    setEditPermissions([...member.permissions]);
-    setShowEditDialog(true);
-  };
-
-  const handleSavePermissions = async () => {
-    if (!selectedMember) return;
-    try {
-      await updateMember.mutateAsync({
-        memberId: selectedMember.id,
-        roleId: editRoleId,
-        permissions: editPermissions,
-      });
-      toast.success('Permissions saved');
-      setShowEditDialog(false);
       setSelectedMember(null);
     } catch {
       /* toast handled in mutation */
@@ -313,14 +282,6 @@ export function PropertyTeamPage() {
     } catch {
       /* toast handled in mutation */
     }
-  };
-
-  const toggleEditPermission = (permissionId: string) => {
-    setEditPermissions((prev) =>
-      prev.includes(permissionId)
-        ? prev.filter((id) => id !== permissionId)
-        : [...prev, permissionId]
-    );
   };
 
   const toggleCustomRolePermission = (permissionId: string) => {
@@ -438,7 +399,6 @@ export function PropertyTeamPage() {
                   filterRole={filterRole}
                   onSearchChange={setSearchQuery}
                   onFilterRoleChange={setFilterRole}
-                  onEditPermissions={handleEditPermissions}
                   onEditContact={handleEditContact}
                   onToggleStatus={handleToggleMemberStatus}
                   onRemove={(member) => {
@@ -517,26 +477,6 @@ export function PropertyTeamPage() {
           onOpenChange={setShowContactDialog}
           onSave={handleSaveContact}
           savePending={updateMember.isPending}
-        />
-
-        <EditPermissionsDialog
-          open={showEditDialog}
-          member={selectedMember}
-          roleId={editRoleId}
-          customRoles={customRoles}
-          permissions={editPermissions}
-          onOpenChange={setShowEditDialog}
-          onRoleChange={(roleId) => {
-            setEditRoleId(roleId);
-            setEditPermissions(permissionsForRole('property', roleId, customRoles));
-          }}
-          onPermissionsChange={setEditPermissions}
-          onTogglePermission={toggleEditPermission}
-          onSave={handleSavePermissions}
-          onAddCustomRole={canManageCustomRoles ? openCreateCustomRole : undefined}
-          showAddCustomRole={canManageCustomRoles}
-          savePending={updateMember.isPending}
-          readOnly={Boolean(selectedMember?.fromOrg) || !canEditMembers}
         />
 
         <RemoveMemberDialog

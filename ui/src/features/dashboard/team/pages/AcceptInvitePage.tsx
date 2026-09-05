@@ -32,6 +32,7 @@ import {
 } from '@/features/dashboard/team/lib/acceptInviteApi';
 
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
+import { TeamLogoMark } from '@/components/branding/TeamLogoMark';
 import { RouteGuardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Button } from '@/components/ui/button';
@@ -55,26 +56,18 @@ function acceptInvitePath(token: string, scope?: string | null) {
 
 function AcceptInviteBrandHeader({ preview }: { preview: TeamInvitePreview }) {
   const logoUrl = resolveInviteLogoUrl(preview.logoUrl);
-  const initial = preview.orgName.trim().charAt(0).toUpperCase() || '?';
 
   return (
     <div className="relative mb-6 pt-12 text-center">
       <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2">
         <div className="bg-card shadow-elevated ring-card rounded-full p-1 ring-4">
-          {logoUrl ? (
-            <img
-              src={logoUrl}
-              alt={preview.orgName}
-              className="size-20 rounded-full object-cover sm:size-[88px]"
-            />
-          ) : (
-            <div
-              aria-hidden
-              className="bg-muted text-foreground flex size-20 items-center justify-center rounded-full text-2xl font-bold sm:size-[88px]"
-            >
-              {initial}
-            </div>
-          )}
+          <TeamLogoMark
+            src={logoUrl}
+            name={preview.orgName}
+            alt={preview.orgName}
+            className="size-20 rounded-full shadow-none sm:size-[88px]"
+            initialsClassName="text-2xl sm:text-3xl"
+          />
         </div>
       </div>
       <p className="section-eyebrow mb-2">Team invitation</p>

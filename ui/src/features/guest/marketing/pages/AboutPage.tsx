@@ -29,7 +29,7 @@ const capabilities = [
   {
     icon: Building2,
     title: 'Organizations & properties',
-    body: 'Run multiple listings with team roles and permission-scoped dashboards—without splitting tools across spreadsheets.',
+    body: 'Run multiple listings with team roles and permission-scoped dashboards, without splitting tools across spreadsheets.',
   },
   {
     icon: CarFront,
@@ -49,7 +49,7 @@ const capabilities = [
   {
     icon: ShieldCheck,
     title: 'Document review',
-    body: 'IDs, receipts, and stay papers go through structured review—including AI checks where you enable them.',
+    body: 'IDs, receipts, and stay papers go through structured review, including AI checks where you enable them.',
   },
 ] as const;
 
@@ -60,7 +60,7 @@ export function AboutPage() {
       <MarketingPublicPageHero
         eyebrow="About"
         title="Philippine stays, one operating system"
-        description="Connect guest booking, host operations, messaging, marketing, finance, and parking—so every stay has a clear path from calendar to check-out."
+        description="Connect guest booking, host operations, messaging, marketing, finance, and parking so every stay has a clear path from calendar to check-out."
         blobPosition="right"
       >
         <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">

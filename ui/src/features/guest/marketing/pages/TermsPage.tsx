@@ -45,7 +45,7 @@ export function TermsPage() {
         {
           title: 'Payments, deposits, and refunds',
           paragraphs: [
-            'Payment proof, security deposits, and refund timing follow the property’s instructions and the booking workflow—including document review, check-in, check-out, and security-deposit refund steps when enabled.',
+            'Payment proof, security deposits, and refund timing follow the property’s instructions and the booking workflow, including document review, check-in, check-out, and security-deposit refund steps when enabled.',
             `${legalSubject} provides software to collect information and run that workflow. We do not guarantee occupancy, payment-processor uptime, or that every third-party transfer will succeed on first attempt.`,
           ],
         },

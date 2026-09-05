@@ -27,7 +27,7 @@ export function PrivacyPage() {
           title: 'Information we collect',
           paragraphs: [
             'Guest bookings may include names and ages (up to five guests), email, Philippine phone number, address, nationality, stay dates, how you found us, special requests, and optional parking vehicle details (plate, brand, model, color) with related endorsement or receipt files.',
-            'Document uploads can include payment receipts, government IDs for adult guests, pet vaccination records and photos, parking papers, and—at security-deposit refund—bank or GCash payout account details. Files are stored in dedicated storage buckets, including private buckets for approved forms and refund receipts.',
+            'Document uploads can include payment receipts, government IDs for adult guests, pet vaccination records and photos, parking papers, and (at security-deposit refund) bank or GCash payout account details. Files are stored in dedicated storage buckets, including private buckets for approved forms and refund receipts.',
             'Hosts and organizations may submit verification materials such as a valid ID, selfie with ID, and ownership or social proof. Account and team data include profile details, roles, and permissions. Technical logs may include device, browser, IP, and usage metadata needed for security and reliability.',
           ],
         },
@@ -41,7 +41,7 @@ export function PrivacyPage() {
         {
           title: 'Processors and sharing',
           paragraphs: [
-            `We share data with service providers that help run ${PLATFORM_APP_NAME || 'the platform'}: Supabase (database, storage, auth, edge functions); Resend (transactional email and inbound document approvals); Google (OAuth sign-in, Maps/Places); Google Gemini and Groq (AI features described above); Meta (guest inbox OAuth/webhooks and marketing publishing where connected); Telegram (internal staff notifications about bookings—not a guest-facing messaging channel); and Jamendo (royalty-free music in the video editor; not used to process guest PII).`,
+            `We share data with service providers that help run ${PLATFORM_APP_NAME || 'the platform'}: Supabase (database, storage, auth, edge functions); Resend (transactional email and inbound document approvals); Google (OAuth sign-in, Maps/Places); Google Gemini and Groq (AI features described above); Meta (guest inbox OAuth/webhooks and marketing publishing where connected); Telegram (internal staff notifications about bookings, not a guest-facing messaging channel); and Jamendo (royalty-free music in the video editor; not used to process guest PII).`,
             'Hosts and authorized team members see guest and booking data needed to operate their properties. We may disclose information when required by law or to protect rights, safety, and the integrity of the service.',
           ],
         },

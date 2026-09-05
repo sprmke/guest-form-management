@@ -55,7 +55,7 @@ export const mockDevelopments: Development[] = [
     location: 'Parañaque, Metro Manila',
     city: 'Parañaque',
     description:
-      'Azure Urban Resort Residences — search fixture sibling of Azure North for typeahead See all testing.',
+      'Azure Urban Resort Residences (search fixture sibling of Azure North for typeahead See all testing).',
     coverImage: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200&q=85',
     images: ['https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200&q=85'],
     amenities: ['Lagoon Pool', 'Gym', '24/7 Security'],
@@ -74,7 +74,7 @@ export const mockDevelopments: Development[] = [
     type: 'CONDOMINIUM',
     location: 'San Fernando, Pampanga',
     city: 'San Fernando',
-    description: 'Azure North Bay promenade cluster — search fixture for typeahead See all.',
+    description: 'Azure North Bay promenade cluster (search fixture for typeahead See all).',
     coverImage: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1200&q=85',
     images: ['https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1200&q=85'],
     amenities: ['Bay promenade', 'Parking', 'Security'],
@@ -93,7 +93,7 @@ export const mockDevelopments: Development[] = [
     type: 'CONDOMINIUM',
     location: 'San Fernando, Pampanga',
     city: 'San Fernando',
-    description: 'Azure North Phase 2 — search fixture for typeahead See all.',
+    description: 'Azure North Phase 2 (search fixture for typeahead See all).',
     coverImage: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1200&q=85',
     images: ['https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1200&q=85'],
     amenities: ['Pool', 'Gym', 'Clubhouse'],
@@ -261,7 +261,7 @@ export const mockDevelopments: Development[] = [
     location: 'Sta. Rosa, Laguna',
     city: 'Sta. Rosa',
     description:
-      'Brittany Sta. Rosa is a luxury residential community that brings European elegance to the Philippines. Developed by Brittany Corporation, the premium residential brand of Vista Land, this exclusive enclave in Sta. Rosa features grand European-themed homes surrounded by manicured gardens, tree-lined boulevards, and a serene ambiance that feels worlds away from the city bustle—yet just minutes from all major conveniences.',
+      'Brittany Sta. Rosa is a luxury residential community that brings European elegance to the Philippines. Developed by Brittany Corporation, the premium residential brand of Vista Land, this exclusive enclave in Sta. Rosa features grand European-themed homes surrounded by manicured gardens, tree-lined boulevards, and a serene ambiance that feels worlds away from the city bustle, yet just minutes from all major conveniences.',
     coverImage: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=1200&q=85',
     images: [
       'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=1200&q=85',
@@ -571,7 +571,7 @@ export const mockDevelopments: Development[] = [
     location: 'Salcedo Village, Makati',
     city: 'Makati',
     description:
-      'Quiet Salcedo Village towers overlooking the weekend market park — ideal for professionals.',
+      'Quiet Salcedo Village towers overlooking the weekend market park. Ideal for professionals.',
     coverImage: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200&q=85',
     images: [
       'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200&q=85',

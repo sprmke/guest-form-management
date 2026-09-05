@@ -37,7 +37,7 @@ export function GuestAccountSettingsPage() {
     <div className="border-border bg-card w-full overflow-hidden rounded-2xl border shadow-sm">
       <div className="space-y-1 p-6 sm:p-8 lg:p-10">
         <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Email</p>
-        <p className="text-foreground text-sm">{profile?.email ?? '—'}</p>
+        <p className="text-foreground text-sm">{profile?.email ?? '-'}</p>
       </div>
 
       <Separator />

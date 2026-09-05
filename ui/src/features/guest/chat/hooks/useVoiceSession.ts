@@ -558,7 +558,7 @@ export function useVoiceSession(propertySlug: string) {
                 response: {
                   result: {
                     topic,
-                    fact: "I don't have that on hand right now — I'll have the host team follow up.",
+                    fact: "I don't have that on hand right now. I'll have the host team follow up.",
                   },
                 },
               };

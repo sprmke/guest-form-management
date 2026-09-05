@@ -9,10 +9,6 @@ import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate'
 import { CustomRoleFormDialog } from '@/features/dashboard/team/components/CustomRoleFormDialog';
 import { EditMemberContactDialog } from '@/features/dashboard/team/components/EditMemberContactDialog';
 import {
-  EditPermissionsDialog,
-  permissionsForRole,
-} from '@/features/dashboard/team/components/EditPermissionsDialog';
-import {
   defaultInviteRoleId,
   InviteMemberDialog,
 } from '@/features/dashboard/team/components/InviteMemberDialog';
@@ -80,7 +76,6 @@ export function ParkingTeamPage() {
   const [selectedTab, setSelectedTab] = useState<TeamTab>('members');
 
   const [showInviteDialog, setShowInviteDialog] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
   const [showContactDialog, setShowContactDialog] = useState(false);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
@@ -95,9 +90,6 @@ export function ParkingTeamPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteContactPhone, setInviteContactPhone] = useState('');
   const [inviteRoleId, setInviteRoleId] = useState<PropertyRoleId>(defaultRoleId);
-
-  const [editRoleId, setEditRoleId] = useState<PropertyRoleId>(defaultRoleId);
-  const [editPermissions, setEditPermissions] = useState<string[]>([]);
 
   const memberCountByRole = useCallback(
     (roleId: string) => countMembersWithRole(roleId, members, invitations),
@@ -158,29 +150,6 @@ export function ParkingTeamPage() {
       });
       toast.success('Member updated');
       setShowContactDialog(false);
-      setSelectedMember(null);
-    } catch {
-      /* toast handled in mutation */
-    }
-  };
-
-  const handleEditPermissions = (member: TeamMember) => {
-    setSelectedMember(member);
-    setEditRoleId(member.role);
-    setEditPermissions([...member.permissions]);
-    setShowEditDialog(true);
-  };
-
-  const handleSavePermissions = async () => {
-    if (!selectedMember) return;
-    try {
-      await updateMember.mutateAsync({
-        memberId: selectedMember.id,
-        roleId: editRoleId,
-        permissions: editPermissions,
-      });
-      toast.success('Permissions saved');
-      setShowEditDialog(false);
       setSelectedMember(null);
     } catch {
       /* toast handled in mutation */
@@ -275,14 +244,6 @@ export function ParkingTeamPage() {
     } catch {
       /* toast handled in mutation */
     }
-  };
-
-  const toggleEditPermission = (permissionId: string) => {
-    setEditPermissions((prev) =>
-      prev.includes(permissionId)
-        ? prev.filter((id) => id !== permissionId)
-        : [...prev, permissionId]
-    );
   };
 
   const toggleCustomRolePermission = (permissionId: string) => {
@@ -400,7 +361,6 @@ export function ParkingTeamPage() {
                   filterRole={filterRole}
                   onSearchChange={setSearchQuery}
                   onFilterRoleChange={setFilterRole}
-                  onEditPermissions={handleEditPermissions}
                   onEditContact={handleEditContact}
                   onToggleStatus={handleToggleMemberStatus}
                   onRemove={(member) => {
@@ -476,25 +436,6 @@ export function ParkingTeamPage() {
           }
           onOpenChange={setShowContactDialog}
           onSave={handleSaveContact}
-          savePending={updateMember.isPending}
-        />
-
-        <EditPermissionsDialog
-          scope={teamScope}
-          open={showEditDialog}
-          member={selectedMember}
-          roleId={editRoleId}
-          customRoles={customRoles}
-          permissions={editPermissions}
-          onOpenChange={setShowEditDialog}
-          onRoleChange={(roleId) => {
-            setEditRoleId(roleId);
-            setEditPermissions(permissionsForRole(teamScope, roleId, customRoles));
-          }}
-          onTogglePermission={toggleEditPermission}
-          onSave={handleSavePermissions}
-          onAddCustomRole={canManage ? openCreateCustomRole : undefined}
-          showAddCustomRole={canManage}
           savePending={updateMember.isPending}
         />
 
