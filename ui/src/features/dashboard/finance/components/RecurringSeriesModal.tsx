@@ -297,7 +297,7 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
                           adminTableCell.body
                         )}
                       >
-                        {item.notes ?? '—'}
+                        {item.notes ?? '-'}
                       </td>
                       <td className={adminTableCell.action}>
                         <div className="flex justify-end gap-0.5">
@@ -426,7 +426,7 @@ function SeriesSummaryGrid({
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <SummaryStat icon={Tag} label="Category" value={category ?? '—'} />
+        <SummaryStat icon={Tag} label="Category" value={category ?? '-'} />
         <SummaryStat
           icon={isIncome ? ArrowUpRight : ArrowDownRight}
           label="Type"

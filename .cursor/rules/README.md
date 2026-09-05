@@ -12,6 +12,7 @@ Keep this list **small**. Heavy domain specs use globs.
 | `ai-usage.mdc`                  | Session hygiene, model routing, subagent discipline   |
 | `documentation-maintenance.mdc` | Sync docs with code                                   |
 | `ui-minimal-copy.mdc`           | No extra UI prose                                     |
+| `human-copy.mdc`                | Production-grade copy; no AI tells / em dashes        |
 | `superpowers-opt-in.mdc`        | Superpowers opt-in only (see `/superpowers-*`)        |
 | `git-commits.mdc`               | No Cursor author/co-author in commits                 |
 | `no-prod-deploy.mdc`            | Block prod Supabase/DB deploys (unlock: **kamewave**) |
@@ -130,6 +131,7 @@ Run **`bun run check:ai-tooling-sync`** after changing hooks, commands, agents, 
 | `tanstack-table`              | Admin list tables                                                                                |
 | `accessibility`               | WCAG deep patterns                                                                               |
 | `minimal-ui-copy`             | Sparse copy                                                                                      |
+| `human-copy`                  | Production-grade strings; no AI tells / em dashes (pairs with always-on `human-copy.mdc`)        |
 | `route-guides`                | `docs/guides/routes/*`                                                                           |
 | `performance`                 | Vite bundle, query tuning                                                                        |
 | `batch-commit`                | Daily N commits × 5–10 files (not whole tree)                                                    |

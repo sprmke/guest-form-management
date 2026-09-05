@@ -62,7 +62,7 @@ function periodRangeLabel(from: string | null, to: string | null): string {
 function itemStatusLabel(item: MaintenanceItem): string {
   if (item.completed_at) return 'Done';
   if (item.telegram_reminder_enabled) return 'Pending';
-  return '—';
+  return '-';
 }
 
 type MaintenancePdfPayload = {
@@ -139,9 +139,9 @@ function appendRemindersSection(doc: jsPDF, y: number, items: MaintenanceItem[])
   const rows = items.map((item) => [
     pdfIsoDate(item.scheduled_on),
     item.label,
-    item.category ?? '—',
+    item.category ?? '-',
     itemStatusLabel(item),
-    item.notes?.trim() || '—',
+    item.notes?.trim() || '-',
   ]);
 
   autoTable(doc, {

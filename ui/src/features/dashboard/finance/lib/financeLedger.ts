@@ -48,7 +48,7 @@ export function buildStayLedgerEntry(row: FinanceBookingLedgerRow): FinanceLedge
     id: `stay:${row.id}`,
     source: 'stay',
     date,
-    description: `${name} — Stay`,
+    description: `${name}: Stay`,
     subDescription: `Booking ${row.id.slice(0, 8)}…`,
     category: STAY_NET_CATEGORY,
     type: net >= 0 ? 'income' : 'expense',

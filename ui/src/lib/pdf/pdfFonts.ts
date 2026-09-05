@@ -64,7 +64,7 @@ export async function registerPdfFonts(doc: jsPDF): Promise<boolean> {
     return true;
   } catch (error) {
     fontsReady = false;
-    console.warn('[pdf] Plus Jakarta Sans unavailable — falling back to Helvetica', error);
+    console.warn('[pdf] Plus Jakarta Sans unavailable; falling back to Helvetica', error);
     return false;
   }
 }

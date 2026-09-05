@@ -332,14 +332,14 @@ export function MaintenanceRemindersTab({
                       adminTableCell.body
                     )}
                   >
-                    {item.category ?? '—'}
+                    {item.category ?? '-'}
                   </td>
                   {showStatusColumn ? (
                     <td className={cn('hidden md:table-cell', adminTableCell.body)}>
                       {item.telegram_reminder_enabled ? (
                         <MaintenanceStatusBadge isComplete={Boolean(item.completed_at)} />
                       ) : (
-                        <span className={adminTableBodyText.secondary}>—</span>
+                        <span className={adminTableBodyText.secondary}>-</span>
                       )}
                     </td>
                   ) : null}
@@ -350,7 +350,7 @@ export function MaintenanceRemindersTab({
                       adminTableCell.body
                     )}
                   >
-                    {item.notes ?? '—'}
+                    {item.notes ?? '-'}
                   </td>
                   <td className={adminTableCell.action}>
                     <div className="flex justify-end gap-0.5">
