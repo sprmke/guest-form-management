@@ -43,7 +43,7 @@ serveAuthenticated('dashboard-assistant-settings', async (req, user) => {
     });
   }
 
-  const ctx = await resolveOrgAccessContext(req, 'org:settings:edit');
+  const ctx = await resolveOrgAccessContext(req, 'org.settings.aiAssistant:edit');
 
   if (req.method === 'PATCH') {
     const body = await readJsonBody(req);

@@ -44,6 +44,7 @@ export function ChatContextPricingCalendar({ selectedKeys, onSelect, compact }: 
   const blocked = useMemo(() => new Set(data?.blockedDateKeys ?? []), [data]);
   const overrides = data?.dateOverrides ?? {};
   const holidayRules = data?.holidayRules;
+  const smartRecommendations = data?.smartRecommendations;
 
   const days = useMemo(() => {
     const start = startOfMonth(month);
@@ -59,8 +60,9 @@ export function ChatContextPricingCalendar({ selectedKeys, onSelect, compact }: 
       resolveNightlyRateForDate(date, defaults, {
         dateOverrides: overrides,
         holidayRules,
+        smartRecommendations,
       }),
-    [defaults, holidayRules, overrides]
+    [defaults, holidayRules, overrides, smartRecommendations]
   );
 
   const pinDate = (date: Date) => {
