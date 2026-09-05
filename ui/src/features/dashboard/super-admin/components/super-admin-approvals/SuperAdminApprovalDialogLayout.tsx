@@ -23,7 +23,7 @@ export const superAdminApprovalSectionTitleClass =
 export const superAdminApprovalFooterButtonClass = 'min-h-[44px] w-full sm:w-auto';
 
 export function formatSuperAdminApprovalDate(value: string | null): string {
-  if (!value) return '—';
+  if (!value) return '-';
   const trimmed = value.trim();
   const ymd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
   const date = ymd

@@ -24,7 +24,7 @@ export function DevelopmentDocumentRequirementsSection({
       id="document-requirements"
       title="Document Requirements"
       icon={FileCheck2}
-      description="Documents required before a booking reaches Ready for check-in — applies to all properties in this development."
+      description="Documents required before a booking reaches Ready for check-in. Applies to all properties in this development."
     >
       <DocumentRequirementsListEditor
         list={list}

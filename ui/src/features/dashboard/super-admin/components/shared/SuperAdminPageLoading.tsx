@@ -6,16 +6,20 @@ import { cn } from '@/lib/utils';
 type Props = {
   /** When set, shows header + metric skeleton row before the list rows. */
   metricCount?: number;
+  /** Override the metric skeleton grid classes when the card count needs a different layout. */
+  metricGridClassName?: string;
   className?: string;
 };
 
-export function SuperAdminPageLoading({ metricCount = 0, className }: Props) {
+export function SuperAdminPageLoading({ metricCount = 0, metricGridClassName, className }: Props) {
   return (
     <div className={cn('space-y-3 sm:space-y-4', className)} aria-busy="true" aria-label="Loading">
       {metricCount > 0 ? (
         <>
           <div className="bg-muted/60 h-14 animate-pulse rounded-xl" />
-          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
+          <div
+            className={metricGridClassName ?? 'grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4'}
+          >
             {Array.from({ length: metricCount }).map((_, index) => (
               <AdminMetricCardSkeleton key={index} />
             ))}

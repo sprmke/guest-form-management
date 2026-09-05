@@ -119,7 +119,7 @@ export function SuperAdminExternalReviewDialog({ approval, onOpenChange }: Props
                 </div>
                 <div className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
                   <span>{approval.organizationName}</span>
-                  {submittedLabel !== '—' ? (
+                  {submittedLabel !== '-' ? (
                     <>
                       <span aria-hidden>·</span>
                       <span>Submitted {submittedLabel}</span>

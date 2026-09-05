@@ -62,7 +62,7 @@ function hostModesLabel(hostModes: string[]): string {
 }
 
 function formatSubmittedDate(value: string | null): string {
-  if (!value) return '—';
+  if (!value) return '-';
   return new Date(value).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',

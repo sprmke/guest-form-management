@@ -6,7 +6,7 @@ export function toastPlanPaymentComingSoon(): void {
     action: {
       label: 'Contact support',
       onClick: () => {
-        toast.message('Paid plan billing is coming soon — contact support to upgrade.');
+        toast.message('Paid plan billing is coming soon. Contact support to upgrade.');
       },
     },
   });

@@ -754,7 +754,7 @@ const PLAN_HOST_PITCH: Record<string, string> = {
   growth: 'Reach more guests with greater publishing and search visibility.',
   pro: '    Simplify your management with AI-powered features.',
   managed: 'Let us handle your operations while you focus on growing your business.',
-  commission: 'Pay only when you earn from a completed booking — no monthly fee.',
+  commission: 'Pay only when you earn from a completed booking. No monthly fee.',
 };
 
 const WEAK_TAGLINES = new Set([
@@ -841,7 +841,7 @@ export function planTierPitch(plan: OrgBundlePlanDto): string | null {
 }
 
 export const PLANS_PAGE_SUBTITLE =
-  'Manage your organization’s subscription — one plan covers every property you enroll.';
+  'Manage your organization’s subscription. One plan covers every property you enroll.';
 
 export type PlanFaqItem = {
   question: string;
@@ -858,12 +858,12 @@ export const PLAN_FAQ_ITEMS: PlanFaqItem[] = [
   {
     question: 'Is pricing per property or per organization?',
     answer:
-      'Billing is per organization, priced per enrolled property — your total is the tier’s per-property rate times how many properties you enroll, with the rate dropping at volume breakpoints. A property left out of your subscription stays on Free.',
+      'Billing is per organization, priced per enrolled property. Your total is the tier’s per-property rate times how many properties you enroll, with the rate dropping at volume breakpoints. A property left out of your subscription stays on Free.',
   },
   {
     question: 'How does monthly billing work?',
     answer:
-      'Paid plans renew every month. Before each renewal you’ll get a payment link by email and on the Billing tab. Pay with QRPH, Maya, or online banking through PayMongo — we never store card or bank details on our platform.',
+      'Paid plans renew every month. Before each renewal you’ll get a payment link by email and on the Billing tab. Pay with QRPH, Maya, or online banking through PayMongo. We never store card or bank details on our platform.',
   },
   {
     question: 'What happens if I miss a renewal payment?',
@@ -873,7 +873,7 @@ export const PLAN_FAQ_ITEMS: PlanFaqItem[] = [
   {
     question: 'What happens when I downgrade or remove a property?',
     answer:
-      'Downgrades take effect immediately while your subscription is active or in trial — not while past due (pay from Billing first). If suspended, you can move to Free to cancel; other downgrades require paying to restore access first. Features above your new tier turn off org-wide. Removing a property credits its remaining value toward your next bill; unused time on a downgrade is not refunded as cash.',
+      'Downgrades take effect immediately while your subscription is active or in trial, not while past due (pay from Billing first). If suspended, you can move to Free to cancel; other downgrades require paying to restore access first. Features above your new tier turn off org-wide. Removing a property credits its remaining value toward your next bill; unused time on a downgrade is not refunded as cash.',
   },
   {
     question: 'How do AI credits work?',
@@ -883,7 +883,7 @@ export const PLAN_FAQ_ITEMS: PlanFaqItem[] = [
   {
     question: 'How do I get the Managed plan?',
     answer:
-      'Managed is sales-assisted — choose Contact sales on the Managed card to open a Help & Support ticket. Our team will walk you through onboarding and pricing for hands-off hosting.',
+      'Managed is sales-assisted. Choose Contact sales on the Managed card to open a Help & Support ticket. Our team will walk you through onboarding and pricing for hands-off hosting.',
   },
 ];
 
@@ -912,7 +912,7 @@ export function subscriptionStatusMeta(status: string): SubscriptionStatusMeta {
 export function subscriptionGraceLabel(subscription: OrgSubscriptionDto | null): string | null {
   if (!subscription?.gracePeriodEndsAt) return null;
   const formatted = formatManilaLongDate(subscription.gracePeriodEndsAt);
-  if (!formatted || formatted === '—') return null;
+  if (!formatted || formatted === '-') return null;
   return formatted;
 }
 
@@ -920,7 +920,7 @@ export function subscriptionGraceLabel(subscription: OrgSubscriptionDto | null):
 export function subscriptionRenewalLabel(subscription: OrgSubscriptionDto | null): string | null {
   if (!subscription?.currentPeriodEnd) return null;
   const formatted = formatManilaLongDate(subscription.currentPeriodEnd);
-  if (!formatted || formatted === '—') return null;
+  if (!formatted || formatted === '-') return null;
   return formatted;
 }
 

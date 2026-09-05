@@ -15,6 +15,8 @@ type SuperAdminDetailHeaderProps = {
   leading?: ReactNode;
   /** Trailing meta (badges, counts). */
   meta?: ReactNode;
+  /** Extra identity row below the subtitle (e.g. link, owner). */
+  details?: ReactNode;
   actions?: ReactNode;
   className?: string;
 };
@@ -26,6 +28,7 @@ export function SuperAdminDetailHeader({
   backTo,
   leading,
   meta,
+  details,
   actions,
   className,
 }: SuperAdminDetailHeaderProps) {
@@ -51,6 +54,7 @@ export function SuperAdminDetailHeader({
             {subtitle ? (
               <p className="text-admin-page-subtitle max-sm:line-clamp-2">{subtitle}</p>
             ) : null}
+            {details}
           </div>
         </div>
         {actions ? <div className="flex shrink-0 items-center gap-1.5">{actions}</div> : null}

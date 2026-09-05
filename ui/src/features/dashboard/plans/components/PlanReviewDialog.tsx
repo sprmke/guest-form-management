@@ -213,7 +213,7 @@ export function PlanReviewDialog({
       : isDowngrade
         ? 'Takes effect now. Unused time on your current plan is not refunded.'
         : proration
-          ? "You're changing mid-cycle — credited for the unused time on your current plan."
+          ? "You're changing mid-cycle. Credited for the unused time on your current plan."
           : 'Review what changes before you continue.';
 
   const handlePrimaryAction = async () => {

@@ -68,7 +68,7 @@ export const FEATURE_GATE_COPY: Record<PlanFeatureKey, FeatureGateCopy> = {
   automatedBookingFlow: {
     title: 'Automated booking emails',
     description:
-      'Automatic GAF/pet request, booking acknowledgement, ready-for-check-in, and check-out & SD refund emails are available on Starter and above — on Free you send these manually.',
+      'Automatic GAF/pet request, booking acknowledgement, ready-for-check-in, and check-out & SD refund emails are available on Starter and above. On Free you send these manually.',
     ctaLabel: 'View plans',
   },
   verifiedBadgeEligible: {
@@ -89,7 +89,7 @@ export const FEATURE_GATE_COPY: Record<PlanFeatureKey, FeatureGateCopy> = {
   fullyManagedByPlatform: {
     title: 'Full-service property management',
     description:
-      'Contact us for hands-on operations, marketing, chat, and reminders — with full booking and finance visibility.',
+      'Contact us for hands-on operations, marketing, chat, and reminders, with full booking and finance visibility.',
     ctaLabel: 'View plans',
   },
   financeReporting: {
@@ -138,13 +138,13 @@ export const FEATURE_GATE_COPY: Record<PlanFeatureKey, FeatureGateCopy> = {
   calendarSync: {
     title: 'Airbnb calendar sync',
     description:
-      'Two-way Airbnb calendar sync — import their reservations and export your booked dates — is available on Pro and above.',
+      'Two-way Airbnb calendar sync (import their reservations and export your booked dates) is available on Pro and above.',
     ctaLabel: 'View plans',
   },
   smartPricing: {
     title: 'Smart Pricing',
     description:
-      'AI-assisted dynamic nightly rates — analyse your calendar history and forward demand to price every future night — is available on Pro and above.',
+      'AI-assisted dynamic nightly rates (analyse your calendar history and forward demand to price every future night) is available on Pro and above.',
     ctaLabel: 'View plans',
   },
   customRoles: {

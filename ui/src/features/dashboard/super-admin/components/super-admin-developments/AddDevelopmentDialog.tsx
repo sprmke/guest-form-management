@@ -6,15 +6,9 @@ import { toast } from 'sonner';
 import { useCreateDevelopment } from '@/features/dashboard/super-admin/hooks/useDevelopments';
 import { DEVELOPMENT_TYPES } from '@/features/dashboard/super-admin/lib/developmentSettingsConstants';
 
+import { AdminDialogShell } from '@/components/AdminDialogShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  ResponsiveModal,
-  ResponsiveModalContent,
-  ResponsiveModalFooter,
-  ResponsiveModalHeader,
-  ResponsiveModalTitle,
-} from '@/components/ui/responsive-modal';
 import {
   Select,
   SelectContent,
@@ -60,43 +54,12 @@ export function AddDevelopmentDialog({ open, onOpenChange, onCreated }: Props) {
   };
 
   return (
-    <ResponsiveModal open={open} onOpenChange={handleOpenChange}>
-      <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-        <ResponsiveModalHeader>
-          <ResponsiveModalTitle>Add development</ResponsiveModalTitle>
-        </ResponsiveModalHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="development-name" className="text-sm font-medium">
-              Name
-            </label>
-            <Input
-              id="development-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              className="h-10"
-              autoFocus
-            />
-          </div>
-          <div className="space-y-2">
-            <label htmlFor="development-type" className="text-sm font-medium">
-              Type
-            </label>
-            <Select value={type} onValueChange={setType}>
-              <SelectTrigger id="development-type" className="h-10">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DEVELOPMENT_TYPES.map((entry) => (
-                  <SelectItem key={entry.value} value={entry.value}>
-                    {entry.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <ResponsiveModalFooter className="gap-2 sm:gap-0">
+    <AdminDialogShell
+      open={open}
+      onOpenChange={handleOpenChange}
+      title="Add development"
+      footer={
+        <>
           <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
             Cancel
           </Button>
@@ -112,8 +75,40 @@ export function AddDevelopmentDialog({ open, onOpenChange, onCreated }: Props) {
               'Create'
             )}
           </Button>
-        </ResponsiveModalFooter>
-      </ResponsiveModalContent>
-    </ResponsiveModal>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <label htmlFor="development-name" className="text-sm font-medium">
+            Name
+          </label>
+          <Input
+            id="development-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            className="h-10"
+            autoFocus
+          />
+        </div>
+        <div className="space-y-2">
+          <label htmlFor="development-type" className="text-sm font-medium">
+            Type
+          </label>
+          <Select value={type} onValueChange={setType}>
+            <SelectTrigger id="development-type" className="h-10">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DEVELOPMENT_TYPES.map((entry) => (
+                <SelectItem key={entry.value} value={entry.value}>
+                  {entry.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </AdminDialogShell>
   );
 }
