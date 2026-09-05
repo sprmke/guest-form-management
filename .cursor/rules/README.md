@@ -85,6 +85,7 @@ Run **`bun run check:ai-tooling-sync`** after changing hooks, commands, agents, 
 | `notifications.mdc`           | In-app Notification Center (bell, realtime toasts)                                   |
 | `pwa.mdc`                     | PWA — service worker, offline cache allowlist, Web Push, offline outbox, kill-switch |
 | `ai-assistant-parity.mdc`     | New host dashboard writes → assistant tool or documented exclusion (same change)     |
+| `self-review.mdc`             | Agent-requestable — deep `/self-review` production-readiness audit (skill-backed)    |
 
 ## Skills (`.cursor/skills/` — invoke `/name` or agent decides)
 
@@ -132,6 +133,7 @@ Run **`bun run check:ai-tooling-sync`** after changing hooks, commands, agents, 
 | `route-guides`                | `docs/guides/routes/*`                                                                           |
 | `performance`                 | Vite bundle, query tuning                                                                        |
 | `batch-commit`                | Daily N commits × 5–10 files (not whole tree)                                                    |
+| `self-review`                 | Deep production-readiness module review (`/self-review`) — gaps, edge cases, ship verdict        |
 | `github-issues`               | GitHub Issues — view, create, ship                                                               |
 | `workflow`                    | Workflow docs lifecycle — start/done, in-progress tracking                                       |
 | `workflow-intake-scratchpads` | Sync `_to-prompt.md` / `_to-plan.md` emojis with planned/in-progress/done/wont-do                |
@@ -154,7 +156,7 @@ Run **`bun run check:ai-tooling-sync`** after changing hooks, commands, agents, 
 | `/kh-check-before-pr`   | `bun run ci:quality` before review               |
 | `/kh-submit-for-review` | Push + open PR **into `develop`**                |
 
-Also: `/github-issue`, `/fix-merge-conflicts`, `/workflow-*`, `/superpowers-*` — see `.claude/README.md`.
+Also: `/self-review`, `/github-issue`, `/fix-merge-conflicts`, `/workflow-*`, `/superpowers-*` — see `.claude/README.md`.
 
 ## Subagents (`.cursor/agents/`)
 
