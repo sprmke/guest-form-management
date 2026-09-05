@@ -66,7 +66,7 @@ export function formatGuestFooterLabel(
 
 export function formatParkingStepHint(residenceName: string | null): string {
   const place = formatResidenceShortName(residenceName) || 'the building';
-  return `Optional paid parking inside ${place} — reserved separately`;
+  return `Optional paid parking inside ${place}, reserved separately`;
 }
 
 export function formatGuestSuccessAdministration(residenceName: string | null): string {
@@ -76,7 +76,7 @@ export function formatGuestSuccessAdministration(residenceName: string | null): 
 
 export function formatPayParkingLastMinuteWarning(residenceName: string | null): string {
   const place = formatResidenceShortName(residenceName) || 'the building';
-  return `Last-minute parking may take longer—paid slots inside ${place} are limited.`;
+  return `Last-minute parking may take longer. Paid slots inside ${place} are limited.`;
 }
 
 export function formatGuestContactHelp(isAirbnb: boolean, isFacebook: boolean): string {

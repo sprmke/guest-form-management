@@ -61,9 +61,9 @@ const CHAPTER_MOCK_HTML: Record<StayGuideChapterSectionId, string> = {
   'getting-in':
     '<p>Head to the lobby and let the front desk know you are checking in. Your access card is waiting at the reception. The lift needs a tap of the card for your floor.</p><p>Wi-Fi name and password are on the welcome card by the TV.</p>',
   'make-yourself-at-home':
-    '<p>Make yourself comfortable — the kitchen is stocked with the basics and there are fresh towels in the bathroom cabinet.</p><ul><li>Quiet hours are 10pm to 7am.</li><li>No smoking anywhere indoors.</li><li>Aircon: please switch off when you head out.</li></ul>',
+    '<p>Make yourself comfortable. The kitchen is stocked with the basics and there are fresh towels in the bathroom cabinet.</p><ul><li>Quiet hours are 10pm to 7am.</li><li>No smoking anywhere indoors.</li><li>Aircon: please switch off when you head out.</li></ul>',
   'before-you-go':
-    '<p>Check-out is at 12nn. Leave the card on the kitchen counter, close the windows, and switch off the aircon and lights.</p><p>No need to strip the bed — just drop used towels in the tub.</p>',
+    '<p>Check-out is at 12nn. Leave the card on the kitchen counter, close the windows, and switch off the aircon and lights.</p><p>No need to strip the bed. Just drop used towels in the tub.</p>',
 };
 
 function prefersReducedMotion(): boolean {

@@ -8,6 +8,7 @@ import type { AttachedContextItem } from './dashboardAssistantAttachedContext.ts
 import { classifyActionRisk, type ActionRiskTier } from './dashboardAssistantRiskClassifier.ts';
 import { assertActionSafeToExecute } from './dashboardAssistantSafetyGuard.ts';
 import {
+  hostAnnouncementBodyPlainText,
   loadDevelopmentHostAnnouncementsByNames,
   loadPlatformHostAnnouncements,
   mergeLiveHostAnnouncements,
@@ -441,7 +442,7 @@ export async function toolListHostAnnouncements(
         announcementId: row.id,
         hostLabel: announcementHostLabel(row),
         title: row.title,
-        body: row.body,
+        body: hostAnnouncementBodyPlainText(row.body),
         severity: row.severity,
         scope: row.scope,
         developmentName: row.developmentName,
@@ -475,7 +476,7 @@ export async function toolGetHostAnnouncement(
         announcementId: row.id,
         hostLabel: announcementHostLabel(row),
         title: row.title,
-        body: row.body,
+        body: hostAnnouncementBodyPlainText(row.body),
         severity: row.severity,
         scope: row.scope,
         developmentName: row.developmentName,
@@ -606,7 +607,7 @@ export const PROPOSE_CREATE_SUPPORT_TICKET_TOOL_DECLARATION = {
 export const LIST_HOST_ANNOUNCEMENTS_TOOL_DECLARATION = {
   name: 'list_host_announcements',
   description:
-    'List active platform and development announcements visible to hosts (same data as the dashboard banner).',
+    'List active platform and development announcements visible to hosts (same data as the Announcements page).',
   parameters: {
     type: 'object',
     properties: {

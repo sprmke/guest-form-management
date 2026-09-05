@@ -9,7 +9,7 @@ dayjs.extend(relativeTime);
 
 /** `guest_submissions.check_*_date` stored as MM-DD-YYYY → `Apr 20, 2026`. */
 export function formatBookingDate(mmddyyyy: string | null | undefined): string {
-  if (!mmddyyyy) return '—';
+  if (!mmddyyyy) return '-';
   const d = dayjs(mmddyyyy, 'MM-DD-YYYY');
   if (!d.isValid()) return mmddyyyy;
   return d.format('MMM D, YYYY');
@@ -17,14 +17,14 @@ export function formatBookingDate(mmddyyyy: string | null | undefined): string {
 
 /** ISO YYYY-MM-DD → `Apr 20, 2026`. */
 export function formatIsoDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = dayjs(iso.slice(0, 10));
   if (!d.isValid()) return iso;
   return d.format('MMM D, YYYY');
 }
 
 export function formatBookingDateShort(mmddyyyy: string | null | undefined): string {
-  if (!mmddyyyy) return '—';
+  if (!mmddyyyy) return '-';
   const d = dayjs(mmddyyyy, 'MM-DD-YYYY');
   if (!d.isValid()) return mmddyyyy;
   return d.format('MMM D');
@@ -47,8 +47,8 @@ export function formatBookingDateTime(
 }
 
 export function formatRelative(iso: string | null | undefined): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = dayjs(iso);
-  if (!d.isValid()) return '—';
+  if (!d.isValid()) return '-';
   return d.fromNow();
 }

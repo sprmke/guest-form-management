@@ -99,7 +99,7 @@ export function friendlyToastError(
     lower.includes('networkerror') ||
     lower.includes('network request failed')
   ) {
-    return 'Network error — check your connection';
+    return 'Network error. Check your connection';
   }
   if (
     lower.includes('unauthorized') ||

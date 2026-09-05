@@ -524,7 +524,7 @@ function StepTwo({
           <MethodCard
             selected={method === 'same_phone'}
             onSelect={() => onMethodChange('same_phone')}
-            title={`GCash - ${(data.guest_phone_number ?? '').trim() || '—'}`}
+            title={`GCash - ${(data.guest_phone_number ?? '').trim() || '-'}`}
             description="Same phone number from your guest form"
           />
           <MethodCard

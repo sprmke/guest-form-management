@@ -155,7 +155,7 @@ function StayGuidePassCard({ data, section, headingClassName, containerClassName
                     <Icon className="size-3" aria-hidden />
                     {label}
                   </span>
-                  <span className="@sm:text-xl text-lg font-semibold">{date || '—'}</span>
+                  <span className="@sm:text-xl text-lg font-semibold">{date || '-'}</span>
                   <span className={cn('text-xs font-medium', tokens.muted)}>{time}</span>
                 </div>
               ))}

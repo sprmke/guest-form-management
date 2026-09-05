@@ -535,7 +535,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
         if (!res.ok || !json?.data) {
           setCompletionError(
             res.status === 410
-              ? 'This link has expired — the stay has already ended. Contact your host if you still need to complete it.'
+              ? 'This link has expired. The stay has already ended. Contact your host if you still need to complete it.'
               : 'This link is not valid. Ask your host to send you a fresh guest-form link.'
           );
           setCompletionReady(true);
@@ -1712,7 +1712,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
                           {formatStayDateRange(
                             form.watch('checkInDate'),
                             form.watch('checkOutDate')
-                          ) || '—'}{' '}
+                          ) || '-'}{' '}
                           · check-in {formatTimeToAMPM(form.watch('checkInTime') || '', true)},
                           check-out {formatTimeToAMPM(form.watch('checkOutTime') || '', true)}
                         </p>

@@ -34,7 +34,7 @@ export const PARKING_STATUS_GUEST: Record<
   PENDING_PAYMENT: {
     badge: 'Payment due',
     headline: 'Pay to confirm',
-    detail: 'A host accepted — confirm before the timer ends.',
+    detail: 'A host accepted. Confirm before the timer ends.',
     tone: 'waiting',
   },
   PENDING_REVIEW: {
@@ -70,7 +70,7 @@ export const PARKING_STATUS_GUEST: Record<
 export const PARKING_STATUS_PROPERTY: Record<ParkingFlowStatus, string> = {
   PENDING_HOST_ACCEPTANCE: 'Finding a parking host',
   PENDING_PAYMENT: 'Waiting for guest payment',
-  PENDING_REVIEW: 'Paid — finalizing',
+  PENDING_REVIEW: 'Paid. Finalizing',
   READY_FOR_CHECKIN: 'Confirmed',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',

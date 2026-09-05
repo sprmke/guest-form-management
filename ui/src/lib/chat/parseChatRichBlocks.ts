@@ -400,7 +400,7 @@ function flushList(ordered: boolean, items: string[], out: ChatRichBlock[]) {
 export function parseChatRichBlocks(raw: string): ChatRichBlock[] {
   const text = normalizeChatText(raw).replace(/\r\n/g, '\n');
   if (!text.trim()) {
-    return [{ type: 'paragraph', segments: [{ type: 'text', text: '—' }] }];
+    return [{ type: 'paragraph', segments: [{ type: 'text', text: '-' }] }];
   }
 
   const lines = text.split('\n');
