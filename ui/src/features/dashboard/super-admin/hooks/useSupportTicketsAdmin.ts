@@ -49,6 +49,28 @@ export function useSupportTicketsAdmin(
   });
 }
 
+export type SupportTicketsSummary = {
+  total: number;
+  open: number;
+  inProgress: number;
+  resolved: number;
+};
+
+/** Platform-wide (or org-scoped) ticket counts for the summary cards — not page-scoped. */
+export function useSupportTicketsSummary(orgId?: string | null) {
+  return useQuery({
+    queryKey: [...SUPPORT_TICKETS_ADMIN_QUERY_KEY, 'summary', orgId ?? null],
+    queryFn: () => {
+      const params = new URLSearchParams({ summary: 'true' });
+      if (orgId) params.set('org_id', orgId);
+      return callEdgeFunction<{ summary: SupportTicketsSummary }>(
+        `list-support-tickets-admin?${params.toString()}`
+      ).then((d) => d.summary);
+    },
+    staleTime: 30_000,
+  });
+}
+
 export function useSupportTicketAdmin(ticketId: string | null) {
   return useQuery({
     queryKey: ['super-admin', 'support-ticket', ticketId],
