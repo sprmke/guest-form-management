@@ -12,6 +12,7 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
+import { logSuperAdminAction } from '../_shared/superAdminAudit.ts';
 
 const LEDGER_LIMIT = 200;
 
@@ -99,6 +100,13 @@ serveSuperAdmin('parking-payouts', async (req, admin) => {
         .maybeSingle();
       if (error) return jsonError(req, error.message, 500);
       if (!data) return jsonError(req, 'Paid transaction not found', 404);
+      await logSuperAdminAction(admin, {
+        action: 'parking_payout.disburse',
+        targetType: 'parking_payment_transaction',
+        targetId: transactionId,
+        summary: `Marked parking payout ${transactionId} as disbursed`,
+        metadata: { reference },
+      });
       return jsonSuccess(req, { transaction: serializeRow(data as Record<string, unknown>) });
     }
 
@@ -124,6 +132,13 @@ serveSuperAdmin('parking-payouts', async (req, admin) => {
         .maybeSingle();
       if (error) return jsonError(req, error.message, 500);
       if (!data) return jsonError(req, 'Paid transaction not found', 404);
+      await logSuperAdminAction(admin, {
+        action: 'parking_payout.clawback',
+        targetType: 'parking_payment_transaction',
+        targetId: transactionId,
+        summary: `Recorded ₱${amount} clawback on parking payout ${transactionId}`,
+        metadata: { amount, reason },
+      });
       return jsonSuccess(req, { transaction: serializeRow(data as Record<string, unknown>) });
     }
 
