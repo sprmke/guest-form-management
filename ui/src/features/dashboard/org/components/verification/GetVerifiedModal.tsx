@@ -13,7 +13,6 @@ import {
 import { OrgListingVerificationRollup } from '@/features/dashboard/org/components/listing-authorization/OrgListingVerificationRollup';
 import { OnboardingHostVerificationSection } from '@/features/dashboard/org/components/onboarding/OnboardingHostVerificationSection';
 import { OnboardingProofUpload } from '@/features/dashboard/org/components/onboarding/OnboardingProofUpload';
-import { VerificationFieldLabel } from '@/features/dashboard/org/components/onboarding/VerificationFieldLabel';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { RecommendedBadgePreview } from '@/features/dashboard/org/components/verification/RecommendedBadgePreview';
 import { VerificationChecklist } from '@/features/dashboard/org/components/verification/VerificationChecklist';
@@ -29,11 +28,8 @@ import {
 import { handleAiMutationError, isAiQuotaError } from '@/features/dashboard/org/lib/aiQuotaToast';
 import { callEdgeFunction, getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
 import {
-  ORG_SOCIAL_PROOF_PLATFORMS,
-  propertyAccessScreenshotHelp,
   validateVerificationFile,
   shouldShowGetVerifiedCta,
-  type OrgSocialProofPlatform,
   type OrgVerificationStatus,
 } from '@/features/dashboard/org/lib/orgVerification';
 import {
@@ -70,13 +66,6 @@ import {
   ResponsiveModalHeader,
   ResponsiveModalTitle,
 } from '@/components/ui/responsive-modal';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { prepareUpload } from '@/lib/media/prepareUpload';
 import { PLATFORM_APP_NAME, platformProductLabel } from '@/lib/platformBranding';
 import { cn } from '@/lib/utils';
@@ -204,14 +193,21 @@ function ListingVerificationRollupSection({
   orgId,
   orgSlug,
   modalOpen,
+  allowUpload,
 }: {
   orgId?: string;
   orgSlug?: string;
   modalOpen?: boolean;
+  allowUpload?: boolean;
 }) {
   if (!orgId || !orgSlug) return null;
   return (
-    <OrgListingVerificationRollup orgId={orgId} orgSlug={orgSlug} enabled={Boolean(modalOpen)} />
+    <OrgListingVerificationRollup
+      orgId={orgId}
+      orgSlug={orgSlug}
+      enabled={Boolean(modalOpen)}
+      allowUpload={allowUpload}
+    />
   );
 }
 
@@ -225,6 +221,7 @@ function VerifiedTierStepPanel({
   orgId,
   orgSlug,
   modalOpen,
+  allowListingUpload,
   showSubmittedDocs,
   children,
 }: {
@@ -238,6 +235,7 @@ function VerifiedTierStepPanel({
   orgId?: string;
   orgSlug?: string;
   modalOpen?: boolean;
+  allowListingUpload?: boolean;
   showSubmittedDocs?: boolean;
   children?: ReactNode;
 }) {
@@ -279,7 +277,12 @@ function VerifiedTierStepPanel({
             {submittedDocsSection}
           </div>
         ) : null}
-        <ListingVerificationRollupSection orgId={orgId} orgSlug={orgSlug} modalOpen={modalOpen} />
+        <ListingVerificationRollupSection
+          orgId={orgId}
+          orgSlug={orgSlug}
+          modalOpen={modalOpen}
+          allowUpload={allowListingUpload}
+        />
       </section>
     );
   }
@@ -299,7 +302,12 @@ function VerifiedTierStepPanel({
         ) : null}
         {children}
         {submittedDocsSection}
-        <ListingVerificationRollupSection orgId={orgId} orgSlug={orgSlug} modalOpen={modalOpen} />
+        <ListingVerificationRollupSection
+          orgId={orgId}
+          orgSlug={orgSlug}
+          modalOpen={modalOpen}
+          allowUpload={allowListingUpload}
+        />
       </section>
     );
   }
@@ -347,7 +355,12 @@ function VerifiedTierStepPanel({
         />
       ) : null}
 
-      <ListingVerificationRollupSection orgId={orgId} orgSlug={orgSlug} modalOpen={modalOpen} />
+      <ListingVerificationRollupSection
+        orgId={orgId}
+        orgSlug={orgSlug}
+        modalOpen={modalOpen}
+        allowUpload={allowListingUpload}
+      />
     </section>
   );
 }
@@ -408,6 +421,7 @@ function RecommendedTierStepPanel({
   orgId,
   orgSlug,
   modalOpen,
+  allowListingUpload,
   checklist,
   showSubmittedDocs,
   verifiedApproved,
@@ -415,18 +429,12 @@ function RecommendedTierStepPanel({
   enhancedStatus,
   enhancedRejectionKind,
   enhancedRejectionReason,
-  socialProof,
   selfie,
   platformAdmin,
-  platformAdminPlatform,
-  legitimacyCheck,
   businessPermit,
   verifiedTouched,
-  onSocialProofChange,
   onSelfieChange,
   onPlatformAdminChange,
-  onPlatformAdminPlatformChange,
-  onLegitimacyCheckChange,
   onBusinessPermitChange,
 }: {
   tier: VerificationTierDefinition;
@@ -434,6 +442,7 @@ function RecommendedTierStepPanel({
   orgId?: string;
   orgSlug?: string;
   modalOpen: boolean;
+  allowListingUpload?: boolean;
   checklist: ReturnType<typeof buildVerifiedTierChecklist>;
   showSubmittedDocs: boolean;
   verifiedApproved: boolean;
@@ -441,20 +450,22 @@ function RecommendedTierStepPanel({
   enhancedStatus: OrgVerificationStatus;
   enhancedRejectionKind: 'changes' | 'rejected' | null;
   enhancedRejectionReason: string | null;
-  socialProof: ProofSlot;
   selfie: ProofSlot;
   platformAdmin: ProofSlot;
-  platformAdminPlatform: OrgSocialProofPlatform | '';
-  legitimacyCheck: ProofSlot;
   businessPermit: ProofSlot;
   verifiedTouched: boolean;
-  onSocialProofChange: (file: File | null, previewUrl: string | null) => void;
   onSelfieChange: (file: File | null, previewUrl: string | null) => void;
   onPlatformAdminChange: (file: File | null, previewUrl: string | null) => void;
-  onPlatformAdminPlatformChange: (value: OrgSocialProofPlatform) => void;
-  onLegitimacyCheckChange: (file: File | null, previewUrl: string | null) => void;
   onBusinessPermitChange: (file: File | null, previewUrl: string | null) => void;
 }) {
+  const listingRollup = (
+    <ListingVerificationRollupSection
+      orgId={orgId}
+      orgSlug={orgSlug}
+      modalOpen={modalOpen}
+      allowUpload={allowListingUpload}
+    />
+  );
   const submittedDocsSection =
     showSubmittedDocs && orgId ? (
       <RecommendedTierSubmittedDocs
@@ -485,7 +496,7 @@ function RecommendedTierStepPanel({
         ) : (
           <p className="text-foreground text-sm leading-relaxed">{VERIFICATION_TIER2_APPROVED}</p>
         )}
-        <ListingVerificationRollupSection orgId={orgId} orgSlug={orgSlug} modalOpen={modalOpen} />
+        {listingRollup}
       </section>
     );
   }
@@ -500,7 +511,7 @@ function RecommendedTierStepPanel({
           Recommended
         </h3>
         {submittedDocsSection ?? <VerificationPendingNote />}
-        <ListingVerificationRollupSection orgId={orgId} orgSlug={orgSlug} modalOpen={modalOpen} />
+        {listingRollup}
       </section>
     );
   }
@@ -564,15 +575,6 @@ function RecommendedTierStepPanel({
         </div>
         <div className="space-y-4 p-4">
           <OnboardingProofUpload
-            id="enhanced-facebook-page"
-            label="Facebook Page screenshot"
-            help={propertyAccessScreenshotHelp('facebook')}
-            file={socialProof.file}
-            previewUrl={socialProof.previewUrl}
-            error={verifiedTouched && !slotReady(socialProof) ? 'Required' : null}
-            onFileChange={onSocialProofChange}
-          />
-          <OnboardingProofUpload
             id="enhanced-selfie"
             label={VERIFICATION_TIER2_DOC_LABELS.selfie}
             help={VERIFICATION_TIER2_DOC_HELP.selfie}
@@ -581,35 +583,20 @@ function RecommendedTierStepPanel({
             error={verifiedTouched && !slotReady(selfie) ? 'Required' : null}
             onFileChange={onSelfieChange}
           />
-          <SocialPlatformSelect
-            id="enhanced-platform-admin-platform"
-            label="Platform"
-            help="Choose the platform shown in your admin or host screenshot."
-            value={platformAdminPlatform}
-            onChange={onPlatformAdminPlatformChange}
-            error={verifiedTouched && !platformAdminPlatform ? 'Select a platform' : null}
-          />
           <OnboardingProofUpload
             id="enhanced-platform-admin"
-            label={VERIFICATION_TIER2_DOC_LABELS.platformAdmin}
+            label={`${VERIFICATION_TIER2_DOC_LABELS.platformAdmin} (optional)`}
             help={VERIFICATION_TIER2_DOC_HELP.platformAdmin}
+            required={false}
             file={platformAdmin.file}
             previewUrl={platformAdmin.previewUrl}
-            error={verifiedTouched && !slotReady(platformAdmin) ? 'Required' : null}
             onFileChange={onPlatformAdminChange}
           />
           <OnboardingProofUpload
-            id="enhanced-legitimacy-check"
-            label={VERIFICATION_TIER2_DOC_LABELS.legitimacyCheck}
-            help={VERIFICATION_TIER2_DOC_HELP.legitimacyCheck}
-            file={legitimacyCheck.file}
-            previewUrl={legitimacyCheck.previewUrl}
-            onFileChange={onLegitimacyCheckChange}
-          />
-          <OnboardingProofUpload
             id="enhanced-business-permit"
-            label={VERIFICATION_TIER2_DOC_LABELS.businessPermit}
+            label={`${VERIFICATION_TIER2_DOC_LABELS.businessPermit} (optional)`}
             help={VERIFICATION_TIER2_DOC_HELP.businessPermit}
+            required={false}
             file={businessPermit.file}
             previewUrl={businessPermit.previewUrl}
             onFileChange={onBusinessPermitChange}
@@ -617,7 +604,7 @@ function RecommendedTierStepPanel({
         </div>
       </div>
 
-      <ListingVerificationRollupSection orgId={orgId} orgSlug={orgSlug} modalOpen={modalOpen} />
+      {listingRollup}
     </section>
   );
 }
@@ -642,6 +629,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
 
   const showTier1SubmittedDocs = detail.baseStatus !== 'none';
   const showTier2SubmittedDocs = detail.enhancedStatus !== 'none';
+  const allowListingUpload = org?.accessKind === 'owner' || org?.accessKind === 'platform_admin';
 
   const handleOpenChange = (next: boolean) => {
     if (blockDismiss && !next) return;
@@ -653,10 +641,6 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
 
   const [selfie, setSelfie] = useState<ProofSlot>(emptySlot);
   const [platformAdmin, setPlatformAdmin] = useState<ProofSlot>(emptySlot);
-  const [platformAdminPlatform, setPlatformAdminPlatform] = useState<OrgSocialProofPlatform | ''>(
-    ''
-  );
-  const [legitimacyCheck, setLegitimacyCheck] = useState<ProofSlot>(emptySlot);
   const [businessPermit, setBusinessPermit] = useState<ProofSlot>(emptySlot);
   const [submitting, setSubmitting] = useState<'base' | 'enhanced' | null>(null);
   const [activeStep, setActiveStep] = useState(0);
@@ -688,12 +672,6 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
       previewUrl: null,
       path: next.assets.platformAdminProofPath,
     });
-    setPlatformAdminPlatform(next.platformAdminPlatform ?? '');
-    setLegitimacyCheck({
-      file: null,
-      previewUrl: null,
-      path: next.assets.legitimacyCheckProofPath,
-    });
     setBusinessPermit({
       file: null,
       previewUrl: null,
@@ -722,10 +700,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
   );
 
   const canSubmitVerified = canSubmitVerifiedTier(detail, {
-    socialProof: slotReady(socialProof),
     selfie: slotReady(selfie),
-    platformAdmin: slotReady(platformAdmin),
-    platformAdminPlatform,
   });
 
   const setSlot = (setter: typeof setSelfie) => (file: File | null, previewUrl: string | null) => {
@@ -785,10 +760,6 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
     }
     setSubmitting('enhanced');
     try {
-      if (socialProof.file) {
-        const uploaded = await uploadVerificationAsset(org.id, 'social_proof', socialProof.file);
-        setSocialProof({ file: null, previewUrl: uploaded.previewUrl, path: uploaded.path });
-      }
       if (selfie.file) {
         const uploaded = await uploadVerificationAsset(org.id, 'selfie_with_id', selfie.file);
         setSelfie({ file: null, previewUrl: uploaded.previewUrl, path: uploaded.path });
@@ -800,14 +771,6 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
           platformAdmin.file
         );
         setPlatformAdmin({ file: null, previewUrl: uploaded.previewUrl, path: uploaded.path });
-      }
-      if (legitimacyCheck.file) {
-        const uploaded = await uploadVerificationAsset(
-          org.id,
-          'legitimacy_check_proof',
-          legitimacyCheck.file
-        );
-        setLegitimacyCheck({ file: null, previewUrl: uploaded.previewUrl, path: uploaded.path });
       }
       if (businessPermit.file) {
         const uploaded = await uploadVerificationAsset(
@@ -823,7 +786,6 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
         body: JSON.stringify({
           orgId: org.id,
           tier: 'enhanced',
-          platformAdminPlatform,
         }),
       });
       await queryClient.invalidateQueries({ queryKey: ORGANIZATIONS_QUERY_KEY });
@@ -910,6 +872,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
                 orgId={org?.id}
                 orgSlug={org?.slug}
                 modalOpen={open}
+                allowListingUpload={allowListingUpload}
                 showSubmittedDocs={showTier1SubmittedDocs}
               >
                 {hostChangesRequested ? (
@@ -966,6 +929,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
                 orgId={org?.id}
                 orgSlug={org?.slug}
                 modalOpen={open}
+                allowListingUpload={allowListingUpload}
                 checklist={verifiedChecklist}
                 showSubmittedDocs={showTier2SubmittedDocs}
                 verifiedApproved={verifiedApproved}
@@ -975,16 +939,10 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
                 enhancedRejectionReason={detail.enhancedRejectionReason}
                 selfie={selfie}
                 platformAdmin={platformAdmin}
-                platformAdminPlatform={platformAdminPlatform}
-                legitimacyCheck={legitimacyCheck}
                 businessPermit={businessPermit}
                 verifiedTouched={verifiedTouched}
-                socialProof={socialProof}
-                onSocialProofChange={setSlot(setSocialProof)}
                 onSelfieChange={setSlot(setSelfie)}
                 onPlatformAdminChange={setSlot(setPlatformAdmin)}
-                onPlatformAdminPlatformChange={setPlatformAdminPlatform}
-                onLegitimacyCheckChange={setSlot(setLegitimacyCheck)}
                 onBusinessPermitChange={setSlot(setBusinessPermit)}
               />
             )}
@@ -1125,51 +1083,4 @@ export function HostVerificationChangesGate() {
   // (list-organizations returns accessKind: platform_admin for SUPER_ADMIN_EMAILS) must see the modal.
   if (org.accessKind === 'org_admin' || org.accessKind === 'property_member') return null;
   return <GetVerifiedModal open forced onOpenChange={() => {}} />;
-}
-
-/** Property or parking platform + access proof for onboarding base verification */
-export function SocialPlatformSelect({
-  id = 'social-platform',
-  label = 'Platform',
-  help = 'Choose the platform where you host or market — Facebook Page, Instagram, or Airbnb. We use this to match your access screenshot.',
-  value,
-  onChange,
-  error,
-}: {
-  id?: string;
-  label?: string;
-  help?: string;
-  value: OrgSocialProofPlatform | '';
-  onChange: (value: OrgSocialProofPlatform) => void;
-  error?: string | null;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <VerificationFieldLabel htmlFor={id} label={label} help={help} required />
-      <Select
-        value={value || undefined}
-        onValueChange={(v) => onChange(v as OrgSocialProofPlatform)}
-      >
-        <SelectTrigger
-          id={id}
-          className={cn('h-10', error && 'border-destructive')}
-          aria-invalid={Boolean(error)}
-        >
-          <SelectValue placeholder="Facebook, Instagram, or Airbnb" />
-        </SelectTrigger>
-        <SelectContent>
-          {ORG_SOCIAL_PROOF_PLATFORMS.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      {error ? (
-        <p role="alert" className="text-destructive text-xs">
-          {error}
-        </p>
-      ) : null}
-    </div>
-  );
 }

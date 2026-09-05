@@ -1,11 +1,26 @@
+import { useState } from 'react';
+
 import { useNavigate } from 'react-router-dom';
 
 import { ChevronRight, Home } from 'lucide-react';
+import { toast } from 'sonner';
 
+import { OnboardingProofUpload } from '@/features/dashboard/org/components/onboarding/OnboardingProofUpload';
 import { VerificationStatusBadge } from '@/features/dashboard/org/components/verification/VerificationStatusBadge';
-import { useOrgListingVerifications } from '@/features/dashboard/org/hooks/useListingAuthorization';
+import {
+  useListingAuthorizationAssets,
+  useListingAuthorizationMutations,
+  useOrgListingVerifications,
+} from '@/features/dashboard/org/hooks/useListingAuthorization';
 import type { OrgListingVerificationRollupRow } from '@/features/dashboard/org/lib/listingAuthorizationApi';
-import { listingKindLabel } from '@/features/dashboard/org/lib/listingVerificationCopy';
+import {
+  LISTING_VERIFICATION_DOC_LABELS,
+  listingKindLabel,
+} from '@/features/dashboard/org/lib/listingVerificationCopy';
+import {
+  validateVerificationFile,
+  verificationRightsProofHelp,
+} from '@/features/dashboard/org/lib/orgVerification';
 import {
   parkingDashboardPath,
   propertyDashboardPath,
@@ -13,6 +28,7 @@ import {
 
 import { ListRowsSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
+import { friendlyToastError } from '@/lib/feedback/toastMessages';
 
 type Props = {
   orgId: string;
@@ -20,6 +36,8 @@ type Props = {
   enabled?: boolean;
   /** Hide Open links — e.g. super-admin org review context. */
   readOnly?: boolean;
+  /** Host Get Verified — upload missing listing proof inline. */
+  allowUpload?: boolean;
 };
 
 function listingOpenPath(orgSlug: string, row: OrgListingVerificationRollupRow): string {
@@ -30,11 +48,65 @@ function listingOpenPath(orgSlug: string, row: OrgListingVerificationRollupRow):
   return `${base}?listingVerification=open`;
 }
 
+function ListingRollupProofUpload({
+  orgId,
+  orgSlug,
+  row,
+}: {
+  orgId: string;
+  orgSlug: string;
+  row: OrgListingVerificationRollupRow;
+}) {
+  const sectionKind = row.listingKind === 'parking' ? 'parking' : 'property';
+  const assetsQuery = useListingAuthorizationAssets(row.listingKind, row.listingId, true);
+  const { upload } = useListingAuthorizationMutations({
+    orgId,
+    orgSlug,
+    listingKind: row.listingKind,
+    listingId: row.listingId,
+  });
+  const [localPreview, setLocalPreview] = useState<string | null>(null);
+
+  const previewUrl = localPreview ?? assetsQuery.data?.assetUrls?.proofUrl ?? null;
+
+  const handleUpload = async (file: File) => {
+    const err = validateVerificationFile(file);
+    if (err) {
+      toast.error(err);
+      return;
+    }
+    try {
+      const result = await upload.mutateAsync({ assetType: 'proof', file });
+      setLocalPreview(result.previewUrl);
+      toast.success('Uploaded');
+    } catch (error) {
+      toast.error(friendlyToastError(error, 'Upload failed'));
+    }
+  };
+
+  return (
+    <div className="space-y-3 px-3 pb-3 pt-1 sm:px-4">
+      <OnboardingProofUpload
+        id={`${row.listingKind}-${row.listingId}-rollup-proof`}
+        label={LISTING_VERIFICATION_DOC_LABELS.proof}
+        help={verificationRightsProofHelp(row.relationship ?? '', sectionKind)}
+        file={null}
+        previewUrl={previewUrl}
+        uploading={upload.isPending}
+        onFileChange={(file) => {
+          if (file) void handleUpload(file);
+        }}
+      />
+    </div>
+  );
+}
+
 export function OrgListingVerificationRollup({
   orgId,
   orgSlug,
   enabled = true,
   readOnly = false,
+  allowUpload = false,
 }: Props) {
   const navigate = useNavigate();
   const { data, isLoading } = useOrgListingVerifications(orgId, enabled);
@@ -65,7 +137,7 @@ export function OrgListingVerificationRollup({
       ) : (
         <ul className="border-border divide-border divide-y overflow-hidden rounded-xl border">
           {listings.map((row) => {
-            const missingCount = row.missingDocs.length;
+            const showProofUpload = allowUpload && !readOnly && !row.hasProof;
             return (
               <li key={`${row.listingKind}-${row.listingId}`}>
                 <div className="flex min-h-[44px] items-center gap-3 px-3 py-2.5 sm:px-4">
@@ -92,9 +164,9 @@ export function OrgListingVerificationRollup({
                           showIcon
                         />
                       ) : null}
-                      {missingCount > 0 && row.baseStatus !== 'approved' ? (
+                      {readOnly && row.missingDocs.length > 0 && row.baseStatus !== 'approved' ? (
                         <span className="text-muted-foreground text-[11px]">
-                          {missingCount} missing
+                          {row.missingDocs.length} missing
                         </span>
                       ) : null}
                     </div>
@@ -112,6 +184,9 @@ export function OrgListingVerificationRollup({
                     </Button>
                   ) : null}
                 </div>
+                {showProofUpload ? (
+                  <ListingRollupProofUpload orgId={orgId} orgSlug={orgSlug} row={row} />
+                ) : null}
               </li>
             );
           })}

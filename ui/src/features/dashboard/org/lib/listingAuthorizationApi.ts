@@ -35,6 +35,7 @@ export type OrgListingVerificationRollupRow = {
   baseRejectionKind: ListingAuthorizationSummary['baseRejectionKind'];
   recommendedRejectionKind: ListingAuthorizationSummary['recommendedRejectionKind'];
   recommendedBadge: boolean;
+  hasProof: boolean;
   missingDocs: string[];
 };
 
