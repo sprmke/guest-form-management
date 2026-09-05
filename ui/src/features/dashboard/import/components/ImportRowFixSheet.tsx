@@ -87,7 +87,7 @@ function rowDetailEntries(row: ImportBatchRowPreview, errors: ReturnType<typeof 
   return BOOKING_IMPORT_TARGET_FIELDS.flatMap((field) => {
     const fieldError = errorByField.get(field.id);
     const rawValue = String(fieldError?.value ?? row.mappedData[field.id] ?? '').trim();
-    const value = fieldError ? rawValue || '—' : rawValue;
+    const value = fieldError ? rawValue || '-' : rawValue;
     return value
       ? [
           {

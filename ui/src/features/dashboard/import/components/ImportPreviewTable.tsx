@@ -172,7 +172,7 @@ function IssueCell({ row }: { row: ImportBatchRowPreview }) {
   const { primary, extraCount } = formatImportRowIssueSummary(row);
 
   if (!primary) {
-    return <span className="text-muted-foreground">—</span>;
+    return <span className="text-muted-foreground">-</span>;
   }
 
   return (
@@ -236,10 +236,10 @@ function PreviewRowDesktop({
       <TableCell className="text-muted-foreground w-10 px-2 text-xs">{displayIndex}</TableCell>
       <TableCell className="max-w-[8rem] truncate px-2 text-xs">{guestName(row)}</TableCell>
       <TableCell className="whitespace-nowrap px-2 text-xs">
-        {row.mappedData.check_in_date ?? '—'}
+        {row.mappedData.check_in_date ?? '-'}
       </TableCell>
       <TableCell className="whitespace-nowrap px-2 text-xs">
-        {row.mappedData.check_out_date ?? '—'}
+        {row.mappedData.check_out_date ?? '-'}
       </TableCell>
       <TableCell className="w-[7.5rem] px-2">
         <Badge
@@ -322,7 +322,7 @@ function PreviewRowMobile({
             {guestName(row)}
           </p>
           <p className="text-muted-foreground mt-0.5 text-xs tabular-nums">
-            {row.mappedData.check_in_date ?? '—'} → {row.mappedData.check_out_date ?? '—'}
+            {row.mappedData.check_in_date ?? '-'} → {row.mappedData.check_out_date ?? '-'}
           </p>
         </div>
         <div
@@ -615,7 +615,7 @@ export function ImportPreviewTable({ batchId, isLoading, error, onRetry }: Props
         if (result.validationStatus === 'valid') {
           toast.success('Row restored');
         } else {
-          toast.warning('Row restored — it still needs fixing before import');
+          toast.warning('Row restored. It still needs fixing before import');
         }
         advanceFixSession(rowId);
       } finally {

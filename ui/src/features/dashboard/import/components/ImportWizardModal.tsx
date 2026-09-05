@@ -488,13 +488,13 @@ function CommitStep({
                 <div>
                   <dt className="text-muted-foreground">Check-in</dt>
                   <dd className="mt-0.5 font-medium tabular-nums">
-                    {row.mappedData.check_in_date ?? '—'}
+                    {row.mappedData.check_in_date ?? '-'}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">Check-out</dt>
                   <dd className="mt-0.5 font-medium tabular-nums">
-                    {row.mappedData.check_out_date ?? '—'}
+                    {row.mappedData.check_out_date ?? '-'}
                   </dd>
                 </div>
                 <div>
@@ -531,10 +531,10 @@ function CommitStep({
                     {importGuestName(row)}
                   </TableCell>
                   <TableCell className="px-3 py-2.5 text-xs tabular-nums">
-                    {row.mappedData.check_in_date ?? '—'}
+                    {row.mappedData.check_in_date ?? '-'}
                   </TableCell>
                   <TableCell className="px-3 py-2.5 text-xs tabular-nums">
-                    {row.mappedData.check_out_date ?? '—'}
+                    {row.mappedData.check_out_date ?? '-'}
                   </TableCell>
                   <TableCell className="px-3 py-2.5 text-right text-xs font-medium tabular-nums">
                     {importTotalGuests(row)}

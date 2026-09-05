@@ -50,7 +50,7 @@ export function ChatMessageBubble({
   onCalendarLinkClick,
 }: Props) {
   const timeLabel = formatChatBubbleTime(sentAt);
-  const trimmed = bodyText?.trim() || '—';
+  const trimmed = bodyText?.trim() || '-';
   const bubbleClass = cn(
     'max-w-[min(100%,28rem)] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-sm',
     unsent
