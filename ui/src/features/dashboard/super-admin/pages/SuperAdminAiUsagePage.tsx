@@ -52,7 +52,7 @@ export function SuperAdminAiUsagePage() {
   return (
     <SuperAdminPage
       title="AI usage"
-      subtitle="Platform AI cost and call volume — spend trend, cost by feature, top orgs, and current quota breaches."
+      subtitle="Platform AI cost and call volume: spend trend, cost by feature, top orgs, and current quota breaches."
       actions={
         <SegmentedControl
           value={range}

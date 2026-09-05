@@ -75,7 +75,7 @@ export function SuperAdminSupportTable({ tickets, onSelect }: Props) {
             </td>
             <td className={cn(adminTableCell.body, 'hidden lg:table-cell')}>
               <span className={cn('capitalize', adminTableBodyText.secondary)}>
-                {ticket.priority ? SUPPORT_TICKET_PRIORITY_LABELS[ticket.priority] : '—'}
+                {ticket.priority ? SUPPORT_TICKET_PRIORITY_LABELS[ticket.priority] : '-'}
               </span>
             </td>
             <td className={cn(adminTableCell.body, 'whitespace-nowrap')}>

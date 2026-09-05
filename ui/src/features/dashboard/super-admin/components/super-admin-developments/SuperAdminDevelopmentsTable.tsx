@@ -81,7 +81,7 @@ export function SuperAdminDevelopmentsTable({ developments }: Props) {
               </td>
               <td className={cn(adminTableCell.body, 'hidden sm:table-cell')}>
                 <p className={cn('max-w-[12rem] truncate', adminTableBodyText.secondary)}>
-                  {model.subtitle ?? '—'}
+                  {model.subtitle ?? '-'}
                 </p>
               </td>
               <td className={cn(adminTableCell.body, 'hidden md:table-cell')}>

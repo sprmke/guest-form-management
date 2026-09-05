@@ -75,7 +75,7 @@ export function useReassessOrgSuperhost() {
       toast.success(
         result.earned
           ? 'Superhost earned for this organization'
-          : 'Superhost not earned — criteria not met'
+          : 'Superhost not earned. Criteria not met'
       );
     },
     onError: (error: Error) => {

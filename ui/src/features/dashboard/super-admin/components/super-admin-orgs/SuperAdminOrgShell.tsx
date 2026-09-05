@@ -1,25 +1,27 @@
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 
-import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
+import { Navigate, useLocation, useParams } from 'react-router-dom';
 
 import {
   BadgeCheck,
   Building2,
-  ChevronLeft,
   CreditCard,
+  ExternalLink,
   LayoutDashboard,
   LifeBuoy,
   ScrollText,
   Settings,
   Sparkles,
+  UserRound,
 } from 'lucide-react';
 
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import {
   AdminSectionNavLayout,
   type AdminSectionNavItem,
 } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
+import { orgDashboardPath } from '@/features/dashboard/org/lib/tenantPaths';
+import { SuperAdminDetailHeader } from '@/features/dashboard/super-admin/components/shared/SuperAdminDetailHeader';
 import { SuperAdminOrgContext } from '@/features/dashboard/super-admin/components/super-admin-orgs/superAdminOrgContext';
 import { useSuperAdminOrgDetail } from '@/features/dashboard/super-admin/hooks/useSuperAdminOrgs';
 import { superAdminPaths } from '@/features/dashboard/super-admin/lib/superAdminPaths';
@@ -104,30 +106,41 @@ export function SuperAdminOrgShell() {
       <AdminSectionNavLayout
         sections={ORG_HUB_SECTIONS}
         header={
-          <div className="space-y-1.5">
-            <Link
-              to={superAdminPaths.organizations}
-              className="text-muted-foreground hover:text-foreground inline-flex min-h-[44px] items-center gap-1 text-sm font-medium transition-colors"
-            >
-              <ChevronLeft className="size-4" aria-hidden />
-              Organizations
-            </Link>
-            <AdminPageHeader
-              variant="compact"
-              title={org.name}
-              subtitle={`/${org.slug} · owner ${org.owner.name || org.owner.email || '—'}`}
-              badge={
-                <>
-                  {org.plan?.name ? (
-                    <Badge variant="secondary">{org.plan.name}</Badge>
-                  ) : (
-                    <Badge variant="outline">No plan</Badge>
-                  )}
-                  {openWork > 0 ? <Badge variant="outline">{openWork} open</Badge> : null}
-                </>
-              }
-            />
-          </div>
+          <SuperAdminDetailHeader
+            backTo={{ to: superAdminPaths.organizations, label: 'Organizations' }}
+            leading={
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+                <Building2 className="size-5" aria-hidden />
+              </div>
+            }
+            title={org.name}
+            meta={
+              <>
+                {org.plan?.name ? (
+                  <Badge variant="secondary">{org.plan.name}</Badge>
+                ) : (
+                  <Badge variant="outline">No plan</Badge>
+                )}
+                {openWork > 0 ? <Badge variant="outline">{openWork} open</Badge> : null}
+              </>
+            }
+            details={
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-0.5">
+                <a
+                  href={orgDashboardPath(orgSlug)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
+                >
+                  <ExternalLink className="size-3.5 shrink-0" aria-hidden />/{org.slug}
+                </a>
+                <span className="text-muted-foreground inline-flex items-center gap-1.5 text-sm">
+                  <UserRound className="size-3.5 shrink-0" aria-hidden />
+                  {org.owner.name || org.owner.email || '-'}
+                </span>
+              </div>
+            }
+          />
         }
       >
         <HubSection id="overview" title="Overview" icon={LayoutDashboard}>

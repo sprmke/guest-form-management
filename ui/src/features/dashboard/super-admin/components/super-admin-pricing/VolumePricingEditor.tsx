@@ -98,7 +98,7 @@ export function VolumePricingEditor({
         </div>
 
         {tiers.length === 0 ? (
-          <p className="text-muted-foreground text-xs">No tiers — only the ramp applies.</p>
+          <p className="text-muted-foreground text-xs">No tiers. Only the ramp applies.</p>
         ) : (
           <ul className="space-y-2">
             {tiers.map((tier, index) => (

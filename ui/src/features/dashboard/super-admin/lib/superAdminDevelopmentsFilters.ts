@@ -36,7 +36,7 @@ export function superAdminDevelopmentCardModel(
   const thumbnailUrl = development.coverImageUrl ?? images[0] ?? null;
   const city = development.city?.trim() ?? '';
   const location = development.location?.trim() ?? '';
-  const locationLine = [city, location].filter(Boolean).join(' · ') || '—';
+  const locationLine = [city, location].filter(Boolean).join(' · ') || '-';
 
   return {
     title: development.name,

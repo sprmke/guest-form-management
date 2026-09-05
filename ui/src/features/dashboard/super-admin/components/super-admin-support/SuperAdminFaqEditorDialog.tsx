@@ -9,16 +9,10 @@ import {
   useUpdateHelpCenterFaq,
 } from '@/features/dashboard/super-admin/hooks/useHelpCenterFaqsAdmin';
 
+import { AdminDialogShell } from '@/components/AdminDialogShell';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Combobox } from '@/components/ui/combobox';
 import { Label } from '@/components/ui/label';
-import {
-  ResponsiveModal,
-  ResponsiveModalContent,
-  ResponsiveModalFooter,
-  ResponsiveModalHeader,
-  ResponsiveModalTitle,
-} from '@/components/ui/responsive-modal';
 import { Textarea } from '@/components/ui/textarea';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
 
@@ -75,64 +69,61 @@ export function SuperAdminFaqEditorDialog({ faq, categories, onOpenChange }: Pro
   };
 
   return (
-    <ResponsiveModal open={Boolean(faq)} onOpenChange={onOpenChange}>
-      <ResponsiveModalContent className="sm:max-w-lg">
-        <ResponsiveModalHeader>
-          <ResponsiveModalTitle>{isNew ? 'Add FAQ' : 'Edit FAQ'}</ResponsiveModalTitle>
-        </ResponsiveModalHeader>
-
-        <div className="space-y-3 px-5 sm:px-6">
-          <div className="space-y-1.5">
-            <Label htmlFor="faq-category">Category</Label>
-            <Input
-              id="faq-category"
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
-              list="faq-categories"
-              maxLength={80}
-            />
-            <datalist id="faq-categories">
-              {categories.map((value) => (
-                <option key={value} value={value} />
-              ))}
-            </datalist>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="faq-question">Question</Label>
-            <Textarea
-              id="faq-question"
-              value={question}
-              onChange={(event) => setQuestion(event.target.value)}
-              rows={2}
-              maxLength={300}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="faq-answer">Answer</Label>
-            <Textarea
-              id="faq-answer"
-              value={answer}
-              onChange={(event) => setAnswer(event.target.value)}
-              rows={4}
-              maxLength={2000}
-            />
-          </div>
+    <AdminDialogShell
+      open={Boolean(faq)}
+      onOpenChange={onOpenChange}
+      title={isNew ? 'Add FAQ' : 'Edit FAQ'}
+      sizeClassName="max-w-[min(calc(100vw-1.5rem),32rem)] sm:max-w-lg"
+      footer={
+        <Button
+          type="button"
+          onClick={() => void handleSave()}
+          disabled={isPending}
+          className="min-h-[44px] w-full sm:w-auto"
+        >
+          {isPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+          Save
+        </Button>
+      }
+    >
+      <div className="space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="faq-category">Category</Label>
+          <Combobox
+            id="faq-category"
+            value={category}
+            onChange={setCategory}
+            options={categories}
+            creatable
+            maxLength={80}
+            placeholder="Select or create a category"
+            searchPlaceholder="Search categories…"
+            emptyText="Type to create a new category."
+          />
         </div>
 
-        <ResponsiveModalFooter>
-          <Button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={isPending}
-            className="min-h-[44px] w-full sm:w-auto"
-          >
-            {isPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-            Save
-          </Button>
-        </ResponsiveModalFooter>
-      </ResponsiveModalContent>
-    </ResponsiveModal>
+        <div className="space-y-1.5">
+          <Label htmlFor="faq-question">Question</Label>
+          <Textarea
+            id="faq-question"
+            value={question}
+            onChange={(event) => setQuestion(event.target.value)}
+            rows={2}
+            maxLength={300}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="faq-answer">Answer</Label>
+          <Textarea
+            id="faq-answer"
+            value={answer}
+            onChange={(event) => setAnswer(event.target.value)}
+            rows={4}
+            maxLength={2000}
+          />
+        </div>
+      </div>
+    </AdminDialogShell>
   );
 }

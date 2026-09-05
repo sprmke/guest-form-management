@@ -25,7 +25,7 @@ export function SuperAdminOverviewKpis({ kpis }: { kpis: SuperAdminOverview['kpi
   return (
     <section
       aria-label="Platform metrics"
-      className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4"
+      className="grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:gap-4"
     >
       <StatCard
         title="Organizations"
@@ -91,16 +91,14 @@ export function SuperAdminOverviewKpis({ kpis }: { kpis: SuperAdminOverview['kpi
         iconBgClassName="bg-violet-100 dark:bg-violet-900/30"
         footer="selected range"
       />
-      {kpis.undisbursedParkingPayouts > 0 ? (
-        <StatCard
-          title="Undisbursed payouts"
-          value={String(kpis.undisbursedParkingPayouts)}
-          to={superAdminPaths.parkingPayouts}
-          icon={Wallet}
-          iconClassName="text-amber-600 dark:text-amber-400"
-          iconBgClassName="bg-amber-100 dark:bg-amber-900/30"
-        />
-      ) : null}
+      <StatCard
+        title="Undisbursed payouts"
+        value={String(kpis.undisbursedParkingPayouts)}
+        to={superAdminPaths.parkingPayouts}
+        icon={Wallet}
+        iconClassName="text-amber-600 dark:text-amber-400"
+        iconBgClassName="bg-amber-100 dark:bg-amber-900/30"
+      />
     </section>
   );
 }

@@ -41,7 +41,7 @@ export function superAdminPricingPlansSummaryFromList(plans: PricingPlan[]) {
     total: plans.length,
     subscriptionTiers: hostLadder.length,
     activePlans,
-    defaultPlanName: defaultPlan?.name ?? '—',
+    defaultPlanName: defaultPlan?.name ?? '-',
   };
 }
 

@@ -75,13 +75,13 @@ export function SuperAdminPlatformPropertiesTable({ properties }: Props) {
                     <p className={cn('truncate', adminTableBodyText.secondary)}>{model.subtitle}</p>
                   ) : null}
                   <p className={cn('mt-1 sm:hidden', adminTableBodyText.secondary)}>
-                    {platformProperty.organizationName || '—'}
+                    {platformProperty.organizationName || '-'}
                   </p>
                 </div>
               </td>
               <td className={cn(adminTableCell.body, 'hidden sm:table-cell')}>
                 <p className={cn('max-w-[10rem] truncate', adminTableBodyText.secondary)}>
-                  {platformProperty.organizationName || '—'}
+                  {platformProperty.organizationName || '-'}
                 </p>
               </td>
               <td className={cn(adminTableCell.body, 'hidden md:table-cell')}>
@@ -95,7 +95,7 @@ export function SuperAdminPlatformPropertiesTable({ properties }: Props) {
                   </Link>
                 ) : (
                   <p className={cn('max-w-[12rem] truncate', adminTableBodyText.secondary)}>
-                    {residence ?? '—'}
+                    {residence ?? '-'}
                   </p>
                 )}
               </td>
