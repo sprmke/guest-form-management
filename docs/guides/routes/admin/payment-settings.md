@@ -2,14 +2,16 @@
 title: 'Super Admin payment settings — operator guide'
 status: active
 tags: [guides, routes, admin]
-updated: 2026-08-18
+updated: 2026-09-04
 ---
 
 # Super Admin payment settings — operator guide
 
 Route: `/admin/pricing/payment-settings`
 
-> **Status:** Documented
+> **Status:** Documented · rebuilt on the shared console scaffold (`SuperAdminPage` +
+> `SuperAdminSettingsCard`/`SuperAdminSettingsRow`) — enabled rails are now `Switch` rows in a
+> `Card`, not raw checkboxes; behavior and the `platform-payment-settings` PUT payload are unchanged.
 
 ## Progress overview
 

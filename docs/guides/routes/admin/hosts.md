@@ -114,8 +114,7 @@ Standard admin-list pagination (same pattern as `/bookings`): `page`/`limit` are
 ## Related docs
 
 - [Route index](../README.md)
-- [Host organizations guide](./host-detail/orgs.md)
-- [Host properties guide](./host-detail/properties.md)
+- [Host Detail guide](./host-detail.md)
 - [`docs/PROJECT.md`](../../PROJECT.md)
 
 ---

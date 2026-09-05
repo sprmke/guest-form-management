@@ -13,7 +13,7 @@ Route: `/org/:orgSlug/parkings`
 
 ## Overview
 
-Lists all parking slots for the organization. **UI mirrors** `/org/:orgSlug/properties`, including the **brand hero** shell on phone/tablet (`AdminMobilePage` + Add parking hero icon). Summary KPI cards, search + status + type filters, grid/list toggle, property-style cards with image carousel, stats row, and actions menu. Org owners and admins with `org:parkings:view` may access. **Add parking** opens the same dialog as the tenant switcher **+** menu.
+Lists all parking slots for the organization. **UI mirrors** `/org/:orgSlug/properties`, including the **brand hero** shell on phone/tablet (`AdminMobilePage` + Add parking hero icon). Summary KPI cards, search + status + type filters, grid/list toggle, property-style cards with image carousel, stats row, and actions menu. Requires **`org.parkings:view`**. **Add parking** requires **`org.parkings:create`**. Scoped org admins (`all_listings = false`) only see assigned parkings (`list-parkings` filters like `list-properties`).
 
 ---
 

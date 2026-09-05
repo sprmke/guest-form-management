@@ -2,14 +2,17 @@
 title: 'Super Admin AI Management — operator guide'
 status: active
 tags: [guides, routes, admin]
-updated: 2026-08-17
+updated: 2026-09-04
 ---
 
 # Super Admin AI Management — operator guide
 
 Route: `/admin/settings`
 
-> **Status:** Documented
+> **Status:** Documented · page wrapped in `SuperAdminPage`; the three cards no longer orphan the
+> third in a 2-col grid (Platform AI is full-width, Assistant + Credit wallet share a row). The
+> **Credit wallet** card now also appears in the org hub's **AI credits** section, prefilled with
+> that org's id (`AiCreditWalletCard initialOrgId`).
 
 ## Progress overview
 

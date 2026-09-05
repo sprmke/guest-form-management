@@ -56,7 +56,7 @@ This page combines every property stay and every parking-slot reservation across
 
 `GET /functions/v1/list-bookings?org_slug=…` (or `org_id=…`)
 
-- Permission: `org:bookings:view`
+- Permission: `org.bookings:view`
 - Returns rows where `property_id IN (org properties)` **OR** `parking_id IN (org parkings)`.
 - Response includes `booking_kind`, `property_*` and/or `parking_*` meta.
 - Optional `?booking_kind=property|parking`, `?property_id=` (property stays only within org).
@@ -82,5 +82,6 @@ Status changes: `POST transition-parking-booking?parking_id=…` with `{ booking
 
 ## Permissions
 
-- Route guard: `RequireOrgPermission` section `bookings` → `org:bookings:view`
+- Route guard: `RequireOrgPermission` section `bookings` → `org.bookings:view`
+- Org-wide `list-bookings`: all-listings admins see every listing; scoped admins (`all_listings = false`) only bookings for assigned properties/parkings
 - Parking rows on org list require org-level access; parking-slot mutations use parking team RBAC on detail/create endpoints.

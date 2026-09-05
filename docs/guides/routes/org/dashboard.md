@@ -33,9 +33,11 @@ Org-level performance overview across **all properties** and, when present, **pa
 
 Page title **Dashboard**. Subtitle is _Performance across all properties._ or _Performance across all properties and parking._ when `parkingCount > 0`. On **phone/tablet** (`max-lg`), shared **brand hero** shell (`AdminMobilePage`): teal hero + title/subtitle, date range in overlapping floating toolbar, **Add listing** as hero icon when permitted. Card-header segments (revenue/bookings, All/Properties/Parkings) stay **right of the title** on one row — dense equal-width `SegmentedControl` (`cardHeaderSegmented*ClassName`). Desktop (`lg+`) keeps compact header with date filter + Add listing. Selected **`?from` / `?to`** (Asia/Manila) drives KPIs, charts, status breakdown, recent bookings, and listing performance.
 
-**Add listing** (when the user can create property and/or parking): same unified modal as the workspace switcher **+** (title **New listing**). Creating a listing navigates to its dashboard.
+**Add listing** (when the user has **`org.properties:create`** and/or **`org.parkings:create`** — owners and platform admins always; invited members only when granted): same unified modal as the workspace switcher **+** (title **New listing**). Creating a listing navigates to its dashboard.
 
 There is **no** New Booking button on this page.
+
+**Scoped org admins** (`all_listings = false`): KPIs, charts, recent bookings, and listings performance include **only assigned** properties and parkings (same filter as org bookings / inventory lists).
 
 ---
 
@@ -173,6 +175,12 @@ Org scope returns `parkingCount`, `parkingPerformance`, and `recentBookings[].bo
 | Status labels / colors | `ui/src/features/dashboard/bookings/lib/bookingStatus.ts`, `ui/src/features/dashboard/bookings/components/StatusBadge.tsx` |
 
 ---
+
+## Permissions
+
+- Route guard: `RequireOrgPermission` section `dashboard` → `org.dashboard:view`
+- Add listing: `org.properties:create` / `org.parkings:create` (via `org-access` flags)
+- Org-wide `dashboard-stats`: all-listings admins see every listing; scoped admins only assigned listings
 
 ## Related docs
 

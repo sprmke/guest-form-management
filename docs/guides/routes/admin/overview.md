@@ -2,7 +2,7 @@
 title: 'Super Admin Overview — operator guide'
 status: active
 tags: [guides, routes, admin]
-updated: 2026-08-17
+updated: 2026-09-04
 ---
 
 # Super Admin Overview — operator guide
@@ -13,15 +13,22 @@ Route: `/admin`
 
 ## Progress overview
 
-| Section       | E2E save         | Validation | Docs | Notes                                                                  |
-| ------------- | ---------------- | ---------- | ---- | ---------------------------------------------------------------------- |
-| Overview grid | Done (read-only) | —          | Done | Cards match Platform sidebar destinations (`superAdminPlatformNav.ts`) |
+| Section         | E2E save         | Validation | Docs | Notes                                                                                              |
+| --------------- | ---------------- | ---------- | ---- | -------------------------------------------------------------------------------------------------- |
+| KPI strip       | Done (read-only) | —          | Done | 8–9 `StatCard`s, most linking to the matching list page; platform-wide exact counts                |
+| Charts          | Done (read-only) | —          | Done | Growth area (12 mo, Total/New toggle) · Plan-mix donut · AI-cost-by-feature bar                    |
+| Attention queue | Done (read-only) | —          | Done | Approvals in review · open tickets · undisbursed payouts · orgs with no live plan — links to lists |
+| Recent activity | Done (read-only) | —          | Done | Latest orgs / subscription changes / support tickets                                               |
+| Range toggle    | n/a              | —          | Done | 30d / 90d / 12mo — scopes the AI-spend KPI + AI-cost chart                                         |
+| Sidebar nav     | n/a              | —          | Done | Grouped into labelled sections (`SUPER_ADMIN_NAV_GROUPS`) below a header-less Overview link        |
+
+> Tracked by [`docs/workflow/in-progress/super-admin-console-overhaul.md`](../../../workflow/in-progress/super-admin-console-overhaul.md).
 
 ---
 
 ## Overview
 
-Landing page for the **platform super-admin** area — a distinct tier from org/property admin and from the legacy `ADMIN_ALLOWED_EMAILS` gate. It renders the same destination cards as the Platform sidebar (minus Overview itself) and makes no API calls of its own; all data lives on the destination pages.
+Landing page for the **platform super-admin** area — a distinct tier from org/property admin and from the legacy `ADMIN_ALLOWED_EMAILS` gate. It is a **data dashboard**: the `super-admin-overview` edge function (`?range=30d|90d|12mo`) returns KPI rollups, a 12-month org/subscription growth series, live plan mix, AI cost by feature, an attention queue, and recent activity. A condensed "Jump to" grid at the bottom still mirrors the sidebar destinations.
 
 **Access:** `RequireSuperAdmin` — email must be in `SUPER_ADMIN_EMAILS` (server) / `VITE_SUPER_ADMIN_EMAILS` (client UX gate). Uses the same signed-in session as the legacy admin dashboard (`useAdminSession`), so a super admin must already be signed in via Google OAuth; being super admin does not require being in `ADMIN_ALLOWED_EMAILS`.
 
@@ -40,41 +47,46 @@ The Super Admin area is an internal control panel for the platform team — it i
 
 ---
 
-## Navigation cards
+## Navigation
 
-Cards and sidebar labels come from one list (`SUPER_ADMIN_PLATFORM_DESTINATIONS`). Order:
+Both the Overview card grid and the Platform sidebar are driven by `SUPER_ADMIN_NAV_GROUPS`
+(`superAdminPlatformNav.ts`). The sidebar renders **Overview** (`/admin`, no group heading) then
+each group as a labelled section:
 
-| Card            | Destination           |
-| --------------- | --------------------- |
-| Developments    | `/admin/developments` |
-| Properties      | `/admin/properties`   |
-| Approvals       | `/admin/approvals`    |
-| Hosts           | `/admin/hosts`        |
-| Support tickets | `/admin/support`      |
-| FAQs            | `/admin/support/faqs` |
-| AI Management   | `/admin/settings`     |
+| Group             | Items → destination                                                                                                                                                                 |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Organizations     | Hosts `/admin/hosts` · Developments `/admin/developments` · Properties `/admin/properties`                                                                                          |
+| Billing & catalog | Pricing plans `/admin/pricing/plans` · Subscriptions `/admin/pricing/subscriptions` · Payment settings `/admin/pricing/payment-settings` · Parking payouts `/admin/parking/payouts` |
+| Operations        | Approvals `/admin/approvals` · Support tickets `/admin/support`                                                                                                                     |
+| Content           | Announcements `/admin/announcements` · FAQs `/admin/support/faqs`                                                                                                                   |
+| Platform          | AI Management `/admin/settings`                                                                                                                                                     |
 
-The Platform sidebar prepends **Overview** (`/admin`) to that same list.
+`SUPER_ADMIN_PLATFORM_DESTINATIONS` (flat, group order) is still exported for the "Jump to" card
+grid and future global search. Group headings are hidden when the sidebar is collapsed.
 
 ---
 
 ## API reference
 
-None — static navigation only.
+| Method | Endpoint                         | Notes                                                                                                                                      |
+| ------ | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| GET    | `super-admin-overview?range=30d` | `range` = `30d` \| `90d` \| `12mo`. Returns `kpis`, `growthSeries`, `planMix`, `aiCostByFeature`, `attention`, `recent`. Super-admin only. |
 
 ---
 
 ## Implementation map
 
-| Concern    | Path                                                                                       |
-| ---------- | ------------------------------------------------------------------------------------------ |
-| Page       | `ui/src/features/dashboard/super-admin/pages/SuperAdminOverviewPage.tsx`                   |
-| Shared nav | `ui/src/features/dashboard/super-admin/lib/superAdminPlatformNav.ts`                       |
-| Sidebar    | `ui/src/features/dashboard/bookings/lib/adminSidebarNav.ts` (`buildSuperAdminNavSections`) |
-| Shell      | `ui/src/features/dashboard/super-admin/components/SuperAdminShell.tsx`                     |
-| Guard      | `ui/src/features/dashboard/super-admin/components/RequireSuperAdmin.tsx`                   |
-| Paths      | `ui/src/features/dashboard/super-admin/lib/superAdminPaths.ts`                             |
-| Routes     | `ui/src/features/dashboard/super-admin/routes/index.tsx`                                   |
+| Concern       | Path                                                                                       |
+| ------------- | ------------------------------------------------------------------------------------------ |
+| Page          | `ui/src/features/dashboard/super-admin/pages/SuperAdminOverviewPage.tsx`                   |
+| Components    | `ui/src/features/dashboard/super-admin/components/super-admin-overview/*`                  |
+| Hook          | `ui/src/features/dashboard/super-admin/hooks/useSuperAdminOverview.ts`                     |
+| Edge function | `supabase/functions/super-admin-overview/index.ts`                                         |
+| Shared nav    | `ui/src/features/dashboard/super-admin/lib/superAdminPlatformNav.ts`                       |
+| Sidebar       | `ui/src/features/dashboard/bookings/lib/adminSidebarNav.ts` (`buildSuperAdminNavSections`) |
+| Shell / guard | `SuperAdminShell.tsx` / `RequireSuperAdmin.tsx`                                            |
+| Paths         | `ui/src/features/dashboard/super-admin/lib/superAdminPaths.ts`                             |
+| Routes        | `ui/src/features/dashboard/super-admin/routes/index.tsx`                                   |
 
 ---
 
@@ -88,4 +100,6 @@ None — static navigation only.
 
 ## Pending / follow-ups
 
-- [ ] None known — page is intentionally minimal.
+- [ ] MRR / revenue trend chart (needs subscription-event history, not just current snapshots).
+- [ ] Audit-log feed once super-admin action logging lands (Phase 6 backlog).
+- [ ] Global ⌘K search over orgs / hosts / properties / tickets.

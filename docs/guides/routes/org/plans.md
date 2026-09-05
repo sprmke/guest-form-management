@@ -30,7 +30,7 @@ Routes:
 
 One plan covers every property in the org, priced **per property** at the chosen tier's rate, with volume discounts as the portfolio grows. Checkout always bills for **every property in the org**; successful payment enrolls all of them. Adding a property on a **paid** plan does not auto-enroll — `create-property` returns `billingRequired: true` and the host completes checkout from Plans & Billing.
 
-**Access:** any org member can view (`org:settings:view` / property `settings:view`); starting checkout requires org **owner** (or platform admin) — see `verifyOrgOwner`.
+**Access:** any org member with **`org.plans:view`** can view plans; property shell uses property `settings:view`. Starting checkout / downgrade requires org **owner** (or platform admin) — see `verifyOrgOwner`.
 
 **Page title:** org → `${Org Name} - Plans & Billing`; property → `${Property Name} - Plans & Billing`. Subtitle: `PLANS_PAGE_SUBTITLE` in `planPresentation.ts` (shown on `lg+` only). Shown on `lg+` only — not re-printed in the mobile body.
 
@@ -67,13 +67,13 @@ One plan covers every property in the org, priced **per property** at the chosen
 
 Internal plan codes stay stable in the database; hosts see these names. **Monthly (PHP) is the per-property rate**, not a flat plan price — the total charged is this rate × **every property in the org**, then the volume discount curve.
 
-| Display name | Internal code | Per-property monthly (PHP) | Highlights                                                                                                                                                                                                    |
-| ------------ | ------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Free**     | `free`        | ₱0                         | Dashboard, manual bookings, guest form, manual documents, **standard template management**, finance, maintenance, notifications                                                                               |
-| **Starter**  | `starter`     | ₱499 → **₱399**            | 20% off list · pricing management, public listing, automated booking emails, verified badge, 3 pooled team seats, **custom team roles**, **advanced template management**                                     |
-| **Pro**      | `growth`      | ₱999 → **₱799**            | 20% off list · 5 pooled seats, **Marketing Content Studio**, top-30 search, AI validation, **Public pages editor**, **Property showcase & stay guide access**, **Airbnb calendar sync**, 1k pooled AI credits |
-| **Business** | `pro`         | ₱1,799 → **₱1,439**        | 20% off list · 10 pooled seats, **Publish in Meta platforms**, top-15 search, full AI toolkit, 10k pooled AI credits, absorbs what the retired Business Plus tier covered via its own volume curve            |
-| **Managed**  | `managed`     | ₱4,999 → **₱3,999**        | 20% off list · Business capabilities + 30k pooled AI credits/mo, full-service ops, sales-assisted pricing                                                                                                     |
+| Display name | Internal code | Per-property monthly (PHP) | Highlights                                                                                                                                                                                                                          |
+| ------------ | ------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Free**     | `free`        | ₱0                         | Dashboard, manual bookings, guest form, manual documents, **standard template management**, finance, maintenance, notifications                                                                                                     |
+| **Starter**  | `starter`     | ₱499 → **₱399**            | 20% off list · pricing management, public listing, automated booking emails, verified badge, 3 pooled team seats, **custom team roles**, **advanced template management**                                                           |
+| **Pro**      | `growth`      | ₱999 → **₱799**            | 20% off list · 5 pooled seats, **Marketing Content Studio**, top-30 search, AI validation, **Public pages editor**, **Property showcase & stay guide access**, **Airbnb calendar sync**, **Smart AI Pricing**, 1k pooled AI credits |
+| **Business** | `pro`         | ₱1,799 → **₱1,439**        | 20% off list · 10 pooled seats, **Publish in Meta platforms**, top-15 search, full AI toolkit, 10k pooled AI credits, absorbs what the retired Business Plus tier covered via its own volume curve                                  |
+| **Managed**  | `managed`     | ₱4,999 → **₱3,999**        | 20% off list · Business capabilities + 30k pooled AI credits/mo, full-service ops, sales-assisted pricing                                                                                                                           |
 
 `business_plus` is retired (`is_active = false`) — folded into Pro's volume-discount curve rather than kept as a separate "many properties" tier.
 

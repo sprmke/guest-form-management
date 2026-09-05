@@ -2,14 +2,17 @@
 title: 'Super Admin parking payouts — operator guide'
 status: active
 tags: [guides, routes, admin, parking]
-updated: 2026-08-26
+updated: 2026-09-04
 ---
 
 # Super Admin parking payouts — operator guide
 
 Route: `/admin/parking/payouts`
 
-> **Status:** Documented
+> **Status:** Documented · rebuilt on the shared console scaffold — commission/rate config is now a
+> `SuperAdminSettingsCard`; the disbursement ledger is a `Card`-wrapped table at ≥`lg` with a
+> stacked card list below it (no more 5-column overflow on mobile). Actions and the
+> `parking-payouts` GET/PATCH contract are unchanged.
 
 ## Progress overview
 
