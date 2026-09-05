@@ -10,7 +10,7 @@ export function formatPaymentMethodsChatText(methods: PropertyPaymentMethod[]): 
     const provider = method.provider.trim() || 'Payment';
     const name = method.accountName.trim();
     const number = formatPaymentAccountNumberDisplay(method.provider, method.accountNumber);
-    return `${provider} — ${name} — ${number}`;
+    return `${provider}: ${name} (${number})`;
   });
 
   return ['Payment methods:', ...lines].join('\n');

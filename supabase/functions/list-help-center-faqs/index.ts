@@ -13,7 +13,7 @@ serveAuthenticated('list-help-center-faqs', async (req) => {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from('help_center_faqs')
-    .select('id, category, question, answer, sort_order')
+    .select('id, category, question, answer, sort_order, source_route_guide_path')
     .eq('is_published', true)
     .order('category', { ascending: true })
     .order('sort_order', { ascending: true });

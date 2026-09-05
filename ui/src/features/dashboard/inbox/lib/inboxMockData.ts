@@ -282,7 +282,7 @@ export const MOCK_TEMPLATES: InboxTemplate[] = [
     id: 'tpl-4',
     title: 'Airbnb inquiry',
     body_text:
-      'Hi! Thanks for your inquiry. Early check-in may be possible depending on the previous guest — we will confirm closer to your stay.',
+      'Hi! Thanks for your inquiry. Early check-in may be possible depending on the previous guest. We will confirm closer to your stay.',
     platform: null,
     conversation_type: 'all',
     sort_order: 2,
@@ -304,7 +304,7 @@ export const MOCK_AUTOMATION: InboxAutomationSettings = {
 
 export const MOCK_AI_SUGGESTIONS: Record<string, string> = {
   'mock-fb-dm-unread':
-    'Hi Maria! Azure North may be available Mar 15–17 for 4 guests — I will confirm and share rates shortly. Floor preference noted.',
+    'Hi Maria! Azure North may be available Mar 15–17 for 4 guests. I will confirm and share rates shortly. Floor preference noted.',
   'mock-ig-dm-urgent':
     'Hi! Small dogs are welcome with a pet fee. Please share your dates and we will send pet policy details.',
   default: 'Thanks for your message! We will get back to you shortly with availability and rates.',

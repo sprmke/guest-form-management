@@ -841,9 +841,9 @@ function AdminSidebarContent({
                     const showAnnouncementsBadge =
                       label === 'Announcements' && hostAnnouncementsHaveUnread;
                     const collapsedNavHint = showSettingsIssue
-                      ? `${label} — items need attention`
+                      ? `${label}: items need attention`
                       : showAnnouncementsBadge
-                        ? `${label} — unread announcements`
+                        ? `${label}: unread announcements`
                         : label;
 
                     if (disabled || !href) {

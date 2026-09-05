@@ -12,16 +12,10 @@ import {
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useUpdateProperty } from '@/features/dashboard/org/hooks/useUpdateProperty';
 
+import { AdminDialogShell } from '@/components/AdminDialogShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  ResponsiveModal,
-  ResponsiveModalContent,
-  ResponsiveModalFooter,
-  ResponsiveModalHeader,
-  ResponsiveModalTitle,
-} from '@/components/ui/responsive-modal';
 import { Textarea } from '@/components/ui/textarea';
 
 function SnippetFormDialog({
@@ -61,35 +55,14 @@ function SnippetFormDialog({
   };
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
-      <ResponsiveModalContent className="z-[104] max-w-[min(calc(100vw-1.5rem),28rem)] sm:max-w-[min(90vw,36rem)]">
-        <ResponsiveModalHeader>
-          <ResponsiveModalTitle>
-            {snippet ? 'Edit pinned snippet' : 'New pinned snippet'}
-          </ResponsiveModalTitle>
-        </ResponsiveModalHeader>
-        <div className="space-y-4 py-1">
-          <div className="space-y-1.5">
-            <Label htmlFor="pinned-snippet-title">Title</Label>
-            <Input
-              id="pinned-snippet-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="h-10"
-              autoFocus
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="pinned-snippet-body">Message</Label>
-            <Textarea
-              id="pinned-snippet-body"
-              value={bodyText}
-              onChange={(e) => setBodyText(e.target.value)}
-              className="min-h-[120px] resize-none"
-            />
-          </div>
-        </div>
-        <ResponsiveModalFooter className="gap-2">
+    <AdminDialogShell
+      open={open}
+      onOpenChange={onOpenChange}
+      title={snippet ? 'Edit pinned snippet' : 'New pinned snippet'}
+      sizeClassName="max-w-[min(calc(100vw-1.5rem),28rem)] sm:max-w-[min(90vw,36rem)]"
+      contentClassName="z-[104]"
+      footer={
+        <>
           <Button
             type="button"
             variant="outline"
@@ -105,9 +78,31 @@ function SnippetFormDialog({
           >
             {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : 'Save'}
           </Button>
-        </ResponsiveModalFooter>
-      </ResponsiveModalContent>
-    </ResponsiveModal>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="pinned-snippet-title">Title</Label>
+          <Input
+            id="pinned-snippet-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="h-10"
+            autoFocus
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="pinned-snippet-body">Message</Label>
+          <Textarea
+            id="pinned-snippet-body"
+            value={bodyText}
+            onChange={(e) => setBodyText(e.target.value)}
+            className="min-h-[120px] resize-none"
+          />
+        </div>
+      </div>
+    </AdminDialogShell>
   );
 }
 

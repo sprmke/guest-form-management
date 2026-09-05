@@ -196,7 +196,7 @@ export const TurnstileWidget = forwardRef<TurnstileWidgetHandle, Props>(function
       />
       {/* Announce only the interactive-challenge case; the invisible pass is silent. */}
       <p role="status" aria-live="polite" className="sr-only">
-        {hasChallenge ? 'Human verification needed — complete the challenge to continue.' : ''}
+        {hasChallenge ? 'Human verification needed. Complete the challenge to continue.' : ''}
       </p>
     </div>
   );

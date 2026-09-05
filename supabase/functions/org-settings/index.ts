@@ -22,9 +22,20 @@ serveAdmin('org-settings', async (req) => {
   }
 
   if (req.method === 'PATCH') {
+    const body = await readJsonBody(req);
+
+    if (typeof body.emailLogoUrl === 'string') {
+      await resolveOrgAccessContext(req, 'org.settings.basic:edit');
+      const trimmed = body.emailLogoUrl.trim();
+      if (trimmed) {
+        return jsonError(req, 'Team logo can only be updated via upload-org-settings-asset');
+      }
+      // Uploaded logos cannot be cleared back to initials — only replaced via upload.
+      return jsonError(req, 'Organization logo cannot be removed after upload');
+    }
+
     const ctx = await resolveOrgAccessContext(req, 'org.settings.socials:edit');
     const organizationId = ctx.org.id;
-    const body = await readJsonBody(req);
     const patch: Record<string, unknown> = {};
 
     if (typeof body.airbnbUrl === 'string') {
@@ -75,13 +86,6 @@ serveAdmin('org-settings', async (req) => {
       } else {
         patch.tiktok_url = null;
       }
-    }
-    if (typeof body.emailLogoUrl === 'string') {
-      const trimmed = body.emailLogoUrl.trim();
-      if (trimmed) {
-        return jsonError(req, 'Team logo can only be updated via upload-org-settings-asset');
-      }
-      return jsonError(req, 'Organization logo is required');
     }
 
     if (Object.keys(patch).length === 0) {

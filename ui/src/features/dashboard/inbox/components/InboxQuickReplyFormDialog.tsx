@@ -22,16 +22,10 @@ import type {
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
+import { AdminDialogShell } from '@/components/AdminDialogShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  ResponsiveModal,
-  ResponsiveModalContent,
-  ResponsiveModalFooter,
-  ResponsiveModalHeader,
-  ResponsiveModalTitle,
-} from '@/components/ui/responsive-modal';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
@@ -100,79 +94,15 @@ export function InboxQuickReplyFormDialog({
   };
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
-      <ResponsiveModalContent
-        className="z-[103] max-w-[min(calc(100vw-1.5rem),28rem)] sm:max-w-[min(90vw,36rem)]"
-        overlayClassName="z-[102]"
-      >
-        <ResponsiveModalHeader>
-          <ResponsiveModalTitle>{template ? 'Edit reply' : 'New reply'}</ResponsiveModalTitle>
-        </ResponsiveModalHeader>
-
-        <div className="space-y-4 py-1">
-          <div className="space-y-1.5">
-            <Label htmlFor="inbox-qr-form-title">Title</Label>
-            <Input
-              id="inbox-qr-form-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Availability check"
-              className="h-10"
-              autoFocus
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="inbox-qr-form-body">Message</Label>
-            <Textarea
-              id="inbox-qr-form-body"
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="Thanks for reaching out! Please share your dates…"
-              className="min-h-[140px] resize-none font-normal"
-            />
-            <p className="text-muted-foreground text-xs">
-              Placeholders: {INBOX_QUICK_REPLY_MERGE_FIELDS.join(', ')}
-            </p>
-            {previewText ? (
-              <div className="bg-muted/40 border-border rounded-lg border px-3 py-2">
-                <p className="text-muted-foreground mb-1 text-[11px] font-medium uppercase tracking-wide">
-                  Preview
-                </p>
-                <p className="text-foreground whitespace-pre-wrap text-sm">{previewText}</p>
-              </div>
-            ) : null}
-          </div>
-          <div className="space-y-1.5">
-            <Label>Group</Label>
-            <div
-              className="border-border bg-muted/30 flex overflow-x-auto rounded-lg border p-1"
-              role="group"
-              aria-label="Quick reply group"
-            >
-              {QUICK_REPLY_ASSIGN_GROUPS.map((option) => {
-                const active = group === option;
-                return (
-                  <button
-                    key={option}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => setGroup(option)}
-                    className={cn(
-                      'flex min-h-[44px] flex-1 items-center justify-center rounded-md px-2 text-xs font-semibold transition-colors sm:text-sm',
-                      active
-                        ? 'bg-background text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    {quickReplyGroupLabel(option)}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        <ResponsiveModalFooter className="gap-2 sm:gap-2">
+    <AdminDialogShell
+      open={open}
+      onOpenChange={onOpenChange}
+      title={template ? 'Edit reply' : 'New reply'}
+      sizeClassName="max-w-[min(calc(100vw-1.5rem),28rem)] sm:max-w-[min(90vw,36rem)]"
+      contentClassName="z-[103]"
+      overlayClassName="z-[102]"
+      footer={
+        <>
           <Button
             type="button"
             variant="outline"
@@ -190,8 +120,71 @@ export function InboxQuickReplyFormDialog({
           >
             {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : 'Save'}
           </Button>
-        </ResponsiveModalFooter>
-      </ResponsiveModalContent>
-    </ResponsiveModal>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="inbox-qr-form-title">Title</Label>
+          <Input
+            id="inbox-qr-form-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Availability check"
+            className="h-10"
+            autoFocus
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="inbox-qr-form-body">Message</Label>
+          <Textarea
+            id="inbox-qr-form-body"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Thanks for reaching out! Please share your dates…"
+            className="min-h-[140px] resize-none font-normal"
+          />
+          <p className="text-muted-foreground text-xs">
+            Placeholders: {INBOX_QUICK_REPLY_MERGE_FIELDS.join(', ')}
+          </p>
+          {previewText ? (
+            <div className="bg-muted/40 border-border rounded-lg border px-3 py-2">
+              <p className="text-muted-foreground mb-1 text-[11px] font-medium uppercase tracking-wide">
+                Preview
+              </p>
+              <p className="text-foreground whitespace-pre-wrap text-sm">{previewText}</p>
+            </div>
+          ) : null}
+        </div>
+        <div className="space-y-1.5">
+          <Label>Group</Label>
+          <div
+            className="border-border bg-muted/30 flex overflow-x-auto rounded-lg border p-1"
+            role="group"
+            aria-label="Quick reply group"
+          >
+            {QUICK_REPLY_ASSIGN_GROUPS.map((option) => {
+              const active = group === option;
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setGroup(option)}
+                  className={cn(
+                    'flex min-h-[44px] flex-1 items-center justify-center rounded-md px-2 text-xs font-semibold transition-colors sm:text-sm',
+                    active
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {quickReplyGroupLabel(option)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </AdminDialogShell>
   );
 }

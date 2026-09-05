@@ -15,7 +15,7 @@ type Props = {
 const COPY: Record<MetaInboxOperation, { title: string; description: string }> = {
   sync: {
     title: 'Loading conversations',
-    description: 'Syncing from Meta. This may take a few minutes — keep this page open.',
+    description: 'Syncing from Meta. This may take a few minutes. Keep this page open.',
   },
   disconnect: {
     title: 'Disconnecting Meta',

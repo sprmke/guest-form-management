@@ -560,7 +560,7 @@ export async function createPropertyInvitation(
   const customRoles = await loadCustomRolesMap(supabase, propertyId);
   await assertCustomRoleForProperty(supabase, propertyId, roleId, customRoles);
 
-  const permissions = resolveAssignPermissions(roleId, customRoles, body.permissions);
+  const permissions = resolveAssignPermissions(roleId, customRoles, undefined);
   const contact = parseTeamInviteContactFields(body);
 
   if (await findActiveMemberByEmail(supabase, propertyId, email)) {
@@ -808,17 +808,16 @@ export async function updatePropertyTeamMember(
         ? normalizePermissionIds(existing.saved_permissions)
         : [];
       patch.permissions =
-        saved.length > 0
-          ? saved
-          : resolveAssignPermissions(nextRoleId, customRoles, body.permissions);
+        saved.length > 0 ? saved : resolveAssignPermissions(nextRoleId, customRoles, undefined);
     }
     patch.saved_permissions = null;
     patch.plan_limited = false;
-  } else if (existing.status === 'active' && (body.permissions !== undefined || roleChanged)) {
-    patch.permissions = resolveAssignPermissions(
-      nextRoleId,
-      customRoles,
-      body.permissions !== undefined ? body.permissions : undefined
+  } else if (existing.status === 'active' && roleChanged) {
+    // Member grants always follow the role template — no per-member permission overrides.
+    patch.permissions = resolveAssignPermissions(nextRoleId, customRoles, undefined);
+  } else if (existing.status === 'active' && body.permissions !== undefined && !roleChanged) {
+    throw new Error(
+      'Member permissions cannot be customized; change the role or edit the role template'
     );
   }
 

@@ -513,7 +513,7 @@ export async function createOrgInvitation(
   }
   const contact = parseTeamInviteContactFields(body);
   const customRoles = await loadOrgCustomRolesMap(supabase, organizationId);
-  const permissions = resolveOrgInvitePermissions(body, roleId, customRoles);
+  const permissions = resolveOrgInvitePermissions({}, roleId, customRoles);
   const { allListings, assignments } = parseListingAssignmentsFromBody(body);
 
   if (!allListings && assignments.properties.length === 0 && assignments.parkings.length === 0) {
@@ -819,19 +819,12 @@ export async function updateOrgTeamMember(
     const nextRoleId = (body.roleId as string).trim();
     assertValidOrgRoleId(nextRoleId);
     patch.role_id = nextRoleId;
-    if (!hasPermissionsPatch) {
-      patch.permissions = resolveOrgInvitePermissions(body, nextRoleId, customRoles);
-    }
-  }
-
-  if (hasPermissionsPatch) {
-    const nextRoleId =
-      typeof patch.role_id === 'string'
-        ? patch.role_id
-        : typeof existing?.role_id === 'string'
-          ? (existing.role_id as string)
-          : 'ADMIN';
-    patch.permissions = resolveOrgInvitePermissions(body, nextRoleId, customRoles);
+    // Member grants always follow the role template — ignore client permission overrides.
+    patch.permissions = resolveOrgInvitePermissions({}, nextRoleId, customRoles);
+  } else if (hasPermissionsPatch) {
+    throw new Error(
+      'Member permissions cannot be customized; change the role or edit the role template'
+    );
   }
 
   if (hasListingPatch) {

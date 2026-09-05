@@ -52,7 +52,7 @@ export function InboxThreadRow({ conversation, selected, showPlatform, onSelect 
             unread ? 'text-foreground/85' : 'text-foreground/60'
           )}
         >
-          {conversation.subject_preview || '—'}
+          {conversation.subject_preview || '-'}
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           {conversation.platform === 'web' &&

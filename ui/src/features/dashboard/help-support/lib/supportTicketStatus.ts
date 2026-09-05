@@ -20,7 +20,7 @@ export function ticketStatusBannerCopy(
     if (variant === 'submitter') {
       return {
         tone: 'info',
-        message: 'Marked resolved. Reply if you still need help — we will pick it back up.',
+        message: 'Marked resolved. Reply if you still need help and we will pick it back up.',
         showReopen: false,
       };
     }

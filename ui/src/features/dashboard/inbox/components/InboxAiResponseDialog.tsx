@@ -69,7 +69,7 @@ export function InboxAiResponseDialog({
               <FieldLabel
                 htmlFor="inbox-ai-context-body"
                 label="Tone & rules"
-                help="Property details, rates, availability, booking info, and your Quick replies are already used automatically — no need to repeat them here. Use this box for tone or extra guidance the AI should follow when answering guests."
+                help="Property details, rates, availability, booking info, and your Quick replies are already used automatically. No need to repeat them here. Use this box for tone or extra guidance the AI should follow when answering guests."
               />
               <Button
                 type="button"
@@ -86,7 +86,7 @@ export function InboxAiResponseDialog({
               id="inbox-ai-context-body"
               value={draft}
               onChange={(e) => setDraft(e.target.value.slice(0, MAX_LENGTH))}
-              placeholder="Example: Mention we're pet-friendly with prior approval. Early check-in may be possible if the unit is ready — just ask."
+              placeholder="Example: Mention we're pet-friendly with prior approval. Early check-in may be possible if the unit is ready. Just ask."
               className="min-h-[180px] resize-none font-normal"
               maxLength={MAX_LENGTH}
             />
