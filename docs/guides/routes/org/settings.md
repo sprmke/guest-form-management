@@ -2,7 +2,7 @@
 title: 'Organization Settings — operator guide'
 status: active
 tags: [guides, routes, org, settings]
-updated: 2026-08-19
+updated: 2026-09-04
 ---
 
 # Organization Settings — operator guide
@@ -30,14 +30,27 @@ Route: `/org/:orgSlug/settings`
 
 Organization settings uses `AdminSectionNavLayout` with **two save paths**. The desktop **Unsaved changes** footer stays in the main content column (aligned to `max-w-4xl`) so the secondary section nav stays fully usable. Field helpers use a **?** beside the label (`FieldLabel` / `OrgSettingsField` `help`) — not muted text under the control.
 
-1. **Profile** (`organizations` + `organizations.settings` JSONB) → `update-organization`
-2. **Operator** (`org_settings` row) → `org-settings` — social links + team logo only (email automations live on each property)
+1. **Profile** (`organizations` + `organizations.settings` JSONB) → `update-organization` (`org.settings.basic:edit`)
+2. **Operator** (`org_settings` row) → `org-settings` — social links + team logo only (email automations live on each property); PATCH requires `org.settings.socials:edit`
 
-Logo upload is immediate via `upload-org-settings-asset` (`team_logo` → `org_settings.email_logo_url` + `organizations.logo_url`).
+Logo upload is immediate via `upload-org-settings-asset` (`team_logo` → `org_settings.email_logo_url` + `organizations.logo_url`) and requires **`org.settings.basic:edit`**.
 
 **Email routing, SD cron tuning, parking defaults, and automation toggles** are **per property** in **`app_settings`** — see **[[guides/routes/org/property/settings|Property Settings — operator guide]]** § Email automations.
 
 **AI platform quotas** are set per organization and inherited by all properties unless overridden per property — see § AI platform.
+
+### Permissions
+
+| Section / action         | Permission                      |
+| ------------------------ | ------------------------------- |
+| Open Settings            | `org.settings:view`             |
+| Basic information + logo | `org.settings.basic:edit`       |
+| Socials                  | `org.settings.socials:edit`     |
+| AI usage (platform)      | `org.settings.aiPlatform:edit`  |
+| AI assistant             | `org.settings.aiAssistant:edit` |
+| Danger zone (delete org) | Owner / platform admin only     |
+
+UI locks sections without the matching edit leaf (`org-access` exposes `canEditBasicSettings` / `canEditSocials` / `canEditAiPlatform` / `canEditAiAssistant`). Save chrome only appears for dirty sections the user can edit. Danger zone is hidden unless the user is the org owner or a platform admin.
 
 ---
 
@@ -146,7 +159,7 @@ Independent of **AI platform** (receipt validation, marketing, inbox). Off by de
 | Daily / monthly messages | `…daily_message_limit`, `…monthly_message_limit`            | Hitting the cap shows an upgrade line in the chat panel |
 | Daily write-action limit | `…daily_write_action_limit`                                 | Counts confirmed/auto-executed writes                   |
 
-Save path: section-local **Save assistant settings** → `PATCH dashboard-assistant-settings` (`org:settings:edit`). Hook: `useAiDashboardAssistantSettings.ts`.
+Save path: section-local **Save assistant settings** → `PATCH dashboard-assistant-settings` (`org.settings.aiAssistant:edit`). Hook: `useAiDashboardAssistantSettings.ts`.
 
 When **Assistant enabled** is on, the section also shows read-only usage for this month: messages, write actions, and **credits consumed** (from `ai_dashboard_assistant_usage_daily.credits_consumed`, reconciled with platform AI metering). Opt-in via `GET dashboard-assistant-settings?includeUsage=true`.
 

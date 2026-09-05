@@ -27,9 +27,9 @@ Route: `/org/:orgSlug/properties`
 
 Org-level inventory of all properties. On **phone/tablet**, uses the shared **brand hero** shell (`AdminMobilePage`) with **Add property** as a hero icon when permitted; filters sit in a floating toolbar. Cards surface profile data from `properties` + `properties.settings` and booking KPIs for the **current Manila calendar month** (not all-time).
 
-**Access:** Requires **`org:properties:view`** (org owner, org ADMIN, platform admin). **Property-only members** (`accessKind: property_member`) cannot open org routes — `RequireOrgPermission` redirects them to an assigned property dashboard.
+**Access:** Requires **`org.properties:view`** (org owner, org hub member with the leaf, platform admin). **Property-only members** (`accessKind: property_member`) cannot open org routes — `RequireOrgPermission` redirects them to an assigned property dashboard. Scoped org admins (`all_listings = false`) only see assigned properties.
 
-**Add property:** Requires **`org:properties:create`** (org **Owner** and platform admin only). Org **Admin** may view and edit properties but cannot create new ones.
+**Add property:** Requires **`org.properties:create`** (grantable on org templates; owners and platform admins always have it).
 
 ---
 
@@ -42,7 +42,7 @@ This page is the catalog of every rental you operate under the organization. Sum
 - Q: Why does revenue on a card differ from what I expect for all-time earnings?
   A: Revenue and occupancy on this page use the **current calendar month** (Philippines time), not lifetime totals. Active booking counts are pipeline bookings still in progress.
 - Q: Why can’t I see the **Add property** button?
-  A: Only the organization owner (and platform admin) can create new properties. Org admins can view and edit existing ones but not add listings.
+  A: Your org role needs **Add Properties** permission (`org.properties:create`). Owners always have it; invited members only if their template or custom permissions include it.
 - Q: How do I send a guest to book a specific unit?
   A: Open the property’s actions menu and choose **Copy guest link** or **Guest calendar**. Both point guests to that property’s public booking entry.
 

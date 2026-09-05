@@ -22,6 +22,7 @@ Legacy `/calendar` redirects here.
 | Booked stays on calendar | Done     | Done       | Done | Spanning pills; click for guest modal                         |
 | Block / unblock dates    | Done     | Done       | Done | Checkout-exclusive ranges                                     |
 | Channel sync (iCal)      | Done     | Done       | Done | Airbnb only — Pro+ `calendarSync`                             |
+| Smart Pricing            | Done     | Done       | Done | Pro+ `smartPricing` — Autopilot or Review/Apply, engine + AI  |
 | Guest availability       | Done     | Done       | Done | Blocks are returned as unavailable ranges                     |
 | Permissions              | N/A      | Done       | Done | `pricing:view` / rates + blocks + `pricing.channels:*` leaves |
 
@@ -130,6 +131,158 @@ If Airbnb reports a night that already has a live Kame booking or manual block, 
   A: No. Synced nights are read-only on the calendar. They clear when Airbnb drops the date or you remove the feed.
 - Q: Can I sync Booking.com or VRBO?
   A: Not yet — Channel sync is Airbnb-only for now.
+
+---
+
+## Smart Pricing (AI dynamic nightly rates)
+
+**Plan feature `smartPricing` — Pro (`growth`) and above**, same gate as Channel Sync.
+**Smart Pricing** button in the Pricing header (desktop outline button; mobile hero icon,
+`Wand2`) with a **Pro** `TierBadge` below the tier. Opens a `ResponsiveModal`
+(`SmartPricingDialog`) — **preview-open** below Pro; **Enable** and any settings write open the
+upgrade modal.
+
+### What it does
+
+Recommends a nightly rate for every future night (rolling window, default 365 days) from
+**your own** calendar: which weekdays and months book best (learned from ~24 months of
+bookings), your season/holiday ranges, last-minute softness, and 1–2 night orphan gaps
+between two bookings. Every rate is `base × capped demand multipliers × your holiday rules`,
+clamped to your **minimum / maximum price** and rounded. The learned demand signals can never
+move a night more than **±6 % (Gentle) / ±12 % (Balanced) / ±22 % (Bold)** off your base —
+your own holiday rates are applied on top and are not capped. An optional AI pass adds a
+plain-language rationale and flags where the curve looks off; it never sets the number.
+
+### The panel
+
+A standard modal (`ResponsiveModalContent sheetLayout="split"`, `42rem` wide): fixed header +
+footer, only the middle content scrolls, so the action buttons are always visible. The header
+carries a **Settings → Preview** step progress (`SegmentedStepProgress`, the same stepper used
+by the Import and Marketing-generate wizards) once Smart Pricing is on.
+
+**Off** — a short "here's what it does" list in the body and one **Turn on Smart Pricing**
+button in the footer. Nothing happens until you preview and approve.
+
+**On** — three things in the body, all saving the moment you touch them (no Save button):
+
+1. **How bold should changes be?** — **Gentle (±6 %) · Balanced (±12 %) · Bold (±22 %)**, each
+   card showing the real limit plus a one-line description. Balanced is the default.
+2. **Price limits** — inline **Never below ₱\_\_** / **Never above ₱\_\_**. Both auto-fill the
+   first time you turn Smart Pricing on with none set: floor ≈ **90 %** of your weekday rate,
+   ceiling ≈ **125 %** — a little downside protection, more upside room. Either can be edited or
+   cleared (ceiling blank = no limit).
+3. **Prices update** — a two-way picker, **When I approve** (default) or **Automatically**,
+   with a one-line explanation of what each one actually does underneath (no more guessing —
+   "nothing changes until you approve it" vs. "updates every night on its own"). Automatic also
+   turns on the AI rationale so autopilot notifications can explain themselves. The choice also
+   shows up on the **preview** screen (see below), not just here.
+
+Footer: **Preview my prices** (becomes **See updated prices** once rates are live) — that's the
+only action; there is no separate Undo here. A **`N` nights priced** status line under the
+toggle is informational only. A **New listing** note appears above the cards when there isn't
+enough booking history yet (see _Guardrails → Cold start_). Window length, per-weekday nudges,
+orphan-gap %, rounding and the base-rate source keep sensible defaults and are not exposed in
+the modal.
+
+**Turning it off asks first.** The switch doesn't flip immediately — it opens a confirmation
+("Turn off Smart Pricing? This resets your prices back to your saved rates and clears the
+current suggestions.") because disabling also clears every applied recommendation
+(`smart-pricing-apply` `{ clear: true }`). Cancel leaves everything untouched; **Turn off**
+disables it and clears in one step. This is also the only "undo" surface in the settings step.
+
+### Preview
+
+A review screen framed in **pesos, not percentages**:
+
+- **Your next 30 open nights: ₱X → ₱Y** with a plain verdict — "about the same over the month"
+  / "about ₱N more, weighted to the dates most likely to book" / "about ₱N less — the trade
+  for filling quiet dates". A **new listing** gets an honest "small, safe moves off your own
+  weekend and holiday rates" line. When **Automatically** is selected, an extra line spells out
+  the difference from review mode: "Automatic updates are on — this applies tonight on its own.
+  Tap **Apply now** below if you don't want to wait." — and the primary button reads **Apply
+  now** instead of **Apply all**, since applying here is optional (the cron will do it anyway)
+  rather than the only way the change goes live.
+- A **month calendar heat-map** of the recommended nightly rate. Each changed night shows
+  **both prices** — the old rate struck through above the new one — so you see the before and
+  after at a glance, not just the new number. **Green** = higher than your rate, **grey** =
+  unchanged, **amber** = lower, faint = booked/blocked. It opens on the first month that
+  actually changes; page between months with the arrows.
+- **Why these prices** — up to 4 plain bullets built from the changes: "Weekends about ₱N
+  higher than weekdays", "Christmas Season: ₱N higher — your saved holiday rate", "N gap
+  nights discounted", plus any AI warnings.
+- Footer: **← Back** (outline, left) and **Apply all** / **Apply now** (primary, right) — both
+  always visible, the calendar and reasons scroll underneath them. **Applying closes the modal
+  and shows a toast** ("Smart Pricing applied to N nights") — it does not drop you back on a
+  settings screen. Applying turns Smart Pricing on if it wasn't already, and only the nights
+  the engine actually moved are written (an unchanged night stays on your base rate).
+
+### On the calendar
+
+Nights priced by Smart Pricing show the recommended rate with a small **`Wand2`** marker
+(emerald), distinct from a manual **Custom** rate (`PenLine`, amber). Hover for the price and a
+**Smart Pricing** tag; a legend entry appears under the grid. The **Pricing summary** row adds
+a **Smart Pricing** card counting the applied nights in view.
+
+### Guardrails
+
+- **Booked, blocked, manually-priced ("locked"), and past nights are never touched.** A host
+  date override always wins; the engine skips it entirely.
+- Every rate is clamped to your min/max (or a conservative `0.6×–2.5×` base when unset), and
+  the learned demand signals can never move a night more than your chosen ±% on their own —
+  only your own holiday rules can exceed it.
+- A move under 2% is treated as noise and left at your base rate — no rec, no marker.
+- Low forward occupancy is **never** read as "cut the price" — that nudge only ever fires
+  upward, and only once a stretch is genuinely nearly full (> 85%).
+- **Cold start (new listing / thin history).** With fewer than 20 elapsed booked nights, an
+  empty forward calendar means "no signal", not "weak demand". Last-minute discounts and the
+  booking-pace nudge are suppressed entirely, and the only demand-curve effect is a small
+  fixed weekend premium (Fri/Sat/Sun) — weekdays are untouched. A new listing only moves off
+  **your own** weekend split and season/holiday rules; it sharpens automatically as bookings
+  land.
+- Smart Pricing sets the rate for **Kame guest bookings + the admin pricing review** only — it
+  does **not** change Airbnb's price (Channel Sync shares availability, not rates).
+- **Downgrade below Pro:** smart rates stop applying to guest quotes and the calendar
+  immediately (recommendations are ignored, **not deleted**); your manual rates and date
+  overrides take over. Re-upgrading resumes from the saved settings.
+
+**Host Q&A**
+
+- Q: Will Smart Pricing change a night I already priced by hand?
+  A: No. Any night you set a custom price on is locked — Smart Pricing never overwrites it.
+  Set the night back to default to release it, or turn Smart Pricing off (with confirmation) to
+  clear every applied recommendation at once.
+- Q: Does it change what Airbnb charges?
+  A: No. It only affects Kame guest bookings and the pricing review on a booking. Channel Sync
+  shares availability, not prices.
+- Q: What if I have almost no booking history?
+  A: It shows a **New listing** note and makes only small, safe moves off your weekend and
+  season/holiday rules — no blanket discount (see _Cold start_ under Guardrails). Set a
+  sensible minimum price; that is the most important control until bookings build up.
+- Q: "Suggest changes" vs "Update automatically"?
+  A: "Suggest" shows you the changes to approve first. "Update automatically" applies them
+  overnight and notifies
+  you when the change is meaningful.
+
+### Permissions
+
+Managing Smart Pricing uses **`pricing.rates:edit`** (same as editing rates) — no separate
+permission. Members without it do not see the button.
+
+### API and data
+
+| Concern                           | Path                                                                                                                                                                 |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Settings load/save + read context | `smart-pricing-settings` (GET `pricing:view` preview-open, returns `{ settings, appliedCount, resolvedBase, history }`; PATCH `pricing.rates:edit` + `smartPricing`) |
+| Build a preview (no apply)        | `smart-pricing-preview` (POST) — freezes the run on `property_smart_pricing_runs.payload`                                                                            |
+| Apply / clear                     | `smart-pricing-apply` (POST `{ runId, ranges? }` or `{ clear: true }`)                                                                                               |
+| Autopilot sweep                   | `smart-pricing-cron` (hosted `pg_cron`, nightly 01:30 Asia/Manila)                                                                                                   |
+| Config                            | `property_smart_pricing_settings` (1 row/property)                                                                                                                   |
+| Applied per-date rates            | `property_smart_pricing_recommendations` (`applied=true` merged into the effective rate)                                                                             |
+| Run audit                         | `property_smart_pricing_runs`                                                                                                                                        |
+| Engine (pure)                     | `_shared/smartPricingEngine.ts` · orchestrator `_shared/smartPricingRun.ts` · AI `_shared/smartPricingAi.ts`                                                         |
+
+`property-pricing` GET now also returns `smartRecommendations` (YYYY-MM-DD → nightly) and
+`smartPricingEnabled`. Full design: [`../../../../architecture/smart-pricing.md`](../../../../architecture/smart-pricing.md).
 
 ---
 

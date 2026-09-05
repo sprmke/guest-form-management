@@ -62,14 +62,14 @@ Read tools (Tier 0): `get_org_profile`, `get_org_verification_status`, `list_tea
 
 Write tools:
 
-- `propose_update_org_profile` (name/description/logo/tagline/brandColor/contact) — **reclassified Tier 1 → Tier 2 on 2026-08-17** (post-ship review pass): its patch fields include `contactName`/`contactPhone`/`contactEmail`, which feed guest-facing communication — a silently auto-executed change could redirect guest inquiries to an attacker's contact info. See `docs/architecture/ai-dashboard-assistant.md` §3.2 for the full rationale. Note: current `update-organization` endpoint gates by owner-only server-side, not the general `org:settings:edit` permission grant — tool must respect that, not assume the RBAC permission alone is sufficient.
+- `propose_update_org_profile` (name/description/logo/tagline/brandColor/contact) — **reclassified Tier 1 → Tier 2 on 2026-08-17** (post-ship review pass): its patch fields include `contactName`/`contactPhone`/`contactEmail`, which feed guest-facing communication — a silently auto-executed change could redirect guest inquiries to an attacker's contact info. See `docs/architecture/ai-dashboard-assistant.md` §3.2 for the full rationale. RBAC: `org.settings.basic:edit` (same leaf as `update-organization` / Settings → Basic information).
 - `propose_invite_team_member` — **Tier 2** (creates a new principal with access, sends an email).
 - `propose_update_team_member_role` — **Tier 2** (changes someone's access level).
 - `propose_revoke_invitation` — **Tier 1** (undoing an unaccepted invite is low-risk).
 - `propose_remove_team_member` — **Tier 2**, high blast radius (revokes a real person's access).
 - `propose_submit_org_verification` — **Tier 2** (kicks off an external review, uploads docs).
 
-RBAC: `org:settings:edit`, `org:team:invite`, `org:team:manage` (catalog: `_shared/orgTeamPermissions.ts`).
+RBAC: granular org hub leaves (`org.settings.*`, `org.team.*`, … — catalog: `_shared/orgTeamPermissions.ts`). Legacy coarse ids expand at read time but assistant tool re-checks use leaves only (D14).
 
 ## Phase 4 — Property settings — shipped this session (scoped down from the original plan, then extended per explicit host request)
 

@@ -2,7 +2,7 @@
 title: 'Organization Team — operator guide'
 status: active
 tags: [guides, routes, org, team]
-updated: 2026-08-28
+updated: 2026-09-04
 ---
 
 # Organization Team — operator guide
@@ -160,7 +160,7 @@ PATCH **`org-team-members`** with `{ memberId, displayName?, contactPhone?, role
 | Remove member                     | `org-team-members`                | DELETE            | `{ memberId }` — cleans org-assigned listing rows                               |
 | List invitations                  | `org-team-invitations?org_slug=`  | GET               | Same as members                                                                 |
 | Invite                            | `org-team-invitations`            | POST              | `{ email, contactPhone, roleId, permissions, allListings, listingAssignments }` |
-| Resend / cancel invite            | `org-team-invitations`            | POST / DELETE     | `org.team.invitations:*`                                                        |
+| Resend / cancel invite            | `org-team-invitations`            | POST / DELETE     | Resend: `org.team.invitations:edit`; cancel: `org.team.invitations:delete`      |
 | Accept invite                     | `accept-org-invite`               | POST              | JWT `{ token }`; syncs listing memberships                                      |
 | List custom roles                 | `org-team-custom-roles?org_slug=` | GET               | `org.team:view`                                                                 |
 | Create / update / delete template | `org-team-custom-roles`           | POST/PATCH/DELETE | `org.team.roles:*`                                                              |
