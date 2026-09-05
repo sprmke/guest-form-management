@@ -11,6 +11,7 @@ import {
 import { isValidAiFeature } from '../_shared/aiModelRouter.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
+import { logSuperAdminAction } from '../_shared/superAdminAudit.ts';
 
 function isPositiveInt(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0;
@@ -119,6 +120,17 @@ serveSuperAdmin('ai-platform-global-settings', async (req, user) => {
           ? body.defaultMonthlyCreditLimit
           : undefined,
       updatedBy: user.id,
+    });
+    await logSuperAdminAction(user, {
+      action: 'ai_platform.settings_update',
+      targetType: 'platform',
+      targetId: 'ai_platform_global_settings',
+      summary: `Updated platform AI settings (enabled=${data.enabled}, enforceQuotas=${data.enforceQuotas})`,
+      metadata: {
+        enabled: data.enabled,
+        enforceQuotas: data.enforceQuotas,
+        allowedFeatures: data.allowedFeatures,
+      },
     });
     return jsonSuccess(req, {
       enabled: data.enabled,

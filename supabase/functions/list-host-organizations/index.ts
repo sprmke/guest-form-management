@@ -3,7 +3,13 @@
  */
 
 import { createServiceClient, serializeOrganization, type OrgRow } from '../_shared/orgAuth.ts';
-import { jsonError, jsonSuccess, requireHttpMethod, parsePageLimit } from '../_shared/httpResponse.ts';
+import {
+  jsonError,
+  jsonSuccess,
+  requireHttpMethod,
+  parsePageLimit,
+} from '../_shared/httpResponse.ts';
+import { postgrestOrIlikeValue } from '../_shared/publicSearch.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { verifySuperAdminJwt } from '../_shared/superAdminAuth.ts';
 
@@ -18,22 +24,25 @@ serveAuthenticated('list-host-organizations', async (req) => {
     return jsonError(req, 'hostId is required');
   }
   const { page, limit } = parsePageLimit(p);
+  const q = (p.get('q') ?? '').trim();
 
   const supabase = createServiceClient();
 
   const fromIdx = (page - 1) * limit;
   const toIdx = fromIdx + limit - 1;
 
+  let query = supabase.from('organizations').select('*', { count: 'exact' }).eq('owner_id', hostId);
+
+  if (q) {
+    const pattern = postgrestOrIlikeValue(q);
+    query = query.or(`name.ilike.${pattern},slug.ilike.${pattern}`);
+  }
+
   const {
     data,
     error,
     count: total,
-  } = await supabase
-    .from('organizations')
-    .select('*', { count: 'exact' })
-    .eq('owner_id', hostId)
-    .order('name', { ascending: true })
-    .range(fromIdx, toIdx);
+  } = await query.order('name', { ascending: true }).range(fromIdx, toIdx);
 
   if (error) {
     console.error('[list-host-organizations]', error.message);

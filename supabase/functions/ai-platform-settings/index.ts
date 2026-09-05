@@ -13,7 +13,7 @@ import { serveAuthenticated } from '../_shared/serveEdge.ts';
 serveAuthenticated('ai-platform-settings', async (req, user) => {
   const ctx = await resolveOrgAccessContext(
     req,
-    req.method === 'PATCH' ? 'org:settings:edit' : 'org:settings:view'
+    req.method === 'PATCH' ? 'org.settings.aiPlatform:edit' : 'org:settings:view'
   );
 
   if (req.method === 'GET') {

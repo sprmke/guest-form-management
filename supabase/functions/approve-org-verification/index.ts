@@ -16,11 +16,12 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { logSuperAdminAction } from '../_shared/superAdminAudit.ts';
 import { verifySuperAdminJwt } from '../_shared/superAdminAuth.ts';
 
 serveAuthenticated('approve-org-verification', async (req) => {
   requireHttpMethod(req, 'POST');
-  await verifySuperAdminJwt(req);
+  const admin = await verifySuperAdminJwt(req);
 
   const body = await readJsonBody(req);
   const orgId = typeof body.orgId === 'string' ? body.orgId.trim() : '';
@@ -87,6 +88,14 @@ serveAuthenticated('approve-org-verification', async (req) => {
     console.error('[approve-org-verification]', updateError?.message);
     return jsonError(req, 'Failed to approve verification', 500);
   }
+
+  await logSuperAdminAction(admin, {
+    action: 'org_verification.approve',
+    targetType: 'organization',
+    targetId: orgId,
+    summary: `Approved ${tier} verification for ${(data as OrgRow).name ?? orgId}`,
+    metadata: { tier },
+  });
 
   return jsonSuccess(req, { organization: serializeOrganization(data as OrgRow) });
 });

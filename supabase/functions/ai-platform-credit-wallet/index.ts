@@ -15,6 +15,7 @@ import {
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
+import { logSuperAdminAction } from '../_shared/superAdminAudit.ts';
 
 async function resolveOrganization(
   orgId: string | null,
@@ -70,6 +71,13 @@ serveSuperAdmin('ai-platform-credit-wallet', async (req, admin) => {
       createdBy: admin.id,
     });
     const ledger = await getRecentCreditLedgerEntries(org.id);
+    await logSuperAdminAction(admin, {
+      action: 'ai_credit_wallet.adjust',
+      targetType: 'organization',
+      targetId: org.id,
+      summary: `Adjusted ${org.name}'s AI credit wallet by ${creditsDelta > 0 ? '+' : ''}${creditsDelta} (balance ${balanceCredits})`,
+      metadata: { creditsDelta, description, balanceCredits },
+    });
     return jsonSuccess(req, {
       organizationId: org.id,
       organizationName: org.name,
