@@ -19,7 +19,7 @@ export function ParkingBookingAutomationSection({ value, disabled, onChange }: P
       <FieldLabel
         htmlFor="parking-automation-autoAcceptTopMatch"
         label="Auto-accept top match"
-        help="Automatically accept the top-ranked request instead of waiting for a manual Accept — the guest still has to pay before endorsement fires."
+        help="Automatically accept the top-ranked request instead of waiting for a manual Accept. The guest still has to pay before endorsement fires."
         className="min-w-0 flex-1"
       />
       <Switch

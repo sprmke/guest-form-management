@@ -127,7 +127,7 @@ export function ParkingBookingDetailPage() {
   const myBroadcastPending = isPendingAcceptance && broadcastStatus?.response === 'pending';
   const busy = claim.isPending || decline.isPending;
   const vehicleLabel =
-    [booking.car_brand_model, booking.car_color].filter(Boolean).join(' · ') || '—';
+    [booking.car_brand_model, booking.car_color].filter(Boolean).join(' · ') || '-';
   const hostNote =
     PARKING_HOST_STATUS_NOTE[booking.status as keyof typeof PARKING_HOST_STATUS_NOTE];
 
@@ -304,9 +304,9 @@ export function ParkingBookingDetailPage() {
         )}
 
         <dl className="border-border/60 grid gap-4 border-t pt-4 sm:grid-cols-2">
-          <DetailField label="Email" value={booking.guest_email ?? '—'} icon={Mail} />
-          <DetailField label="Phone" value={booking.guest_phone_number ?? '—'} icon={Phone} />
-          <DetailField label="Plate" value={booking.car_plate_number ?? '—'} icon={Car} />
+          <DetailField label="Email" value={booking.guest_email ?? '-'} icon={Mail} />
+          <DetailField label="Phone" value={booking.guest_phone_number ?? '-'} icon={Phone} />
+          <DetailField label="Plate" value={booking.car_plate_number ?? '-'} icon={Car} />
           <DetailField label="Vehicle" value={vehicleLabel} icon={Car} />
         </dl>
 

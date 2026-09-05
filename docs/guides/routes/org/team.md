@@ -118,17 +118,17 @@ Org **delete**, **Plans checkout/downgrade**, and org settings PATCH remain **ow
 
 ## Invite Member dialog
 
-Dialog order: **Role** → **Listing access** → **Org permissions** (template picker + tree).
+Dialog order: **Email** → **Phone** → **Role** (template dropdown only) → **Listing access**. Matches property invite: no permissions tree on invite — org hub permissions are taken from the selected role template. To change grants, edit the role on the **Permissions** tab or create a custom role.
 
-| Field               | Storage                                  | Validation                                                                                                                                                                                                          |
-| ------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Email               | `organization_invitations.email`         | Gmail / Googlemail only                                                                                                                                                                                             |
-| Phone               | `organization_invitations.contact_phone` | PH mobile                                                                                                                                                                                                           |
-| Org role / template | `role_id`                                | `organization_custom_roles.id` (Full Access / Operations / Read Only / custom)                                                                                                                                      |
-| Org permissions     | `permissions` JSONB                      | Granular leaf array; tree UI                                                                                                                                                                                        |
-| All listings        | `all_listings`                           | Radio — includes current + future listings                                                                                                                                                                          |
-| Choose listings     | `listing_assignments`                    | Nested picker — Properties and Parkings sections with checkboxes and per-listing role                                                                                                                               |
-| Listing assignments | `listing_assignments`                    | When not all listings: per-property **Full Access** / **Operations** / **Read Only** (resolved to each property's template UUID on sync); parking uses the same labels (stored as MANAGER/STAFF/VIEWER server-side) |
+| Field               | Storage                                  | Validation                                                                                                                                                                                                                          |
+| ------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Email               | `organization_invitations.email`         | Gmail / Googlemail only                                                                                                                                                                                                             |
+| Phone               | `organization_invitations.contact_phone` | PH mobile                                                                                                                                                                                                                           |
+| Role / template     | `role_id`                                | `organization_custom_roles.id` (Full Access / Operations / Read Only / custom)                                                                                                                                                      |
+| Org permissions     | `permissions` JSONB                      | Always copied from the selected role template (invite + member update); not editable per member                                                                                                                                     |
+| All listings        | `all_listings`                           | Radio — includes current + future listings                                                                                                                                                                                          |
+| Choose listings     | `listing_assignments`                    | Nested picker — Properties and Parkings sections with checkboxes and per-listing role (both selectable immediately; no per-property role preload)                                                                                   |
+| Listing assignments | `listing_assignments`                    | When not all listings: UI stores seeded names **Full Access** / **Operations** / **Read Only**; server resolves each to that property's template UUID on accept/sync. Parking uses the same labels (stored as MANAGER/STAFF/VIEWER) |
 
 Default invite mode: **Select listings** (empty until host picks). **All listings** opt-in for co-admins.
 
@@ -140,11 +140,11 @@ On accept, `accept-org-invite` upserts `organization_members` and calls **`syncO
 
 Dialog order: **Role name** → **Listing access** (org scope only) → **Based on** template picker → **Org permissions** tree.
 
-Same permissions tree as member edit. **Based on** loads checkboxes from an existing template or **Custom**. **Listing access** — card with **All listings** / **Choose listings** radio options; choose mode lists org properties and parkings (with selection counts) and **Full Access** / **Operations** / **Read Only** per listing. Name required; at least one org permission required to save. Listing scope is optional (no listings = org hub only until invite overrides).
+Same permissions tree as the **Permissions** tab role editor (not used on members). **Based on** loads checkboxes from an existing template or **Custom**. **Listing access** — card with **All listings** / **Choose listings** radio options; choose mode lists org properties and parkings (with selection counts) and **Full Access** / **Operations** / **Read Only** per listing. Name required; at least one org permission required to save. Listing scope is optional (no listings = org hub only until invite overrides).
 
 ## Manage member dialog
 
-Dialog order matches invite: **Role** → **Listing access** → **Org permissions**.
+Dialog order: **Display name** → **Phone** → **Role** (template dropdown) → **Listing access**. No per-member permissions tree — changing the role resets org hub grants from that template. Edit leaves on the **Permissions** tab (role templates) or create a custom role.
 
 PATCH **`org-team-members`** with `{ memberId, displayName?, contactPhone?, roleId?, permissions?, allListings?, listingAssignments?, status? }`. Listing changes re-sync org-assigned rows. Remove deletes org-assigned property/parking memberships for that user in the org. Changing org role pre-fills listing scope from the role template (member can override before save).
 
@@ -152,18 +152,18 @@ PATCH **`org-team-members`** with `{ memberId, displayName?, contactPhone?, role
 
 ## API
 
-| Action                            | Function                          | Method            | Auth / body                                                                     |
-| --------------------------------- | --------------------------------- | ----------------- | ------------------------------------------------------------------------------- |
-| Current user org access           | `org-access?org_slug=`            | GET               | JWT — `permissions[]`, `canListAllProperties`, capability flags                 |
-| List members (+ virtual owner)    | `org-team-members?org_slug=`      | GET               | `org.team:view`; returns `teamInviteCapacity`                                   |
-| Update member                     | `org-team-members`                | PATCH             | Permissions + listing fields; reactivate → `requireOrgTeamInviteAllowed`        |
-| Remove member                     | `org-team-members`                | DELETE            | `{ memberId }` — cleans org-assigned listing rows                               |
-| List invitations                  | `org-team-invitations?org_slug=`  | GET               | Same as members                                                                 |
-| Invite                            | `org-team-invitations`            | POST              | `{ email, contactPhone, roleId, permissions, allListings, listingAssignments }` |
-| Resend / cancel invite            | `org-team-invitations`            | POST / DELETE     | Resend: `org.team.invitations:edit`; cancel: `org.team.invitations:delete`      |
-| Accept invite                     | `accept-org-invite`               | POST              | JWT `{ token }`; syncs listing memberships                                      |
-| List custom roles                 | `org-team-custom-roles?org_slug=` | GET               | `org.team:view`                                                                 |
-| Create / update / delete template | `org-team-custom-roles`           | POST/PATCH/DELETE | `org.team.roles:*`                                                              |
+| Action                            | Function                          | Method            | Auth / body                                                                                                        |
+| --------------------------------- | --------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Current user org access           | `org-access?org_slug=`            | GET               | JWT — `permissions[]`, `canListAllProperties`, capability flags                                                    |
+| List members (+ virtual owner)    | `org-team-members?org_slug=`      | GET               | `org.team:view`; returns `teamInviteCapacity`                                                                      |
+| Update member                     | `org-team-members`                | PATCH             | Role + listing (+ contact); role change resets permissions from template; per-member permission overrides rejected |
+| Remove member                     | `org-team-members`                | DELETE            | `{ memberId }` — cleans org-assigned listing rows                                                                  |
+| List invitations                  | `org-team-invitations?org_slug=`  | GET               | Same as members                                                                                                    |
+| Invite                            | `org-team-invitations`            | POST              | `{ email, contactPhone, roleId, permissions, allListings, listingAssignments }`                                    |
+| Resend / cancel invite            | `org-team-invitations`            | POST / DELETE     | Resend: `org.team.invitations:edit`; cancel: `org.team.invitations:delete`                                         |
+| Accept invite                     | `accept-org-invite`               | POST              | JWT `{ token }`; syncs listing memberships                                                                         |
+| List custom roles                 | `org-team-custom-roles?org_slug=` | GET               | `org.team:view`                                                                                                    |
+| Create / update / delete template | `org-team-custom-roles`           | POST/PATCH/DELETE | `org.team.roles:*`                                                                                                 |
 
 Invite email link: `/accept-invite?token=…&scope=org`. **Accept page:** org logo + org name (via **`get-team-invite-preview`**); signed-in users must tap **Accept** (no auto-accept on load). **Subject:** `{Org name} - Team Invitation`. **Body:** inviter, org name, template role label (Full Access / Operations / Read Only / custom), expiry, accept CTA. Branding/from address uses the org’s **first property** (`getFirstPropertyIdForOrg`) — same Resend shell as property invites. If create fails after Resend errors, the pending row is rolled back; use **Resend** on an existing pending invite to retry delivery. Resend API errors surface in the UI toast (not a generic message).
 
@@ -192,6 +192,7 @@ Migration: `supabase/migrations/20261209130000_org_team_granular_permissions.sql
 | Area             | Path                                                                                                                                           |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | Page             | `ui/src/features/dashboard/team/pages/OrgTeamPage.tsx`                                                                                         |
+| Listing picker   | `ui/src/features/dashboard/team/components/OrgListingAssignmentPicker.tsx` (+ `OrgRoleListingAccessSection`)                                   |
 | Summary cards    | `ui/src/features/dashboard/team/components/OrgTeamStatsCards.tsx` (`AdminMetricCard`)                                                          |
 | Hook             | `ui/src/features/dashboard/team/hooks/useOrgTeam.ts`                                                                                           |
 | Org access hook  | `ui/src/features/dashboard/team/hooks/useOrgPermissions.ts`                                                                                    |

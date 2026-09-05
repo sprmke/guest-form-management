@@ -53,7 +53,7 @@ function toSuccessRows(values: ParkingRegistrationValues): AdminBookingSuccessRo
     {
       icon: CalendarDays,
       label: 'Parking dates',
-      value: `${formatDateToLongFormat(values.checkInDate)} — ${formatDateToLongFormat(values.checkOutDate)}`,
+      value: `${formatDateToLongFormat(values.checkInDate)} - ${formatDateToLongFormat(values.checkOutDate)}`,
     },
     { icon: User, label: 'Guest', value: values.guestName },
     { icon: Mail, label: 'Email', value: values.email },
@@ -61,7 +61,7 @@ function toSuccessRows(values: ParkingRegistrationValues): AdminBookingSuccessRo
     {
       icon: Car,
       label: 'Vehicle',
-      value: `${values.carPlateNumber} — ${values.carBrandModel} (${values.carColor})`,
+      value: `${values.carPlateNumber}: ${values.carBrandModel} (${values.carColor})`,
     },
   ];
 }

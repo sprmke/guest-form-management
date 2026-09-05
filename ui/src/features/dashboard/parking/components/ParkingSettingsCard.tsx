@@ -665,7 +665,7 @@ export function ParkingSettingsCard() {
                 value={parkingCode}
                 readOnly
                 aria-readonly="true"
-                placeholder="—"
+                placeholder="-"
                 className="bg-muted/40 text-muted-foreground h-10 cursor-default font-mono tabular-nums"
               />
             </SettingsField>
@@ -959,8 +959,8 @@ export function ParkingSettingsCard() {
                   </p>
                   <p className="text-card-description">
                     {isArchived
-                      ? 'Sets status to Active — shows this slot on the public listing again.'
-                      : 'Sets status to Inactive — hides this slot from the public listing. Bookings and settings are kept.'}
+                      ? 'Sets status to Active. Shows this slot on the public listing again.'
+                      : 'Sets status to Inactive. Hides this slot from the public listing. Bookings and settings are kept.'}
                   </p>
                 </div>
                 {isArchived ? (

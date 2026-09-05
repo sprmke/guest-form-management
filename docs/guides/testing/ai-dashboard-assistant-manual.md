@@ -337,7 +337,7 @@ Pass when: the Tier-0 call returns a real number matching the DB; the propose ca
 
 ### 12.3 Announcements + plan snapshot (read)
 
-1. Ask: **"What platform announcements are active right now?"** — expect `list_host_announcements` data matching the dashboard banner.
+1. Ask: **"What platform announcements are active right now?"** — expect `list_host_announcements` data matching the Announcements page.
 2. Ask: **"What plan are we on and which features does it include?"** — expect `get_org_plan_snapshot` with plan name, status, enrolled properties, and feature flags (no checkout URL or payment actions).
 
 ---

@@ -18,20 +18,13 @@ import {
   useUpdatePlatformParkingSettings,
 } from '@/features/dashboard/super-admin/hooks/usePlatformParkingSettings';
 
+import { AdminDialogShell } from '@/components/AdminDialogShell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  ResponsiveModal,
-  ResponsiveModalContent,
-  ResponsiveModalDescription,
-  ResponsiveModalFooter,
-  ResponsiveModalHeader,
-  ResponsiveModalTitle,
-  ResponsiveModalTrigger,
-} from '@/components/ui/responsive-modal';
+import { ResponsiveModalTrigger } from '@/components/ui/responsive-modal';
 import {
   Table,
   TableBody,
@@ -53,47 +46,45 @@ function MarkDisbursedDialog({ transaction }: { transaction: ParkingPayoutTransa
   const markDisbursed = useMarkParkingPayoutDisbursed();
 
   return (
-    <ResponsiveModal open={open} onOpenChange={setOpen}>
-      <ResponsiveModalTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="min-h-[44px]">
-          Mark disbursed
-        </Button>
-      </ResponsiveModalTrigger>
-      <ResponsiveModalContent>
-        <ResponsiveModalHeader>
-          <ResponsiveModalTitle>Mark payout as disbursed</ResponsiveModalTitle>
-          <ResponsiveModalDescription>
-            Confirms {formatPhp(transaction.hostNetTotal)} was manually paid out to the host for
-            this booking. Reference is optional (e.g. bank transfer/GCash reference number).
-          </ResponsiveModalDescription>
-        </ResponsiveModalHeader>
-        <div className="space-y-1.5">
-          <Label htmlFor="disbursement-reference">Reference (optional)</Label>
-          <Input
-            id="disbursement-reference"
-            value={reference}
-            onChange={(event) => setReference(event.target.value)}
-          />
-        </div>
-        <ResponsiveModalFooter>
-          <Button
-            type="button"
-            disabled={markDisbursed.isPending}
-            className="min-h-[44px]"
-            onClick={async () => {
-              await markDisbursed.mutateAsync({
-                transactionId: transaction.id,
-                reference: reference.trim() || undefined,
-              });
-              setOpen(false);
-              setReference('');
-            }}
-          >
-            Confirm disbursed
+    <AdminDialogShell
+      open={open}
+      onOpenChange={setOpen}
+      title="Mark payout as disbursed"
+      description={`Confirms ${formatPhp(transaction.hostNetTotal)} was manually paid out to the host for this booking. Reference is optional (e.g. bank transfer/GCash reference number).`}
+      trigger={
+        <ResponsiveModalTrigger asChild>
+          <Button type="button" variant="outline" size="sm" className="min-h-[44px]">
+            Mark disbursed
           </Button>
-        </ResponsiveModalFooter>
-      </ResponsiveModalContent>
-    </ResponsiveModal>
+        </ResponsiveModalTrigger>
+      }
+      footer={
+        <Button
+          type="button"
+          disabled={markDisbursed.isPending}
+          className="min-h-[44px]"
+          onClick={async () => {
+            await markDisbursed.mutateAsync({
+              transactionId: transaction.id,
+              reference: reference.trim() || undefined,
+            });
+            setOpen(false);
+            setReference('');
+          }}
+        >
+          Confirm disbursed
+        </Button>
+      }
+    >
+      <div className="space-y-1.5">
+        <Label htmlFor="disbursement-reference">Reference (optional)</Label>
+        <Input
+          id="disbursement-reference"
+          value={reference}
+          onChange={(event) => setReference(event.target.value)}
+        />
+      </div>
+    </AdminDialogShell>
   );
 }
 
@@ -104,63 +95,61 @@ function RecordClawbackDialog({ transaction }: { transaction: ParkingPayoutTrans
   const recordClawback = useRecordParkingPayoutClawback();
 
   return (
-    <ResponsiveModal open={open} onOpenChange={setOpen}>
-      <ResponsiveModalTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="min-h-[44px]">
-          Record clawback
-        </Button>
-      </ResponsiveModalTrigger>
-      <ResponsiveModalContent>
-        <ResponsiveModalHeader>
-          <ResponsiveModalTitle>Record a clawback</ResponsiveModalTitle>
-          <ResponsiveModalDescription>
-            Audit trail only (e.g. a chargeback after disbursement) — no automated collection
-            happens here.
-          </ResponsiveModalDescription>
-        </ResponsiveModalHeader>
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="clawback-amount">Amount (₱)</Label>
-            <Input
-              id="clawback-amount"
-              type="number"
-              min={0.01}
-              step={0.01}
-              value={amount}
-              onChange={(event) => setAmount(event.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="clawback-reason">Reason</Label>
-            <Textarea
-              id="clawback-reason"
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-            />
-          </div>
-        </div>
-        <ResponsiveModalFooter>
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={recordClawback.isPending || !amount || !reason.trim()}
-            className="min-h-[44px]"
-            onClick={async () => {
-              await recordClawback.mutateAsync({
-                transactionId: transaction.id,
-                amount: Number(amount),
-                reason: reason.trim(),
-              });
-              setOpen(false);
-              setAmount('');
-              setReason('');
-            }}
-          >
-            Confirm clawback
+    <AdminDialogShell
+      open={open}
+      onOpenChange={setOpen}
+      title="Record a clawback"
+      description="Audit trail only (e.g. a chargeback after disbursement). No automated collection happens here."
+      trigger={
+        <ResponsiveModalTrigger asChild>
+          <Button type="button" variant="outline" size="sm" className="min-h-[44px]">
+            Record clawback
           </Button>
-        </ResponsiveModalFooter>
-      </ResponsiveModalContent>
-    </ResponsiveModal>
+        </ResponsiveModalTrigger>
+      }
+      footer={
+        <Button
+          type="button"
+          variant="destructive"
+          disabled={recordClawback.isPending || !amount || !reason.trim()}
+          className="min-h-[44px]"
+          onClick={async () => {
+            await recordClawback.mutateAsync({
+              transactionId: transaction.id,
+              amount: Number(amount),
+              reason: reason.trim(),
+            });
+            setOpen(false);
+            setAmount('');
+            setReason('');
+          }}
+        >
+          Confirm clawback
+        </Button>
+      }
+    >
+      <div className="space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="clawback-amount">Amount (₱)</Label>
+          <Input
+            id="clawback-amount"
+            type="number"
+            min={0.01}
+            step={0.01}
+            value={amount}
+            onChange={(event) => setAmount(event.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="clawback-reason">Reason</Label>
+          <Textarea
+            id="clawback-reason"
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+          />
+        </div>
+      </div>
+    </AdminDialogShell>
   );
 }
 
@@ -190,7 +179,7 @@ function ParkingSettingsCard() {
   return (
     <SuperAdminSettingsCard
       title="Commission & guest rate"
-      description="Guest rate is what riders are charged per night and doubles as the price cap that excludes hosts priced above it from matching. Commission is taken from the host's gross rate. Changes only apply to bookings created after saving — already-paid transactions keep their snapshotted values."
+      description="Guest rate is what riders are charged per night and doubles as the price cap that excludes hosts priced above it from matching. Commission is taken from the host's gross rate. Changes only apply to bookings created after saving. Already-paid transactions keep their snapshotted values."
       icon={<Wallet className="text-muted-foreground size-4" aria-hidden />}
       onSubmit={() =>
         void save.mutateAsync({
@@ -236,7 +225,7 @@ function ParkingSettingsCard() {
         </SuperAdminSettingsRow>
         <SuperAdminSettingsRow
           stacked
-          label="Guest rate — weekday (₱/night)"
+          label="Guest rate weekday (₱/night)"
           htmlFor="guest-rate-weekday"
         >
           <Input
@@ -250,7 +239,7 @@ function ParkingSettingsCard() {
         </SuperAdminSettingsRow>
         <SuperAdminSettingsRow
           stacked
-          label="Guest rate — weekend (₱/night)"
+          label="Guest rate weekend (₱/night)"
           htmlFor="guest-rate-weekend"
         >
           <Input
@@ -330,14 +319,14 @@ function PayoutsLedger() {
                   <TableCell>
                     <div className="font-medium">{txn.guestName ?? 'Guest'}</div>
                     <div className="text-muted-foreground text-xs">
-                      {txn.checkInDate ?? '—'} → {txn.checkOutDate ?? '—'} · {txn.nights} night
+                      {txn.checkInDate ?? '-'} → {txn.checkOutDate ?? '-'} · {txn.nights} night
                       {txn.nights === 1 ? '' : 's'}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div>{txn.parkingName ?? '—'}</div>
+                    <div>{txn.parkingName ?? '-'}</div>
                     <div className="text-muted-foreground text-xs">
-                      {txn.organizationName ?? '—'}
+                      {txn.organizationName ?? '-'}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -376,7 +365,7 @@ function PayoutsLedger() {
               <div className="min-w-0">
                 <div className="font-medium">{txn.guestName ?? 'Guest'}</div>
                 <div className="text-muted-foreground text-xs">
-                  {txn.checkInDate ?? '—'} → {txn.checkOutDate ?? '—'} · {txn.nights} night
+                  {txn.checkInDate ?? '-'} → {txn.checkOutDate ?? '-'} · {txn.nights} night
                   {txn.nights === 1 ? '' : 's'}
                 </div>
               </div>
@@ -384,8 +373,8 @@ function PayoutsLedger() {
             </div>
             <div className="text-sm">
               <div>
-                {txn.parkingName ?? '—'}{' '}
-                <span className="text-muted-foreground">· {txn.organizationName ?? '—'}</span>
+                {txn.parkingName ?? '-'}{' '}
+                <span className="text-muted-foreground">· {txn.organizationName ?? '-'}</span>
               </div>
               <div className="font-medium">{formatPhp(txn.hostNetTotal)} net</div>
               <div className="text-muted-foreground text-xs">
