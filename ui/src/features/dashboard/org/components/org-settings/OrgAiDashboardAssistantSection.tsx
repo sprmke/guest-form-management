@@ -36,7 +36,7 @@ export function OrgAiDashboardAssistantSection() {
   const { data: orgAccess } = useOrgPermissions();
   const update = useUpdateAiDashboardAssistantSettings();
 
-  const canEdit = orgAccess?.canEditSettings ?? false;
+  const canEdit = orgAccess?.canEditAiAssistant ?? false;
   const readOnly = !canEdit;
 
   const [draft, setDraft] = React.useState<Draft | null>(null);

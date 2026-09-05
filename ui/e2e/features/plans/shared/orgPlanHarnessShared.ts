@@ -229,6 +229,10 @@ export function orgAccessPayload(accessKind: 'owner' | 'member') {
     canManageProperties: accessKind === 'owner',
     canCreateParkings: accessKind === 'owner',
     canManageParkings: accessKind === 'owner',
+    canEditBasicSettings: accessKind === 'owner',
+    canEditSocials: accessKind === 'owner',
+    canEditAiPlatform: accessKind === 'owner',
+    canEditAiAssistant: accessKind === 'owner',
     canEditSettings: accessKind === 'owner',
     canViewPlans: true,
   };

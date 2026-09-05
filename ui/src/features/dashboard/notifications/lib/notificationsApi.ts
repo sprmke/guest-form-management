@@ -13,7 +13,8 @@ export type NotificationType =
   | 'calendar_sync_failing'
   | 'calendar_conflict'
   | 'booking_external_imported'
-  | 'booking_guest_form_completed';
+  | 'booking_guest_form_completed'
+  | 'smart_pricing_updated';
 
 export type NotificationRecord = {
   id: string;

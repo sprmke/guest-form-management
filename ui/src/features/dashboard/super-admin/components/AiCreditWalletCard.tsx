@@ -21,9 +21,9 @@ const ENTRY_TYPE_LABEL: Record<string, string> = {
   manual_adjustment: 'Manual adjustment',
 };
 
-export function AiCreditWalletCard() {
-  const [orgQuery, setOrgQuery] = React.useState('');
-  const [activeOrgId, setActiveOrgId] = React.useState<string | null>(null);
+export function AiCreditWalletCard({ initialOrgId }: { initialOrgId?: string } = {}) {
+  const [orgQuery, setOrgQuery] = React.useState(initialOrgId ?? '');
+  const [activeOrgId, setActiveOrgId] = React.useState<string | null>(initialOrgId ?? null);
   const [creditsDelta, setCreditsDelta] = React.useState('');
   const [description, setDescription] = React.useState('');
 

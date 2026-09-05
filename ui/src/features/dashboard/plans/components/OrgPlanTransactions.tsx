@@ -44,7 +44,7 @@ export function OrgPlanTransactions({ transactions }: OrgPlanTransactionsProps) 
       <h2 id="plan-payments-heading" className="text-section-title">
         Recent payments
       </h2>
-      <ul className="divide-border mt-3 divide-y">
+      <ul className="divide-border mt-3 max-h-[min(40vh,20rem)] divide-y overflow-y-auto overscroll-contain">
         {transactions.map((txn) => {
           const status = STATUS_META[txn.status] ?? {
             label: txn.status,

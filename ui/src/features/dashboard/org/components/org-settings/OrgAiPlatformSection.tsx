@@ -32,7 +32,7 @@ export function OrgAiPlatformSection() {
   const { data: orgAccess } = useOrgPermissions();
   const update = useUpdateAiPlatformSettings();
 
-  const canEdit = orgAccess?.canEditSettings ?? false;
+  const canEdit = orgAccess?.canEditAiPlatform ?? false;
   const readOnly = !canEdit;
 
   const [draft, setDraft] = React.useState<Draft | null>(null);

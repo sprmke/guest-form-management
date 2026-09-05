@@ -47,6 +47,7 @@ import {
 } from '@/features/dashboard/org/lib/orgSettingsForm';
 import { setOrgSettingsIssueSections } from '@/features/dashboard/org/lib/orgSettingsIssuesStore';
 import { planOrgSettingsSave } from '@/features/dashboard/org/lib/orgSettingsSave';
+import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
@@ -70,6 +71,7 @@ export function OrgSettingsPage() {
   const navigate = useNavigate();
   const { data, isLoading: orgsLoading } = useOrganizations();
   const { isLoading: propsLoading } = useProperties(orgSlug);
+  const { data: orgAccess } = useOrgPermissions();
   const {
     data: operatorData,
     isLoading: operatorLoading,
@@ -81,6 +83,11 @@ export function OrgSettingsPage() {
   const deleteOrganization = useDeleteOrganization();
 
   const org = data?.organizations.find((entry) => entry.slug === orgSlug);
+
+  const canEditBasicSettings = orgAccess?.canEditBasicSettings ?? false;
+  const canEditSocials = orgAccess?.canEditSocials ?? false;
+  const canDeleteOrganization =
+    orgAccess?.accessKind === 'owner' || orgAccess?.accessKind === 'platform_admin';
 
   usePageTitle(org ? `${org.name} - Settings` : undefined);
 
@@ -131,7 +138,9 @@ export function OrgSettingsPage() {
       ? orgOperatorFormIsDirty(operatorDraft, operatorBaseline)
       : false;
   operatorDirtyRef.current = operatorDirty;
-  const isDirty = profileDirty || operatorDirty;
+  const canSaveProfile = profileDirty && canEditBasicSettings;
+  const canSaveOperator = operatorDirty && canEditSocials;
+  const canSaveAny = canSaveProfile || canSaveOperator;
 
   const nameChanged =
     profileDraft && profileBaseline
@@ -189,11 +198,14 @@ export function OrgSettingsPage() {
       completion: settingsCompletion,
     });
 
-    if (!plan.hasSavableWork) {
+    const willSaveProfile = plan.saveProfile && canEditBasicSettings;
+    const willSaveOperator = plan.saveOperator && canEditSocials;
+
+    if (!willSaveProfile && !willSaveOperator) {
       setShowValidationErrors(true);
       if (plan.firstBlockedMessage) {
         toast.error(plan.firstBlockedMessage);
-      } else if (!profileDirty && !operatorDirty) {
+      } else if (!canSaveAny) {
         toast.message('No changes to save');
       }
       if (plan.firstBlockedSectionId) {
@@ -207,7 +219,7 @@ export function OrgSettingsPage() {
     try {
       let savedSomething = false;
 
-      if (plan.saveProfile) {
+      if (willSaveProfile) {
         const payload = orgSettingsDraftToPayload(profileDraft, org.id);
         const result = await updateOrganization.mutateAsync(payload);
         const savedProfile = orgSettingsDraftFromOrg(result.organization);
@@ -220,7 +232,7 @@ export function OrgSettingsPage() {
         savedSomething = true;
       }
 
-      if (plan.saveOperator) {
+      if (willSaveOperator) {
         const saved = await updateOrgSettings.mutateAsync(operatorDraft);
         const values = orgSettingsToFormValues(saved);
         setOperatorDraft(values);
@@ -282,16 +294,16 @@ export function OrgSettingsPage() {
 
   const { completion: settingsCompletion } = useOrgSettingsCompletionForDraft(completionInput);
 
-  const navSections = useMemo(
-    (): AdminSectionNavItem[] =>
-      SETTINGS_SECTIONS.map((section) => ({
-        ...section,
-        hasIssue:
-          section.id !== 'danger' &&
-          settingsCompletion.issueSectionIds.includes(section.id as OrgSettingsSectionId),
-      })),
-    [settingsCompletion.issueSectionIds]
-  );
+  const navSections = useMemo((): AdminSectionNavItem[] => {
+    return SETTINGS_SECTIONS.filter(
+      (section) => section.id !== 'danger' || canDeleteOrganization
+    ).map((section) => ({
+      ...section,
+      hasIssue:
+        section.id !== 'danger' &&
+        settingsCompletion.issueSectionIds.includes(section.id as OrgSettingsSectionId),
+    }));
+  }, [settingsCompletion.issueSectionIds, canDeleteOrganization]);
 
   useEffect(() => {
     if (!profileDraft || !operatorDraft) return;
@@ -325,7 +337,7 @@ export function OrgSettingsPage() {
         titleId="org-settings-heading"
         className="flex min-h-0 flex-1 flex-col"
         heroTrailing={
-          isDirty && profileDraft ? (
+          canSaveAny && profileDraft ? (
             <MobileHeroActionButton
               aria-label={busy ? 'Saving' : 'Save changes'}
               disabled={busy || nameUnavailable || nameChecking}
@@ -336,7 +348,7 @@ export function OrgSettingsPage() {
           ) : undefined
         }
         desktopActions={
-          isDirty && profileDraft ? (
+          canSaveAny && profileDraft ? (
             <Button
               type="button"
               onClick={() => void handleSave()}
@@ -361,7 +373,7 @@ export function OrgSettingsPage() {
             className="min-h-0 flex-1"
             sections={navSections}
             footer={
-              isDirty ? (
+              canSaveAny ? (
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
                     Unsaved changes
@@ -386,7 +398,7 @@ export function OrgSettingsPage() {
 
             <OrgBasicInformationSection
               draft={profileDraft}
-              disabled={formBusy}
+              disabled={formBusy || !canEditBasicSettings}
               orgUrlPrefix={orgUrlPrefix}
               slugPreview={slugPreview}
               logoSource={operatorSources?.emailLogoUrl}
@@ -401,7 +413,7 @@ export function OrgSettingsPage() {
 
             <OrgSocialsBrandingSection
               operatorDraft={operatorDraft}
-              disabled={formBusy}
+              disabled={formBusy || !canEditSocials}
               resolveFieldError={resolveFieldError}
               markFieldInteracted={markFieldInteracted}
               onOperatorChange={setOperatorField}
@@ -413,13 +425,15 @@ export function OrgSettingsPage() {
 
             <OrgAiDashboardAssistantSection />
 
-            <OrgDangerZoneSection
-              orgName={org.name}
-              orgSlug={org.slug}
-              disabled={formBusy}
-              deletePending={deleteOrganization.isPending}
-              onDelete={handleDeleteOrganization}
-            />
+            {canDeleteOrganization ? (
+              <OrgDangerZoneSection
+                orgName={org.name}
+                orgSlug={org.slug}
+                disabled={formBusy}
+                deletePending={deleteOrganization.isPending}
+                onDelete={handleDeleteOrganization}
+              />
+            ) : null}
           </AdminSectionNavLayout>
         )}
       </AdminMobilePage>

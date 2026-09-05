@@ -880,7 +880,7 @@ export function ListRowsSkeleton({
 
 /** Matches OrgPropertyCard/OrgParkingCard's grid shape (image top, status badge, title/subtitle,
  * 3-col stats footer) — default grid view of OrgPropertiesPage, OrgParkingsPage,
- * SuperAdminHostPropertiesPage. */
+ * SuperAdminHostShell (Properties mode). */
 export function ListingCardGridSkeleton({
   count = 8,
   label = 'Loading listings',

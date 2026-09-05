@@ -11,6 +11,7 @@ import {
   MessageCircle,
   PawPrint,
   RefreshCw,
+  Sparkles,
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
@@ -49,6 +50,7 @@ const NOTIFICATION_ICONS: Record<NotificationType, LucideIcon> = {
   calendar_conflict: AlertTriangle,
   booking_external_imported: RefreshCw,
   booking_guest_form_completed: ClipboardCheck,
+  smart_pricing_updated: Sparkles,
 };
 
 /** Category glyph shared by the bell list, Activity page, and realtime toast. */

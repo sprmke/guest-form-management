@@ -34,6 +34,8 @@ export type PlanFeatures = {
   bookingImport: boolean;
   /** Connect Airbnb calendar for two-way iCal sync. */
   calendarSync: boolean;
+  /** AI-assisted dynamic nightly rates (Smart Pricing) on the Pricing page. */
+  smartPricing: boolean;
   customRoles: boolean;
 };
 
@@ -63,6 +65,7 @@ export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
   publicPagesAutosave: false,
   bookingImport: false,
   calendarSync: false,
+  smartPricing: false,
   customRoles: false,
 };
 
@@ -155,5 +158,6 @@ export const PLAN_FEATURE_LABELS: Record<keyof PlanFeatures, string> = {
   publicPagesAutosave: 'Public pages editor',
   bookingImport: 'AI booking import',
   calendarSync: 'Airbnb calendar sync',
+  smartPricing: 'Smart Pricing',
   customRoles: 'Custom team roles',
 };
