@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 
 import { useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
 import { useParkings } from '@/features/dashboard/org/hooks/useParkings';
-import { useOrgListingPropertyRoles } from '@/features/dashboard/team/hooks/useOrgListingPropertyRoles';
 import {
   defaultListingPropertyTemplateName,
   LISTING_PARKING_ROLE_OPTIONS,
@@ -80,10 +79,9 @@ export function OrgListingAssignmentPicker({
   const properties = propertiesData?.properties ?? [];
   const parkings = parkingsData?.parkings ?? [];
 
-  const propertyIds = useMemo(() => properties.map((property) => property.id), [properties]);
-  const { rolesByPropertyId, isLoading: propertyRolesLoading } =
-    useOrgListingPropertyRoles(propertyIds);
-
+  // Listing UI stores seeded template names (Full Access / Operations / Read Only).
+  // Server resolves each name → property template UUID on invite accept / member sync —
+  // do not preload per-property custom roles here (N requests disables the checkboxes).
   const defaultPropertyTemplateName = defaultListingPropertyTemplateName();
 
   const selectedPropertyIds = useMemo(
@@ -221,7 +219,7 @@ export function OrgListingAssignmentPicker({
                   type="button"
                   className="text-primary min-h-[44px] text-xs font-medium sm:min-h-0"
                   onClick={selectAllProperties}
-                  disabled={disabled || propertyRolesLoading}
+                  disabled={disabled}
                 >
                   Select all
                 </button>
@@ -237,9 +235,8 @@ export function OrgListingAssignmentPicker({
                   const assignment = assignments.properties.find(
                     (entry) => entry.propertyId === property.id
                   );
-                  const propertyRoles = rolesByPropertyId.get(property.id) ?? [];
                   const selectedTemplate = assignment
-                    ? resolveListingPropertyTemplateName(assignment.roleId, propertyRoles)
+                    ? resolveListingPropertyTemplateName(assignment.roleId)
                     : defaultPropertyTemplateName;
 
                   return (
@@ -255,7 +252,7 @@ export function OrgListingAssignmentPicker({
                         id={`org-listing-property-${property.id}`}
                         checked={checked}
                         onCheckedChange={(value) => toggleProperty(property.id, value === true)}
-                        disabled={disabled || propertyRolesLoading}
+                        disabled={disabled}
                         className="size-5"
                       />
                       <Label

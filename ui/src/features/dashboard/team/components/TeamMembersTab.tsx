@@ -55,7 +55,6 @@ type Props = {
   filterRole: string;
   onSearchChange: (value: string) => void;
   onFilterRoleChange: (value: string) => void;
-  onEditPermissions: (member: TeamMember) => void;
   onEditContact: (member: TeamMember) => void;
   onToggleStatus: (member: TeamMember) => void;
   onRemove: (member: TeamMember) => void;
@@ -67,7 +66,6 @@ type Props = {
   canManage?: boolean;
   canEditMembers?: boolean;
   canDeleteMembers?: boolean;
-  showEditPermissions?: boolean;
   /** Built-in roles for filter (defaults to property roles). */
   builtinRoles?: Array<{ value: string; label: string }>;
   removeFromLabel?: string;
@@ -90,7 +88,6 @@ export function TeamMembersTab({
   filterRole,
   onSearchChange,
   onFilterRoleChange,
-  onEditPermissions,
   onEditContact,
   onToggleStatus,
   onRemove,
@@ -100,7 +97,6 @@ export function TeamMembersTab({
   canManage = true,
   canEditMembers,
   canDeleteMembers,
-  showEditPermissions = true,
   removeFromLabel = getTeamScopeConfig(scope).removeFromLabel,
   builtinRoles = getTeamScopeConfig(scope).builtinRoles,
 }: Props) {
@@ -294,16 +290,6 @@ export function TeamMembersTab({
                             }}
                           >
                             Host details
-                          </DropdownMenuItem>
-                        ) : null}
-                        {allowEditMembers && showEditPermissions ? (
-                          <DropdownMenuItem
-                            disabled={!isActive}
-                            onSelect={() => {
-                              window.setTimeout(() => onEditPermissions(member), 0);
-                            }}
-                          >
-                            Permissions
                           </DropdownMenuItem>
                         ) : null}
                         {allowEditMembers ? (

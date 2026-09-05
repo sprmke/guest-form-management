@@ -1,7 +1,5 @@
 import { useState } from 'react';
 
-import { Link } from 'react-router-dom';
-
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { SuperAdminPageLoading } from '@/features/dashboard/super-admin/components/shared/SuperAdminPageLoading';
 import { SuperAdminAiCostChart } from '@/features/dashboard/super-admin/components/super-admin-overview/SuperAdminAiCostChart';
@@ -14,7 +12,6 @@ import {
   useSuperAdminOverview,
   type SuperAdminOverviewRange,
 } from '@/features/dashboard/super-admin/hooks/useSuperAdminOverview';
-import { SUPER_ADMIN_PLATFORM_DESTINATIONS } from '@/features/dashboard/super-admin/lib/superAdminPlatformNav';
 
 import { SegmentedControl } from '@/components/ui/sliding-tabs';
 
@@ -50,7 +47,10 @@ export function SuperAdminOverviewPage() {
       />
 
       {isLoading && !data ? (
-        <SuperAdminPageLoading metricCount={8} />
+        <SuperAdminPageLoading
+          metricCount={9}
+          metricGridClassName="grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:gap-4"
+        />
       ) : error ? (
         <p className="text-destructive text-sm">
           {error instanceof Error ? error.message : 'Could not load the platform overview.'}
@@ -74,24 +74,6 @@ export function SuperAdminOverviewPage() {
           </div>
 
           <SuperAdminRecentActivity recent={data.recent} />
-
-          <section className="space-y-2">
-            <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
-              Jump to
-            </p>
-            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-              {SUPER_ADMIN_PLATFORM_DESTINATIONS.map(({ label, href, Icon }) => (
-                <Link
-                  key={href}
-                  to={href}
-                  className="border-border bg-card hover:border-primary/40 flex min-h-[56px] items-center gap-3 rounded-xl border p-3 transition-colors"
-                >
-                  <Icon className="text-muted-foreground size-5 shrink-0" aria-hidden />
-                  <span className="text-sm font-medium">{label}</span>
-                </Link>
-              ))}
-            </div>
-          </section>
         </div>
       ) : null}
     </div>

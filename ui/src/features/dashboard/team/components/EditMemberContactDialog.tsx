@@ -12,16 +12,10 @@ import type {
   TeamContactMember,
 } from '@/features/dashboard/team/types/teamContact';
 
+import { AdminDialogShell } from '@/components/AdminDialogShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  ResponsiveModal,
-  ResponsiveModalContent,
-  ResponsiveModalFooter,
-  ResponsiveModalHeader,
-  ResponsiveModalTitle,
-} from '@/components/ui/responsive-modal';
 import {
   Select,
   SelectContent,
@@ -81,108 +75,12 @@ export function EditMemberContactDialog({
           : null;
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
-      <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-        <ResponsiveModalHeader>
-          <ResponsiveModalTitle>Host details</ResponsiveModalTitle>
-        </ResponsiveModalHeader>
-        {member ? (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="team-member-display-name">Name</Label>
-              <Input
-                id="team-member-display-name"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                autoComplete="name"
-                className="h-10"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="team-member-contact-phone">Phone</Label>
-              <Input
-                id="team-member-contact-phone"
-                type="tel"
-                value={contactPhone}
-                onChange={(e) => setContactPhone(e.target.value)}
-                autoComplete="tel"
-                className="h-10"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="team-member-email">Email</Label>
-              <Input id="team-member-email" value={member.email} disabled className="h-10" />
-            </div>
-            {roleConfig ? (
-              <div className="space-y-2">
-                <Label htmlFor="team-member-role">Role</Label>
-                {roleConfig.scope === 'org' && roleConfig.locked ? (
-                  <Input
-                    id="team-member-role"
-                    value={getOrgMemberRoleLabel({ role: roleConfig.roleId, isOwner: true }, [])}
-                    disabled
-                    className="h-10"
-                  />
-                ) : roleConfig.editable && roleConfig.scope === 'org' ? (
-                  <Select value={roleId} onValueChange={setRoleId}>
-                    <SelectTrigger id="team-member-role" className="h-10 min-h-[44px]">
-                      <SelectValue>{getOrgRoleLabel(roleId)}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ASSIGNABLE_ORG_ROLES.map((role) => (
-                        <SelectItem key={role.value} value={role.value}>
-                          {role.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : roleConfig.editable && roleConfig.scope === 'property' ? (
-                  <Select
-                    value={roleId}
-                    onValueChange={(value) =>
-                      handleRoleSelectChange(value, setRoleId, roleConfig.onAddCustomRole)
-                    }
-                  >
-                    <SelectTrigger id="team-member-role" className="h-10 min-h-[44px]">
-                      <SelectValue>{getRoleLabel(roleId, roleConfig.customRoles)}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <RoleSelectOptions
-                        customRoles={roleConfig.customRoles}
-                        showAddCustomRole={Boolean(roleConfig.onAddCustomRole)}
-                        selectedRoleId={roleId}
-                      />
-                    </SelectContent>
-                  </Select>
-                ) : roleConfig.editable && roleConfig.scope === 'parking' ? (
-                  <Select
-                    value={roleId}
-                    onValueChange={(value) =>
-                      handleRoleSelectChange(value, setRoleId, roleConfig.onAddCustomRole)
-                    }
-                  >
-                    <SelectTrigger id="team-member-role" className="h-10 min-h-[44px]">
-                      <SelectValue>
-                        {getRoleLabelForScope('parking', roleId, roleConfig.customRoles)}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <RoleSelectOptions
-                        scope="parking"
-                        customRoles={roleConfig.customRoles}
-                        showAddCustomRole={Boolean(roleConfig.onAddCustomRole)}
-                        selectedRoleId={roleId}
-                      />
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input id="team-member-role" value={roleLabel ?? ''} disabled className="h-10" />
-                )}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-        <ResponsiveModalFooter className="gap-2">
+    <AdminDialogShell
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Host details"
+      footer={
+        <>
           <Button
             type="button"
             variant="outline"
@@ -199,8 +97,105 @@ export function EditMemberContactDialog({
           >
             {savePending ? 'Saving…' : 'Save'}
           </Button>
-        </ResponsiveModalFooter>
-      </ResponsiveModalContent>
-    </ResponsiveModal>
+        </>
+      }
+    >
+      {member ? (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="team-member-display-name">Name</Label>
+            <Input
+              id="team-member-display-name"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              autoComplete="name"
+              className="h-10"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="team-member-contact-phone">Phone</Label>
+            <Input
+              id="team-member-contact-phone"
+              type="tel"
+              value={contactPhone}
+              onChange={(e) => setContactPhone(e.target.value)}
+              autoComplete="tel"
+              className="h-10"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="team-member-email">Email</Label>
+            <Input id="team-member-email" value={member.email} disabled className="h-10" />
+          </div>
+          {roleConfig ? (
+            <div className="space-y-2">
+              <Label htmlFor="team-member-role">Role</Label>
+              {roleConfig.scope === 'org' && roleConfig.locked ? (
+                <Input
+                  id="team-member-role"
+                  value={getOrgMemberRoleLabel({ role: roleConfig.roleId, isOwner: true }, [])}
+                  disabled
+                  className="h-10"
+                />
+              ) : roleConfig.editable && roleConfig.scope === 'org' ? (
+                <Select value={roleId} onValueChange={setRoleId}>
+                  <SelectTrigger id="team-member-role" className="h-10 min-h-[44px]">
+                    <SelectValue>{getOrgRoleLabel(roleId)}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ASSIGNABLE_ORG_ROLES.map((role) => (
+                      <SelectItem key={role.value} value={role.value}>
+                        {role.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : roleConfig.editable && roleConfig.scope === 'property' ? (
+                <Select
+                  value={roleId}
+                  onValueChange={(value) =>
+                    handleRoleSelectChange(value, setRoleId, roleConfig.onAddCustomRole)
+                  }
+                >
+                  <SelectTrigger id="team-member-role" className="h-10 min-h-[44px]">
+                    <SelectValue>{getRoleLabel(roleId, roleConfig.customRoles)}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <RoleSelectOptions
+                      customRoles={roleConfig.customRoles}
+                      showAddCustomRole={Boolean(roleConfig.onAddCustomRole)}
+                      selectedRoleId={roleId}
+                    />
+                  </SelectContent>
+                </Select>
+              ) : roleConfig.editable && roleConfig.scope === 'parking' ? (
+                <Select
+                  value={roleId}
+                  onValueChange={(value) =>
+                    handleRoleSelectChange(value, setRoleId, roleConfig.onAddCustomRole)
+                  }
+                >
+                  <SelectTrigger id="team-member-role" className="h-10 min-h-[44px]">
+                    <SelectValue>
+                      {getRoleLabelForScope('parking', roleId, roleConfig.customRoles)}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <RoleSelectOptions
+                      scope="parking"
+                      customRoles={roleConfig.customRoles}
+                      showAddCustomRole={Boolean(roleConfig.onAddCustomRole)}
+                      selectedRoleId={roleId}
+                    />
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input id="team-member-role" value={roleLabel ?? ''} disabled className="h-10" />
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </AdminDialogShell>
   );
 }

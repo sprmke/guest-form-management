@@ -55,7 +55,7 @@ export function SuperAdminAuditPage() {
   return (
     <SuperAdminPage
       title="Audit log"
-      subtitle="Every super-admin mutation — plan assigns, verification decisions, payout disbursements, AI settings, credit adjustments."
+      subtitle="Every super-admin mutation: plan assigns, verification decisions, payout disbursements, AI settings, credit adjustments."
       isLoading={isLoading && !data}
       error={error}
       errorMessage="Could not load the audit log."

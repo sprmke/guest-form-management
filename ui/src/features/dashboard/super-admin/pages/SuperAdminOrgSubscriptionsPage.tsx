@@ -147,7 +147,7 @@ export function SuperAdminOrgSubscriptionsPage() {
         <>
           <AdminPageHeader
             title="Org subscriptions"
-            subtitle="Assign plans to organizations across the platform — covers every property they own."
+            subtitle="Assign plans to organizations across the platform. Covers every property they own."
             actions={
               <div className="flex flex-wrap gap-2">
                 <Button

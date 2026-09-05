@@ -93,21 +93,21 @@ export function SuperAdminOrgsPage() {
         />
         <StatCard
           title="With a plan"
-          value={String(summary?.subscribed ?? '—')}
+          value={String(summary?.subscribed ?? '-')}
           icon={Building2}
           iconClassName="text-sky-600 dark:text-sky-400"
           iconBgClassName="bg-sky-100 dark:bg-sky-900/30"
         />
         <StatCard
           title="Properties"
-          value={String(summary?.properties ?? '—')}
+          value={String(summary?.properties ?? '-')}
           icon={Building}
           iconClassName="text-violet-600 dark:text-violet-400"
           iconBgClassName="bg-violet-100 dark:bg-violet-900/30"
         />
         <StatCard
           title="Parkings"
-          value={String(summary?.parkings ?? '—')}
+          value={String(summary?.parkings ?? '-')}
           icon={Car}
           iconClassName="text-amber-600 dark:text-amber-400"
           iconBgClassName="bg-amber-100 dark:bg-amber-900/30"
@@ -169,7 +169,7 @@ export function SuperAdminOrgsPage() {
                         {row.propertyCount} prop · {row.parkingCount} parking
                       </TableCell>
                       <TableCell className="text-sm tabular-nums">
-                        {row.mrrPhp > 0 ? `₱${row.mrrPhp.toLocaleString('en-PH')}` : '—'}
+                        {row.mrrPhp > 0 ? `₱${row.mrrPhp.toLocaleString('en-PH')}` : '-'}
                       </TableCell>
                       <TableCell className="text-right">
                         <Link

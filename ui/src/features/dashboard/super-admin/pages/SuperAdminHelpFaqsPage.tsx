@@ -1,8 +1,25 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { useSearchParams } from 'react-router-dom';
 
-import { ArrowDown, ArrowUp, HelpCircle, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical, HelpCircle, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -43,56 +60,45 @@ import { cn } from '@/lib/utils';
 
 function FaqRow({
   faq,
-  isFirst,
-  isLast,
   onEdit,
   onDeleteRequest,
-  onMove,
 }: {
   faq: AdminHelpCenterFaq;
-  isFirst: boolean;
-  isLast: boolean;
   onEdit: () => void;
   onDeleteRequest: () => void;
-  onMove: (direction: 'up' | 'down') => void;
 }) {
   const updateFaq = useUpdateHelpCenterFaq();
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: faq.id,
+  });
 
   return (
     <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
         'border-border bg-card flex flex-col gap-2 rounded-xl border p-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4',
-        !faq.is_published && 'opacity-60'
+        !faq.is_published && 'opacity-60',
+        isDragging && 'bg-accent/40 z-10 shadow-sm'
       )}
     >
-      <div className="min-w-0 flex-1">
-        <p className="text-foreground text-sm font-medium">{faq.question}</p>
-        <p className="text-muted-foreground mt-1 text-sm leading-relaxed">{faq.answer}</p>
+      <div className="flex min-w-0 flex-1 gap-2">
+        <button
+          type="button"
+          aria-label="Drag to reorder"
+          className="text-muted-foreground hover:text-foreground -my-1 -ml-1.5 flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-md active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="size-4" aria-hidden />
+        </button>
+        <div className="min-w-0 flex-1">
+          <p className="text-foreground text-sm font-medium">{faq.question}</p>
+          <p className="text-muted-foreground mt-1 text-sm leading-relaxed">{faq.answer}</p>
+        </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          disabled={isFirst}
-          aria-label="Move up"
-          onClick={() => onMove('up')}
-          className="size-9"
-        >
-          <ArrowUp className="size-4" aria-hidden />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          disabled={isLast}
-          aria-label="Move down"
-          onClick={() => onMove('down')}
-          className="size-9"
-        >
-          <ArrowDown className="size-4" aria-hidden />
-        </Button>
         <Switch
           checked={faq.is_published}
           onCheckedChange={(checked) =>
@@ -142,8 +148,14 @@ export function SuperAdminHelpFaqsPage() {
 
   const [editingFaq, setEditingFaq] = useState<AdminHelpCenterFaq | 'new' | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminHelpCenterFaq | null>(null);
+  const [orderOverrides, setOrderOverrides] = useState<Record<string, string[]>>({});
 
-  const faqs = data?.faqs ?? [];
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const faqs = useMemo(() => data?.faqs ?? [], [data]);
   const total = data?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / limit));
   const pageItems = buildPageItems(page, pageCount);
@@ -180,23 +192,66 @@ export function SuperAdminHelpFaqsPage() {
       list.push(faq);
       byCategory.set(faq.category, list);
     }
-    return Array.from(byCategory.entries());
+    return Array.from(byCategory.entries()).map(([category, items]) => {
+      const overrideIds = orderOverrides[category];
+      if (!overrideIds) return [category, items] as const;
+      const byId = new Map(items.map((item) => [item.id, item]));
+      const ordered = overrideIds
+        .map((id) => byId.get(id))
+        .filter((item): item is AdminHelpCenterFaq => Boolean(item));
+      const missing = items.filter((item) => !overrideIds.includes(item.id));
+      return [category, [...ordered, ...missing]] as const;
+    });
+  }, [faqs, orderOverrides]);
+
+  // Drop the optimistic override for a category once the server-confirmed order matches it,
+  // so a slow refetch never causes the list to flash back to the pre-drag order.
+  useEffect(() => {
+    setOrderOverrides((prev) => {
+      if (Object.keys(prev).length === 0) return prev;
+      let changed = false;
+      const next = { ...prev };
+      for (const [category, orderIds] of Object.entries(prev)) {
+        const actualIds = faqs.filter((f) => f.category === category).map((f) => f.id);
+        const matches =
+          actualIds.length === orderIds.length && actualIds.every((id, i) => id === orderIds[i]);
+        if (matches) {
+          delete next[category];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
   }, [faqs]);
 
-  const handleMove = async (category: string, index: number, direction: 'up' | 'down') => {
+  const handleDragEnd = async (category: string, event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
     const list = groupedByCategory.find(([cat]) => cat === category)?.[1] ?? [];
-    const swapIndex = direction === 'up' ? index - 1 : index + 1;
-    const current = list[index];
-    const swapWith = list[swapIndex];
-    if (!current || !swapWith) return;
+    const oldIndex = list.findIndex((faq) => faq.id === active.id);
+    const newIndex = list.findIndex((faq) => faq.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const reordered = arrayMove([...list], oldIndex, newIndex);
+    setOrderOverrides((prev) => ({ ...prev, [category]: reordered.map((faq) => faq.id) }));
+
+    const targetSortOrders = list.map((faq) => faq.sort_order);
+    const updates = reordered
+      .map((faq, index) => ({ faq, sortOrder: targetSortOrders[index] }))
+      .filter(({ faq, sortOrder }) => faq.sort_order !== sortOrder);
 
     try {
-      await Promise.all([
-        updateFaq.mutateAsync({ id: current.id, sortOrder: swapWith.sort_order }),
-        updateFaq.mutateAsync({ id: swapWith.id, sortOrder: current.sort_order }),
-      ]);
+      await Promise.all(
+        updates.map(({ faq, sortOrder }) => updateFaq.mutateAsync({ id: faq.id, sortOrder }))
+      );
     } catch (error) {
       toast.error(friendlyToastError(error, 'Could not reorder FAQs'));
+      setOrderOverrides((prev) => {
+        const next = { ...prev };
+        delete next[category];
+        return next;
+      });
     }
   };
 
@@ -244,19 +299,27 @@ export function SuperAdminHelpFaqsPage() {
                 <p className="text-muted-foreground text-xs font-bold uppercase tracking-wider">
                   {category}
                 </p>
-                <div className="space-y-2">
-                  {items.map((faq, index) => (
-                    <FaqRow
-                      key={faq.id}
-                      faq={faq}
-                      isFirst={index === 0}
-                      isLast={index === items.length - 1}
-                      onEdit={() => setEditingFaq(faq)}
-                      onDeleteRequest={() => setDeleteTarget(faq)}
-                      onMove={(direction) => void handleMove(category, index, direction)}
-                    />
-                  ))}
-                </div>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={(event) => void handleDragEnd(category, event)}
+                >
+                  <SortableContext
+                    items={items.map((faq) => faq.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-2">
+                      {items.map((faq) => (
+                        <FaqRow
+                          key={faq.id}
+                          faq={faq}
+                          onEdit={() => setEditingFaq(faq)}
+                          onDeleteRequest={() => setDeleteTarget(faq)}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
               </div>
             ))
           )}
