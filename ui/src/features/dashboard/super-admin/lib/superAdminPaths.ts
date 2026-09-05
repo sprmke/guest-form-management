@@ -1,5 +1,13 @@
 export const superAdminPaths = {
   root: '/admin',
+  aiUsage: '/admin/ai-usage',
+  audit: '/admin/audit',
+  platformSettings: '/admin/platform-settings',
+  organizations: '/admin/orgs',
+  organizationHub: (orgSlug: string) => `/admin/orgs/${orgSlug}`,
+  /** Anchor into a section of the single-page organization hub (see `AdminSectionNavLayout`). */
+  organizationHubSection: (orgSlug: string, section: string) =>
+    `/admin/orgs/${orgSlug}#section-${section}`,
   pricingPlans: '/admin/pricing/plans',
   pricingPaymentSettings: '/admin/pricing/payment-settings',
   propertySubscriptions: '/admin/pricing/subscriptions',
@@ -14,15 +22,7 @@ export const superAdminPaths = {
   settings: '/admin/settings',
   properties: '/admin/properties',
   hostDetail: (hostId: string) => `/admin/hosts/${hostId}`,
-  hostOrgs: (hostId: string) => `/admin/hosts/${hostId}/orgs`,
-  hostProperties: (hostId: string) => `/admin/hosts/${hostId}/orgs/properties`,
-  orgProperties: (orgSlug: string) => `/admin/orgs/${orgSlug}/properties`,
 } as const;
-
-export function superAdminOrgSlugFromPath(pathname: string): string | null {
-  const match = pathname.match(/^\/admin\/orgs\/([^/]+)/);
-  return match?.[1] ?? null;
-}
 
 export function superAdminDevelopmentSlugFromPath(pathname: string): string | null {
   const match = pathname.match(/^\/admin\/developments\/([^/]+)/);

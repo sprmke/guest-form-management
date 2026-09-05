@@ -2,24 +2,24 @@ import { useState } from 'react';
 
 import { useSearchParams } from 'react-router-dom';
 
-import { ClipboardCheck, Filter, Search } from 'lucide-react';
+import { ClipboardCheck } from 'lucide-react';
 
-import {
-  AdminListPagination,
-  AdminListPerPageSelect,
-} from '@/features/dashboard/bookings/components/AdminListToolbar';
+import { AdminListPagination } from '@/features/dashboard/bookings/components/AdminListToolbar';
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { SuperAdminEmptyState } from '@/features/dashboard/super-admin/components/shared/SuperAdminEmptyState';
-import { SuperAdminListViewToggle } from '@/features/dashboard/super-admin/components/shared/SuperAdminListViewToggle';
 import { SuperAdminPageLoading } from '@/features/dashboard/super-admin/components/shared/SuperAdminPageLoading';
 import { SuperAdminResultsMeta } from '@/features/dashboard/super-admin/components/shared/SuperAdminResultsMeta';
 import { SuperAdminApprovalReviewDialog } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalReviewDialog';
 import { SuperAdminApprovalsCardGrid } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalsCardGrid';
 import { SuperAdminApprovalsSummaryCards } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalsSummaryCards';
 import { SuperAdminApprovalsTable } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalsTable';
+import { SuperAdminApprovalsToolbar } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalsToolbar';
 import { SuperAdminExternalReviewDialog } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminExternalReviewDialog';
 import { SuperAdminListingVerificationDialog } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminListingVerificationDialog';
-import { useApprovals } from '@/features/dashboard/super-admin/hooks/useApprovals';
+import {
+  useApprovals,
+  useApprovalsSummary,
+} from '@/features/dashboard/super-admin/hooks/useApprovals';
 import {
   DEFAULT_APPROVALS_FILTERS,
   isExternalReviewApprovalSummary,
@@ -36,14 +36,6 @@ import type {
   OrgApprovalSummary,
 } from '@/features/dashboard/super-admin/types/approval';
 
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useAdminMobileGridViewGuard } from '@/hooks/useAdminMobileGridViewGuard';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import {
@@ -75,6 +67,7 @@ export function SuperAdminApprovalsPage() {
       DEFAULT_APPROVALS_FILTERS.type) as SuperAdminApprovalsFilters['type'],
   };
   const { data, isLoading, isFetching, error } = useApprovals(filters, page, limit);
+  const { data: approvalsSummary } = useApprovalsSummary();
   const approvals = data?.rows ?? [];
   const total = data?.total ?? 0;
   const [selectedOrg, setSelectedOrg] = useState<OrgApprovalSummary | null>(null);
@@ -163,77 +156,19 @@ export function SuperAdminApprovalsPage() {
         <>
           <AdminPageHeader title="Approvals" subtitle="Review host verification requests." />
 
-          <SuperAdminApprovalsSummaryCards approvals={approvals} />
+          <SuperAdminApprovalsSummaryCards approvals={approvals} summary={approvalsSummary} />
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 flex-1 flex-wrap gap-2">
-              <div className="relative min-w-0 flex-1 sm:max-w-xs">
-                <Search
-                  className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
-                  aria-hidden
-                />
-                <Input
-                  value={filters.search}
-                  onChange={(event) => updateFilters({ ...filters, search: event.target.value })}
-                  placeholder="Search approvals…"
-                  className="h-10 pl-9"
-                  aria-label="Search approvals"
-                />
-              </div>
-
-              <Select
-                value={filters.type}
-                onValueChange={(value) =>
-                  updateFilters({
-                    ...filters,
-                    type: value as SuperAdminApprovalsFilters['type'],
-                  })
-                }
-              >
-                <SelectTrigger className="h-10 w-[9.5rem] shrink-0" aria-label="Filter by type">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All types</SelectItem>
-                  <SelectItem value="property">Property</SelectItem>
-                  <SelectItem value="parking">Parking</SelectItem>
-                  <SelectItem value="listing_verification">Listing verification</SelectItem>
-                  <SelectItem value="reviews">Reviews</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={filters.status}
-                onValueChange={(value) =>
-                  updateFilters({
-                    ...filters,
-                    status: value as SuperAdminApprovalsFilters['status'],
-                  })
-                }
-              >
-                <SelectTrigger className="h-10 w-[9.5rem] shrink-0" aria-label="Filter by status">
-                  <Filter className="size-4 shrink-0 opacity-70" aria-hidden />
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All status</SelectItem>
-                  <SelectItem value="pending">In review</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="changes">Changes requested</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
-              <AdminListPerPageSelect limit={limit} onChange={setLimit} />
-              <SuperAdminListViewToggle
-                viewMode={viewMode}
-                onViewModeChange={setViewMode}
-                hideTableView={isMobileLayout}
-              />
-            </div>
-          </div>
+          <SuperAdminApprovalsToolbar
+            filters={filters}
+            viewMode={viewMode}
+            hideTableView={isMobileLayout}
+            limit={limit}
+            onSearchChange={(search) => updateFilters({ ...filters, search })}
+            onTypeChange={(type) => updateFilters({ ...filters, type })}
+            onStatusChange={(status) => updateFilters({ ...filters, status })}
+            onViewModeChange={setViewMode}
+            onLimitChange={setLimit}
+          />
 
           {approvals.length > 0 ? (
             showTableView ? (

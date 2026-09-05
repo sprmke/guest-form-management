@@ -1,13 +1,18 @@
 import type { ComponentType } from 'react';
 
 import {
+  Activity,
+  BadgeCheck,
+  Building,
   Building2,
-  ClipboardCheck,
   CreditCard,
   HelpCircle,
   Landmark,
   LifeBuoy,
   Megaphone,
+  Receipt,
+  ScrollText,
+  Settings,
   Sparkles,
   Users,
   Wallet,
@@ -21,30 +26,60 @@ export type SuperAdminPlatformNavItem = {
   Icon: ComponentType<{ className?: string }>;
 };
 
+export type SuperAdminPlatformNavGroup = {
+  label: string;
+  items: SuperAdminPlatformNavItem[];
+};
+
 /**
- * Destinations shown on the Super Admin overview grid and in the Platform
- * sidebar (excluding Overview itself). Keep this list as the single source
- * so the two surfaces cannot drift.
+ * Grouped Super Admin destinations. Single source for both the Platform
+ * sidebar (rendered as labelled sections, below Overview) and the Overview
+ * quick-links grid, so the two surfaces cannot drift.
  */
-export const SUPER_ADMIN_PLATFORM_DESTINATIONS: SuperAdminPlatformNavItem[] = [
-  { label: 'Developments', href: superAdminPaths.developments, Icon: Landmark },
-  { label: 'Properties', href: superAdminPaths.properties, Icon: Building2 },
-  { label: 'Approvals', href: superAdminPaths.approvals, Icon: ClipboardCheck },
-  { label: 'Hosts', href: superAdminPaths.hosts, Icon: Users },
-  { label: 'Pricing plans', href: superAdminPaths.pricingPlans, Icon: CreditCard },
+export const SUPER_ADMIN_NAV_GROUPS: SuperAdminPlatformNavGroup[] = [
   {
-    label: 'Payment settings',
-    href: superAdminPaths.pricingPaymentSettings,
-    Icon: CreditCard,
+    label: 'Organizations',
+    items: [
+      { label: 'Organizations', href: superAdminPaths.organizations, Icon: Building2 },
+      { label: 'Hosts', href: superAdminPaths.hosts, Icon: Users },
+      { label: 'Developments', href: superAdminPaths.developments, Icon: Landmark },
+      { label: 'Properties', href: superAdminPaths.properties, Icon: Building },
+    ],
   },
   {
-    label: 'Property subscriptions',
-    href: superAdminPaths.propertySubscriptions,
-    Icon: CreditCard,
+    label: 'Billing & catalog',
+    items: [
+      { label: 'Pricing plans', href: superAdminPaths.pricingPlans, Icon: CreditCard },
+      { label: 'Subscriptions', href: superAdminPaths.propertySubscriptions, Icon: Receipt },
+      { label: 'Payment settings', href: superAdminPaths.pricingPaymentSettings, Icon: Wallet },
+      { label: 'Parking payouts', href: superAdminPaths.parkingPayouts, Icon: Wallet },
+    ],
   },
-  { label: 'Parking payouts', href: superAdminPaths.parkingPayouts, Icon: Wallet },
-  { label: 'Support tickets', href: superAdminPaths.support, Icon: LifeBuoy },
-  { label: 'FAQs', href: superAdminPaths.supportFaqs, Icon: HelpCircle },
-  { label: 'Announcements', href: superAdminPaths.announcements, Icon: Megaphone },
-  { label: 'AI Management', href: superAdminPaths.settings, Icon: Sparkles },
+  {
+    label: 'Operations',
+    items: [
+      { label: 'Approvals', href: superAdminPaths.approvals, Icon: BadgeCheck },
+      { label: 'Support tickets', href: superAdminPaths.support, Icon: LifeBuoy },
+    ],
+  },
+  {
+    label: 'Content',
+    items: [
+      { label: 'Announcements', href: superAdminPaths.announcements, Icon: Megaphone },
+      { label: 'FAQs', href: superAdminPaths.supportFaqs, Icon: HelpCircle },
+    ],
+  },
+  {
+    label: 'Platform',
+    items: [
+      { label: 'AI Management', href: superAdminPaths.settings, Icon: Sparkles },
+      { label: 'AI usage', href: superAdminPaths.aiUsage, Icon: Activity },
+      { label: 'Audit log', href: superAdminPaths.audit, Icon: ScrollText },
+      { label: 'Platform settings', href: superAdminPaths.platformSettings, Icon: Settings },
+    ],
+  },
 ];
+
+/** Flat list of every non-Overview destination (Overview grid, search, etc.). */
+export const SUPER_ADMIN_PLATFORM_DESTINATIONS: SuperAdminPlatformNavItem[] =
+  SUPER_ADMIN_NAV_GROUPS.flatMap((group) => group.items);

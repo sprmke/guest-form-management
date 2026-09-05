@@ -56,31 +56,56 @@ export function useHost(hostId: string | undefined) {
 export function useHostOrganizations(
   hostId: string | undefined,
   page = 1,
-  limit: number = ADMIN_DEFAULT_PAGE_SIZE
+  limit: number = ADMIN_DEFAULT_PAGE_SIZE,
+  q = ''
 ) {
+  const trimmedQ = q.trim();
   return useQuery({
-    queryKey: [...hostOrganizationsQueryKey(hostId ?? ''), page, limit] as const,
+    queryKey: [...hostOrganizationsQueryKey(hostId ?? ''), page, limit, trimmedQ] as const,
     enabled: Boolean(hostId),
-    queryFn: () =>
-      callEdgeFunction<{ organizations: HostOrganization[]; total: number }>(
-        `list-host-organizations?hostId=${encodeURIComponent(hostId!)}&page=${page}&limit=${limit}`
-      ).then((data) => ({ rows: data.organizations, total: data.total })),
+    queryFn: () => {
+      const search = new URLSearchParams({
+        hostId: hostId!,
+        page: String(page),
+        limit: String(limit),
+      });
+      if (trimmedQ) search.set('q', trimmedQ);
+      return callEdgeFunction<{ organizations: HostOrganization[]; total: number }>(
+        `list-host-organizations?${search.toString()}`
+      ).then((data) => ({ rows: data.organizations, total: data.total }));
+    },
     placeholderData: keepPreviousData,
   });
 }
 
 export function useHostProperties(
   hostId: string | undefined,
-  params?: { page?: number; limit?: number; q?: string; status?: string; type?: string }
+  params?: {
+    page?: number;
+    limit?: number;
+    q?: string;
+    status?: string;
+    type?: string;
+    orgId?: string;
+  }
 ) {
   const page = params?.page ?? 1;
   const limit = params?.limit ?? ADMIN_DEFAULT_PAGE_SIZE;
   const q = params?.q?.trim() ?? '';
   const status = params?.status ?? 'all';
   const type = params?.type ?? 'all';
+  const orgId = params?.orgId ?? 'all';
 
   return useQuery({
-    queryKey: [...hostPropertiesQueryKey(hostId ?? ''), page, limit, q, status, type] as const,
+    queryKey: [
+      ...hostPropertiesQueryKey(hostId ?? ''),
+      page,
+      limit,
+      q,
+      status,
+      type,
+      orgId,
+    ] as const,
     enabled: Boolean(hostId),
     queryFn: () => {
       const search = new URLSearchParams({
@@ -91,6 +116,7 @@ export function useHostProperties(
       if (q) search.set('q', q);
       if (status !== 'all') search.set('status', status);
       if (type !== 'all') search.set('type', type);
+      if (orgId !== 'all') search.set('orgId', orgId);
       return callEdgeFunction<{ properties: HostProperty[]; total: number }>(
         `list-host-properties?${search.toString()}`
       ).then((data) => ({ rows: data.properties, total: data.total }));
