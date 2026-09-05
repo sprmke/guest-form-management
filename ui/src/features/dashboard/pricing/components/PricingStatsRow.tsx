@@ -1,7 +1,8 @@
-import { Calendar, DollarSign, Tag, TrendingUp } from 'lucide-react';
+import { Calendar, DollarSign, Tag, TrendingUp, Wand2 } from 'lucide-react';
 
 import { AdminMetricCard } from '@/features/dashboard/bookings/components/AdminMetricCard';
 
+import { cn } from '@/lib/utils';
 import { formatMoneyCompact } from '@/utils/format/currency';
 
 type Props = {
@@ -9,6 +10,8 @@ type Props = {
   weekendRate: number;
   customDatesCount: number;
   enabledFeesTotal: number;
+  /** Applied Smart Pricing nights in the current view — shows a 5th card when > 0. */
+  smartDatesCount?: number;
 };
 
 export function PricingStatsRow({
@@ -16,13 +19,18 @@ export function PricingStatsRow({
   weekendRate,
   customDatesCount,
   enabledFeesTotal,
+  smartDatesCount = 0,
 }: Props) {
   const weekendPremium = Math.round(((weekendRate - weekdayRate) / weekdayRate) * 100);
+  const showSmart = smartDatesCount > 0;
 
   return (
     <section
       aria-label="Pricing summary"
-      className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4"
+      className={cn(
+        'grid grid-cols-2 gap-2.5 sm:gap-3 lg:gap-4',
+        showSmart ? 'lg:grid-cols-5' : 'lg:grid-cols-4'
+      )}
     >
       <AdminMetricCard
         title="Base Rate"
@@ -52,6 +60,15 @@ export function PricingStatsRow({
         iconClassName="text-amber-600 dark:text-amber-400"
         iconBgClassName="bg-amber-100 dark:bg-amber-900/30"
       />
+      {showSmart ? (
+        <AdminMetricCard
+          title="Smart Pricing"
+          value={String(smartDatesCount)}
+          icon={Wand2}
+          iconClassName="text-emerald-600 dark:text-emerald-400"
+          iconBgClassName="bg-emerald-100 dark:bg-emerald-900/30"
+        />
+      ) : null}
     </section>
   );
 }

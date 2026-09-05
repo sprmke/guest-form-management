@@ -22,6 +22,7 @@ import {
   PenLine,
   RefreshCw,
   Sparkles,
+  Wand2,
 } from 'lucide-react';
 
 import {
@@ -55,6 +56,8 @@ export type PricingDayState = {
   isBlocked: boolean;
   /** Blocked by an OTA calendar feed (Airbnb / Booking.com / VRBO) — read-only here. */
   isImported: boolean;
+  /** Nightly rate came from an applied Smart Pricing recommendation. */
+  isSmart?: boolean;
 };
 
 type Props = {
@@ -329,6 +332,9 @@ export function PricingCalendarGrid({
         <LegendIcon label="Custom">
           <PenLine className="size-3 text-amber-600 dark:text-amber-400" aria-hidden />
         </LegendIcon>
+        <LegendIcon label="Smart Pricing">
+          <Wand2 className="size-3 text-emerald-600 dark:text-emerald-400" aria-hidden />
+        </LegendIcon>
         <LegendPill label="Booked" />
         <LegendIcon label="Blocked">
           <Ban className="text-muted-foreground size-3" aria-hidden />
@@ -366,7 +372,7 @@ function PricingDayCell({
   onDateMouseEnter: (date: Date) => void;
   onBookingClick: (booking: PropertyPricingCalendarBooking) => void;
 }) {
-  const { price, rule, isCustom, isBooked, isBlocked, isImported } = getPriceForDate(day);
+  const { price, rule, isCustom, isBooked, isBlocked, isImported, isSmart } = getPriceForDate(day);
   const isSelected = selectedDates.some((d) => isSameDay(d, day));
   const isPast = isBefore(day, startOfToday());
   const hasHoliday = rule != null;
@@ -438,7 +444,7 @@ function PricingDayCell({
           : singleStay
             ? `Open booking for ${bookingListDisplayName(singleStay)}${stayRange ? `, ${stayRange}` : ''}`
             : showPrice
-              ? `${format(day, 'MMMM d')}, ${formatMoneyCompact(price)} per night${isImported ? ', synced from OTA calendar' : isBlocked ? ', blocked' : ''}${hasHoliday ? ', holiday' : ''}${isCustom ? ', custom rate' : ''}${touchArmed ? ', range start — tap end date' : ''}`
+              ? `${format(day, 'MMMM d')}, ${formatMoneyCompact(price)} per night${isImported ? ', synced from OTA calendar' : isBlocked ? ', blocked' : ''}${hasHoliday ? ', holiday' : ''}${isCustom ? ', custom rate' : ''}${isSmart ? ', Smart Pricing rate' : ''}${touchArmed ? ', range start — tap end date' : ''}`
               : `${format(day, 'MMMM d')}${isPast ? ', past' : ''}${isImported ? ', synced from OTA calendar' : isBlocked ? ', blocked' : ''}`
       }
     >
@@ -478,6 +484,7 @@ function PricingDayCell({
               isPast={isPast}
               rule={hasHoliday ? rule : undefined}
               isCustom={isCustom}
+              isSmart={isSmart}
             />
           </TooltipContent>
         </Tooltip>
@@ -505,8 +512,13 @@ function PricingDayCell({
           className="absolute right-1 top-1 size-3 text-amber-600 dark:text-amber-400"
           aria-hidden
         />
+      ) : isSmart && showMarkers ? (
+        <Wand2
+          className="absolute right-1 top-1 size-3 text-emerald-600 dark:text-emerald-400"
+          aria-hidden
+        />
       ) : null}
-      {hasHoliday && showMarkers ? (
+      {hasHoliday && showMarkers && !isSmart ? (
         <Sparkles className="text-primary absolute right-1 top-1 size-3" aria-hidden />
       ) : null}
       {isImported && !isBooked ? (
@@ -594,6 +606,7 @@ function PricingDayTooltip({
   isPast,
   rule,
   isCustom,
+  isSmart,
 }: {
   day: Date;
   price: number;
@@ -603,6 +616,7 @@ function PricingDayTooltip({
   isPast: boolean;
   rule?: PricingHolidayRule;
   isCustom: boolean;
+  isSmart?: boolean;
 }) {
   const tags: string[] = [];
   if (isImported) tags.push('Synced from Airbnb / OTA');
@@ -610,6 +624,7 @@ function PricingDayTooltip({
   else if (isPast) tags.push('Past');
   if (rule) tags.push(rule.name);
   if (isCustom) tags.push('Custom rate');
+  else if (isSmart) tags.push('Smart Pricing');
 
   return (
     <div className="min-w-[8.75rem] space-y-2">

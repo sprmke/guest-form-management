@@ -25,6 +25,8 @@ type StayPricingFields = Pick<BookingRow, 'check_in_date' | 'check_out_date' | '
 type NightlyRateOptions = {
   dateOverrides?: Record<string, number>;
   holidayRules?: PricingHolidayRuleDto[] | null;
+  /** Applied Smart Pricing rates — resolves below a host override, above holiday rules. */
+  smartRecommendations?: Record<string, number> | null;
 };
 
 export type PropertyPricingDefaults = {
@@ -84,18 +86,25 @@ export function resolveHolidayRules(
   return holidayRules && holidayRules.length > 0 ? holidayRules : DEFAULT_PRICING_HOLIDAY_RULES_DTO;
 }
 
-/** Nightly rate for one occupied night (override > holiday premium > weekend/weekday). */
+/**
+ * Nightly rate for one occupied night.
+ * Precedence: host override > applied Smart Pricing > holiday premium > weekend/weekday.
+ */
 export function resolveNightlyRateForDate(
   date: Date,
   defaults: PropertyPricingDefaults,
   options?: {
     dateOverrides?: Record<string, number>;
     holidayRules?: PricingHolidayRuleDto[] | null;
+    smartRecommendations?: Record<string, number> | null;
   }
 ): number {
   const key = formatDateKey(date);
   const override = options?.dateOverrides?.[key];
   if (override !== undefined) return override;
+
+  const smart = options?.smartRecommendations?.[key];
+  if (smart !== undefined) return smart;
 
   const base = isWeekendRateDay(date) ? defaults.weekendNightlyRate : defaults.weekdayNightlyRate;
 
@@ -114,7 +123,8 @@ export function computeDefaultBookingRate(
   },
   defaults: PropertyPricingDefaults = FALLBACK_PROPERTY_PRICING_DEFAULTS,
   dateOverrides?: Record<string, number>,
-  holidayRules?: PricingHolidayRuleDto[] | null
+  holidayRules?: PricingHolidayRuleDto[] | null,
+  smartRecommendations?: Record<string, number> | null
 ): number | null {
   const checkIn = parseOccupancyDate(booking.check_in_date);
   const checkOut = parseOccupancyDate(booking.check_out_date);
@@ -126,6 +136,7 @@ export function computeDefaultBookingRate(
       total += resolveNightlyRateForDate(cursor, defaults, {
         dateOverrides,
         holidayRules,
+        smartRecommendations,
       });
       cursor = addDays(cursor, 1);
     }
@@ -154,7 +165,8 @@ export function resolveBookingRateTotal(
     booking,
     defaults,
     options?.dateOverrides,
-    options?.holidayRules
+    options?.holidayRules,
+    options?.smartRecommendations
   );
 }
 

@@ -29,6 +29,10 @@ export type PropertyPricingDto = PropertyPricingDefaults & {
   importedBlockedDateKeys: string[];
   holidayRules: PricingHolidayRuleDto[];
   calendarBookings: PropertyPricingCalendarBooking[];
+  /** Applied Smart Pricing rates (YYYY-MM-DD -> nightly). Below host overrides, above holidays. */
+  smartRecommendations: Record<string, number>;
+  /** True when Smart Pricing is enabled for this property and the plan feature is live. */
+  smartPricingEnabled: boolean;
 };
 
 export type PropertyPricingPatch = Partial<PropertyPricingDefaults> & {
@@ -70,6 +74,8 @@ export async function fetchPropertyPricing(
     blockedDateKeys: [],
     importedBlockedDateKeys: [],
     calendarBookings: [],
+    smartRecommendations: {},
+    smartPricingEnabled: false,
     ...json.data,
   } as PropertyPricingDto;
 }

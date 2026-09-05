@@ -8,7 +8,7 @@ import {
   startOfToday,
   getDaysInMonth,
 } from 'date-fns';
-import { CalendarRange } from 'lucide-react';
+import { CalendarRange, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -24,6 +24,7 @@ import { PricingDateModal } from '@/features/dashboard/pricing/components/Pricin
 import { PricingRatesFormCard } from '@/features/dashboard/pricing/components/PricingRatesFormCard';
 import { PricingSaveDialog } from '@/features/dashboard/pricing/components/PricingSaveDialog';
 import { PricingStatsRow } from '@/features/dashboard/pricing/components/PricingStatsRow';
+import { SmartPricingDialog } from '@/features/dashboard/pricing/components/SmartPricingDialog';
 import {
   usePropertyPricing,
   useSavePropertyPricing,
@@ -86,6 +87,7 @@ export function PropertyPricingPage() {
   const canSelectDates = canEditRates || canBlockDates || canUnblockDates;
 
   const [channelSyncOpen, setChannelSyncOpen] = useState(false);
+  const [smartPricingOpen, setSmartPricingOpen] = useState(false);
 
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const { data: pricingData, isLoading, isError, error } = usePropertyPricing(currentMonth);
@@ -186,12 +188,16 @@ export function PropertyPricingPage() {
     [customDatePrices]
   );
 
+  const smartRecommendations = pricingData?.smartRecommendations;
+  const smartPricingEnabled = pricingData?.smartPricingEnabled ?? false;
+
   const nightlyRateOptions = useMemo(
     () => ({
       dateOverrides: dateOverridesRecord,
       holidayRules: holidayRuleDtos,
+      smartRecommendations,
     }),
-    [dateOverridesRecord, holidayRuleDtos]
+    [dateOverridesRecord, holidayRuleDtos, smartRecommendations]
   );
 
   const bookingsByDay = useMemo(
@@ -219,22 +225,32 @@ export function PropertyPricingPage() {
           isBooked: true,
           isBlocked,
           isImported,
+          isSmart: false as const,
         };
       }
 
       const customPrice = customDatePrices.get(key);
       if (customPrice !== undefined) {
-        return { price: customPrice, isCustom: true as const, isBooked, isBlocked, isImported };
+        return {
+          price: customPrice,
+          isCustom: true as const,
+          isBooked,
+          isBlocked,
+          isImported,
+          isSmart: false as const,
+        };
       }
 
+      const isSmart =
+        smartPricingEnabled && smartRecommendations?.[key] !== undefined && !isBooked && !isBlocked;
       const rule = findHolidayRuleForDate(date, resolveHolidayRules(holidayRuleDtos));
       const price = resolveNightlyRateForDate(date, pricingDefaults, nightlyRateOptions);
 
       if (rule) {
-        return { price, rule, isCustom: false as const, isBooked, isBlocked, isImported };
+        return { price, rule, isCustom: false as const, isBooked, isBlocked, isImported, isSmart };
       }
 
-      return { price, isCustom: false as const, isBooked, isBlocked, isImported };
+      return { price, isCustom: false as const, isBooked, isBlocked, isImported, isSmart };
     },
     [
       bookingsByDay,
@@ -245,6 +261,8 @@ export function PropertyPricingPage() {
       holidayRuleDtos,
       pricingDefaults,
       nightlyRateOptions,
+      smartPricingEnabled,
+      smartRecommendations,
     ]
   );
 
@@ -544,28 +562,64 @@ export function PropertyPricingPage() {
     );
   }
 
-  const channelSyncHeroAction = canViewChannels ? (
+  const smartPricingHeroAction = canEditRates ? (
     <span className="relative inline-flex">
-      <MobileHeroActionButton aria-label="Channel sync" onClick={() => setChannelSyncOpen(true)}>
-        <CalendarRange className="size-5" aria-hidden />
+      <MobileHeroActionButton aria-label="Smart Pricing" onClick={() => setSmartPricingOpen(true)}>
+        <Wand2 className="size-5" aria-hidden />
       </MobileHeroActionButton>
-      <TierBadge feature="calendarSync" placement="corner" />
+      <TierBadge feature="smartPricing" placement="corner" />
     </span>
   ) : undefined;
 
-  const channelSyncDesktopAction = canViewChannels ? (
-    <TierBadgeAnchor feature="calendarSync">
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => setChannelSyncOpen(true)}
-        className="min-h-[44px] gap-1.5"
-      >
-        <CalendarRange className="size-4" aria-hidden />
-        Channel sync
-      </Button>
-    </TierBadgeAnchor>
-  ) : undefined;
+  const heroTrailing =
+    canViewChannels || smartPricingHeroAction ? (
+      <span className="inline-flex items-center gap-1.5">
+        {smartPricingHeroAction}
+        {canViewChannels ? (
+          <span className="relative inline-flex">
+            <MobileHeroActionButton
+              aria-label="Channel sync"
+              onClick={() => setChannelSyncOpen(true)}
+            >
+              <CalendarRange className="size-5" aria-hidden />
+            </MobileHeroActionButton>
+            <TierBadge feature="calendarSync" placement="corner" />
+          </span>
+        ) : null}
+      </span>
+    ) : undefined;
+
+  const desktopActions =
+    canViewChannels || canEditRates ? (
+      <span className="inline-flex items-center gap-2">
+        {canEditRates ? (
+          <TierBadgeAnchor feature="smartPricing">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setSmartPricingOpen(true)}
+              className="min-h-[44px] gap-1.5"
+            >
+              <Wand2 className="size-4" aria-hidden />
+              Smart Pricing
+            </Button>
+          </TierBadgeAnchor>
+        ) : null}
+        {canViewChannels ? (
+          <TierBadgeAnchor feature="calendarSync">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setChannelSyncOpen(true)}
+              className="min-h-[44px] gap-1.5"
+            >
+              <CalendarRange className="size-4" aria-hidden />
+              Channel sync
+            </Button>
+          </TierBadgeAnchor>
+        ) : null}
+      </span>
+    ) : undefined;
 
   return (
     <>
@@ -573,14 +627,15 @@ export function PropertyPricingPage() {
         title="Pricing"
         subtitle="Manage pricing and availability."
         titleId="pricing-heading"
-        heroTrailing={channelSyncHeroAction}
-        desktopActions={channelSyncDesktopAction}
+        heroTrailing={heroTrailing}
+        desktopActions={desktopActions}
       >
         <PricingStatsRow
           weekdayRate={weekdayRate}
           weekendRate={weekendRate}
           customDatesCount={customDatePrices.size}
           enabledFeesTotal={feesTotal}
+          smartDatesCount={smartPricingEnabled ? Object.keys(smartRecommendations ?? {}).length : 0}
         />
 
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-5">
@@ -627,6 +682,10 @@ export function PropertyPricingPage() {
           onOpenChange={setChannelSyncOpen}
           readOnly={!canEditChannels}
         />
+      ) : null}
+
+      {canEditRates ? (
+        <SmartPricingDialog open={smartPricingOpen} onOpenChange={setSmartPricingOpen} />
       ) : null}
 
       <PricingDateModal
