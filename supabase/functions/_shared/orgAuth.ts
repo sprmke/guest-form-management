@@ -1036,8 +1036,20 @@ export function hasOrgTeamInvitePermission(granted: readonly string[]): boolean 
   );
 }
 
+export function hasOrgTeamMemberEditPermission(granted: readonly string[]): boolean {
+  return hasOrgPermission(granted, 'org.team.members:edit');
+}
+
 export function hasOrgTeamMemberDeletePermission(granted: readonly string[]): boolean {
   return hasOrgPermission(granted, 'org.team.members:delete');
+}
+
+export function hasOrgTeamInvitationEditPermission(granted: readonly string[]): boolean {
+  return hasOrgPermission(granted, 'org.team.invitations:edit');
+}
+
+export function hasOrgTeamInvitationDeletePermission(granted: readonly string[]): boolean {
+  return hasOrgPermission(granted, 'org.team.invitations:delete');
 }
 
 /**
@@ -1050,7 +1062,10 @@ export async function verifyOrgTeamAccess(
   options?: {
     requireManage?: boolean;
     requireInvite?: boolean;
+    requireMemberEdit?: boolean;
     requireMemberDelete?: boolean;
+    requireInvitationEdit?: boolean;
+    requireInvitationDelete?: boolean;
   }
 ): Promise<OrgTeamAccessContext> {
   const ctx = await verifyOrgAccess(req, scope, 'org.team:view');
@@ -1063,7 +1078,19 @@ export async function verifyOrgTeamAccess(
     throw forbiddenResponse('Access restricted');
   }
 
+  if (options?.requireMemberEdit && !hasOrgTeamMemberEditPermission(ctx.permissions)) {
+    throw forbiddenResponse('Access restricted');
+  }
+
   if (options?.requireMemberDelete && !hasOrgTeamMemberDeletePermission(ctx.permissions)) {
+    throw forbiddenResponse('Access restricted');
+  }
+
+  if (options?.requireInvitationEdit && !hasOrgTeamInvitationEditPermission(ctx.permissions)) {
+    throw forbiddenResponse('Access restricted');
+  }
+
+  if (options?.requireInvitationDelete && !hasOrgTeamInvitationDeletePermission(ctx.permissions)) {
     throw forbiddenResponse('Access restricted');
   }
 

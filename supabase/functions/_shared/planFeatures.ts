@@ -37,6 +37,8 @@ export type PlanFeatures = {
   bookingImport: boolean;
   /** Connect external OTA calendars (Airbnb / Booking.com / VRBO) for two-way iCal sync. */
   calendarSync: boolean;
+  /** AI-assisted dynamic nightly rates (Smart Pricing) on the Pricing page. */
+  smartPricing: boolean;
   customRoles: boolean;
 };
 
@@ -66,6 +68,7 @@ export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
   publicPagesAutosave: false,
   bookingImport: false,
   calendarSync: false,
+  smartPricing: false,
   customRoles: false,
 };
 
@@ -134,6 +137,7 @@ export function parsePlanFeatures(raw: unknown): PlanFeatures {
     publicPagesAutosave: asBool(obj.publicPagesAutosave, base.publicPagesAutosave),
     bookingImport: asBool(obj.bookingImport, base.bookingImport),
     calendarSync: asBool(obj.calendarSync, base.calendarSync),
+    smartPricing: asBool(obj.smartPricing, base.smartPricing),
     customRoles: asBool(obj.customRoles, base.customRoles),
   };
 }

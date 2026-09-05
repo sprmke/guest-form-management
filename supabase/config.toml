@@ -462,6 +462,27 @@ verify_jwt = false
 [functions.list-super-admin-approvals]
 verify_jwt = false
 
+[functions.super-admin-overview]
+verify_jwt = false
+
+[functions.list-organizations-admin]
+verify_jwt = false
+
+[functions.get-organization-admin]
+verify_jwt = false
+
+[functions.super-admin-ai-usage]
+verify_jwt = false
+
+[functions.list-super-admin-audit]
+verify_jwt = false
+
+[functions.platform-settings]
+verify_jwt = false
+
+[functions.super-admin-search]
+verify_jwt = false
+
 [functions.moderate-external-review]
 verify_jwt = false
 
@@ -643,6 +664,18 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.property-pricing]
+verify_jwt = false
+
+[functions.smart-pricing-settings]
+verify_jwt = false
+
+[functions.smart-pricing-preview]
+verify_jwt = false
+
+[functions.smart-pricing-apply]
+verify_jwt = false
+
+[functions.smart-pricing-cron]
 verify_jwt = false
 
 [functions.property-templates-preview]

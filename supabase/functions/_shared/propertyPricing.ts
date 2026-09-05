@@ -10,6 +10,7 @@ import {
   loadBlockedDateKeys,
 } from './propertyBlockedDates.ts';
 import { ensurePropertySettings } from './propertySettingsSeed.ts';
+import { loadAppliedSmartRecommendations } from './smartPricingRead.ts';
 
 const DEFAULT_WEEKDAY = 2799;
 const DEFAULT_WEEKEND = 2999;
@@ -125,6 +126,14 @@ export type PropertyPricingDto = {
   importedBlockedDateKeys: string[];
   holidayRules: PricingHolidayRuleDto[];
   calendarBookings: PropertyPricingCalendarBooking[];
+  /**
+   * Applied Smart Pricing recommendations (YYYY-MM-DD -> nightly rate) — resolves below a
+   * host date override and above holiday rules. Empty unless Smart Pricing is enabled AND
+   * the property is still entitled to the `smartPricing` plan feature.
+   */
+  smartRecommendations: Record<string, number>;
+  /** True when `property_smart_pricing_settings.enabled` and the plan feature is live. */
+  smartPricingEnabled: boolean;
 };
 
 type AppSettingsPricingRow = {
@@ -209,6 +218,8 @@ function rowToDefaults(
   | 'importedBlockedDateKeys'
   | 'holidayRules'
   | 'calendarBookings'
+  | 'smartRecommendations'
+  | 'smartPricingEnabled'
 > {
   return {
     weekdayNightlyRate: pickMoney(row?.weekday_nightly_rate, DEFAULT_WEEKDAY),
@@ -439,6 +450,7 @@ export async function loadPropertyPricing(
     blockedDateKeys,
     importedBlockedDateKeys,
     calendarBookings,
+    smart,
   ] = await Promise.all([
     loadDateOverrides(propertyId),
     loadBookedDateKeys(propertyId, options?.monthStart, options?.monthEnd),
@@ -447,6 +459,7 @@ export async function loadPropertyPricing(
     options?.monthStart && options?.monthEnd
       ? loadCalendarBookings(propertyId, options.monthStart, options.monthEnd)
       : Promise.resolve([] as PropertyPricingCalendarBooking[]),
+    loadAppliedSmartRecommendations(propertyId, options),
   ]);
 
   return {
@@ -457,6 +470,8 @@ export async function loadPropertyPricing(
     importedBlockedDateKeys,
     holidayRules: parseHolidayRules((row as AppSettingsPricingRow | null)?.pricing_holiday_rules),
     calendarBookings,
+    smartRecommendations: smart.recommendations,
+    smartPricingEnabled: smart.active,
   };
 }
 
@@ -608,6 +623,8 @@ export function computeDefaultBookingRateFromDefaults(
   options?: {
     dateOverrides?: Record<string, number>;
     holidayRules?: PricingHolidayRuleDto[];
+    /** Applied Smart Pricing rates — resolves below a host override, above holiday rules. */
+    smartRecommendations?: Record<string, number>;
   }
 ): number | null {
   if (checkIn && checkOut && checkOut > checkIn) {
@@ -641,11 +658,16 @@ function resolveNightlyRateForDate(
   options?: {
     dateOverrides?: Record<string, number>;
     holidayRules?: PricingHolidayRuleDto[];
+    smartRecommendations?: Record<string, number>;
   }
 ): number {
   const key = formatDateKey(date);
   const override = options?.dateOverrides?.[key];
   if (override !== undefined) return override;
+
+  // Smart Pricing sits between a host lock and holiday rules.
+  const smart = options?.smartRecommendations?.[key];
+  if (smart !== undefined) return smart;
 
   const base = isWeekendRateDay(date) ? defaults.weekendNightlyRate : defaults.weekdayNightlyRate;
 

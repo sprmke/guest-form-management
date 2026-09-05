@@ -331,6 +331,7 @@ async function renderInquiryFacts(
     {
       dateOverrides: pricingFull.dateOverrides,
       holidayRules: pricingFull.holidayRules,
+      smartRecommendations: pricingFull.smartRecommendations,
     }
   );
 

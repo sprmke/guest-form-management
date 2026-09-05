@@ -5,6 +5,7 @@
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import {
   createServiceClient,
+  hasOrgTeamMemberEditPermission,
   type OrgRow,
   verifyOrgTeamAccess,
   type OrgTeamAccessContext,
@@ -105,7 +106,14 @@ export async function requireOrgTeamContext(
   req: Request,
   orgId: string,
   orgSlug: string | null,
-  options?: { requireManage?: boolean; requireInvite?: boolean; requireMemberDelete?: boolean }
+  options?: {
+    requireManage?: boolean;
+    requireInvite?: boolean;
+    requireMemberEdit?: boolean;
+    requireMemberDelete?: boolean;
+    requireInvitationEdit?: boolean;
+    requireInvitationDelete?: boolean;
+  }
 ): Promise<OrgTeamAccessContext> {
   if (orgId) {
     return verifyOrgTeamAccess(req, { orgId }, options);
@@ -791,7 +799,7 @@ export async function updateOrgTeamMember(
   const isSelf = ctx.user.id === targetUserId;
 
   if (hasStatusPatch || hasRolePatch || hasPermissionsPatch || hasListingPatch) {
-    if (!ctx.canManage) throw new Error('Access restricted');
+    if (!hasOrgTeamMemberEditPermission(ctx.permissions)) throw new Error('Access restricted');
     if (isVirtualOwner || targetUserId === ctx.org.owner_id) {
       throw new Error('Org owner cannot be updated');
     }
@@ -800,7 +808,7 @@ export async function updateOrgTeamMember(
     }
   }
 
-  if (hasContactPatch && !isSelf && !ctx.canManage) {
+  if (hasContactPatch && !isSelf && !hasOrgTeamMemberEditPermission(ctx.permissions)) {
     throw new Error('Access restricted');
   }
 
