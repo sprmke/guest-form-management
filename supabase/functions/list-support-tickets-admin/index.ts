@@ -20,6 +20,39 @@ serveSuperAdmin('list-support-tickets-admin', async (req) => {
   const { page, limit } = parsePageLimit(p, { maxLimit: 500 });
 
   const sb = createServiceClient();
+
+  if (p.get('summary') === 'true') {
+    const scoped = (q: ReturnType<typeof sb.from>) => (orgId ? q.eq('organization_id', orgId) : q);
+    const [totalRes, openRes, inProgressRes, resolvedRes] = await Promise.all([
+      scoped(sb.from('support_tickets').select('id', { count: 'exact', head: true })),
+      scoped(
+        sb.from('support_tickets').select('id', { count: 'exact', head: true }).eq('status', 'open')
+      ),
+      scoped(
+        sb
+          .from('support_tickets')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'in_progress')
+      ),
+      scoped(
+        sb
+          .from('support_tickets')
+          .select('id', { count: 'exact', head: true })
+          .in('status', ['resolved', 'closed'])
+      ),
+    ]);
+    const err = totalRes.error ?? openRes.error ?? inProgressRes.error ?? resolvedRes.error;
+    if (err) throw new Error(err.message);
+    return jsonSuccess(req, {
+      summary: {
+        total: totalRes.count ?? 0,
+        open: openRes.count ?? 0,
+        inProgress: inProgressRes.count ?? 0,
+        resolved: resolvedRes.count ?? 0,
+      },
+    });
+  }
+
   let query = sb
     .from('support_tickets')
     .select('*, organizations(id, name, slug)', { count: 'exact' })
