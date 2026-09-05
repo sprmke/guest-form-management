@@ -2,9 +2,13 @@ import { useEffect, useState } from 'react';
 
 import { Wallet } from 'lucide-react';
 
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { SuperAdminEmptyState } from '@/features/dashboard/super-admin/components/shared/SuperAdminEmptyState';
+import { SuperAdminPage } from '@/features/dashboard/super-admin/components/shared/SuperAdminPage';
 import { SuperAdminPageLoading } from '@/features/dashboard/super-admin/components/shared/SuperAdminPageLoading';
+import {
+  SuperAdminSettingsCard,
+  SuperAdminSettingsRow,
+} from '@/features/dashboard/super-admin/components/shared/SuperAdminSettingsCard';
 import {
   type ParkingPayoutTransaction,
   useMarkParkingPayoutDisbursed,
@@ -16,6 +20,7 @@ import {
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -183,29 +188,27 @@ function ParkingSettingsCard() {
   if (error) return <p className="text-destructive text-sm">Could not load parking settings.</p>;
 
   return (
-    <form
-      className="border-border space-y-4 rounded-xl border p-4"
-      onSubmit={async (event) => {
-        event.preventDefault();
-        await save.mutateAsync({
+    <SuperAdminSettingsCard
+      title="Commission & guest rate"
+      description="Guest rate is what riders are charged per night and doubles as the price cap that excludes hosts priced above it from matching. Commission is taken from the host's gross rate. Changes only apply to bookings created after saving — already-paid transactions keep their snapshotted values."
+      icon={<Wallet className="text-muted-foreground size-4" aria-hidden />}
+      onSubmit={() =>
+        void save.mutateAsync({
           commissionPct: Number(commissionPct) / 100,
           directCommissionPct: Number(directCommissionPct) / 100,
           guestRateWeekday: Number(weekday),
           guestRateWeekend: Number(weekend),
           supportEscalationPhone: escalationPhone.trim(),
-        });
-      }}
+        })
+      }
+      footer={
+        <Button type="submit" className="min-h-[44px]" disabled={save.isPending}>
+          {save.isPending ? 'Saving…' : 'Save'}
+        </Button>
+      }
     >
-      <h2 className="text-sm font-semibold">Commission &amp; guest rate</h2>
-      <p className="text-muted-foreground text-sm">
-        Guest rate is what riders are charged per night and doubles as the price cap that excludes
-        hosts priced above it from matching. Commission is taken from the host's gross rate. Changes
-        only apply to bookings created after saving — already-paid transactions keep their original
-        snapshotted values.
-      </p>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="commission-pct">Commission (%)</Label>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <SuperAdminSettingsRow stacked label="Commission (%)" htmlFor="commission-pct">
           <Input
             id="commission-pct"
             type="number"
@@ -215,9 +218,12 @@ function ParkingSettingsCard() {
             value={commissionPct}
             onChange={(event) => setCommissionPct(event.target.value)}
           />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="direct-commission-pct">Direct-link commission (%)</Label>
+        </SuperAdminSettingsRow>
+        <SuperAdminSettingsRow
+          stacked
+          label="Direct-link commission (%)"
+          htmlFor="direct-commission-pct"
+        >
           <Input
             id="direct-commission-pct"
             type="number"
@@ -227,9 +233,12 @@ function ParkingSettingsCard() {
             value={directCommissionPct}
             onChange={(event) => setDirectCommissionPct(event.target.value)}
           />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="guest-rate-weekday">Guest rate — weekday (₱/night)</Label>
+        </SuperAdminSettingsRow>
+        <SuperAdminSettingsRow
+          stacked
+          label="Guest rate — weekday (₱/night)"
+          htmlFor="guest-rate-weekday"
+        >
           <Input
             id="guest-rate-weekday"
             type="number"
@@ -238,9 +247,12 @@ function ParkingSettingsCard() {
             value={weekday}
             onChange={(event) => setWeekday(event.target.value)}
           />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="guest-rate-weekend">Guest rate — weekend (₱/night)</Label>
+        </SuperAdminSettingsRow>
+        <SuperAdminSettingsRow
+          stacked
+          label="Guest rate — weekend (₱/night)"
+          htmlFor="guest-rate-weekend"
+        >
           <Input
             id="guest-rate-weekend"
             type="number"
@@ -249,10 +261,14 @@ function ParkingSettingsCard() {
             value={weekend}
             onChange={(event) => setWeekend(event.target.value)}
           />
-        </div>
+        </SuperAdminSettingsRow>
       </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="support-escalation-phone">Support escalation phone</Label>
+      <SuperAdminSettingsRow
+        stacked
+        label="Support escalation phone"
+        htmlFor="support-escalation-phone"
+        description="Shown to guests on the parking status page for an unresponsive host. Optional."
+      >
         <Input
           id="support-escalation-phone"
           type="tel"
@@ -260,14 +276,25 @@ function ParkingSettingsCard() {
           value={escalationPhone}
           onChange={(event) => setEscalationPhone(event.target.value)}
         />
-        <p className="text-muted-foreground text-xs">
-          Shown to guests on the parking status page for an unresponsive host. Optional.
-        </p>
-      </div>
-      <Button type="submit" className="min-h-[44px]" disabled={save.isPending}>
-        Save
-      </Button>
-    </form>
+      </SuperAdminSettingsRow>
+    </SuperAdminSettingsCard>
+  );
+}
+
+function PayoutRowActions({ txn }: { txn: ParkingPayoutTransaction }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {!txn.disbursedAt ? <MarkDisbursedDialog transaction={txn} /> : null}
+      <RecordClawbackDialog transaction={txn} />
+    </div>
+  );
+}
+
+function PayoutStatusBadge({ txn }: { txn: ParkingPayoutTransaction }) {
+  return txn.disbursedAt ? (
+    <Badge variant="secondary">Disbursed</Badge>
+  ) : (
+    <Badge variant="outline">Awaiting disbursement</Badge>
   );
 }
 
@@ -283,62 +310,100 @@ function PayoutsLedger() {
   }
 
   return (
-    <div className="border-border overflow-hidden rounded-xl border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Booking</TableHead>
-            <TableHead>Host</TableHead>
-            <TableHead>Net payout</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {transactions.map((txn) => (
-            <TableRow key={txn.id}>
-              <TableCell>
+    <>
+      {/* Desktop table */}
+      <Card className="hidden overflow-hidden lg:block">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Booking</TableHead>
+                <TableHead>Host</TableHead>
+                <TableHead>Net payout</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {transactions.map((txn) => (
+                <TableRow key={txn.id}>
+                  <TableCell>
+                    <div className="font-medium">{txn.guestName ?? 'Guest'}</div>
+                    <div className="text-muted-foreground text-xs">
+                      {txn.checkInDate ?? '—'} → {txn.checkOutDate ?? '—'} · {txn.nights} night
+                      {txn.nights === 1 ? '' : 's'}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div>{txn.parkingName ?? '—'}</div>
+                    <div className="text-muted-foreground text-xs">
+                      {txn.organizationName ?? '—'}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="font-medium">{formatPhp(txn.hostNetTotal)}</div>
+                    <div className="text-muted-foreground text-xs">
+                      Gross {formatPhp(txn.hostGrossTotal)} · Commission{' '}
+                      {(txn.commissionPct * 100).toFixed(1)}%
+                      {txn.bookingChannel === 'direct_link' ? ' · Direct link' : ''}
+                    </div>
+                    {txn.clawbackAmount != null ? (
+                      <div className="text-destructive text-xs">
+                        Clawback: {formatPhp(txn.clawbackAmount)}
+                      </div>
+                    ) : null}
+                  </TableCell>
+                  <TableCell>
+                    <PayoutStatusBadge txn={txn} />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end">
+                      <PayoutRowActions txn={txn} />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+
+      {/* Mobile / tablet cards */}
+      <div className="space-y-3 lg:hidden">
+        {transactions.map((txn) => (
+          <Card key={txn.id} padding="sm" className="space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
                 <div className="font-medium">{txn.guestName ?? 'Guest'}</div>
                 <div className="text-muted-foreground text-xs">
                   {txn.checkInDate ?? '—'} → {txn.checkOutDate ?? '—'} · {txn.nights} night
                   {txn.nights === 1 ? '' : 's'}
                 </div>
-              </TableCell>
-              <TableCell>
-                <div>{txn.parkingName ?? '—'}</div>
-                <div className="text-muted-foreground text-xs">{txn.organizationName ?? '—'}</div>
-              </TableCell>
-              <TableCell>
-                <div className="font-medium">{formatPhp(txn.hostNetTotal)}</div>
-                <div className="text-muted-foreground text-xs">
-                  Gross {formatPhp(txn.hostGrossTotal)} · Commission{' '}
-                  {(txn.commissionPct * 100).toFixed(1)}%
-                  {txn.bookingChannel === 'direct_link' ? ' · Direct link' : ''}
+              </div>
+              <PayoutStatusBadge txn={txn} />
+            </div>
+            <div className="text-sm">
+              <div>
+                {txn.parkingName ?? '—'}{' '}
+                <span className="text-muted-foreground">· {txn.organizationName ?? '—'}</span>
+              </div>
+              <div className="font-medium">{formatPhp(txn.hostNetTotal)} net</div>
+              <div className="text-muted-foreground text-xs">
+                Gross {formatPhp(txn.hostGrossTotal)} · Commission{' '}
+                {(txn.commissionPct * 100).toFixed(1)}%
+                {txn.bookingChannel === 'direct_link' ? ' · Direct link' : ''}
+              </div>
+              {txn.clawbackAmount != null ? (
+                <div className="text-destructive text-xs">
+                  Clawback: {formatPhp(txn.clawbackAmount)}
                 </div>
-                {txn.clawbackAmount != null ? (
-                  <div className="text-destructive text-xs">
-                    Clawback: {formatPhp(txn.clawbackAmount)}
-                  </div>
-                ) : null}
-              </TableCell>
-              <TableCell>
-                {txn.disbursedAt ? (
-                  <Badge variant="secondary">Disbursed</Badge>
-                ) : (
-                  <Badge variant="outline">Awaiting disbursement</Badge>
-                )}
-              </TableCell>
-              <TableCell>
-                <div className="flex flex-wrap justify-end gap-2">
-                  {!txn.disbursedAt ? <MarkDisbursedDialog transaction={txn} /> : null}
-                  <RecordClawbackDialog transaction={txn} />
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+              ) : null}
+            </div>
+            <PayoutRowActions txn={txn} />
+          </Card>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -346,13 +411,15 @@ export function SuperAdminParkingPayoutsPage() {
   usePageTitle(appPageTitle('Parking payouts'));
 
   return (
-    <div className="space-y-4">
-      <AdminPageHeader
-        title="Parking payouts"
-        subtitle="Commission/guest-rate config and the manual host disbursement ledger for the parkings vertical."
-      />
+    <SuperAdminPage
+      title="Parking payouts"
+      subtitle="Commission / guest-rate config and the manual host disbursement ledger for the parkings vertical."
+    >
       <ParkingSettingsCard />
-      <PayoutsLedger />
-    </div>
+      <div className="space-y-3">
+        <h2 className="text-section-title">Disbursement ledger</h2>
+        <PayoutsLedger />
+      </div>
+    </SuperAdminPage>
   );
 }
