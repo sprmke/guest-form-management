@@ -598,8 +598,8 @@ export function PropertyMediaUpload({
     if (!scopeId) {
       toast.error(
         developmentId
-          ? 'Development context is missing — reload the page'
-          : 'Property context is missing — reload the page'
+          ? 'Development context is missing. Reload the page'
+          : 'Property context is missing. Reload the page'
       );
       return;
     }

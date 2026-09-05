@@ -905,8 +905,8 @@ export function PropertyDangerZoneSection({
             </p>
             <p className="text-card-description">
               {isArchived
-                ? 'Sets status to Active — shows the property in active listings again.'
-                : 'Sets status to Inactive — hides the property from active listings. Booking history and settings are kept.'}
+                ? 'Sets status to Active. Shows the property in active listings again.'
+                : 'Sets status to Inactive. Hides the property from active listings. Booking history and settings are kept.'}
             </p>
           </div>
           {isArchived ? (

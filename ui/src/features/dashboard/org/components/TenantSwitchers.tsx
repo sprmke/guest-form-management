@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import { Building2, Car, Check, ChevronDown, Home, Plus } from 'lucide-react';
 
+import { isPlatformSeedMediaUrl } from '@/features/dashboard/lib/storedMediaDisplay';
 import { AddEntityDialog } from '@/features/dashboard/org/components/AddEntityDialog';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOptionalParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
@@ -19,6 +20,8 @@ import {
   canSelectOrgInSwitcher,
   isPropertyOnlyOrgAccess,
 } from '@/features/dashboard/org/lib/orgAccessKind';
+import { orgParkingCardModel } from '@/features/dashboard/org/lib/orgParkingCardModel';
+import { orgPropertyCardModel } from '@/features/dashboard/org/lib/orgPropertyCardModel';
 import { resolveParkingCompactLabel } from '@/features/dashboard/org/lib/parkingSlotDisplay';
 import {
   orgDashboardPath,
@@ -308,7 +311,14 @@ export function SidebarTenantScope({
   const showWorkspaceSwitcher =
     !propertyOnlyOrg || currentOrgProperties.length + currentOrgParkings.length > 1;
 
-  const contextLogoUrl = orgSettings?.emailLogoUrl ?? null;
+  const orgLogoUrl =
+    orgSettings?.fieldSources.emailLogoUrl === 'db' &&
+    orgSettings.emailLogoUrl &&
+    !isPlatformSeedMediaUrl(orgSettings.emailLogoUrl)
+      ? orgSettings.emailLogoUrl
+      : currentOrg.logoUrl && !isPlatformSeedMediaUrl(currentOrg.logoUrl)
+        ? currentOrg.logoUrl
+        : null;
 
   const display = currentProperty
     ? { primary: currentProperty.name, secondary: currentOrg.name, primaryTitle: undefined }
@@ -319,6 +329,12 @@ export function SidebarTenantScope({
           primaryTitle: currentParking.name,
         }
       : { primary: currentOrg.name, secondary: 'Organization', primaryTitle: undefined };
+
+  const contextLogoUrl = currentProperty
+    ? (orgPropertyCardModel(currentProperty).thumbnailUrl ?? orgLogoUrl)
+    : currentParking
+      ? (orgParkingCardModel(currentParking).thumbnailUrl ?? orgLogoUrl)
+      : orgLogoUrl;
 
   const handleSelectOrg = (org: Organization) => {
     if (!canSelectOrgInSwitcher(org.accessKind)) return;
@@ -400,6 +416,7 @@ export function SidebarTenantScope({
   const contextLogo = (
     <TeamLogoMark
       src={contextLogoUrl}
+      name={display.primaryTitle ?? display.primary}
       alt={display.primary}
       className={cn(
         'shrink-0 shadow-none',

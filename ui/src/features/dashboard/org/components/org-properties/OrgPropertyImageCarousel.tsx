@@ -216,7 +216,7 @@ export function OrgPropertyImageCarousel({ images, name, className, onSurfaceCli
           <div key={`${image}-${imageIndex}`} className="h-full w-full shrink-0">
             <img
               src={image}
-              alt={`${name} — image ${imageIndex + 1}`}
+              alt={`${name}, image ${imageIndex + 1}`}
               draggable={false}
               className={cn(
                 'size-full select-none object-cover',

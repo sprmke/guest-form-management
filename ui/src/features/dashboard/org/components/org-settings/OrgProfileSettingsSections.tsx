@@ -79,6 +79,7 @@ export function OrgBasicInformationSection({
             source={logoSource}
             disabled={disabled}
             imageUrl={storedOrgSettingsMediaUrl(logoUrl, logoSource)}
+            fallbackName={draft.name}
             previewAlt="Organization logo preview"
             uploadLabel="Upload logo"
             replaceLabel="Replace logo"

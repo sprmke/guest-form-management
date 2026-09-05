@@ -217,7 +217,7 @@ export function VerificationTier1SubmittedDocs({
                     </Button>
                   ) : variant === 'uploaded' || variant === 'approved' ? (
                     <span className="text-muted-foreground w-[3.25rem] shrink-0 text-center text-[11px]">
-                      —
+                      -
                     </span>
                   ) : null}
                 </div>

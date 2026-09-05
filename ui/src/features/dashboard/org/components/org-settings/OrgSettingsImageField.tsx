@@ -1,4 +1,4 @@
-import { useRef, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 
 import { Loader2, Upload, ImagePlus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -7,13 +7,11 @@ import {
   OrgSettingsField,
   OrgSettingsFieldSpan,
 } from '@/features/dashboard/org/components/org-settings/OrgSettingsFields';
-import {
-  useClearOrgSettingsImage,
-  type OrgSettingsFieldSource,
-} from '@/features/dashboard/org/hooks/useOrgSettings';
+import { type OrgSettingsFieldSource } from '@/features/dashboard/org/hooks/useOrgSettings';
 import { useUploadOrgSettingsAsset } from '@/features/dashboard/org/hooks/useUploadOrgSettingsAsset';
 
-import { Button } from '@/components/ui/button';
+import { TeamLogoMark } from '@/components/branding/TeamLogoMark';
+import { isUsableLogoNaturalSize } from '@/lib/entityInitials';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +24,7 @@ export function OrgSettingsImageField({
   source,
   disabled,
   imageUrl,
+  fallbackName,
   previewAlt,
   uploadLabel = 'Upload image',
   replaceLabel = 'Replace image',
@@ -39,6 +38,8 @@ export function OrgSettingsImageField({
   source?: OrgSettingsFieldSource;
   disabled?: boolean;
   imageUrl: string | null;
+  /** Listing / org name for initials when no usable logo is stored. */
+  fallbackName?: string | null;
   previewAlt: string;
   uploadLabel?: string;
   replaceLabel?: string;
@@ -48,11 +49,14 @@ export function OrgSettingsImageField({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const uploadMut = useUploadOrgSettingsAsset();
-  const clearMut = useClearOrgSettingsImage();
-  const busy = disabled || uploadMut.isPending || clearMut.isPending;
+  const busy = disabled || uploadMut.isPending;
   const hasStoredCustom = source === 'db';
-  const hasImage = Boolean(imageUrl?.trim());
-  const allowReset = hasStoredCustom && !required;
+  const [imageFailed, setImageFailed] = useState(false);
+  const hasImage = Boolean(imageUrl?.trim()) && !imageFailed;
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [imageUrl]);
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -65,15 +69,6 @@ export function OrgSettingsImageField({
       toast.error(friendlyToastError(err, 'Upload failed'));
     } finally {
       if (fileRef.current) fileRef.current.value = '';
-    }
-  }
-
-  async function handleReset() {
-    try {
-      await clearMut.mutateAsync();
-      toast.success(`${label} reset to default`);
-    } catch (err) {
-      toast.error(friendlyToastError(err, 'Reset failed'));
     }
   }
 
@@ -118,6 +113,13 @@ export function OrgSettingsImageField({
                     'size-full object-cover object-center',
                     uploadMut.isPending && 'opacity-50'
                   )}
+                  onError={() => setImageFailed(true)}
+                  onLoad={(event) => {
+                    const img = event.currentTarget;
+                    if (!isUsableLogoNaturalSize(img.naturalWidth, img.naturalHeight)) {
+                      setImageFailed(true);
+                    }
+                  }}
                 />
                 <span
                   className={cn(
@@ -143,17 +145,29 @@ export function OrgSettingsImageField({
               aria-invalid={Boolean(error)}
               className={cn(
                 LOGO_FRAME_CLASS,
-                'bg-muted/20 text-muted-foreground flex flex-col items-center justify-center gap-2.5 border-dashed text-sm',
-                error ? 'border-destructive' : 'border-border',
+                'border-border group/empty relative border-dashed p-0',
                 'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-                !busy && 'hover:bg-muted/30 hover:text-foreground cursor-pointer',
+                error && 'border-destructive',
+                !busy && 'cursor-pointer',
                 busy && 'cursor-not-allowed opacity-60'
               )}
             >
-              <span className="bg-primary/10 text-primary flex size-10 items-center justify-center rounded-full">
-                <ImagePlus className="size-5" aria-hidden />
+              <TeamLogoMark
+                name={fallbackName || previewAlt}
+                alt={previewAlt}
+                className="size-full rounded-xl shadow-none ring-0"
+                initialsClassName="text-3xl sm:text-4xl"
+              />
+              <span
+                className={cn(
+                  'bg-background/80 text-foreground pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 px-3 text-center text-sm font-medium transition-opacity motion-reduce:transition-none',
+                  'opacity-0 group-focus-within/empty:opacity-100 group-hover/empty:opacity-100'
+                )}
+                aria-hidden
+              >
+                <ImagePlus className="text-primary size-5" />
+                <span>{uploadLabel}</span>
               </span>
-              <span className="text-foreground font-medium">{uploadLabel}</span>
             </button>
           )}
           <input
@@ -164,21 +178,6 @@ export function OrgSettingsImageField({
             disabled={busy}
             onChange={(event) => void handleFileChange(event)}
           />
-          {allowReset ? (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={busy}
-              className="min-h-[44px]"
-              onClick={() => void handleReset()}
-            >
-              {clearMut.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                'Reset to default'
-              )}
-            </Button>
-          ) : null}
         </div>
       </OrgSettingsField>
     </OrgSettingsFieldSpan>

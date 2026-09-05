@@ -125,7 +125,7 @@ function resolveToggleRecipient(
 
   switch (key) {
     case 'emailNewBookingRequest':
-      return propertyEmail || `${fallback} — set in Recipients above`;
+      return propertyEmail || `${fallback} (set in Recipients above)`;
     case 'emailGafRequest':
     case 'emailPetRequest':
       return pmoEmail || 'Configure in platform development settings';

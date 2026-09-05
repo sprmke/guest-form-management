@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { ORGANIZATIONS_QUERY_KEY } from '@/features/dashboard/org/hooks/useOrganizations';
 import { scopedOrgFunctionsUrl, useOrgScopeKey } from '@/features/dashboard/org/lib/adminApiScope';
 
 import { supabase } from '@/lib/supabase/client';
@@ -51,7 +50,7 @@ export function orgOperatorFormIsDirty(
 async function getAdminJwt(): Promise<string> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
-  if (!token) throw new Error('No active session — please sign in');
+  if (!token) throw new Error('No active session. Please sign in');
   return token;
 }
 
@@ -114,38 +113,6 @@ export function useUpdateOrgSettings() {
     onSuccess: (data) => {
       qc.setQueryData(['org-settings', orgSlug ?? orgId], data);
       qc.invalidateQueries({ queryKey: ['app-settings'] });
-    },
-  });
-}
-
-export function useClearOrgSettingsImage() {
-  const qc = useQueryClient();
-  const { orgSlug, orgId } = useOrgScopeKey();
-  return useMutation({
-    mutationFn: async () => {
-      const jwt = await getAdminJwt();
-      const res = await fetch(orgSettingsUrl(orgSlug, orgId), {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${jwt}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ emailLogoUrl: '' }),
-      });
-      const json = (await res.json()) as {
-        success?: boolean;
-        error?: string;
-        data?: OrgSettingsDto;
-      };
-      if (!res.ok || !json.success || !json.data) {
-        throw new Error(json.error ?? `Reset failed (${res.status})`);
-      }
-      return json.data;
-    },
-    onSuccess: (data) => {
-      qc.setQueryData(['org-settings', orgSlug ?? orgId], data);
-      qc.invalidateQueries({ queryKey: ['app-settings'] });
-      qc.invalidateQueries({ queryKey: ORGANIZATIONS_QUERY_KEY });
     },
   });
 }

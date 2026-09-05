@@ -414,12 +414,12 @@ export function ListingVerificationModal({
       </div>
       {inPreExpiry ? (
         <p className="text-muted-foreground text-sm" role="status">
-          Contract ends soon — submit a renewal before the end date.
+          Contract ends soon. Submit a renewal before the end date.
         </p>
       ) : null}
       {inGrace ? (
         <p className="text-sm text-amber-800 dark:text-amber-100" role="status">
-          Contract ended — renew listing verification to keep this listing active.
+          Contract ended. Renew listing verification to keep this listing active.
         </p>
       ) : null}
       {locked && !inGrace ? (
