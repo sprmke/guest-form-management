@@ -12,8 +12,8 @@ function colSlug(name: string): string {
 function formatStayRangeShort(checkIn: string, checkOut: string): string {
   const ci = formatBookingDateShort(checkIn);
   const co = formatBookingDateShort(checkOut);
-  if (ci && co && ci !== '—' && co !== '—') return `${ci}–${co}`;
-  return ci !== '—' ? ci : co !== '—' ? co : '';
+  if (ci && co && ci !== '-' && co !== '-') return `${ci}–${co}`;
+  return ci !== '-' ? ci : co !== '-' ? co : '';
 }
 
 function rowHostLabel(row: Record<string, string | number>, columns: string[]): string | null {

@@ -319,7 +319,7 @@ export function AiAssistantPanel({ open, onOpenChange, readOnly = false }: Props
                     className="bg-warning/10 text-warning-foreground mx-3 mb-1 rounded-md px-3 py-2 text-xs"
                     role="status"
                   >
-                    <p className="font-medium">Stopped — these changes were already applied:</p>
+                    <p className="font-medium">Stopped. These changes were already applied:</p>
                     <ul className="mt-1 list-inside list-disc">
                       {partialCancelEffects.map((effect) => (
                         <li key={effect.toolName}>{effect.label}</li>

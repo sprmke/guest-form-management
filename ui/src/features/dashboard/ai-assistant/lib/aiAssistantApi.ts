@@ -41,6 +41,40 @@ export type StepperStep = {
   actionBlock?: ActionConfirmationBlock;
 };
 
+export type DynamicFormFieldOption = { value: string; label: string };
+
+export type DynamicFormFieldType =
+  'text' | 'textarea' | 'number' | 'select' | 'radio' | 'date' | 'email' | 'tel' | 'checkbox';
+
+export type DynamicFormField = {
+  fieldType: DynamicFormFieldType;
+  key: string;
+  label: string;
+  placeholder?: string;
+  required?: boolean;
+  /** `select` / `radio` only. */
+  options?: DynamicFormFieldOption[];
+  /** `number` only. */
+  min?: number;
+  max?: number;
+  /** `text` / `textarea` only. */
+  maxLength?: number;
+};
+
+export type DynamicFormBlock = {
+  type: 'dynamic_form';
+  formId: string;
+  /** Tool the model intends to call once the host submits — informational only. */
+  toolName?: string;
+  title?: string;
+  description?: string;
+  fields: DynamicFormField[];
+  submitLabel?: string;
+  status: 'pending' | 'submitted';
+  /** Filled values, present once `status` is `submitted` (read-only recap). */
+  values?: Record<string, string>;
+};
+
 export type ChatBlock =
   | { type: 'text'; text: string }
   | {
@@ -71,6 +105,7 @@ export type ChatBlock =
   | { type: 'activity_timeline'; entries: ActivityTimelineEntry[] }
   | { type: 'task_plan'; title: string; steps: TaskPlanStep[] }
   | { type: 'quick_actions'; actions: Array<{ label: string; prompt: string }> }
+  | DynamicFormBlock
   | ActionConfirmationBlock;
 
 export type ChatAttachmentMeta = {

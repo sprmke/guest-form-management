@@ -35,7 +35,12 @@ import {
   STATUS_HUMAN_LABEL,
   type BookingStatus,
 } from './statusMachine.ts';
-import type { ChatBlock, ActionConfirmationBlock } from './dashboardAssistantSafetyGuard.ts';
+import type {
+  ChatBlock,
+  ActionConfirmationBlock,
+  DynamicFormField,
+  DynamicFormFieldType,
+} from './dashboardAssistantSafetyGuard.ts';
 
 const STATUS_CODE_RE = /\b([A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+)\b/g;
 
@@ -376,6 +381,83 @@ function sanitizeStepper(block: Extract<ChatBlock, { type: 'stepper' }>): ChatBl
   return { type: 'stepper', title: asDisplay(block.title) || 'Booking journey', steps };
 }
 
+const DYNAMIC_FORM_FIELD_TYPES = new Set<DynamicFormFieldType>([
+  'text',
+  'textarea',
+  'number',
+  'select',
+  'radio',
+  'date',
+  'email',
+  'tel',
+  'checkbox',
+]);
+
+function sanitizeDynamicFormField(field: DynamicFormField): DynamicFormField | null {
+  const key = asDisplay(field.key);
+  const label = asDisplay(field.label);
+  const fieldType = DYNAMIC_FORM_FIELD_TYPES.has(field.fieldType) ? field.fieldType : null;
+  if (!key || !label || !fieldType) return null;
+
+  const next: DynamicFormField = { fieldType, key, label };
+  const placeholder = asDisplay(field.placeholder);
+  if (placeholder) next.placeholder = placeholder;
+  if (field.required) next.required = true;
+
+  if (fieldType === 'select' || fieldType === 'radio') {
+    const options = (field.options ?? [])
+      .map((opt) => ({ value: asDisplay(opt.value), label: asDisplay(opt.label) }))
+      .filter((opt) => opt.value !== '' && opt.label !== '');
+    if (options.length === 0) return null;
+    next.options = options;
+  }
+
+  if (fieldType === 'number') {
+    if (typeof field.min === 'number' && Number.isFinite(field.min)) next.min = field.min;
+    if (typeof field.max === 'number' && Number.isFinite(field.max)) next.max = field.max;
+  }
+
+  if (fieldType === 'text' || fieldType === 'textarea') {
+    if (typeof field.maxLength === 'number' && Number.isFinite(field.maxLength)) {
+      next.maxLength = field.maxLength;
+    }
+  }
+
+  return next;
+}
+
+function sanitizeDynamicForm(
+  block: Extract<ChatBlock, { type: 'dynamic_form' }>
+): ChatBlock | null {
+  const seenKeys = new Set<string>();
+  const fields = (block.fields ?? [])
+    .map(sanitizeDynamicFormField)
+    .filter((field): field is DynamicFormField => {
+      if (!field) return false;
+      if (seenKeys.has(field.key)) return false;
+      seenKeys.add(field.key);
+      return true;
+    });
+  if (fields.length === 0) return null;
+
+  const next: ChatBlock = {
+    type: 'dynamic_form',
+    formId: asDisplay(block.formId) || crypto.randomUUID(),
+    fields,
+    status: block.status === 'submitted' ? 'submitted' : 'pending',
+  };
+  const title = asDisplay(block.title);
+  if (title) next.title = title;
+  const description = asDisplay(block.description);
+  if (description) next.description = description;
+  const submitLabel = asDisplay(block.submitLabel);
+  if (submitLabel) next.submitLabel = submitLabel;
+  const toolName = asDisplay(block.toolName);
+  if (toolName) next.toolName = toolName;
+  if (block.values && typeof block.values === 'object') next.values = block.values;
+  return next;
+}
+
 function sanitizeBookingCard(
   block: Extract<ChatBlock, { type: 'booking_card' }>
 ): ChatBlock | null {
@@ -433,6 +515,11 @@ export function sanitizeAssistantChatBlocks(
     }
     if (block.type === 'booking_card') {
       const next = sanitizeBookingCard(block);
+      if (next) out.push(next);
+      continue;
+    }
+    if (block.type === 'dynamic_form') {
+      const next = sanitizeDynamicForm(block);
       if (next) out.push(next);
       continue;
     }

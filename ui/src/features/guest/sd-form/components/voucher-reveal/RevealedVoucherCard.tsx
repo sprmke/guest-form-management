@@ -7,15 +7,15 @@ import { formatDateToLongFormat, normalizeDateString } from '@/utils/format/date
 function formatVoucherStayLine(checkIn: string, checkOut: string): string {
   const inLabel = formatVoucherDateLabel(checkIn);
   const outLabel = formatVoucherDateLabel(checkOut);
-  if (inLabel === '—' && outLabel === '—') return '—';
-  if (outLabel === '—' || !checkOut.trim()) return inLabel;
-  if (inLabel === '—' || !checkIn.trim()) return outLabel;
+  if (inLabel === '-' && outLabel === '-') return '-';
+  if (outLabel === '-' || !checkOut.trim()) return inLabel;
+  if (inLabel === '-' || !checkIn.trim()) return outLabel;
   return `${inLabel} – ${outLabel}`;
 }
 
 function formatVoucherDateLabel(stored: string): string {
   const raw = (stored ?? '').trim();
-  if (!raw) return '—';
+  if (!raw) return '-';
   const normalized = normalizeDateString(raw);
   const long = formatDateToLongFormat(normalized);
   return long || raw;
@@ -32,7 +32,7 @@ export function RevealedVoucherCard({
   checkInDate: string;
   checkOutDate: string;
 }) {
-  const guestDisplay = guestName.trim() || '—';
+  const guestDisplay = guestName.trim() || '-';
   const stayLine = formatVoucherStayLine(checkInDate, checkOutDate);
 
   return (

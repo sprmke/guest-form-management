@@ -123,7 +123,7 @@ export function ActionConfirmationBlock({
         </p>
       )}
       {status === 'denied' && !errorMessage && (
-        <p className="text-muted-foreground pl-6 text-xs">Cancelled — no changes made.</p>
+        <p className="text-muted-foreground pl-6 text-xs">Cancelled. No changes made.</p>
       )}
       {status === 'expired' && (
         <p className="text-muted-foreground pl-6 text-xs">This action expired.</p>

@@ -196,7 +196,7 @@ function WheelSvg({ segments, muted }: { segments: ReadonlyArray<Voucher>; muted
         const mid = start + segmentAngle / 2;
         const labelPos = polarToCartesian(cx, cy, r * 0.62, mid);
         const prize = segments[i];
-        const label = prize ? (prize.amount >= 100 ? 'Free' : `${prize.amount}%`) : '—';
+        const label = prize ? (prize.amount >= 100 ? 'Free' : `${prize.amount}%`) : '-';
         return (
           <g key={prize?.code ?? i}>
             <path

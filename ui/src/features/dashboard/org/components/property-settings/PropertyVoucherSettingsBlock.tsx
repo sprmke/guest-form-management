@@ -329,7 +329,7 @@ export function PropertyVoucherSettingsBlock({
                                 inputMode="numeric"
                                 disabled={disabled || !enabledRow}
                                 value={enabledRow ? (row?.chancePercent ?? 1) : ''}
-                                placeholder="—"
+                                placeholder="-"
                                 aria-label={`Weight for ${prizeLabel(percentOff)}`}
                                 className="h-9 w-[3.25rem] min-w-[3.25rem] px-1.5 text-center tabular-nums"
                                 onChange={(e) => {
@@ -359,7 +359,7 @@ export function PropertyVoucherSettingsBlock({
                                 enabledRow ? 'text-foreground' : 'text-muted-foreground'
                               )}
                             >
-                              {enabledRow ? formatVoucherOddsLabel(odds) : '—'}
+                              {enabledRow ? formatVoucherOddsLabel(odds) : '-'}
                             </p>
 
                             <p
@@ -374,7 +374,7 @@ export function PropertyVoucherSettingsBlock({
                                 ? percentOff >= 100
                                   ? formatMoney(savings)
                                   : `−${formatMoney(savings)}`
-                                : '—'}
+                                : '-'}
                             </p>
                           </li>
                         );
@@ -451,7 +451,7 @@ export function PropertyVoucherSettingsBlock({
                                 ? row.percentOff >= 100
                                   ? formatMoney(savings)
                                   : `−${formatMoney(savings)}`
-                                : '—'}
+                                : '-'}
                             </p>
                           </li>
                         );

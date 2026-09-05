@@ -513,6 +513,7 @@ function hasHostVisibleContent(blocks: ChatBlock[]): boolean {
     if (block.type === 'activity_timeline' || block.type === 'task_plan') return false;
     if (block.type === 'quick_actions') return (block.actions?.length ?? 0) > 0;
     if (block.type === 'text') return Boolean(block.text?.trim());
+    if (block.type === 'dynamic_form') return (block.fields?.length ?? 0) > 0;
     return true;
   });
 }

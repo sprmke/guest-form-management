@@ -373,7 +373,7 @@ async function checkKillSwitch(reason: string): Promise<void> {
   if (!killed) return;
 
   // eslint-disable-next-line no-console
-  console.warn('[sw] kill-switch tripped — unregistering', { BUILD_ID, descriptor });
+  console.warn('[sw] kill-switch tripped; unregistering', { BUILD_ID, descriptor });
   await wipeAllCaches();
   const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
   for (const client of clients) client.postMessage({ type: SW_MESSAGE.KILLED });

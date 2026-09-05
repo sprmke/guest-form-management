@@ -10,9 +10,9 @@ import type {
 import { Badge } from '@/components/ui/badge';
 
 function formatAssessmentDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) return '-';
   return d.toLocaleDateString('en-PH', {
     timeZone: 'Asia/Manila',
     month: 'short',
@@ -22,12 +22,12 @@ function formatAssessmentDate(iso: string | null | undefined): string {
 }
 
 function formatCriterionValue(key: string, row: OrgSuperhostCriterionSnapshot): string {
-  if (key === 'rating') return row.sampleSize > 0 ? row.value.toFixed(2) : '—';
+  if (key === 'rating') return row.sampleSize > 0 ? row.value.toFixed(2) : '-';
   if (key === 'responseRate') {
-    return row.sampleSize > 0 ? `${Math.round(row.value * 100)}%` : '—';
+    return row.sampleSize > 0 ? `${Math.round(row.value * 100)}%` : '-';
   }
   if (key === 'cancellationRate') {
-    return row.sampleSize > 0 ? `${(row.value * 100).toFixed(1)}%` : '—';
+    return row.sampleSize > 0 ? `${(row.value * 100).toFixed(1)}%` : '-';
   }
   if (key === 'activity') {
     if (row.metVia === 'hundred_nights') return `${row.totalNights ?? row.value} nights`;

@@ -116,6 +116,46 @@ export type StepperStep = {
   actionBlock?: ActionConfirmationBlock;
 };
 
+export type DynamicFormFieldOption = { value: string; label: string };
+
+export type DynamicFormFieldType =
+  'text' | 'textarea' | 'number' | 'select' | 'radio' | 'date' | 'email' | 'tel' | 'checkbox';
+
+export type DynamicFormField = {
+  fieldType: DynamicFormFieldType;
+  key: string;
+  label: string;
+  placeholder?: string;
+  required?: boolean;
+  /** `select` / `radio` only. */
+  options?: DynamicFormFieldOption[];
+  /** `number` only. */
+  min?: number;
+  max?: number;
+  /** `text` / `textarea` only. */
+  maxLength?: number;
+};
+
+/**
+ * A single in-chat form the model emits when it needs several structured inputs before calling
+ * a tool (e.g. propose_create_support_ticket) — replaces asking for each field one at a time in
+ * text. Never a factual claim block, so it is exempt from numeric grounding (see
+ * assertBlocksGrounded below). `toolName` is informational only: submission does not call the
+ * tool directly, it sends the filled values back as a normal chat turn so the model (with the
+ * same tool declarations) calls it.
+ */
+export type DynamicFormBlock = {
+  type: 'dynamic_form';
+  formId: string;
+  toolName?: string;
+  title?: string;
+  description?: string;
+  fields: DynamicFormField[];
+  submitLabel?: string;
+  status: 'pending' | 'submitted';
+  values?: Record<string, string>;
+};
+
 export type ChatBlock =
   | { type: 'text'; text: string }
   | {
@@ -165,6 +205,7 @@ export type ChatBlock =
       }>;
     }
   | { type: 'quick_actions'; actions: Array<{ label: string; prompt: string }> }
+  | DynamicFormBlock
   | ActionConfirmationBlock;
 
 const KNOWN_BLOCK_TYPES = new Set<ChatBlock['type']>([
@@ -179,6 +220,7 @@ const KNOWN_BLOCK_TYPES = new Set<ChatBlock['type']>([
   'activity_timeline',
   'task_plan',
   'quick_actions',
+  'dynamic_form',
   'action_confirmation',
 ]);
 
@@ -250,7 +292,8 @@ export function assertBlocksGrounded(
       block.type === 'stepper' ||
       block.type === 'quick_actions' ||
       block.type === 'activity_timeline' ||
-      block.type === 'task_plan'
+      block.type === 'task_plan' ||
+      block.type === 'dynamic_form'
     ) {
       return;
     }

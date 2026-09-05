@@ -20,8 +20,8 @@ export function OfflineBanner({ online, pendingCount = 0, syncing = false }: Off
 
   const label = !online
     ? pendingCount > 0
-      ? `Offline — ${pendingCount} change${pendingCount === 1 ? '' : 's'} will sync when you reconnect`
-      : 'Offline — showing your last synced data'
+      ? `Offline. ${pendingCount} change${pendingCount === 1 ? '' : 's'} will sync when you reconnect`
+      : 'Offline. Showing your last synced data'
     : syncing
       ? `Syncing ${pendingCount || ''} change${pendingCount === 1 ? '' : 's'}…`.replace('  ', ' ')
       : `${pendingCount} change${pendingCount === 1 ? '' : 's'} waiting to sync`;
