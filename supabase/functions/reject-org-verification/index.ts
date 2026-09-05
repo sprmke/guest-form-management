@@ -19,11 +19,12 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { logSuperAdminAction } from '../_shared/superAdminAudit.ts';
 import { verifySuperAdminJwt } from '../_shared/superAdminAuth.ts';
 
 serveAuthenticated('reject-org-verification', async (req) => {
   requireHttpMethod(req, 'POST');
-  await verifySuperAdminJwt(req);
+  const admin = await verifySuperAdminJwt(req);
 
   const body = await readJsonBody(req);
   const orgId = typeof body.orgId === 'string' ? body.orgId.trim() : '';
@@ -123,6 +124,14 @@ serveAuthenticated('reject-org-verification', async (req) => {
       );
     }
   }
+
+  await logSuperAdminAction(admin, {
+    action: kind === 'changes' ? 'org_verification.request_changes' : 'org_verification.reject',
+    targetType: 'organization',
+    targetId: orgId,
+    summary: `${kind === 'changes' ? 'Requested changes on' : 'Rejected'} ${tier} verification for ${updated.name ?? orgId}`,
+    metadata: { tier, kind, reason },
+  });
 
   return jsonSuccess(req, { organization: serializeOrganization(updated) });
 });

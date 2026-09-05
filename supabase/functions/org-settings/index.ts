@@ -22,7 +22,7 @@ serveAdmin('org-settings', async (req) => {
   }
 
   if (req.method === 'PATCH') {
-    const ctx = await resolveOrgAccessContext(req, 'org:settings:edit');
+    const ctx = await resolveOrgAccessContext(req, 'org.settings.socials:edit');
     const organizationId = ctx.org.id;
     const body = await readJsonBody(req);
     const patch: Record<string, unknown> = {};

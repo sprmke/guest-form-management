@@ -13,9 +13,16 @@ import {
   adminExtendOrgSubscription,
   runPlatformBillingCycle,
 } from '../_shared/subscriptionOrchestrator.ts';
-import { jsonError, jsonSuccess, readJsonBody, requireHttpMethod, parsePageLimit } from '../_shared/httpResponse.ts';
+import {
+  jsonError,
+  jsonSuccess,
+  readJsonBody,
+  requireHttpMethod,
+  parsePageLimit,
+} from '../_shared/httpResponse.ts';
 import { postgrestOrIlikeValue } from '../_shared/publicSearch.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
+import { logSuperAdminAction } from '../_shared/superAdminAudit.ts';
 
 // Statuses that count as an org's current ("live") subscription — mirrors the partial unique
 // index (org_subscriptions_one_live_per_org_idx) plus 'suspended', which can still be the
@@ -258,6 +265,26 @@ serveSuperAdmin('org-subscriptions-admin', async (req, admin) => {
       .eq('org_subscription_id', orgSubscriptionId)
       .order('created_at', { ascending: false })
       .limit(10);
+
+    const { data: orgRow } = await supabase
+      .from('organizations')
+      .select('name')
+      .eq('id', organizationId)
+      .maybeSingle();
+    await logSuperAdminAction(admin, {
+      action: 'org_subscription.assign',
+      targetType: 'organization',
+      targetId: organizationId,
+      summary: `Assigned plan to ${orgRow?.name ?? organizationId}${
+        overridePricePhp != null ? ` (override ₱${overridePricePhp})` : ''
+      }`,
+      metadata: {
+        planId,
+        propertyCount: propertyIds.length,
+        overridePricePhp,
+        note: typeof body.note === 'string' ? body.note : undefined,
+      },
+    });
 
     return jsonSuccess(req, {
       subscription,

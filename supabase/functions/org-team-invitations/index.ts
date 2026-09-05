@@ -54,7 +54,7 @@ serveAuthenticated('org-team-invitations', async (req, user) => {
 
     if (action === 'resend') {
       const ctx = await requireOrgTeamContext(req, orgId, orgSlug, {
-        requireManage: true,
+        requireInvitationEdit: true,
       });
       const invitationId = readInvitationId(body);
       if (!invitationId) {
@@ -84,7 +84,7 @@ serveAuthenticated('org-team-invitations', async (req, user) => {
   if (req.method === 'DELETE') {
     requireHttpMethod(req, 'DELETE');
     const ctx = await requireOrgTeamContext(req, orgId, orgSlug, {
-      requireManage: true,
+      requireInvitationDelete: true,
     });
     const invitationId = readInvitationId(body, url);
     if (!invitationId) {

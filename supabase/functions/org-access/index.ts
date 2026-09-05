@@ -28,9 +28,15 @@ serveAuthenticated('org-access', async (req) => {
     canManageProperties: hasOrgPermission(ctx.permissions, 'org:properties:manage'),
     canCreateParkings: hasOrgPermission(ctx.permissions, 'org:parkings:create'),
     canManageParkings: hasOrgPermission(ctx.permissions, 'org:parkings:manage'),
+    canEditBasicSettings: hasOrgPermission(ctx.permissions, 'org.settings.basic:edit'),
+    canEditSocials: hasOrgPermission(ctx.permissions, 'org.settings.socials:edit'),
+    canEditAiPlatform: hasOrgPermission(ctx.permissions, 'org.settings.aiPlatform:edit'),
+    canEditAiAssistant: hasOrgPermission(ctx.permissions, 'org.settings.aiAssistant:edit'),
     canEditSettings:
       hasOrgPermission(ctx.permissions, 'org.settings.basic:edit') ||
-      hasOrgPermission(ctx.permissions, 'org:settings:edit'),
+      hasOrgPermission(ctx.permissions, 'org.settings.socials:edit') ||
+      hasOrgPermission(ctx.permissions, 'org.settings.aiPlatform:edit') ||
+      hasOrgPermission(ctx.permissions, 'org.settings.aiAssistant:edit'),
     canViewPlans: hasOrgPermission(ctx.permissions, 'org.plans:view'),
   });
 });
