@@ -105,7 +105,7 @@ export function collectBookingAiValidations(
     const summaryKey = `guest${i}_valid_id_ai_summary` as keyof BookingRow;
     pushItem(items, {
       id: `guest${i}_valid_id`,
-      label: `Valid ID — Guest ${i}`,
+      label: `Valid ID (Guest ${i})`,
       url: (booking[urlKey] as string | null) ?? null,
       verdict: booking[verdictKey] as ReceiptAiVerdict,
       summary: (booking[summaryKey] as string | null) ?? null,

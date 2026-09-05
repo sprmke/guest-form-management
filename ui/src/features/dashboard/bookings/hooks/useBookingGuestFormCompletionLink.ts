@@ -58,7 +58,7 @@ export function useBookingGuestFormCompletionLink(
     const write = (url: string) =>
       navigator.clipboard
         .writeText(url)
-        .then(() => toast.success('Guest form link copied — send it to your Airbnb guest'))
+        .then(() => toast.success('Guest form link copied. Send it to your Airbnb guest'))
         .catch(() => toast.error('Could not copy link'));
 
     if (readyUrl) {

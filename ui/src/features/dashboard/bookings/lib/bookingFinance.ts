@@ -212,7 +212,7 @@ export function buildHostNetBreakdown(
       const label = row.label?.trim();
       income.push({
         key: `sd_profit_${i}`,
-        label: label ? `SD settlement — ${label}` : 'SD settlement profit',
+        label: label ? `SD settlement: ${label}` : 'SD settlement profit',
         amount: row.amount,
       });
     });
@@ -222,7 +222,7 @@ export function buildHostNetBreakdown(
       const label = row.label?.trim();
       expenses.push({
         key: `sd_expense_${i}`,
-        label: label ? `SD settlement — ${label}` : 'SD settlement expense',
+        label: label ? `SD settlement: ${label}` : 'SD settlement expense',
         amount: row.amount,
       });
     });
