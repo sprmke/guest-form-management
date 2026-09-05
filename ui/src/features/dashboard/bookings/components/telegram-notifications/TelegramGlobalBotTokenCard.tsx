@@ -57,7 +57,7 @@ export function TelegramGlobalBotTokenCard() {
         save.mutate(trimmed, {
           onSuccess: () => {
             const username = result.verify?.getMe?.username;
-            toast.success(username ? `Saved — @${username}` : 'Shared bot token saved');
+            toast.success(username ? `Saved (@${username})` : 'Shared bot token saved');
           },
           onError: (e) => toast.error(friendlyToastError(e, 'Could not save shared bot token')),
         });

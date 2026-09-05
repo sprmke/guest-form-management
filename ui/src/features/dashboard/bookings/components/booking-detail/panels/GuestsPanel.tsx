@@ -128,12 +128,12 @@ export function GuestsPanel({
                           name ? 'text-foreground font-semibold' : 'text-muted-foreground'
                         )}
                       >
-                        {name || '—'}
+                        {name || '-'}
                       </p>
                     </td>
 
                     <td className="text-muted-foreground py-2.5 text-center align-middle text-xs font-medium tabular-nums">
-                      {hasAge ? `${age} ${age === 1 ? 'yr' : 'yrs'}` : '—'}
+                      {hasAge ? `${age} ${age === 1 ? 'yr' : 'yrs'}` : '-'}
                     </td>
 
                     <td className="px-4 py-2.5 align-middle sm:px-5">
@@ -166,7 +166,7 @@ export function GuestsPanel({
                           </span>
                         ) : (
                           <span className="text-muted-foreground text-xs">
-                            {hasAge ? 'Not required' : '—'}
+                            {hasAge ? 'Not required' : '-'}
                           </span>
                         )}
                       </div>

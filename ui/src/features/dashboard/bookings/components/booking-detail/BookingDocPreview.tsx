@@ -135,9 +135,9 @@ export function DocPreview({
         String(receiptAiVerdict).toLowerCase()
       );
     const compactAriaLabel = receiptAiLoading
-      ? `Open ${label} — checking`
+      ? `Open ${label} (checking)`
       : hasVerdict
-        ? `Open ${label} — AI: ${formatReceiptAiVerdictLabel(receiptAiVerdict)}`
+        ? `Open ${label} (AI: ${formatReceiptAiVerdictLabel(receiptAiVerdict)})`
         : `Open ${label}`;
 
     if (needsSignedUrl && !displayUrl && !missingInStorage) {

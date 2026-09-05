@@ -50,7 +50,7 @@ export function ParkingPanel({
             </>
           ) : null}
           {linked.endorsementSendError && !linked.endorsementSentAt ? (
-            <BookingDetailRow label="Endorsement" value="Send failed — guest can retry" />
+            <BookingDetailRow label="Endorsement" value="Send failed. Guest can retry" />
           ) : null}
         </BookingDetailRowGroup>
         {linked.endorsementSentAt && linked.endorsementEmailSnapshot ? (

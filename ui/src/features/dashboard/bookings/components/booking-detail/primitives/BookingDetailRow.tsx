@@ -33,7 +33,7 @@ export function BookingDetailRow({
   children?: ReactNode;
   className?: string;
 }) {
-  const hasValue = value !== null && value !== undefined && value !== '' && value !== '—';
+  const hasValue = value !== null && value !== undefined && value !== '' && value !== '-';
   if (!hasValue && !children) return null;
 
   return (

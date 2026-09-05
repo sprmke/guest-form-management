@@ -62,7 +62,7 @@ export function CalendarBookingCelebration({ trigger, onDone }: Props) {
               <PartyPopper className="size-6 shrink-0 text-[hsl(var(--chart-3))]" aria-hidden />
               <div className="flex flex-col">
                 <span className="text-foreground text-base font-semibold leading-tight">
-                  {trigger.fullyBooked ? 'Fully booked — congrats!' : 'Amazing month, keep it up!'}
+                  {trigger.fullyBooked ? 'Fully booked. Congrats!' : 'Amazing month, keep it up!'}
                 </span>
                 <span className="text-muted-foreground text-sm leading-tight">
                   {trigger.count} {trigger.unitLabel ?? 'bookings'} so far this month

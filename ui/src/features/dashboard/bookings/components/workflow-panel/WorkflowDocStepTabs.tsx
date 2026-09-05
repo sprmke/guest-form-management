@@ -40,7 +40,7 @@ export function WorkflowDocStepTabs({ items, value, onChange, disabled }: Props)
       options={items.map((item) => ({
         value: item.key,
         label: <span className="min-w-0 truncate">{shortDocStepLabel(item.label)}</span>,
-        ariaLabel: `${item.label} — ${item.completed ? 'complete' : 'incomplete'}`,
+        ariaLabel: `${item.label}: ${item.completed ? 'complete' : 'incomplete'}`,
         icon: item.completed ? CheckCircle2 : Circle,
         disabled,
         className: item.completed

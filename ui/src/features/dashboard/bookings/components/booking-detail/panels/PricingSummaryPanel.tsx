@@ -28,7 +28,7 @@ function formatAwardedVoucherLine(code: string, amount: number | null): string {
   if (amount != null) {
     return `${formatMoney(amount)} off the next booking`;
   }
-  return '—';
+  return '-';
 }
 
 function AppliedVoucherBlock({ booking }: { booking: BookingRow }) {

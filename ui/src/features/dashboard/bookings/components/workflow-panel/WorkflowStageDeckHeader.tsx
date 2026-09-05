@@ -169,7 +169,7 @@ export function WorkflowStageDeckHeader({
           // The halo already says "the booking is here", so the browsing ring is
           // only drawn once the two markers have actually come apart.
           const ringViewed = i === viewedIndex && state !== 'current';
-          const name = `${statusLabel(stage)} — ${STATE_WORD[state]}`;
+          const name = `${statusLabel(stage)}: ${STATE_WORD[state]}`;
 
           const dot =
             state === 'current' ? (

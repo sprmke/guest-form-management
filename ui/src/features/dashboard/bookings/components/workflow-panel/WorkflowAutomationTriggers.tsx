@@ -149,7 +149,7 @@ export function WorkflowAutomationTriggers({
               <p>
                 <PlanGatedText
                   feature="automatedBookingFlow"
-                  text="After guest balance is settled, run check-out move below when the cron has not run yet. On Free it does not send email — use Send Check-out Instructions when enabled, or Upgrade for automatic emails."
+                  text="After guest balance is settled, run check-out move below when the cron has not run yet. On Free it does not send email. Use Send Check-out Instructions when enabled, or Upgrade for automatic emails."
                 />
               </p>
             ) : (
