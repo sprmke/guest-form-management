@@ -2,14 +2,15 @@
 title: 'Development Settings — operator guide'
 status: active
 tags: [guides, routes, admin, developments]
-updated: 2026-08-03
+updated: 2026-09-04
 ---
 
 # Development Settings — operator guide
 
 Route: `/admin/developments/:developmentSlug`
 
-> **Status:** Documented
+> **Status:** Documented · a **← Developments** back link now sits above the pinned header
+> (`AdminSectionNavLayout` header slot).
 
 ## Progress overview
 
@@ -22,7 +23,7 @@ Route: `/admin/developments/:developmentSlug`
 | Unit types            | Done     | Done       | Done | Per-type max adults/children capacity presets                     |
 | Pool                  | Done     | Done       | Done | Pool fee (PHP) + schedule                                         |
 | Guest information     | Done     | Done       | Done | Requirements, guides, other info for guests + AI                  |
-| Announcements         | Done     | Done       | Done | Host dashboard banners for this development                       |
+| Announcements         | Done     | Done       | Done | Host Announcements page for this development                      |
 | Amenities             | Done     | —          | Done | Suggested chips + free-text add                                   |
 | Location              | Done     | Done       | Done | Location line + `PropertyLocationPicker`                          |
 | Towers & Parking      | Done     | —          | Done | Free-text tag lists                                               |
@@ -159,7 +160,7 @@ Save path: batched **Save Changes** → **`PATCH update-development`**.
 
 ## Announcements
 
-Host-facing banners shown in the dashboard for every org with properties or parking linked to this development (`residence_name` match).
+Host-facing notices shown on the property/parking **Announcements** page for every org with properties or parking linked to this development (`residence_name` match).
 
 | Field per row    | Storage                                 | Notes                                                                                                                       |
 | ---------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
@@ -169,9 +170,7 @@ Host-facing banners shown in the dashboard for every org with properties or park
 | Starts / ends    | same                                    | Optional calendar dates (Asia/Manila); no time picker — start is inclusive from that day, end is inclusive through that day |
 | Link URL / label | same                                    | Optional CTA                                                                                                                |
 
-**Banner dismiss (hosts):** Hosts may dismiss individual notices from the dashboard banner (×, stored per org in the browser). Dismissed notices remain on the property **Announcements** archive. Editing a notice bumps `updatedAt`, which surfaces it on the banner again.
-
-Notices stay active until **Active** is turned off or optional **Ends** date passes (Asia/Manila day boundaries). The dashboard banner shows the highest-priority non-dismissed notice; the full merged list lives under **Announcements** in the sidebar.
+Notices stay active until **Active** is turned off or optional **Ends** date passes (Asia/Manila day boundaries). Hosts read the full merged list under **Announcements** in the sidebar (unread red-dot on nav). Other dashboard pages do not show a top banner.
 
 Platform-wide announcements (maintenance, product releases) are managed on **`/admin/announcements`**.
 

@@ -214,10 +214,13 @@ When set, matching cron endpoints require the corresponding header. See **`docs/
 | `META_INBOX_WEBHOOK_HEALTHCHECK_CRON_SECRET` | `X-Meta-Inbox-Webhook-Healthcheck-Cron-Secret` |
 | `PLATFORM_BILLING_CRON_SECRET`               | `X-Platform-Billing-Cron-Secret`               |
 | `CALENDAR_SYNC_CRON_SECRET`                  | `X-Calendar-Sync-Cron-Secret`                  |
+| `SMART_PRICING_CRON_SECRET`                  | `X-Smart-Pricing-Cron-Secret`                  |
 
 **Telegram bot tokens + chat IDs:** per-property/parking DB tables — **not** env. Only `*_CRON_SECRET` vars remain env-only.
 
 **Calendar sync (`calendarSync`, Pro+):** `CALENDAR_SYNC_CRON_SECRET` gates the global `calendar-sync-cron` sweep only (scoped "Sync now" is JWT-gated). `CALENDAR_SYNC_MIN_INTERVAL_MINUTES` (default `30`) is the per-feed minimum poll gap. Feed `.ics` URLs are stored encrypted with the existing `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` (via `_shared/secretsCrypto.ts`), never a new key.
+
+**Smart Pricing (`smartPricing`, Pro+):** `SMART_PRICING_CRON_SECRET` (optional) gates the global `smart-pricing-cron` autopilot sweep. All other Smart Pricing tuning lives in `property_smart_pricing_settings` (per property, host-editable), not env. The optional AI rationale pass reuses the platform `GEMINI_API_KEYS` and the shared `ai_platform_*` quota/credit system (feature `smart_pricing`) — no new AI env var.
 
 #### Deploy / script-only (not edge runtime)
 

@@ -2,14 +2,17 @@
 title: 'Super Admin Approvals — operator guide'
 status: active
 tags: [guides, routes, admin]
-updated: 2026-08-31
+updated: 2026-09-04
 ---
 
 # Super Admin Approvals — operator guide
 
 Route: `/admin/approvals`
 
-> **Status:** Documented
+> **Status:** Documented · filter bar extracted to the shared `SuperAdminApprovalsToolbar`. Queue
+> loading + status/type/search predicates now live in `_shared/superAdminApprovalsQueue.ts`
+> (`loadApprovalQueue`), which also powers `list-super-admin-approvals?organizationId=` for the
+> org hub's Approvals section and `countPendingApprovals()` for the Overview attention queue.
 
 ## Progress overview
 
