@@ -142,35 +142,18 @@ host lock (property_pricing_date_overrides)   ← always wins, engine skips it
   tooltip + legend + stats card), the admin booking **pricing review**
   (`ReviewPricingForm` ← `WorkflowPanel` → `WorkflowSubFormHost`), and the AI-assistant
   pricing context calendar.
-- **`SmartPricingDialog`** is a `ResponsiveModal` (`42rem` wide) with `sheetLayout="split"` — a
-  fixed header, a `flex-1 overflow-y-auto` body, and a fixed `ResponsiveModalFooter` for
-  actions, so the buttons never scroll out of view. The header shows a `SegmentedStepProgress`
-  (`Settings` / `Preview`, the shared wizard stepper) once `enabled`. Three body views:
-  1. **intro** (`!enabled`) — a 3-line explainer; footer: one "Turn on Smart Pricing" button;
-  2. **settings** (`enabled`) — a strategy picker (`Gentle ±6 % · Balanced ±12 % · Bold ±22 %`,
-     from `STRATEGY_OPTIONS`), inline `Never below` / `Never above` inputs (both auto-seed on
-     enable when unset: `round50(0.9 × weekday base)` / `round50(1.25 × weekday base)`), and a
-     `When I approve` / `Automatically` two-way picker with a one-line explanation of each
-     underneath. Footer: a single `Preview my prices` (→ `See updated prices` once applied) —
-     **no Undo here**; the `N nights priced` line under the toggle is status text only.
-     Toggling the switch **off** does not patch immediately — it opens a nested `AlertDialog`
-     ("Turn off Smart Pricing? This resets your prices…"); confirming runs
-     `patch({ enabled: false })` **and** `clearMut` together (this is the app's only "undo"
-     surface now). The parent `ResponsiveModal`/`ResponsiveModalContent` block their own
-     dismiss handlers (`onPointerDownOutside`/`onInteractOutside`/`onFocusOutside`/
-     `onEscapeKeyDown`, plus a guarded `onOpenChange`) while the alert is open, mirroring the
-     nested-`AlertDialog`-inside-`ResponsiveModal` pattern used elsewhere (e.g.
-     `TelegramManageDialog`);
-  3. **preview** — a ₱-framed headline + plain verdict (an extra line + a relabelled primary
-     button — `Apply now` instead of `Apply all` — appear when `mode === 'autopilot'`, so the
-     two modes visibly differ here, not just in blurb text), a **month heatmap** of the
-     recommended nightly rate where each changed cell shows **both** the old rate (struck
-     through) and the new one (green = higher / grey = same / amber = lower, opens on the first
-     changed month), and ≤ 4 plain-language reason bullets derived from the `diff` factors + AI
-     warnings. Footer: `← Back` (outline, left) plus `Apply all`/`Apply now` (primary, right) —
-     both always visible while the body scrolls underneath. **Applying closes the dialog**
-     (`onOpenChange(false)` in the mutation's `onSuccess`) and relies on the existing
-     `useApplySmartPricing` toast for confirmation, rather than returning to the settings view.
+- **`SmartPricingDialog`** uses **`AdminDialogShell`** (`42rem` wide, fixed header/footer,
+  scrollable body). Title only — no subtitle. Two body views (no marketing intro):
+  1. **settings** — Off: toggle + footer **Turn on**. On: **Strength**
+     (`Gentle ±6% · Balanced ±12% · Bold ±22%`), **Limits** (Min / Max, auto-seeded on enable),
+     **Apply** (`When I approve` / `Automatically`). Footer: **Preview** (no AI explain pass —
+     `explain: false`). Turning the switch off opens a nested `AlertDialog` confirm, then
+     `patch({ enabled: false })` + clear applied recs.
+  2. **preview** — compact ₱ totals + chip (`Same` / `+₱N` / `−₱N`), month heatmap (tap a day
+     for that night’s factor % lines), otherwise month-scoped drivers
+     (`Weekends · ×N · +₱…`, named holiday rules only when in the visible month, gap /
+     last-minute / floor hits). No AI prose. Footer: **Back** + **Apply** / **Apply now**.
+     Applying closes the dialog and relies on the apply toast.
 - **`pricingSave.ts` deliberately does NOT pass `smartRecommendations`** — it bakes resolved
   rates into `property_pricing_date_overrides`, and a smart rate must never be frozen as a
   host lock.

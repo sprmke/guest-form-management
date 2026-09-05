@@ -2,7 +2,7 @@
 title: 'Super Admin Overview — operator guide'
 status: active
 tags: [guides, routes, admin]
-updated: 2026-09-04
+updated: 2026-09-05
 ---
 
 # Super Admin Overview — operator guide
@@ -13,14 +13,14 @@ Route: `/admin`
 
 ## Progress overview
 
-| Section         | E2E save         | Validation | Docs | Notes                                                                                              |
-| --------------- | ---------------- | ---------- | ---- | -------------------------------------------------------------------------------------------------- |
-| KPI strip       | Done (read-only) | —          | Done | 8–9 `StatCard`s, most linking to the matching list page; platform-wide exact counts                |
-| Charts          | Done (read-only) | —          | Done | Growth area (12 mo, Total/New toggle) · Plan-mix donut · AI-cost-by-feature bar                    |
-| Attention queue | Done (read-only) | —          | Done | Approvals in review · open tickets · undisbursed payouts · orgs with no live plan — links to lists |
-| Recent activity | Done (read-only) | —          | Done | Latest orgs / subscription changes / support tickets                                               |
-| Range toggle    | n/a              | —          | Done | 30d / 90d / 12mo — scopes the AI-spend KPI + AI-cost chart                                         |
-| Sidebar nav     | n/a              | —          | Done | Grouped into labelled sections (`SUPER_ADMIN_NAV_GROUPS`) below a header-less Overview link        |
+| Section         | E2E save         | Validation | Docs | Notes                                                                                                                                                         |
+| --------------- | ---------------- | ---------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| KPI strip       | Done (read-only) | —          | Done | Fixed 9 `StatCard`s in a 3×3 grid (Undisbursed payouts always shown, even at 0, so the grid never leaves an orphan card); most link to the matching list page |
+| Charts          | Done (read-only) | —          | Done | Growth area (12 mo, Total/New toggle) · Plan-mix donut · AI-cost-by-feature bar                                                                               |
+| Attention queue | Done (read-only) | —          | Done | Approvals in review · open tickets · undisbursed payouts · orgs with no live plan — links to lists                                                            |
+| Recent activity | Done (read-only) | —          | Done | Latest orgs / subscription changes / support tickets                                                                                                          |
+| Range toggle    | n/a              | —          | Done | 30d / 90d / 12mo — scopes the AI-spend KPI + AI-cost chart                                                                                                    |
+| Sidebar nav     | n/a              | —          | Done | Grouped into labelled sections (`SUPER_ADMIN_NAV_GROUPS`) below a header-less Overview link                                                                   |
 
 > Tracked by [`docs/workflow/in-progress/super-admin-console-overhaul.md`](../../../workflow/in-progress/super-admin-console-overhaul.md).
 
@@ -28,7 +28,7 @@ Route: `/admin`
 
 ## Overview
 
-Landing page for the **platform super-admin** area — a distinct tier from org/property admin and from the legacy `ADMIN_ALLOWED_EMAILS` gate. It is a **data dashboard**: the `super-admin-overview` edge function (`?range=30d|90d|12mo`) returns KPI rollups, a 12-month org/subscription growth series, live plan mix, AI cost by feature, an attention queue, and recent activity. A condensed "Jump to" grid at the bottom still mirrors the sidebar destinations.
+Landing page for the **platform super-admin** area — a distinct tier from org/property admin and from the legacy `ADMIN_ALLOWED_EMAILS` gate. It is a **data dashboard**: the `super-admin-overview` edge function (`?range=30d|90d|12mo`) returns KPI rollups, a 12-month org/subscription growth series, live plan mix, AI cost by feature, an attention queue, and recent activity. There is no "Jump to" destinations grid on this page anymore — the Platform sidebar is the single place to browse every destination, so the dashboard stays focused on metrics.
 
 **Access:** `RequireSuperAdmin` — email must be in `SUPER_ADMIN_EMAILS` (server) / `VITE_SUPER_ADMIN_EMAILS` (client UX gate). Uses the same signed-in session as the legacy admin dashboard (`useAdminSession`), so a super admin must already be signed in via Google OAuth; being super admin does not require being in `ADMIN_ALLOWED_EMAILS`.
 
@@ -49,9 +49,8 @@ The Super Admin area is an internal control panel for the platform team — it i
 
 ## Navigation
 
-Both the Overview card grid and the Platform sidebar are driven by `SUPER_ADMIN_NAV_GROUPS`
-(`superAdminPlatformNav.ts`). The sidebar renders **Overview** (`/admin`, no group heading) then
-each group as a labelled section:
+The Platform sidebar is driven by `SUPER_ADMIN_NAV_GROUPS` (`superAdminPlatformNav.ts`). It renders
+**Overview** (`/admin`, no group heading) then each group as a labelled section:
 
 | Group             | Items → destination                                                                                                                                                                 |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -61,8 +60,10 @@ each group as a labelled section:
 | Content           | Announcements `/admin/announcements` · FAQs `/admin/support/faqs`                                                                                                                   |
 | Platform          | AI Management `/admin/settings`                                                                                                                                                     |
 
-`SUPER_ADMIN_PLATFORM_DESTINATIONS` (flat, group order) is still exported for the "Jump to" card
-grid and future global search. Group headings are hidden when the sidebar is collapsed.
+`SUPER_ADMIN_PLATFORM_DESTINATIONS` (flat, group order) has no consumer today — the Overview page's
+"Jump to" grid that used it was removed for being redundant with the sidebar — but it stays
+exported for the planned global ⌘K search (see Pending / follow-ups). Group headings are hidden
+when the sidebar is collapsed.
 
 ---
 

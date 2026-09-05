@@ -2,7 +2,7 @@
 title: 'Property Announcements'
 status: active
 tags: [guides, routes, org, property, announcements]
-updated: 2026-09-01
+updated: 2026-09-05
 ---
 
 # Property Announcements
@@ -15,29 +15,29 @@ Legacy redirect: `/org/:orgSlug/property/:propertySlug/help-support/announcement
 
 ## Progress overview
 
-| Section       | E2E | Validation | Docs | Notes                                                      |
-| ------------- | --- | ---------- | ---- | ---------------------------------------------------------- |
-| Summary cards | Yes | N/A        | Yes  | Active / Action required / Attention / Updates             |
-| Archive feed  | Yes | N/A        | Yes  | Platform + development groups, 5-up pages                  |
-| Detail view   | Yes | N/A        | Yes  | Back, sticky status card, full body, optional link button  |
-| Banner link   | Yes | N/A        | Yes  | Desktop banner; red-dot nav when unread (mobile + desktop) |
+| Section       | E2E | Validation | Docs | Notes                                                     |
+| ------------- | --- | ---------- | ---- | --------------------------------------------------------- |
+| Summary cards | Yes | N/A        | Yes  | Active / Action required / Attention / Updates            |
+| Archive feed  | Yes | N/A        | Yes  | Platform + development groups, 5-up pages                 |
+| Detail view   | Yes | N/A        | Yes  | Back, sticky status card, full body, optional link button |
+| Unread nav    | Yes | N/A        | Yes  | Red-dot on Announcements when unread (mobile + desktop)   |
 
 ## Overview
 
-Property team members open **Announcements** from the sidebar (above Help & Support) to read platform maintenance, product updates, and development notices scoped to their org and linked buildings. On other dashboard pages, a compact banner shows the highest-priority notice on **desktop** (`lg+`); **All (N)** opens this archive. The banner is **not shown on mobile**. A **red dot** on **Announcements** (sidebar and **More** menu) appears while any notice is unread — same indicator pattern as Settings issues. Opening a notice marks it read (device-local). The banner is also **hidden** on this page — four summary stat cards replace it. Visible to **every** non–plan-limited property team member (same baseline as Help & Support). Suspended orgs may still open Announcements.
+Property team members open **Announcements** from the sidebar (above Help & Support) to read platform maintenance, product updates, and development notices scoped to their org and linked buildings. Notices appear **only** on this archive (and detail) — other dashboard pages do not show a top banner. A **red dot** on **Announcements** (sidebar and **More** menu) appears while any notice is unread — same indicator pattern as Settings issues. Opening a notice marks it read (device-local). Four summary stat cards sit above the feed. Visible to **every** non–plan-limited property team member (same baseline as Help & Support). Suspended orgs may still open Announcements.
 
 ## Host-facing knowledge
 
-This is where you read official notices from Kame Homes — scheduled maintenance, new features, and updates for your building or development. Unread notices show a small red dot and stronger title; open a row to mark it read. You can dismiss the desktop dashboard banner (×); the list always shows active notices until we turn them off or the schedule ends.
+This is where you read official notices from Kame Homes — scheduled maintenance, new features, and updates for your building or development. Unread notices show a small red dot and stronger title; open a row to mark it read. The list always shows active notices until we turn them off or the schedule ends.
 
 **Common host questions**
 
-- Q: Why do I see a banner on every page?
-  A: On desktop, most dashboard pages show the most important active notice at the top. Tap **All** to open Announcements, or **Dismiss** (×) to hide that notice from the banner. On phone, open **Announcements** from **More** — a red dot means you still have unread notices. The banner does not repeat on the Announcements page itself.
+- Q: Where do I find announcements?
+  A: Open **Announcements** in the sidebar (or **More** on phone). A red dot means you still have unread notices.
 - Q: What does the red dot on Announcements mean?
   A: You have at least one unread notice. Open each notice to clear the unread state. Editing a notice can mark it unread again.
 - Q: Can I hide an announcement?
-  A: You can dismiss it from the desktop dashboard banner (×). It remains in the list and opens from **Read more**. Banner dismiss is separate from read/unread.
+  A: Notices stay in the list until we turn them off or the schedule ends. Opening a notice marks it read so the red dot clears.
 - Q: What's the difference between Platform and a development name?
   A: **Platform** applies to all hosts. A development name (e.g. your building) applies only to properties linked to that development.
 
@@ -51,6 +51,8 @@ Active notices from **`list-host-announcements`**, merged for this property's or
 
 **Detail** (`/announcements/:announcementId`): same page title and subtitle as the list, **stat cards** then **Back** then a **`surface-card`** detail panel (status header · severity marker · title · body · optional link button). Opening the page marks that notice as read.
 
+Body is authored by super-admins as rich text (WYSIWYG editor — bold/italic, headings, lists, links, images) and renders as formatted HTML here (`StayGuideRichContent`), not plain text. The archive-row preview and summary text always show a plain-text excerpt regardless of formatting.
+
 ## Permissions
 
 | Control       | Decision | Notes                                                                   |
@@ -60,20 +62,17 @@ Active notices from **`list-host-announcements`**, merged for this property's or
 
 ## Implementation map
 
-| Layer       | Path                                                                                           |
-| ----------- | ---------------------------------------------------------------------------------------------- |
-| Page        | `ui/src/features/dashboard/announcements/pages/HostAnnouncementsListPage.tsx`                  |
-| Detail      | `ui/src/features/dashboard/announcements/pages/HostAnnouncementDetailPage.tsx`                 |
-| Detail card | `ui/src/features/dashboard/announcements/components/HostAnnouncementDetailCard.tsx`            |
-| Stats       | `ui/src/features/dashboard/announcements/components/HostAnnouncementStatCards.tsx`             |
-| Feed        | `ui/src/features/dashboard/announcements/components/HostAnnouncementCard.tsx`                  |
-| Banner      | `ui/src/features/dashboard/announcements/components/AdminAnnouncementBanner.tsx` (`lg+` only)  |
-| Strip       | `ui/src/features/dashboard/announcements/components/HostAnnouncementBannerStrip.tsx`           |
-| Unread nav  | `ui/src/features/dashboard/announcements/hooks/useHostAnnouncementHasUnread.ts`                |
-| Read state  | `ui/src/features/dashboard/announcements/lib/hostAnnouncementReadState.ts`                     |
-| Dismiss     | `ui/src/features/dashboard/announcements/lib/hostAnnouncementBannerDismiss.ts` (banner × only) |
-| API         | `list-host-announcements`                                                                      |
-| Routes      | `ui/src/features/dashboard/announcements/routes/index.tsx`                                     |
+| Layer       | Path                                                                                |
+| ----------- | ----------------------------------------------------------------------------------- |
+| Page        | `ui/src/features/dashboard/announcements/pages/HostAnnouncementsListPage.tsx`       |
+| Detail      | `ui/src/features/dashboard/announcements/pages/HostAnnouncementDetailPage.tsx`      |
+| Detail card | `ui/src/features/dashboard/announcements/components/HostAnnouncementDetailCard.tsx` |
+| Stats       | `ui/src/features/dashboard/announcements/components/HostAnnouncementStatCards.tsx`  |
+| Feed        | `ui/src/features/dashboard/announcements/components/HostAnnouncementCard.tsx`       |
+| Unread nav  | `ui/src/features/dashboard/announcements/hooks/useHostAnnouncementHasUnread.ts`     |
+| Read state  | `ui/src/features/dashboard/announcements/lib/hostAnnouncementReadState.ts`          |
+| API         | `list-host-announcements`                                                           |
+| Routes      | `ui/src/features/dashboard/announcements/routes/index.tsx`                          |
 
 ## Related
 

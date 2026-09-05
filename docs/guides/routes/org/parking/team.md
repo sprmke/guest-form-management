@@ -13,15 +13,16 @@ Route: `/org/:orgSlug/parking/:parkingSlug/team`
 
 ## Progress overview
 
-| Section          | E2E save | Validation     | Docs       | Notes                                      |
-| ---------------- | -------- | -------------- | ---------- | ------------------------------------------ |
-| Stats cards      | ✓        | —              | Documented | Same component as property team            |
-| Members tab      | ✓        | —              | Documented | Built-in + custom roles; edit permissions  |
-| Invitations tab  | ✓        | Email required | Documented | Accept link uses `scope=parking`           |
-| Permissions tab  | ✓        | —              | Documented | Custom roles CRUD + role matrix (same UX)  |
-| Invite dialog    | ✓        | Email required | Documented | Manager / Staff / Viewer + custom roles    |
-| Remove dialog    | ✓        | —              | Documented | Label: Remove from Parking                 |
-| RBAC enforcement | ✓        | —              | Documented | `parking-access` + route guard + edge APIs |
+| Section          | E2E save | Validation     | Docs       | Notes                                             |
+| ---------------- | -------- | -------------- | ---------- | ------------------------------------------------- |
+| Stats cards      | ✓        | —              | Documented | Same component as property team                   |
+| Members tab      | ✓        | —              | Documented | Built-in + custom roles; role via Host details    |
+| Invitations tab  | ✓        | Email required | Documented | Accept link uses `scope=parking`                  |
+| Permissions tab  | ✓        | —              | Documented | Custom roles CRUD + role matrix (same UX)         |
+| Invite dialog    | ✓        | Email required | Documented | Manager / Staff / Viewer + custom roles           |
+| Host details     | ✓        | —              | Documented | Name, phone, role (no per-member permission tree) |
+| Remove dialog    | ✓        | —              | Documented | Label: Remove from Parking                        |
+| RBAC enforcement | ✓        | —              | Documented | `parking-access` + route guard + edge APIs        |
 
 ---
 
@@ -32,7 +33,7 @@ Parking-scoped team management mirrors the property team page:
 - Built-in roles: **Manager**, **Staff**, **Viewer**
 - **Custom roles** with editable permission presets (`parking_custom_roles`)
 - Org owner and org admins appear virtually as **Manager** (`fromOrg: true`) — not editable from parking team
-- Members / Invitations / Permissions tabs, invite flow, edit permissions dialog, and custom role form match property team UX (parking-scoped permission catalog only)
+- Members / Invitations / Permissions tabs, invite flow, and custom role form match property team UX (parking-scoped permission catalog only). Member **role** changes via **Host details**; permissions always follow the role template (no per-member permission tree).
 
 ---
 

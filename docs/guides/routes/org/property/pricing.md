@@ -138,8 +138,8 @@ If Airbnb reports a night that already has a live Kame booking or manual block, 
 
 **Plan feature `smartPricing` — Pro (`growth`) and above**, same gate as Channel Sync.
 **Smart Pricing** button in the Pricing header (desktop outline button; mobile hero icon,
-`Wand2`) with a **Pro** `TierBadge` below the tier. Opens a `ResponsiveModal`
-(`SmartPricingDialog`) — **preview-open** below Pro; **Enable** and any settings write open the
+`Wand2`) with a **Pro** `TierBadge` below the tier. Opens `SmartPricingDialog`
+(`AdminDialogShell`) — **preview-open** below Pro; **Enable** and any settings write open the
 upgrade modal.
 
 ### What it does
@@ -155,66 +155,35 @@ plain-language rationale and flags where the curve looks off; it never sets the 
 
 ### The panel
 
-A standard modal (`ResponsiveModalContent sheetLayout="split"`, `42rem` wide): fixed header +
-footer, only the middle content scrolls, so the action buttons are always visible. The header
-carries a **Settings → Preview** step progress (`SegmentedStepProgress`, the same stepper used
-by the Import and Marketing-generate wizards) once Smart Pricing is on.
+`AdminDialogShell` (`42rem` wide): fixed title + footer, scrollable body. **No subtitle, no
+stepper, no marketing intro.**
 
-**Off** — a short "here's what it does" list in the body and one **Turn on Smart Pricing**
-button in the footer. Nothing happens until you preview and approve.
+**Off** — toggle + short status line + footer **Turn on**.
 
-**On** — three things in the body, all saving the moment you touch them (no Save button):
+**On** — three controls (save on change, no Save button). Short help only where needed:
 
-1. **How bold should changes be?** — **Gentle (±6 %) · Balanced (±12 %) · Bold (±22 %)**, each
-   card showing the real limit plus a one-line description. Balanced is the default.
-2. **Price limits** — inline **Never below ₱\_\_** / **Never above ₱\_\_**. Both auto-fill the
-   first time you turn Smart Pricing on with none set: floor ≈ **90 %** of your weekday rate,
-   ceiling ≈ **125 %** — a little downside protection, more upside room. Either can be edited or
-   cleared (ceiling blank = no limit).
-3. **Prices update** — a two-way picker, **When I approve** (default) or **Automatically**,
-   with a one-line explanation of what each one actually does underneath (no more guessing —
-   "nothing changes until you approve it" vs. "updates every night on its own"). Automatic also
-   turns on the AI rationale so autopilot notifications can explain themselves. The choice also
-   shows up on the **preview** screen (see below), not just here.
+1. **Strength** — Gentle (±6%) · Balanced (±12%) · Bold (±22%), plus one line: how far each
+   night can move before holiday rates. Balanced default.
+2. **Price limits** — Never below / Never above (auto-fill ≈ 90% / 125% of weekday base).
+3. **When prices update** — When I approve (default) or Automatically, plus one line for the
+   active choice (approve vs nightly auto).
 
-Footer: **Preview my prices** (becomes **See updated prices** once rates are live) — that's the
-only action; there is no separate Undo here. A **`N` nights priced** status line under the
-toggle is informational only. A **New listing** note appears above the cards when there isn't
-enough booking history yet (see _Guardrails → Cold start_). Window length, per-weekday nudges,
-orphan-gap %, rounding and the base-rate source keep sensible defaults and are not exposed in
-the modal.
+Footer: **Preview** (or **Preview again** once rates are live). Preview runs with
+`explain: false` — the UI builds its own month/day facts from engine factors.
 
-**Turning it off asks first.** The switch doesn't flip immediately — it opens a confirmation
-("Turn off Smart Pricing? This resets your prices back to your saved rates and clears the
-current suggestions.") because disabling also clears every applied recommendation
-(`smart-pricing-apply` `{ clear: true }`). Cancel leaves everything untouched; **Turn off**
-disables it and clears in one step. This is also the only "undo" surface in the settings step.
+**Turning it off asks first.** Confirm resets nights to saved rates and clears applied
+recommendations. That confirm is the only undo surface.
 
 ### Preview
 
-A review screen framed in **pesos, not percentages**:
-
-- **Your next 30 open nights: ₱X → ₱Y** with a plain verdict — "about the same over the month"
-  / "about ₱N more, weighted to the dates most likely to book" / "about ₱N less — the trade
-  for filling quiet dates". A **new listing** gets an honest "small, safe moves off your own
-  weekend and holiday rates" line. When **Automatically** is selected, an extra line spells out
-  the difference from review mode: "Automatic updates are on — this applies tonight on its own.
-  Tap **Apply now** below if you don't want to wait." — and the primary button reads **Apply
-  now** instead of **Apply all**, since applying here is optional (the cron will do it anyway)
-  rather than the only way the change goes live.
-- A **month calendar heat-map** of the recommended nightly rate. Each changed night shows
-  **both prices** — the old rate struck through above the new one — so you see the before and
-  after at a glance, not just the new number. **Green** = higher than your rate, **grey** =
-  unchanged, **amber** = lower, faint = booked/blocked. It opens on the first month that
-  actually changes; page between months with the arrows.
-- **Why these prices** — up to 4 plain bullets built from the changes: "Weekends about ₱N
-  higher than weekdays", "Christmas Season: ₱N higher — your saved holiday rate", "N gap
-  nights discounted", plus any AI warnings.
-- Footer: **← Back** (outline, left) and **Apply all** / **Apply now** (primary, right) — both
-  always visible, the calendar and reasons scroll underneath them. **Applying closes the modal
-  and shows a toast** ("Smart Pricing applied to N nights") — it does not drop you back on a
-  settings screen. Applying turns Smart Pricing on if it wasn't already, and only the nights
-  the engine actually moved are written (an unchanged night stays on your base rate).
+- Compact headline: **₱X → ₱Y** + chip (`No change` / `+₱N` / `−₱N` — always the peso delta
+  when totals move) + “Next N open nights”.
+- Month heatmap (old + new price on changed cells). Opens on first month with changes.
+  **Tap a night** for that date’s factor lines (`Day of week +5%`, named holiday rule, etc.).
+- **This month** — counts + drivers scoped to the visible month
+  (`Weekends lower` / `avg −₱100 · 4 nights`, named rules, gap / last-minute / floor). Hint:
+  “Tap a night for its breakdown.” No AI-written bullets.
+- Footer: **Back** + **Apply** / **Apply now**. Applying closes the modal and toasts.
 
 ### On the calendar
 

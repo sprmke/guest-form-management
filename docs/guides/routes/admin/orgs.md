@@ -2,7 +2,7 @@
 title: 'Super Admin — Organizations & Organization hub — operator guide'
 status: active
 tags: [guides, routes, admin]
-updated: 2026-09-05
+updated: 2026-09-05 (org hub header redesign)
 ---
 
 # Super Admin — Organizations & Organization hub
@@ -59,8 +59,12 @@ doing it from the dedicated `/admin/pricing/subscriptions` or `/admin/approvals`
   filtered in the function (PostgREST can't express "no live embedded row").
 - **Hub shell** (`SuperAdminOrgShell`): loads `get-organization-admin?slug=` once and provides it
   to every section via `SuperAdminOrgContext` (`useSuperAdminOrgContext`) — plain React context,
-  not router outlet context, since sections are no longer separate routes. Header shows the plan
-  badge + a total "open" count (pending approvals + open tickets). The whole page is one
+  not router outlet context, since sections are no longer separate routes. Header uses the shared
+  `SuperAdminDetailHeader` (same component as the Host detail page): a colored icon tile identifies
+  the entity as an organization, the plan badge + a total "open" count (pending approvals + open
+  tickets) sit next to the title, and a `details` row below shows the org's dashboard link
+  (`/:slug`, opens `orgDashboardPath` in a new tab) and the owner name — each its own labelled,
+  icon-prefixed item instead of one squished subtitle string. The whole page is one
   `AdminSectionNavLayout` (same component as Property/Org/Development Settings): a sticky left nav
   card with a sliding active-pill highlight at `lg+`, content in a single scrollable column,
   `AdminSection` anchors keyed `overview`/`subscription`/`listings`/`approvals`/`ai`/`support`/
@@ -98,6 +102,7 @@ doing it from the dedicated `/admin/pricing/subscriptions` or `/admin/approvals`
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Index page       | `ui/src/features/dashboard/super-admin/pages/SuperAdminOrgsPage.tsx`                                                                                                                                   |
 | Hub shell        | `ui/src/features/dashboard/super-admin/components/super-admin-orgs/SuperAdminOrgShell.tsx`                                                                                                             |
+| Hub header       | `ui/src/features/dashboard/super-admin/components/shared/SuperAdminDetailHeader.tsx` (shared with Host detail)                                                                                         |
 | Hub context      | `ui/src/features/dashboard/super-admin/components/super-admin-orgs/superAdminOrgContext.ts`                                                                                                            |
 | Sections         | `ui/src/features/dashboard/super-admin/pages/SuperAdminOrg{Overview,Subscription,Listings,Approvals,Ai,Support,Activity,Settings}Section.tsx` — plain content components, rendered inline by the shell |
 | Layout           | `ui/src/features/dashboard/bookings/components/AdminSectionNavLayout.tsx` (shared with Property/Org/Development Settings)                                                                              |

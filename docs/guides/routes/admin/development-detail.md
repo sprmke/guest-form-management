@@ -162,15 +162,17 @@ Save path: batched **Save Changes** → **`PATCH update-development`**.
 
 Host-facing notices shown on the property/parking **Announcements** page for every org with properties or parking linked to this development (`residence_name` match).
 
+Shown as a compact list (`HostAnnouncementAdminList`, same row style as the platform Announcements page). Clicking a row (or **Add announcement**) opens an edit dialog (`HostAnnouncementEditor`, shared `HostAnnouncementFormFields`) instead of a route — changes apply to this page's in-memory draft only and are not persisted until the page-level **Save Changes** below.
+
 | Field per row    | Storage                                 | Notes                                                                                                                       |
 | ---------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Title / message  | `developments.settings.announcements[]` | Required                                                                                                                    |
+| Title / message  | `developments.settings.announcements[]` | Message is rich-text HTML (WYSIWYG editor), required                                                                        |
 | Severity         | same                                    | `info` / `warning` / `critical`                                                                                             |
 | Active           | same                                    | Off = hidden even inside schedule window                                                                                    |
 | Starts / ends    | same                                    | Optional calendar dates (Asia/Manila); no time picker — start is inclusive from that day, end is inclusive through that day |
 | Link URL / label | same                                    | Optional CTA                                                                                                                |
 
-Notices stay active until **Active** is turned off or optional **Ends** date passes (Asia/Manila day boundaries). Hosts read the full merged list under **Announcements** in the sidebar (unread red-dot on nav). Other dashboard pages do not show a top banner.
+Notices stay active until **Active** is turned off or optional **Ends** date passes (Asia/Manila day boundaries). Hosts read the full merged list under **Announcements** in the sidebar (unread red-dot on nav); the message renders as HTML there. Other dashboard pages do not show a top banner.
 
 Platform-wide announcements (maintenance, product releases) are managed on **`/admin/announcements`**.
 

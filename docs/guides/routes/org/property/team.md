@@ -17,7 +17,7 @@ Route: `/org/:orgSlug/property/:propertySlug/team`
 | Invitations tab         | ✓        | Email required | Documented | Invite, resend (email), cancel via API                    |
 | Permissions tab         | ✓        | —              | Documented | Roles list (⋯ actions) + comparison matrix                |
 | Invite dialog           | ✓        | Email required | Documented | Role picker; default Operations                           |
-| Edit permissions dialog | ✓        | —              | Documented | Based on role + permissions tree; split scroll modal      |
+| Host details dialog     | ✓        | —              | Documented | Name, phone, role (no per-member permission tree)         |
 | Remove dialog           | ✓        | —              | Documented | Destructive confirm                                       |
 | RBAC contract           | —        | —              | Documented | Server mirror + migration                                 |
 | Team edge functions     | ✓        | —              | Documented | UI wired via `usePropertyTeam`                            |
@@ -70,9 +70,9 @@ Team is where you invite people to help run this property and control what they 
 
 Property team members use a single stored role tier:
 
-| Tier  | UI label | `role_id` literal | Intent                                                                                                                                                                                                                                                                       |
-| ----- | -------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Admin | Custom   | `ADMIN`           | Property team member with a **custom permission set** (edited via the permissions tree). Not shown as a pickable preset on invite — use **Full Access** / **Operations** / **Read Only** or a custom role template instead. Empty `permissions: []` is rejected server-side. |
+| Tier  | UI label | `role_id` literal | Intent                                                                                                                                                                                                                                                                                     |
+| ----- | -------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Admin | Custom   | `ADMIN`           | Legacy role id for members whose grants no longer match a seeded/custom template (badge: **Custom**). New invites and role changes use template UUIDs only — create a custom role on the Permissions tab instead of per-member overrides. Empty `permissions: []` is rejected server-side. |
 
 **Permission templates** (seeded per property as rows in `property_custom_roles`):
 
@@ -101,7 +101,7 @@ Legacy stored ids still expand on read (Phases 3–6): e.g. `notifications:edit`
 
 **Overrides:** Client may store any **subset of the catalog** on the member/invite row (can exceed a template preset — e.g. grant `finance:view` on a Read Only member if checkboxes allow).
 
-**Template change:** Server resets to the selected template preset unless the request sends an explicit non-empty `permissions[]` override list (matches UI). Omitting `permissions` on `ADMIN` assigns the full catalog. Explicit `[]` is rejected. Custom / partial sets still use `role_id = ADMIN` with a non-empty override list from the permissions tree.
+**Template change:** Server always resets member `permissions` from the selected role template. Per-member `permissions[]` overrides on invite or member PATCH are rejected. Edit grants on the role template (Permissions tab); members on that role sync when the template is saved (matching prior permission key).
 
 **Custom template edit:** When a custom template definition changes, server updates `permissions` on all **active** members with that template `role_id`. Inactive members restore the updated preset on activate (not the old snapshot).
 
@@ -143,7 +143,7 @@ Property delete/archive remains **org owner** only — not a property-role permi
 | Inactive (manual)       | `inactive` | `[]`                 | Snapshot before deactivate | `false`        |
 | Inactive (plan-limited) | `inactive` | `[]`                 | Snapshot before deactivate | `true`         |
 
-On activate: `ADMIN` members restore `saved_permissions` (or current checkbox selection if empty). **Template** members restore the **current template preset** (not the pre-deactivate snapshot). Clear `saved_permissions` and `plan_limited`.
+On activate: **Template** members restore the **current template preset**. Legacy `ADMIN` members restore `saved_permissions` when present, otherwise the role default. Clear `saved_permissions` and `plan_limited`.
 
 `plan_limited` distinguishes an admin's deliberate deactivate from one team-seat reconciliation (`reconcilePropertyTeamSeats` in `_shared/planEntitlements.ts`) made automatically because the current plan doesn't cover this seat — see **Downgrade / expiration** above. Any manual status change (deactivate or activate) always clears it, so a real admin decision is never overwritten by a later automatic restore.
 
@@ -189,12 +189,12 @@ When access is revoked (deactivated member, removed from property, or lost org m
 ### Members
 
 - Search by name or email; filter by role (`Full Access`, `Operations`, `Read Only`, custom).
-- Non-org members: role badge (read-only) and a single **Manage** dropdown — **Host details**, **Permissions** (role + permission tree), **Deactivate** / **Activate**, **Remove from Property**.
-- Deactivated members: **Disabled** badge; **Permissions** disabled until reactivated. Deactivated by team-seat reconciliation instead of an admin: **Plan limit** badge (tooltip explains why) instead of the plain Disabled one.
+- Non-org members: role badge (read-only) and a single **Manage** dropdown — **Host details** (name, phone, **role**), **Deactivate** / **Activate**, **Remove from Property**.
+- Deactivated members: **Disabled** badge. Deactivated by team-seat reconciliation instead of an admin: **Plan limit** badge (tooltip explains why) instead of the plain Disabled one.
 - When 1+ members are currently plan-limited, a banner above the list shows the count with an **Upgrade** button (opens the upgrade modal targeted at `teamManagement`).
 - Org owner and org admins (virtual, `fromOrg: true`): no separate Org badge (role + status already convey access). **Manage in org** goes to `/org/:orgSlug/team` when viewer has `org:team:view` — full outline button on `sm+`, compact **⋯** menu on phone (no property-level contact edit).
 - Property-managed members: **Manage** outline control on `sm+`; phone uses the same menu behind **⋯**.
-- Property members: **Manage** dropdown when caller has `team.members:edit` and/or `team.members:delete`; role changes via **Permissions** in that menu (not an inline select). Custom-role CRUD when `team.customRoles:*`.
+- Property members: **Manage** dropdown when caller has `team.members:edit` and/or `team.members:delete`; **role changes only via Host details** (permissions always follow the selected role template — no per-member permission tree). Custom-role CRUD on the **Permissions** tab when `team.customRoles:*`.
 - Guest-facing contact resolves from the first active property member with team management leaves (`team.members:*` / `team.customRoles:*`), then org owner team row, then legacy settings.
 - Cannot deactivate/remove yourself or the last active member with team management access (org owner still has implicit access).
 
@@ -211,27 +211,26 @@ When access is revoked (deactivated member, removed from property, or lost org m
 
 ### Invite Member dialog
 
-| Field | Storage                              | Validation                                                                                                          |
-| ----- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| Email | `property_invitations.email`         | Required, trimmed; **`@gmail.com`** or **`@googlemail.com`** only (Google sign-in)                                  |
-| Phone | `property_invitations.contact_phone` | Required PH mobile `09XXXXXXXXX`; copied to `property_members` on accept                                            |
-| Role  | `role_id`                            | Default/custom role UUID (default **Operations**) or **Custom** (`ADMIN`) when permissions were edited off-template |
+| Field | Storage                              | Validation                                                                                           |
+| ----- | ------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| Email | `property_invitations.email`         | Required, trimmed; **`@gmail.com`** or **`@googlemail.com`** only (Google sign-in)                   |
+| Phone | `property_invitations.contact_phone` | Required PH mobile `09XXXXXXXXX`; copied to `property_members` on accept                             |
+| Role  | `role_id`                            | Default/custom role UUID (default **Operations**). Permissions always copied from the role template. |
 
-Name comes from the invitee's Google account on accept; edit later via **Host details** on the member row.
+Name comes from the invitee's Google account on accept; edit later via **Host details** on the member row (including role).
 
-### Edit Permissions dialog
+### Host details dialog
 
-| Field       | Storage                                 | Validation                                                                                                                                                                                                                                                   |
-| ----------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Based on    | `role_id` (member edit)                 | Pick an existing role as baseline, or **Custom** to clear all checkboxes                                                                                                                                                                                     |
-| Permissions | `permissions` JSONB                     | Module accordion. **Access** = Open page (+ Export where applicable) with short hints; other groups show what they can change, each with a one-line hint. Enabling any edit auto-checks **Open page**. Feature labels use sentence case. Search filter only. |
-| Sensitive   | `team.members:*` / `team.customRoles:*` | Confirm before enabling a sensitive leaf **or** checking a parent that would select sensitive descendants                                                                                                                                                    |
+| Field        | Storage                         | Validation                                                                                                         |
+| ------------ | ------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Name / phone | `display_name`, `contact_phone` | Editable for property-managed members                                                                              |
+| Role         | `role_id`                       | Template dropdown; saving a new role resets `permissions` from that template. No per-member permission checkboxes. |
 
-Dialogs use sticky header/footer with content-only scroll (`sheetLayout="split"`), ~48rem wide on desktop. `fromOrg` virtual rows open read-only. Plan-gated leaves show `TierBadge` when the org plan lacks the mapped feature.
+To change what a role can do, edit the role on the **Permissions** tab or create a custom role — not on the member row.
 
 ### New / Edit role dialog
 
-Same permissions tree as member edit. **Based on** loads checkboxes from Full Access / Operations / Read Only / another custom role, or **Custom** to start blank. Name required; at least one permission required to save.
+Permissions tree for **role templates** only (not per member). **Based on** loads checkboxes from Full Access / Operations / Read Only / another custom role, or **Custom** to start blank. Name required; at least one permission required to save.
 
 ---
 
@@ -251,21 +250,21 @@ RLS enabled with **no authenticated policies** — edge functions use `service_r
 
 ## API reference
 
-| Action                                                 | Endpoint                                               | Method                                    | Permission                                                                                                                           |
-| ------------------------------------------------------ | ------------------------------------------------------ | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| List members (+ virtual org owner/admins)              | `property-team-members?property_id=`                   | GET                                       | `team:view`                                                                                                                          |
-| Update member (role, permissions, activate/deactivate) | `team.members:edit`                                    | PATCH                                     | `team.members:*` / `team.customRoles:*`                                                                                              |
-| Remove member                                          | `property-team-members?property_id=&memberId=`         | DELETE                                    | `team.members:delete` / `team.customRoles:*`                                                                                         |
-| List pending invitations                               | `property-team-invitations?property_id=`               | GET                                       | `team:view`                                                                                                                          |
-| Invite member                                          | `property-team-invitations`                            | POST                                      | `team.invitations:add`                                                                                                               |
-| Resend invitation                                      | `property-team-invitations`                            | POST `{ action: "resend", invitationId }` | `team.invitations:edit`                                                                                                              |
-| Cancel invitation                                      | `property-team-invitations?property_id=&invitationId=` | DELETE                                    | `team.invitations:delete`                                                                                                            |
-| List custom roles                                      | `property-team-custom-roles?property_id=`              | GET                                       | `team:view`                                                                                                                          |
-| Create custom role                                     | `property-team-custom-roles`                           | POST                                      | `team.customRoles:add` + **`customRoles`** (Starter+)                                                                                |
-| Update custom role                                     | `property-team-custom-roles`                           | PATCH                                     | `team.customRoles:edit` + **`customRoles`** (Starter+)                                                                               |
-| Delete custom role                                     | `property-team-custom-roles?property_id=&roleId=`      | DELETE                                    | `team.customRoles:delete` + **`customRoles`** (Starter+)                                                                             |
-| Accept invitation                                      | `accept-property-invite`                               | POST `{ token }`                          | JWT (invitee email must match). Returns **`{ propertyId, memberId, orgSlug, propertySlug, propertyName }`**.                         |
-| Current user access                                    | `property-access?property_id=`                         | GET                                       | JWT — returns **`{ accessKind, permissions[], memberId?, orgSlug, propertySlug, propertyName }`** (no specific permission required). |
+| Action                                             | Endpoint                                               | Method                                    | Permission                                                                                                                           |
+| -------------------------------------------------- | ------------------------------------------------------ | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| List members (+ virtual org owner/admins)          | `property-team-members?property_id=`                   | GET                                       | `team:view`                                                                                                                          |
+| Update member (role, activate/deactivate, contact) | `property-team-members`                                | PATCH                                     | `team.members:edit` — role change resets permissions from template; per-member permission overrides rejected                         |
+| Remove member                                      | `property-team-members?property_id=&memberId=`         | DELETE                                    | `team.members:delete` / `team.customRoles:*`                                                                                         |
+| List pending invitations                           | `property-team-invitations?property_id=`               | GET                                       | `team:view`                                                                                                                          |
+| Invite member                                      | `property-team-invitations`                            | POST                                      | `team.invitations:add`                                                                                                               |
+| Resend invitation                                  | `property-team-invitations`                            | POST `{ action: "resend", invitationId }` | `team.invitations:edit`                                                                                                              |
+| Cancel invitation                                  | `property-team-invitations?property_id=&invitationId=` | DELETE                                    | `team.invitations:delete`                                                                                                            |
+| List custom roles                                  | `property-team-custom-roles?property_id=`              | GET                                       | `team:view`                                                                                                                          |
+| Create custom role                                 | `property-team-custom-roles`                           | POST                                      | `team.customRoles:add` + **`customRoles`** (Starter+)                                                                                |
+| Update custom role                                 | `property-team-custom-roles`                           | PATCH                                     | `team.customRoles:edit` + **`customRoles`** (Starter+)                                                                               |
+| Delete custom role                                 | `property-team-custom-roles?property_id=&roleId=`      | DELETE                                    | `team.customRoles:delete` + **`customRoles`** (Starter+)                                                                             |
+| Accept invitation                                  | `accept-property-invite`                               | POST `{ token }`                          | JWT (invitee email must match). Returns **`{ propertyId, memberId, orgSlug, propertySlug, propertyName }`**.                         |
+| Current user access                                | `property-access?property_id=`                         | GET                                       | JWT — returns **`{ accessKind, permissions[], memberId?, orgSlug, propertySlug, propertyName }`** (no specific permission required). |
 
 Auth: Bearer JWT + `verifyPropertyAccess` (`_shared/orgAuth.ts`). `property_id` or body `propertyId` required on team admin endpoints.
 
@@ -277,33 +276,33 @@ Auth: Bearer JWT + `verifyPropertyAccess` (`_shared/orgAuth.ts`). `property_id` 
 
 ## Implementation map
 
-| Concern              | Path                                                                                                          |
-| -------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Page                 | `ui/src/features/dashboard/team/pages/PropertyTeamPage.tsx`                                                   |
-| Data hooks           | `ui/src/features/dashboard/team/hooks/usePropertyTeam.ts`                                                     |
-| API client           | `ui/src/features/dashboard/team/lib/teamApi.ts`                                                               |
-| Components           | `ui/src/features/dashboard/team/components/*`                                                                 |
-| UI constants         | `ui/src/features/dashboard/team/lib/propertyTeamConstants.ts`                                                 |
-| Permission catalog   | `ui/src/features/dashboard/team/lib/propertyPermissionCatalog.ts`                                             |
-| Tree helpers         | `ui/src/features/dashboard/team/lib/permissionTreeState.ts`                                                   |
-| Permissions tree UI  | `PermissionsTreeView.tsx`, `ApplyTemplatePicker.tsx`, `EditPermissionsDialog.tsx`, `CustomRoleFormDialog.tsx` |
-| Server RBAC          | `supabase/functions/_shared/propertyTeamPermissions.ts`                                                       |
-| Team service         | `supabase/functions/_shared/propertyTeamService.ts`                                                           |
-| Seat reconciliation  | `supabase/functions/_shared/planEntitlements.ts#reconcilePropertyTeamSeats`                                   |
-| Invite email         | `supabase/functions/_shared/propertyTeamInviteEmail.ts`                                                       |
-| Accept page          | `ui/src/features/dashboard/team/pages/AcceptInvitePage.tsx`                                                   |
-| Accept API client    | `ui/src/features/dashboard/team/lib/acceptInviteApi.ts`                                                       |
-| Permissions hook     | `ui/src/features/dashboard/team/hooks/usePropertyPermissions.ts`                                              |
-| Route guards         | `ui/src/features/dashboard/org/components/RequirePropertyPermission.tsx`                                      |
-| Access denied UI     | `ui/src/features/dashboard/org/components/TenantAccessDenied.tsx`                                             |
-| Org route guards     | `ui/src/features/dashboard/org/components/RequireOrgPermission.tsx`                                           |
-| Org permissions hook | `ui/src/features/dashboard/team/hooks/useOrgPermissions.ts`                                                   |
-| Nav filtering        | `ui/src/features/dashboard/bookings/lib/adminSidebarNav.ts#filterPropertyNavSections`                         |
-| Property access      | `supabase/functions/_shared/orgAuth.ts#verifyPropertyAccess`                                                  |
-| Edge functions       | `property-team-members`, `property-team-invitations`, `property-team-custom-roles`, `accept-property-invite`  |
-| Route                | `ui/src/features/dashboard/routes/index.tsx` (`team`, `accept-invite`)                                        |
-| Sidebar nav          | `ui/src/features/dashboard/bookings/lib/adminSidebarNav.ts`                                                   |
-| Path helper          | `ui/src/features/dashboard/org/lib/tenantPaths.ts`                                                            |
+| Concern              | Path                                                                                                         |
+| -------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Page                 | `ui/src/features/dashboard/team/pages/PropertyTeamPage.tsx`                                                  |
+| Data hooks           | `ui/src/features/dashboard/team/hooks/usePropertyTeam.ts`                                                    |
+| API client           | `ui/src/features/dashboard/team/lib/teamApi.ts`                                                              |
+| Components           | `ui/src/features/dashboard/team/components/*`                                                                |
+| UI constants         | `ui/src/features/dashboard/team/lib/propertyTeamConstants.ts`                                                |
+| Permission catalog   | `ui/src/features/dashboard/team/lib/propertyPermissionCatalog.ts`                                            |
+| Tree helpers         | `ui/src/features/dashboard/team/lib/permissionTreeState.ts`                                                  |
+| Permissions tree UI  | `PermissionsTreeView.tsx`, `ApplyTemplatePicker.tsx`, `CustomRoleFormDialog.tsx` (role templates only)       |
+| Server RBAC          | `supabase/functions/_shared/propertyTeamPermissions.ts`                                                      |
+| Team service         | `supabase/functions/_shared/propertyTeamService.ts`                                                          |
+| Seat reconciliation  | `supabase/functions/_shared/planEntitlements.ts#reconcilePropertyTeamSeats`                                  |
+| Invite email         | `supabase/functions/_shared/propertyTeamInviteEmail.ts`                                                      |
+| Accept page          | `ui/src/features/dashboard/team/pages/AcceptInvitePage.tsx`                                                  |
+| Accept API client    | `ui/src/features/dashboard/team/lib/acceptInviteApi.ts`                                                      |
+| Permissions hook     | `ui/src/features/dashboard/team/hooks/usePropertyPermissions.ts`                                             |
+| Route guards         | `ui/src/features/dashboard/org/components/RequirePropertyPermission.tsx`                                     |
+| Access denied UI     | `ui/src/features/dashboard/org/components/TenantAccessDenied.tsx`                                            |
+| Org route guards     | `ui/src/features/dashboard/org/components/RequireOrgPermission.tsx`                                          |
+| Org permissions hook | `ui/src/features/dashboard/team/hooks/useOrgPermissions.ts`                                                  |
+| Nav filtering        | `ui/src/features/dashboard/bookings/lib/adminSidebarNav.ts#filterPropertyNavSections`                        |
+| Property access      | `supabase/functions/_shared/orgAuth.ts#verifyPropertyAccess`                                                 |
+| Edge functions       | `property-team-members`, `property-team-invitations`, `property-team-custom-roles`, `accept-property-invite` |
+| Route                | `ui/src/features/dashboard/routes/index.tsx` (`team`, `accept-invite`)                                       |
+| Sidebar nav          | `ui/src/features/dashboard/bookings/lib/adminSidebarNav.ts`                                                  |
+| Path helper          | `ui/src/features/dashboard/org/lib/tenantPaths.ts`                                                           |
 
 ---
 
