@@ -31,7 +31,7 @@ function toastSyncResult(r: FeedSyncResult): void {
     return;
   }
   toast.success(
-    `Synced — ${r.blocksCreated} added, ${r.blocksUpdated} changed, ${r.blocksRemoved} removed` +
+    `Synced: ${r.blocksCreated} added, ${r.blocksUpdated} changed, ${r.blocksRemoved} removed` +
       (r.conflicts ? `, ${r.conflicts} conflict(s)` : '')
   );
 }
@@ -92,7 +92,7 @@ export function useAddCalendarFeed() {
         return;
       }
       toast.success(
-        `Calendar connected — ${sync.blocksCreated} imported` +
+        `Calendar connected: ${sync.blocksCreated} imported` +
           (sync.conflicts ? `, ${sync.conflicts} conflict(s)` : '')
       );
     },

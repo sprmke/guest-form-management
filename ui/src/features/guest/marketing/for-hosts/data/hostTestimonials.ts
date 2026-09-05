@@ -4,7 +4,7 @@ export const hostTestimonials = [
     name: 'Ana Dela Cruz',
     role: 'Host, 4 properties · Tagaytay',
     quote:
-      'The status pipeline plus inbound approval email means GAF and pet documents clear themselves overnight. I used to spend my mornings checking inboxes — now I just check the dashboard.',
+      'The status pipeline plus inbound approval email means GAF and pet documents clear themselves overnight. I used to spend my mornings checking inboxes. Now I just check the dashboard.',
     rating: 5,
   },
   {
@@ -36,7 +36,7 @@ export const hostTestimonials = [
     name: 'Grace Tan',
     role: 'Host, Airbnb + direct bookings',
     quote:
-      'I built a month of Instagram posts and a reel in the Marketing Studio in one afternoon — no designer, no video editor, just the built-in calendar and templates.',
+      'I built a month of Instagram posts and a reel in the Marketing Studio in one afternoon. No designer, no video editor, just the built-in calendar and templates.',
     rating: 5,
   },
 ] as const;

@@ -444,7 +444,7 @@ function PricingDayCell({
           : singleStay
             ? `Open booking for ${bookingListDisplayName(singleStay)}${stayRange ? `, ${stayRange}` : ''}`
             : showPrice
-              ? `${format(day, 'MMMM d')}, ${formatMoneyCompact(price)} per night${isImported ? ', synced from OTA calendar' : isBlocked ? ', blocked' : ''}${hasHoliday ? ', holiday' : ''}${isCustom ? ', custom rate' : ''}${isSmart ? ', Smart Pricing rate' : ''}${touchArmed ? ', range start — tap end date' : ''}`
+              ? `${format(day, 'MMMM d')}, ${formatMoneyCompact(price)} per night${isImported ? ', synced from OTA calendar' : isBlocked ? ', blocked' : ''}${hasHoliday ? ', holiday' : ''}${isCustom ? ', custom rate' : ''}${isSmart ? ', Smart Pricing rate' : ''}${touchArmed ? ', range start, tap end date' : ''}`
               : `${format(day, 'MMMM d')}${isPast ? ', past' : ''}${isImported ? ', synced from OTA calendar' : isBlocked ? ', blocked' : ''}`
       }
     >

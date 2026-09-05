@@ -168,7 +168,7 @@ export function TeamScene() {
           </SurfaceCard>
         </div>
       </PushIn>
-      <SceneOutro text="Full Access, Operations, Read Only — or a custom role you define." />
+      <SceneOutro text="Full Access, Operations, Read Only, or a custom role you define." />
     </FilmShell>
   );
 }
@@ -245,7 +245,7 @@ export function NotificationsScene() {
                 {
                   tag: 'OPERATIONS',
                   title: 'Booking moved forward',
-                  detail: 'Kyle Soriano is now Ready for check-in — send the door code.',
+                  detail: 'Kyle Soriano is now Ready for check-in. Send the door code.',
                   icon: ClipboardCheck,
                   delay: 66,
                 },
@@ -299,7 +299,7 @@ export function NotificationsScene() {
           </div>
         </div>
       </PushIn>
-      <SceneOutro text="Chat, marketing, staff, ops, finance, maintenance — each to its own group." />
+      <SceneOutro text="Chat, marketing, staff, ops, finance, maintenance: each to its own group." />
     </FilmShell>
   );
 }
@@ -440,7 +440,7 @@ export function PlansBillingScene() {
 export function AiAssistantScene() {
   const frame = useCurrentFrame();
   const answer =
-    'Net profit this month is ₱215,120 — up 24% on last month, from 18 stays across your 3 listings. Monaco 2604 leads at ₱94k.';
+    'Net profit this month is ₱215,120, up 24% on last month, from 18 stays across your 3 listings. Monaco 2604 leads at ₱94k.';
   const typed = typewriter(answer, frame, 60, 188);
   const barVals = [46, 58, 51, 72, 66, 84];
   const abilities = [
@@ -561,7 +561,7 @@ export function AiAssistantScene() {
         </div>
       </PushIn>
       <Cursor from={[560, 470]} to={[1040, 116]} moveStart={244} moveEnd={266} clickAt={268} />
-      <SceneOutro text="Grounded in your data — and it can act on the answer for you." />
+      <SceneOutro text="Grounded in your data, and it can act on the answer for you." />
     </FilmShell>
   );
 }
@@ -584,7 +584,7 @@ export function HelpSupportScene() {
       <PushIn>
         <SceneHeading
           eyebrow="Help & Support"
-          title="Answers, guides, updates — and a line to our team"
+          title="Answers, guides, updates, and a line to our team"
           frame={frame}
           action={<StatusPill label="Every team member" tone="slate" />}
         />

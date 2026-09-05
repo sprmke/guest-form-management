@@ -5,15 +5,9 @@ import type {
   PricingSaveOptions,
 } from '@/features/dashboard/pricing/lib/pricingSave';
 
+import { AdminDialogShell } from '@/components/AdminDialogShell';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  ResponsiveModal,
-  ResponsiveModalContent,
-  ResponsiveModalFooter,
-  ResponsiveModalHeader,
-  ResponsiveModalTitle,
-} from '@/components/ui/responsive-modal';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -28,44 +22,12 @@ export function PricingSaveDialog({ open, onOpenChange, saving = false, onConfir
   const [baseRateScope, setBaseRateScope] = useState<PricingBaseRateScope>('all_future');
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
-      <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-        <ResponsiveModalHeader>
-          <ResponsiveModalTitle>Save pricing</ResponsiveModalTitle>
-        </ResponsiveModalHeader>
-
-        <div className="space-y-5">
-          <div className="space-y-3">
-            <p className="text-foreground text-sm font-medium">Apply updated base rates for</p>
-            <div className="grid gap-2">
-              <ScopeOption
-                active={baseRateScope === 'all_future'}
-                title="All future dates"
-                onClick={() => setBaseRateScope('all_future')}
-              />
-              <ScopeOption
-                active={baseRateScope === 'current_month'}
-                title="This month only"
-                onClick={() => setBaseRateScope('current_month')}
-              />
-            </div>
-          </div>
-
-          <label className="border-border/60 flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5">
-            <Checkbox
-              checked={overrideCustomRates}
-              onCheckedChange={(checked) => setOverrideCustomRates(checked === true)}
-              className="mt-0.5"
-            />
-            <span className="min-w-0 space-y-0.5">
-              <span className="text-foreground block text-sm font-medium">
-                Override custom rates
-              </span>
-            </span>
-          </label>
-        </div>
-
-        <ResponsiveModalFooter className="gap-2 sm:gap-2">
+    <AdminDialogShell
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Save pricing"
+      footer={
+        <>
           <Button
             type="button"
             variant="outline"
@@ -83,9 +45,38 @@ export function PricingSaveDialog({ open, onOpenChange, saving = false, onConfir
           >
             Save
           </Button>
-        </ResponsiveModalFooter>
-      </ResponsiveModalContent>
-    </ResponsiveModal>
+        </>
+      }
+    >
+      <div className="space-y-5">
+        <div className="space-y-3">
+          <p className="text-foreground text-sm font-medium">Apply updated base rates for</p>
+          <div className="grid gap-2">
+            <ScopeOption
+              active={baseRateScope === 'all_future'}
+              title="All future dates"
+              onClick={() => setBaseRateScope('all_future')}
+            />
+            <ScopeOption
+              active={baseRateScope === 'current_month'}
+              title="This month only"
+              onClick={() => setBaseRateScope('current_month')}
+            />
+          </div>
+        </div>
+
+        <label className="border-border/60 flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5">
+          <Checkbox
+            checked={overrideCustomRates}
+            onCheckedChange={(checked) => setOverrideCustomRates(checked === true)}
+            className="mt-0.5"
+          />
+          <span className="min-w-0 space-y-0.5">
+            <span className="text-foreground block text-sm font-medium">Override custom rates</span>
+          </span>
+        </label>
+      </div>
+    </AdminDialogShell>
   );
 }
 

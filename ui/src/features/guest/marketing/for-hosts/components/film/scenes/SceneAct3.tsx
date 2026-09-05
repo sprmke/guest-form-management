@@ -99,7 +99,7 @@ export function PricingScene() {
           </div>
         </div>
       </PushIn>
-      <SceneOutro text="Weekday, weekend, single-night rates — and blocked dates, in one grid." />
+      <SceneOutro text="Weekday, weekend, single-night rates, and blocked dates, in one grid." />
     </FilmShell>
   );
 }
@@ -224,7 +224,7 @@ export function FinanceScene() {
           </div>
         </SurfaceCard>
       </PushIn>
-      <SceneOutro text="Booking income lands on its own — add expenses, then export." />
+      <SceneOutro text="Booking income lands on its own. Add expenses, then export." />
     </FilmShell>
   );
 }

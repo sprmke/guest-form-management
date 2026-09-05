@@ -94,26 +94,10 @@ export const STRATEGY_OPTIONS: Array<{
   value: SmartAggressiveness;
   label: string;
   range: string;
-  blurb: string;
 }> = [
-  {
-    value: 'conservative',
-    label: 'Gentle',
-    range: 'up to ±6%',
-    blurb: 'Small nudges only. A safe way to try it.',
-  },
-  {
-    value: 'balanced',
-    label: 'Balanced',
-    range: 'up to ±12%',
-    blurb: 'Recommended. Follows demand without big swings.',
-  },
-  {
-    value: 'aggressive',
-    label: 'Bold',
-    range: 'up to ±22%',
-    blurb: 'Bigger moves to chase bookings on slow dates.',
-  },
+  { value: 'conservative', label: 'Gentle', range: '±6%' },
+  { value: 'balanced', label: 'Balanced', range: '±12%' },
+  { value: 'aggressive', label: 'Bold', range: '±22%' },
 ];
 
 export type SmartPricingSettingsPatch = Partial<Omit<SmartPricingSettings, 'lastRunAt'>>;

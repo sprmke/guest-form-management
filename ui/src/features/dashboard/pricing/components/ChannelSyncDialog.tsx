@@ -98,7 +98,7 @@ function eventLine(e: CalendarSyncEvent): string {
     case 'block_removed':
       return `Reservation removed${range}`;
     case 'conflict_detected':
-      return `Conflict — overlaps another booking${range}`;
+      return `Conflict: overlaps another booking${range}`;
     case 'error':
       return `Sync error: ${String(e.detail?.reason ?? 'unknown')}`;
     case 'skipped':

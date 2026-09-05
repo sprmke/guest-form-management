@@ -42,7 +42,7 @@ export function GuestInboxScene() {
   const frame = useCurrentFrame();
 
   const suggestion =
-    'Early check-in from 12:30 PM works for your dates — I’ve added it to your booking. See you then!';
+    'Early check-in from 12:30 PM works for your dates. I’ve added it to your booking. See you then!';
   const suggestTyped = typewriter(suggestion, frame, 44, 124);
   const sent = frame >= 136;
   const autoOn = frame >= 152;
@@ -56,7 +56,7 @@ export function GuestInboxScene() {
       <PushIn>
         <SceneHeading
           eyebrow="Unified guest inbox"
-          title="AI suggests the reply — or sends it for you"
+          title="AI suggests the reply, or sends it for you"
           frame={frame}
           action={
             <div
@@ -209,7 +209,7 @@ export function GuestInboxScene() {
                 <Plus className="h-3.5 w-3.5" />
               </span>
               {autoOn
-                ? 'AI is handling replies — jump in any time'
+                ? 'AI is handling replies. Jump in any time'
                 : 'Insert Stay Guide · Approved GAF · SD refund link'}
               <button
                 className="ml-auto flex h-7 w-7 items-center justify-center rounded-lg bg-teal-600 text-white"
@@ -260,7 +260,7 @@ export function AiReceptionistScene() {
     return (active ? a : 0.16) * settle;
   });
 
-  const guestLine = 'Hi Kame — what time is check-in, and where do I park?';
+  const guestLine = 'Hi Kame, what time is check-in, and where do I park?';
   const kameLine =
     'Check-in is from 2 PM, and your stay includes one parking slot on Level 3. Want me to note an early arrival?';
   const guestTyped = typewriter(guestLine, frame, 34, 92);
@@ -275,7 +275,7 @@ export function AiReceptionistScene() {
       <PushIn>
         <SceneHeading
           eyebrow="AI voice receptionist"
-          title="Meet Kame — your guests’ voice receptionist"
+          title="Meet Kame, your guests’ voice receptionist"
           frame={frame}
           action={<StatusPill label="Business plan" tone="amber" />}
         />
@@ -726,7 +726,7 @@ export function MarketingStudioScene() {
           </div>
         </div>
       </PushIn>
-      <SceneOutro text="Calendar, Design, and Video builders — style with AI, publish to Meta." />
+      <SceneOutro text="Calendar, Design, and Video builders. Style with AI, publish to Meta." />
     </FilmShell>
   );
 }
@@ -922,7 +922,7 @@ export function PublicPagesScene() {
           </div>
         </div>
       </PushIn>
-      <SceneOutro text="Listing, stay guide, and showcase — a live preview beside every edit." />
+      <SceneOutro text="Listing, stay guide, and showcase. A live preview beside every edit." />
     </FilmShell>
   );
 }
@@ -951,7 +951,7 @@ export function TemplatesScene() {
       <PushIn>
         <SceneHeading
           eyebrow="Template management"
-          title="Edit every message — and preview it first"
+          title="Edit every message, and preview it first"
           frame={frame}
           action={
             <div className="flex gap-1.5" style={reveal(frame, 90)}>
@@ -1044,7 +1044,7 @@ export function TemplatesScene() {
                 <div className="mt-3 rounded-lg bg-teal-50 px-3 py-2 text-[10px] font-bold text-teal-700">
                   Open stay guide →
                 </div>
-                <p className="mt-3 text-[9px] text-slate-400">— The Monaco 2604 team</p>
+                <p className="mt-3 text-[9px] text-slate-400">- The Monaco 2604 team</p>
               </div>
             ) : (
               <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">

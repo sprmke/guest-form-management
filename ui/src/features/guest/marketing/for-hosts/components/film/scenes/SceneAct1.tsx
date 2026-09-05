@@ -261,7 +261,7 @@ export function CommandCenterScene() {
           />
         </SurfaceCard>
       </PushIn>
-      <SceneOutro text="Today's stays, cash flow, and tasks — without digging." />
+      <SceneOutro text="Today's stays, cash flow, and tasks, without digging." />
     </FilmShell>
   );
 }

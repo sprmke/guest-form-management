@@ -78,7 +78,7 @@ export function useApplySmartPricing() {
       toast.success(
         `Smart Pricing applied to ${data.applied} night${data.applied === 1 ? '' : 's'}` +
           (data.skippedUnavailable
-            ? ` — ${data.skippedUnavailable} skipped (now booked/blocked)`
+            ? `. ${data.skippedUnavailable} skipped (now booked/blocked)`
             : '')
       );
     },
@@ -93,7 +93,7 @@ export function useClearSmartPricing() {
     mutationFn: () => clearSmartPricing(propertyId!),
     onSuccess: () => {
       invalidate();
-      toast.success('Smart Pricing cleared — your manual rates are active');
+      toast.success('Smart Pricing cleared. Your manual rates are active');
     },
     onError: (error: Error) => handleError(error, 'Could not clear Smart Pricing'),
   });

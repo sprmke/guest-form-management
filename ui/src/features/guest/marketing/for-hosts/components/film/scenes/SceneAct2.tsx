@@ -183,7 +183,7 @@ export function BookingWorkflowScene() {
           </div>
         </div>
       </PushIn>
-      <SceneOutro text="Documents, receipts, calendar, and emails — handled as it moves." />
+      <SceneOutro text="Documents, receipts, calendar, and emails, handled as it moves." />
     </FilmShell>
   );
 }
@@ -325,7 +325,7 @@ export function BookingsBoardScene() {
         </div>
       </PushIn>
       <Cursor from={[210, 250]} to={[640, 250]} moveStart={30} moveEnd={98} clickAt={28} />
-      <SceneOutro text="A board when you want one — plus one-tap manual bookings." />
+      <SceneOutro text="A board when you want one, plus one-tap manual bookings." />
     </FilmShell>
   );
 }
@@ -350,7 +350,7 @@ export function DataImportScene() {
       <PushIn>
         <SceneHeading
           eyebrow="AI-assisted data import"
-          title="Bring existing bookings in — AI maps the columns"
+          title="Bring existing bookings in. AI maps the columns"
           frame={frame}
           action={
             <span
@@ -458,7 +458,7 @@ export function DataImportScene() {
           </div>
         </div>
       </PushIn>
-      <SceneOutro text="AI does the column mapping — you just check the odd ones." />
+      <SceneOutro text="AI does the column mapping. You just check the odd ones." />
     </FilmShell>
   );
 }
@@ -596,7 +596,7 @@ export function ChannelSyncScene() {
           </div>
         </div>
       </PushIn>
-      <SceneOutro text="Reservations flow in, blocks flow out — no double-bookings." />
+      <SceneOutro text="Reservations flow in, blocks flow out. No double-bookings." />
     </FilmShell>
   );
 }

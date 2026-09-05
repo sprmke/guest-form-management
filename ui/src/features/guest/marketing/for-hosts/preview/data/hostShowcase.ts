@@ -28,7 +28,7 @@ export const heroContent = {
   eyebrow: 'For property hosts',
   /** Rendered as masked lines; the last word carries the teal accent. */
   headline: ['Every stay,', 'start to finish,', 'on one dashboard.'],
-  lead: 'Kame Homes replaces the spreadsheet, the Airbnb tab, the Messenger threads, and the receipt folder with one workflow — and keeps it moving while you are away from your desk.',
+  lead: 'Kame Homes replaces the spreadsheet, the Airbnb tab, the Messenger threads, and the receipt folder with one workflow, and keeps it moving while you are away from your desk.',
   primaryCta: { label: 'Start free', to: '/for-hosts/login' },
   secondaryCta: { label: 'Watch the 3-minute tour', sectionId: 'features' },
   trustLine: 'No card to start · Works on your phone · Cancel anytime',
@@ -40,7 +40,7 @@ export const heroContent = {
 
 export const proofContent = {
   statement:
-    'The same six-stage workflow runs on every booking — whether it came from your website, Airbnb, or a walk-in.',
+    'The same six-stage workflow runs on every booking, whether it came from your website, Airbnb, or a walk-in.',
   integrations: [
     { label: 'Two-way Airbnb sync', icon: CalendarClock },
     { label: 'Facebook & Instagram inbox', icon: Inbox },
@@ -63,7 +63,7 @@ export interface WorkflowStage {
 export const workflowContent = {
   eyebrow: 'The workflow',
   title: 'One booking. One path. Nothing slips.',
-  lead: 'Direct, Airbnb, or walk-in, every booking runs the same six stages. The teal line is the part Kame handles on its own — you step in only where a stage needs a decision.',
+  lead: 'Direct, Airbnb, or walk-in, every booking runs the same six stages. The teal line is the part Kame handles on its own. You step in only where a stage needs a decision.',
   stages: [
     {
       status: 'Pending review',
@@ -149,7 +149,7 @@ export const showcaseContent = {
     {
       id: 'inbox',
       kicker: 'Guest inbox',
-      title: 'AI drafts the reply — or answers on its own',
+      title: 'AI drafts the reply, or answers on its own',
       body: 'Website chat, Facebook, and Instagram land in one thread. Review the AI-drafted reply and send, or let it respond automatically. Guests can also hold a live voice call with Kame.',
       includes: [
         { label: 'Unified inbox', icon: Inbox },
@@ -213,7 +213,7 @@ export const setupContent = {
     {
       step: '02',
       title: 'Configure once',
-      body: 'Forms, nightly rates, deposit rules, and message templates — set them and leave them.',
+      body: 'Forms, nightly rates, deposit rules, and message templates. Set them and leave them.',
     },
     {
       step: '03',

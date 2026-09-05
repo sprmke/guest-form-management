@@ -114,7 +114,7 @@ const chapterMeta: ChapterMeta[] = [
     id: 'data-import',
     label: 'AI import',
     eyebrow: 'AI-assisted data import',
-    title: 'Bring your existing bookings in — AI maps the columns',
+    title: 'Bring your existing bookings in. AI maps the columns',
     description:
       'Upload any spreadsheet; AI matches your headers to the right fields and flags only the rows that need a look.',
     icon: Sparkles,
@@ -174,7 +174,7 @@ const chapterMeta: ChapterMeta[] = [
     id: 'guest-inbox',
     label: 'Inbox',
     eyebrow: 'Unified guest inbox',
-    title: 'AI suggests the reply — or sends it for you',
+    title: 'AI suggests the reply, or sends it for you',
     description:
       'Website chat, Facebook, and Instagram in one place: review an AI-drafted reply, or let it answer on its own.',
     icon: Inbox,
@@ -186,7 +186,7 @@ const chapterMeta: ChapterMeta[] = [
     id: 'ai-receptionist',
     label: 'Receptionist',
     eyebrow: 'AI voice receptionist',
-    title: 'Meet Kame — your guests’ voice receptionist',
+    title: 'Meet Kame, your guests’ voice receptionist',
     description:
       'Guests hold a live voice call with your animated AI receptionist, answered from your property’s own details.',
     icon: PhoneCall,
@@ -222,7 +222,7 @@ const chapterMeta: ChapterMeta[] = [
     id: 'templates',
     label: 'Templates',
     eyebrow: 'Template management',
-    title: 'Edit every message — and preview it first',
+    title: 'Edit every message, and preview it first',
     description:
       'Stay-guide sections and automated emails, each with placeholders, a live preview, and reset-to-default.',
     icon: FileText,
