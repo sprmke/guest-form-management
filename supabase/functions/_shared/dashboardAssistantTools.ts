@@ -106,7 +106,6 @@ import {
   createServiceClient,
   requirePropertyPermissionAndFeature,
   verifyOrgAccess,
-  verifyOrgOwner,
   verifyOrgTeamAccess,
   verifyParkingTeamAccess,
   verifyPropertyAccess,
@@ -499,7 +498,7 @@ async function toolListBookings(
     const access = await verifyOrgAccess(
       ctx.req,
       { orgId: ctx.organizationId },
-      'org:bookings:view'
+      'org.bookings:view'
     );
     orgId = access.org.id;
   }
@@ -764,7 +763,7 @@ async function toolGetDashboardStats(
     const access = await verifyOrgAccess(
       ctx.req,
       { orgId: ctx.organizationId },
-      'org:dashboard:view'
+      'org.dashboard:view'
     );
     orgId = access.org.id;
   }
@@ -909,7 +908,7 @@ async function toolListMaintenanceItems(
 }
 
 async function toolGetOrgProfile(ctx: ToolExecutionContext): Promise<ToolResult> {
-  await verifyOrgAccess(ctx.req, { orgId: ctx.organizationId }, 'org:settings:view');
+  await verifyOrgAccess(ctx.req, { orgId: ctx.organizationId }, 'org.settings:view');
   const sb = createServiceClient();
   const { data: org, error } = await sb
     .from('organizations')
@@ -936,7 +935,7 @@ async function toolGetOrgProfile(ctx: ToolExecutionContext): Promise<ToolResult>
 }
 
 async function toolGetOrgVerificationStatus(ctx: ToolExecutionContext): Promise<ToolResult> {
-  await verifyOrgAccess(ctx.req, { orgId: ctx.organizationId }, 'org:settings:view');
+  await verifyOrgAccess(ctx.req, { orgId: ctx.organizationId }, 'org.settings:view');
   const sb = createServiceClient();
   const { data: org, error } = await sb
     .from('organizations')
@@ -1104,7 +1103,7 @@ async function toolListPropertyPendingInvitations(
 }
 
 async function toolListParkings(ctx: ToolExecutionContext): Promise<ToolResult> {
-  const access = await verifyOrgAccess(ctx.req, { orgId: ctx.organizationId }, 'org:parkings:view');
+  const access = await verifyOrgAccess(ctx.req, { orgId: ctx.organizationId }, 'org.parkings:view');
   const sb = createServiceClient();
   const { data, error } = await sb
     .from('parkings')
@@ -1174,7 +1173,7 @@ async function toolListParkingBookings(
     const access = await verifyOrgAccess(
       ctx.req,
       { orgId: ctx.organizationId },
-      'org:parkings:view'
+      'org.parkings:view'
     );
     orgId = access.org.id;
   }
@@ -1966,10 +1965,8 @@ async function toolProposeUpdateOrgProfile(
   const built = buildOrgProfilePatchFromArgs(args);
   if ('error' in built) return { ok: false, error: built.error };
 
-  // update-organization is owner-only server-side (verifyOrgOwner), not the general
-  // org:settings:edit permission grant a non-owner admin might otherwise hold — mirror that
-  // constraint exactly rather than loosening it for the assistant.
-  await verifyOrgOwner(ctx.req, ctx.organizationId);
+  // update-organization requires org.settings.basic:edit — mirror that leaf (not owner-only).
+  await verifyOrgAccess(ctx.req, { orgId: ctx.organizationId }, 'org.settings.basic:edit');
 
   const tier = classifyActionRisk({
     toolName: 'propose_update_org_profile',
@@ -1992,7 +1989,11 @@ async function toolProposeUpdateOrgProfile(
   });
 
   try {
-    const { org } = await verifyOrgOwner(ctx.req, ctx.organizationId);
+    const { org } = await verifyOrgAccess(
+      ctx.req,
+      { orgId: ctx.organizationId },
+      'org.settings.basic:edit'
+    );
     const organization = await applyOrganizationProfilePatch(org, built.patch);
     return { ok: true, riskTier: tier, data: { organization } };
   } catch (err) {
@@ -2046,7 +2047,7 @@ async function toolProposeUpdateTeamMemberRole(
   const teamCtx = await verifyOrgTeamAccess(
     ctx.req,
     { orgId: ctx.organizationId },
-    { requireManage: true }
+    { requireMemberEdit: true }
   );
 
   const tier = classifyActionRisk({
@@ -2079,7 +2080,7 @@ async function toolProposeRevokeInvitation(
   const teamCtx = await verifyOrgTeamAccess(
     ctx.req,
     { orgId: ctx.organizationId },
-    { requireManage: true }
+    { requireInvitationDelete: true }
   );
 
   const tier = classifyActionRisk({
@@ -2127,7 +2128,7 @@ async function toolProposeRemoveTeamMember(
   const teamCtx = await verifyOrgTeamAccess(
     ctx.req,
     { orgId: ctx.organizationId },
-    { requireManage: true }
+    { requireMemberDelete: true }
   );
 
   const tier = classifyActionRisk({
@@ -3350,7 +3351,11 @@ export async function executeConfirmedAction(
   }
 
   if (toolName === 'propose_update_org_profile') {
-    const { org } = await verifyOrgOwner(ctx.req, ctx.organizationId);
+    const { org } = await verifyOrgAccess(
+      ctx.req,
+      { orgId: ctx.organizationId },
+      'org.settings.basic:edit'
+    );
 
     await assertActionSafeToExecute({
       toolName: 'propose_update_org_profile',
@@ -3410,7 +3415,7 @@ export async function executeConfirmedAction(
     const teamCtx = await verifyOrgTeamAccess(
       ctx.req,
       { orgId: ctx.organizationId },
-      { requireManage: true }
+      { requireMemberEdit: true }
     );
 
     await assertActionSafeToExecute({
@@ -3436,7 +3441,7 @@ export async function executeConfirmedAction(
     const teamCtx = await verifyOrgTeamAccess(
       ctx.req,
       { orgId: ctx.organizationId },
-      { requireManage: true }
+      { requireInvitationDelete: true }
     );
 
     await assertActionSafeToExecute({
@@ -3458,7 +3463,7 @@ export async function executeConfirmedAction(
     const teamCtx = await verifyOrgTeamAccess(
       ctx.req,
       { orgId: ctx.organizationId },
-      { requireManage: true }
+      { requireMemberDelete: true }
     );
 
     await assertActionSafeToExecute({

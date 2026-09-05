@@ -185,7 +185,7 @@ async function loadLiveHostAnnouncements(
     await verifyParkingTeamAccess(ctx.req, parkingId, 'bookings:view');
   } else {
     const access = await verifyOrgAccess(ctx.req, { orgId: ctx.organizationId });
-    if (!access.planLimited && !hasOrgPermission(access.permissions, 'org:dashboard:view')) {
+    if (!access.planLimited && !hasOrgPermission(access.permissions, 'org.dashboard:view')) {
       throw new Error('Access restricted');
     }
   }

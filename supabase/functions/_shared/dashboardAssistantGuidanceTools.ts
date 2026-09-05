@@ -370,7 +370,7 @@ export async function toolGetTelegramNotificationSettings(
       };
     }
 
-    await verifyOrgAccess(ctx.req, { orgId: ctx.organizationId }, 'org:parkings:view');
+    await verifyOrgAccess(ctx.req, { orgId: ctx.organizationId }, 'org.parkings:view');
     const parkingSlug = await resolveParkingSlug(parkingId!, ctx.organizationId);
     if (orgSlug && parkingSlug) {
       settingsPath = `/org/${orgSlug}/parking/${parkingSlug}/notifications`;

@@ -97,7 +97,7 @@ async function assertParkingInOrgManageable(
   ctx: HostMediaToolContext,
   parkingId: string
 ): Promise<void> {
-  await verifyOrgAccess(ctx.req, { orgId: ctx.organizationId }, 'org:parkings:manage');
+  await verifyOrgAccess(ctx.req, { orgId: ctx.organizationId }, 'org.parkings:manage');
   const supabase = createServiceClient();
   const { data: parking, error } = await supabase
     .from('parkings')
@@ -129,7 +129,7 @@ export async function toolProposeApplyOrgLogo(
       conversationId,
     });
 
-    await verifyOrgAccess(ctx.req, { orgId: ctx.organizationId }, 'org:settings:edit');
+    await verifyOrgAccess(ctx.req, { orgId: ctx.organizationId }, 'org.settings.basic:edit');
 
     const meta = await loadConversationAttachment(ctx, attachmentPath);
     const tier = classifyActionRisk({
@@ -178,7 +178,7 @@ export async function executeApplyOrgLogo(
       userId: ctx.userId,
       conversationId,
     });
-    await verifyOrgAccess(ctx.req, { orgId: ctx.organizationId }, 'org:settings:edit');
+    await verifyOrgAccess(ctx.req, { orgId: ctx.organizationId }, 'org.settings.basic:edit');
     await assertActionSafeToExecute({
       toolName: 'propose_apply_org_logo',
       targetBookingId: null,

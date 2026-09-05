@@ -126,7 +126,7 @@ async function assertParkingInOrgManageable(
   ctx: VerificationToolContext,
   parkingId: string
 ): Promise<void> {
-  await verifyOrgAccess(ctx.req, { orgId: ctx.organizationId }, 'org:parkings:manage');
+  await verifyOrgAccess(ctx.req, { orgId: ctx.organizationId }, 'org.parkings:manage');
   const supabase = createServiceClient();
   const { data: parking, error } = await supabase
     .from('parkings')
