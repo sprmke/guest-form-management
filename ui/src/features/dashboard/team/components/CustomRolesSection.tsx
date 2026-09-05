@@ -137,17 +137,6 @@ function RoleRow({
       </div>
       {canManage ? (
         <div className="flex shrink-0 items-center gap-0.5">
-          {isDefault && onDuplicate ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hidden min-h-[44px] sm:inline-flex"
-              onClick={onDuplicate}
-            >
-              <Copy className="mr-1.5 size-3.5" aria-hidden />
-              Duplicate
-            </Button>
-          ) : null}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

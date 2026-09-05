@@ -16,7 +16,10 @@ import {
   SuperAdminSupportToolbar,
 } from '@/features/dashboard/super-admin/components/super-admin-support/SuperAdminSupportToolbar';
 import { SuperAdminTicketDetailDialog } from '@/features/dashboard/super-admin/components/super-admin-support/SuperAdminTicketDetailDialog';
-import { useSupportTicketsAdmin } from '@/features/dashboard/super-admin/hooks/useSupportTicketsAdmin';
+import {
+  useSupportTicketsAdmin,
+  useSupportTicketsSummary,
+} from '@/features/dashboard/super-admin/hooks/useSupportTicketsAdmin';
 import {
   DEFAULT_SUPER_ADMIN_SUPPORT_FILTERS,
   superAdminSupportHasActiveFilters,
@@ -64,6 +67,7 @@ export function SuperAdminSupportPage() {
     page,
     limit
   );
+  const { data: ticketsSummary } = useSupportTicketsSummary();
   const [viewMode, setViewMode] = useState<SuperAdminSupportViewMode>('table');
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const isMobileLayout = useIsBelowLg();
@@ -131,7 +135,7 @@ export function SuperAdminSupportPage() {
             subtitle="Host bug reports, suggestions, and inquiries."
           />
 
-          <SuperAdminSupportSummaryCards tickets={tickets} />
+          <SuperAdminSupportSummaryCards tickets={tickets} summary={ticketsSummary} />
 
           <SuperAdminSupportToolbar
             filters={filters}

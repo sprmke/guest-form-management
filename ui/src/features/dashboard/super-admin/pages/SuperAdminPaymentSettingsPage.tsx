@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
-import { SuperAdminPageLoading } from '@/features/dashboard/super-admin/components/shared/SuperAdminPageLoading';
+import { Wallet } from 'lucide-react';
+
+import { SuperAdminPage } from '@/features/dashboard/super-admin/components/shared/SuperAdminPage';
+import {
+  SuperAdminSettingsCard,
+  SuperAdminSettingsRow,
+} from '@/features/dashboard/super-admin/components/shared/SuperAdminSettingsCard';
 import {
   usePlatformPaymentSettings,
   useUpdatePlatformPaymentSettings,
@@ -9,10 +14,14 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { appPageTitle, usePageTitle } from '@/lib/pageTitle';
 
-const RAIL_OPTIONS = ['qrph', 'paymaya', 'dob'] as const;
+const RAIL_OPTIONS = [
+  { id: 'qrph', label: 'QR Ph' },
+  { id: 'paymaya', label: 'Maya' },
+  { id: 'dob', label: 'Direct online banking' },
+] as const;
 
 export function SuperAdminPaymentSettingsPage() {
   usePageTitle(appPageTitle('Payment settings'));
@@ -31,47 +40,58 @@ export function SuperAdminPaymentSettingsPage() {
     setInitialized(true);
   }, [data, initialized]);
 
-  if (isLoading && !data) return <SuperAdminPageLoading metricCount={2} />;
-  if (error) return <p className="text-destructive text-sm">Could not load payment settings.</p>;
+  const toggleRail = (rail: string, on: boolean) => {
+    setMethods((current) =>
+      on ? [...new Set([...current, rail])] : current.filter((value) => value !== rail)
+    );
+  };
 
   return (
-    <div className="space-y-4">
-      <AdminPageHeader title="Payment settings" />
-
-      <form
-        className="border-border space-y-4 rounded-xl border p-4"
-        onSubmit={async (event) => {
-          event.preventDefault();
-          await save.mutateAsync({
+    <SuperAdminPage
+      title="Payment settings"
+      subtitle="Subscription checkout rails and renewal timing for host billing."
+      isLoading={isLoading && !data}
+      loadingMetricCount={2}
+      error={error}
+      errorMessage="Could not load payment settings."
+    >
+      <SuperAdminSettingsCard
+        title="Enabled rails"
+        description="Payment methods offered at subscription checkout."
+        icon={<Wallet className="text-muted-foreground size-4" aria-hidden />}
+        onSubmit={() =>
+          void save.mutateAsync({
             enabledPaymentMethods: methods,
             renewalLinkLeadDays: Number(leadDays),
             gracePeriodDays: Number(graceDays),
-          });
-        }}
+          })
+        }
+        footer={
+          <Button type="submit" className="min-h-[44px]" disabled={save.isPending}>
+            {save.isPending ? 'Saving…' : 'Save'}
+          </Button>
+        }
       >
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-semibold">Enabled rails</legend>
+        <div className="divide-border/60 -my-1 divide-y">
           {RAIL_OPTIONS.map((rail) => (
-            <label key={rail} className="flex min-h-[44px] items-center gap-2 text-sm capitalize">
-              <input
-                type="checkbox"
-                checked={methods.includes(rail)}
-                onChange={(event) => {
-                  setMethods((current) =>
-                    event.target.checked
-                      ? [...current, rail]
-                      : current.filter((value) => value !== rail)
-                  );
-                }}
+            <SuperAdminSettingsRow key={rail.id} label={rail.label} htmlFor={`rail-${rail.id}`}>
+              <Switch
+                id={`rail-${rail.id}`}
+                checked={methods.includes(rail.id)}
+                onCheckedChange={(on) => toggleRail(rail.id, on)}
+                aria-label={rail.label}
               />
-              {rail}
-            </label>
+            </SuperAdminSettingsRow>
           ))}
-        </fieldset>
+        </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="renewal-lead-days">Renewal link lead (days)</Label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SuperAdminSettingsRow
+            stacked
+            label="Renewal link lead (days)"
+            htmlFor="renewal-lead-days"
+            description="How early the renewal link is sent before expiry."
+          >
             <Input
               id="renewal-lead-days"
               type="number"
@@ -80,9 +100,13 @@ export function SuperAdminPaymentSettingsPage() {
               value={leadDays}
               onChange={(event) => setLeadDays(event.target.value)}
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="grace-period-days">Grace period (days)</Label>
+          </SuperAdminSettingsRow>
+          <SuperAdminSettingsRow
+            stacked
+            label="Grace period (days)"
+            htmlFor="grace-period-days"
+            description="Days a lapsed subscription keeps access before suspension."
+          >
             <Input
               id="grace-period-days"
               type="number"
@@ -91,13 +115,9 @@ export function SuperAdminPaymentSettingsPage() {
               value={graceDays}
               onChange={(event) => setGraceDays(event.target.value)}
             />
-          </div>
+          </SuperAdminSettingsRow>
         </div>
-
-        <Button type="submit" className="min-h-[44px]" disabled={save.isPending}>
-          Save
-        </Button>
-      </form>
-    </div>
+      </SuperAdminSettingsCard>
+    </SuperAdminPage>
   );
 }

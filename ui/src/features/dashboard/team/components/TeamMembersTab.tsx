@@ -1,17 +1,6 @@
 import { useMemo } from 'react';
 
-import {
-  ChevronDown,
-  MoreHorizontal,
-  Filter,
-  Search,
-  Shield,
-  Sparkles,
-  UserCheck,
-  UserMinus,
-  UserX,
-  Users,
-} from 'lucide-react';
+import { ChevronDown, MoreHorizontal, Filter, Search, Sparkles, Users } from 'lucide-react';
 
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
@@ -314,23 +303,12 @@ export function TeamMembersTab({
                               window.setTimeout(() => onEditPermissions(member), 0);
                             }}
                           >
-                            <Shield className="mr-2 size-4" aria-hidden />
                             Permissions
                           </DropdownMenuItem>
                         ) : null}
                         {allowEditMembers ? (
                           <DropdownMenuItem onClick={() => onToggleStatus(member)}>
-                            {isActive ? (
-                              <>
-                                <UserX className="mr-2 size-4" aria-hidden />
-                                Deactivate
-                              </>
-                            ) : (
-                              <>
-                                <UserCheck className="mr-2 size-4" aria-hidden />
-                                Activate
-                              </>
-                            )}
+                            {isActive ? 'Deactivate' : 'Activate'}
                           </DropdownMenuItem>
                         ) : null}
                         {allowDeleteMembers ? (
@@ -342,7 +320,6 @@ export function TeamMembersTab({
                                 window.setTimeout(() => onRemove(member), 0);
                               }}
                             >
-                              <UserMinus className="mr-2 size-4" aria-hidden />
                               {removeFromLabel}
                             </DropdownMenuItem>
                           </>

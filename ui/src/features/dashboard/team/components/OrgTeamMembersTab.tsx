@@ -1,16 +1,6 @@
 import { useMemo } from 'react';
 
-import {
-  ChevronDown,
-  MoreHorizontal,
-  Filter,
-  Search,
-  Sparkles,
-  UserCheck,
-  UserMinus,
-  Users,
-  UserX,
-} from 'lucide-react';
+import { ChevronDown, MoreHorizontal, Filter, Search, Sparkles, Users } from 'lucide-react';
 
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 import { PlanGatedText } from '@/features/dashboard/plans/components/PlanUpgradeLink';
@@ -253,17 +243,7 @@ export function OrgTeamMembersTab({
                         {!member.isOwner && canManage ? (
                           <>
                             <DropdownMenuItem onClick={() => onToggleStatus(member)}>
-                              {isActive ? (
-                                <>
-                                  <UserX className="mr-2 size-4" aria-hidden />
-                                  Deactivate
-                                </>
-                              ) : (
-                                <>
-                                  <UserCheck className="mr-2 size-4" aria-hidden />
-                                  Activate
-                                </>
-                              )}
+                              {isActive ? 'Deactivate' : 'Activate'}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
@@ -272,7 +252,6 @@ export function OrgTeamMembersTab({
                                 window.setTimeout(() => onRemove(member), 0);
                               }}
                             >
-                              <UserMinus className="mr-2 size-4" aria-hidden />
                               Remove from Organization
                             </DropdownMenuItem>
                           </>
