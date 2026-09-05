@@ -16,7 +16,7 @@ serve(async (req) => {
 
   try {
     await verifyAdminJwt(req);
-    const ctx = await resolveOrgAccessContext(req, 'org:settings:edit');
+    const ctx = await resolveOrgAccessContext(req, 'org.settings.basic:edit');
     const organizationId = ctx.org.id;
 
     if (req.method !== 'POST') {

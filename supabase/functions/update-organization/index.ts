@@ -1,9 +1,9 @@
 /**
- * update-organization — PATCH org settings (owner only).
- * Auth: verifyOrgOwner via orgId in body.
+ * update-organization — PATCH org profile (name, brand, contacts).
+ * Auth: JWT + org.settings.basic:edit (owners/platform admins always pass).
  */
 
-import { verifyOrgOwner } from '../_shared/orgAuth.ts';
+import { verifyOrgAccess } from '../_shared/orgAuth.ts';
 import {
   applyOrganizationProfilePatch,
   OrgProfilePatchError,
@@ -16,7 +16,7 @@ import {
 } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
-serveAuthenticated('update-organization', async (req, user) => {
+serveAuthenticated('update-organization', async (req) => {
   requireHttpMethod(req, 'PATCH');
   const body = await readJsonBody(req);
 
@@ -25,7 +25,7 @@ serveAuthenticated('update-organization', async (req, user) => {
     return jsonError(req, 'orgId is required');
   }
 
-  const { org } = await verifyOrgOwner(req, orgId);
+  const { org } = await verifyOrgAccess(req, { orgId }, 'org.settings.basic:edit');
 
   try {
     const organization = await applyOrganizationProfilePatch(org, {
