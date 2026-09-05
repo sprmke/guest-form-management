@@ -3,6 +3,22 @@ import { useParams } from 'react-router-dom';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOptionalParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 
+/** Which dashboard shell Help & Support is mounted under. */
+export type HelpSupportAdminScope = 'org' | 'property' | 'parking';
+
+/**
+ * Org / property / parking scope for the current Help & Support mount.
+ * Property context is `RequireOrgContext` (property shell); parking is
+ * `RequireParkingContext`; otherwise org portfolio.
+ */
+export function useHelpSupportAdminScope(): HelpSupportAdminScope {
+  const orgContext = useOptionalOrgContext();
+  const parkingContext = useOptionalParkingContext();
+  if (parkingContext) return 'parking';
+  if (orgContext) return 'property';
+  return 'org';
+}
+
 /**
  * Base `/help-support` path for whichever admin scope the page is mounted under
  * (org, property, or parking). Route registration itself is Phase 6 — see

@@ -9,13 +9,18 @@ import { HelpRichText } from '@/features/dashboard/help-support/components/HelpR
 import { useHelpCenterFaqs } from '@/features/dashboard/help-support/hooks/useHelpCenterFaqs';
 import { sanitizeHelpBody } from '@/features/dashboard/help-support/lib/helpContentDisplay';
 import { pickCommonFaqs } from '@/features/dashboard/help-support/lib/helpFaqModules';
+import { useHelpSupportAdminScope } from '@/features/dashboard/help-support/lib/helpSupportPaths';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export function HelpCenterFaqAccordion() {
+  const scope = useHelpSupportAdminScope();
   const { data, isPending, isError, refetch } = useHelpCenterFaqs();
-  const visibleFaqs = React.useMemo(() => pickCommonFaqs(data?.faqs ?? []), [data?.faqs]);
+  const visibleFaqs = React.useMemo(
+    () => pickCommonFaqs(data?.faqs ?? [], scope),
+    [data?.faqs, scope]
+  );
 
   let body: React.ReactNode;
   if (isPending) {

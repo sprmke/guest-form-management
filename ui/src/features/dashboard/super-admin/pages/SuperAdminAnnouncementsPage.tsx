@@ -1,104 +1,223 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
-import { Landmark, Save } from 'lucide-react';
-import { toast } from 'sonner';
+import { ChevronDown, Landmark, Megaphone, Plus } from 'lucide-react';
 
-import { HostAnnouncementEditor } from '@/features/dashboard/announcements/components/HostAnnouncementEditor';
-import {
-  parseHostAnnouncementDrafts,
-  validateHostAnnouncements,
-  type HostAnnouncementDraft,
-} from '@/features/dashboard/announcements/lib/hostAnnouncementTypes';
+import { AdminListPagination } from '@/features/dashboard/bookings/components/AdminListToolbar';
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
+import { SuperAdminEmptyState } from '@/features/dashboard/super-admin/components/shared/SuperAdminEmptyState';
 import { SuperAdminPageLoading } from '@/features/dashboard/super-admin/components/shared/SuperAdminPageLoading';
+import { SuperAdminAnnouncementCardGrid } from '@/features/dashboard/super-admin/components/super-admin-announcements/SuperAdminAnnouncementCardGrid';
 import {
-  usePlatformHostSettings,
-  useUpdatePlatformHostSettings,
-} from '@/features/dashboard/super-admin/hooks/usePlatformHostSettings';
+  SuperAdminAnnouncementDialog,
+  type SuperAdminAnnouncementDialogState,
+} from '@/features/dashboard/super-admin/components/super-admin-announcements/SuperAdminAnnouncementDialog';
+import { SuperAdminAnnouncementSummaryCards } from '@/features/dashboard/super-admin/components/super-admin-announcements/SuperAdminAnnouncementSummaryCards';
+import { SuperAdminAnnouncementTable } from '@/features/dashboard/super-admin/components/super-admin-announcements/SuperAdminAnnouncementTable';
+import {
+  SuperAdminAnnouncementResultsMeta,
+  SuperAdminAnnouncementToolbar,
+} from '@/features/dashboard/super-admin/components/super-admin-announcements/SuperAdminAnnouncementToolbar';
+import { usePlatformHostSettings } from '@/features/dashboard/super-admin/hooks/usePlatformHostSettings';
+import {
+  DEFAULT_SUPER_ADMIN_ANNOUNCEMENT_FILTERS,
+  filterSuperAdminAnnouncements,
+  superAdminAnnouncementHasActiveFilters,
+  type SuperAdminAnnouncementFilters,
+  type SuperAdminAnnouncementViewMode,
+} from '@/features/dashboard/super-admin/lib/superAdminAnnouncementFilters';
 import { superAdminPaths } from '@/features/dashboard/super-admin/lib/superAdminPaths';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { friendlyToastError } from '@/lib/feedback/toastMessages';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useAdminMobileGridViewGuard } from '@/hooks/useAdminMobileGridViewGuard';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { appPageTitle, usePageTitle } from '@/lib/pageTitle';
+import {
+  ADMIN_DEFAULT_PAGE_SIZE,
+  buildPageItems,
+  normalizeAdminPageLimit,
+} from '@/lib/table/pagination';
+
+function AnnouncementsEmptyState({ filtered }: { filtered: boolean }) {
+  return (
+    <SuperAdminEmptyState
+      icon={Megaphone}
+      title={filtered ? 'No announcements match your filters' : 'No announcements yet'}
+    />
+  );
+}
 
 export function SuperAdminAnnouncementsPage() {
   usePageTitle(appPageTitle('Announcements'));
 
-  const { data, isLoading } = usePlatformHostSettings();
-  const updateSettings = useUpdatePlatformHostSettings();
-  const [baseline, setBaseline] = useState<HostAnnouncementDraft[]>([]);
-  const [draft, setDraft] = useState<HostAnnouncementDraft[]>([]);
-
-  useEffect(() => {
-    if (!data) return;
-    const next = parseHostAnnouncementDrafts(data.announcements);
-    setBaseline(next);
-    setDraft(next);
-  }, [data?.updatedAt]);
-
-  const isDirty = useMemo(
-    () => JSON.stringify(baseline) !== JSON.stringify(draft),
-    [baseline, draft]
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = Number(searchParams.get('page') ?? '1');
+  const limit = normalizeAdminPageLimit(
+    Number(searchParams.get('limit') ?? String(ADMIN_DEFAULT_PAGE_SIZE))
   );
-
-  const handleSave = async () => {
-    const validationError = validateHostAnnouncements(draft);
-    if (validationError) {
-      toast.error(validationError);
-      return;
-    }
-    try {
-      const result = await updateSettings.mutateAsync({ announcements: draft });
-      const saved = parseHostAnnouncementDrafts(result.announcements);
-      setBaseline(saved);
-      setDraft(saved);
-      toast.success('Platform announcements saved');
-    } catch (err) {
-      toast.error(friendlyToastError(err, 'Could not save announcements'));
-    }
+  const filters: SuperAdminAnnouncementFilters = {
+    search: searchParams.get('search') ?? DEFAULT_SUPER_ADMIN_ANNOUNCEMENT_FILTERS.search,
+    severity: (searchParams.get('severity') ??
+      DEFAULT_SUPER_ADMIN_ANNOUNCEMENT_FILTERS.severity) as SuperAdminAnnouncementFilters['severity'],
+    status: (searchParams.get('status') ??
+      DEFAULT_SUPER_ADMIN_ANNOUNCEMENT_FILTERS.status) as SuperAdminAnnouncementFilters['status'],
   };
+
+  const { data, isLoading } = usePlatformHostSettings();
+  const [viewMode, setViewMode] = useState<SuperAdminAnnouncementViewMode>('table');
+  const [dialogState, setDialogState] = useState<SuperAdminAnnouncementDialogState | null>(null);
+  const isMobileLayout = useIsBelowLg();
+  useAdminMobileGridViewGuard(isMobileLayout, viewMode, setViewMode);
+
+  const allAnnouncements = data?.announcements ?? [];
+  const filtered = useMemo(
+    () => filterSuperAdminAnnouncements(allAnnouncements, filters),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allAnnouncements, filters.search, filters.severity, filters.status]
+  );
+  const hasActiveFilters = superAdminAnnouncementHasActiveFilters(filters);
+  const showTableView = viewMode === 'table' && !isMobileLayout;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / limit));
+  const safePage = Math.min(page, pageCount);
+  const pageItems = buildPageItems(safePage, pageCount);
+  const pageAnnouncements = filtered.slice((safePage - 1) * limit, safePage * limit);
+
+  const setPage = (nextPage: number) => {
+    setSearchParams(
+      (prev) => {
+        const sp = new URLSearchParams(prev);
+        if (nextPage <= 1) sp.delete('page');
+        else sp.set('page', String(nextPage));
+        return sp;
+      },
+      { replace: true }
+    );
+  };
+
+  const setLimit = (nextLimit: number) => {
+    setSearchParams(
+      (prev) => {
+        const sp = new URLSearchParams(prev);
+        if (nextLimit === ADMIN_DEFAULT_PAGE_SIZE) sp.delete('limit');
+        else sp.set('limit', String(nextLimit));
+        sp.delete('page');
+        return sp;
+      },
+      { replace: true }
+    );
+  };
+
+  function updateFilters(next: SuperAdminAnnouncementFilters) {
+    setSearchParams(
+      (prev) => {
+        const sp = new URLSearchParams(prev);
+        if (!next.search.trim()) sp.delete('search');
+        else sp.set('search', next.search);
+        if (next.severity === 'all') sp.delete('severity');
+        else sp.set('severity', next.severity);
+        if (next.status === 'all') sp.delete('status');
+        else sp.set('status', next.status);
+        sp.delete('page');
+        return sp;
+      },
+      { replace: true }
+    );
+  }
 
   return (
     <div className="space-y-3 sm:space-y-4">
-      <AdminPageHeader
-        title="Announcements"
-        actions={
-          <Button
-            type="button"
-            size="sm"
-            className="min-h-[44px] gap-1.5"
-            disabled={!isDirty || updateSettings.isPending || isLoading}
-            onClick={() => void handleSave()}
-          >
-            <Save className="size-4" aria-hidden />
-            {updateSettings.isPending ? 'Saving…' : 'Save'}
-          </Button>
-        }
-      />
-      <Card>
-        <CardContent className="pt-6">
-          {isLoading ? (
-            <SuperAdminPageLoading />
+      {isLoading ? (
+        <SuperAdminPageLoading metricCount={4} />
+      ) : (
+        <>
+          <AdminPageHeader
+            title="Announcements"
+            subtitle="Platform-wide notices shown to every signed-in host."
+            actions={
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" size="sm" className="min-h-[44px] gap-1.5">
+                    <Plus className="size-4" aria-hidden />
+                    Add announcement
+                    <ChevronDown className="size-4 opacity-70" aria-hidden />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setDialogState({ mode: 'create' })}>
+                    <Megaphone className="size-4" aria-hidden />
+                    Platform announcement
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to={superAdminPaths.developments}>
+                      <Landmark className="size-4" aria-hidden />
+                      Development announcement
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            }
+          />
+
+          <SuperAdminAnnouncementSummaryCards announcements={allAnnouncements} />
+
+          <SuperAdminAnnouncementToolbar
+            filters={filters}
+            viewMode={viewMode}
+            hideTableView={isMobileLayout}
+            limit={limit}
+            onSearchChange={(search) => updateFilters({ ...filters, search })}
+            onSeverityChange={(severity) => updateFilters({ ...filters, severity })}
+            onStatusChange={(status) => updateFilters({ ...filters, status })}
+            onViewModeChange={setViewMode}
+            onLimitChange={setLimit}
+          />
+
+          {pageAnnouncements.length > 0 ? (
+            showTableView ? (
+              <SuperAdminAnnouncementTable
+                announcements={pageAnnouncements}
+                onSelect={(id) => setDialogState({ mode: 'edit', id })}
+              />
+            ) : (
+              <SuperAdminAnnouncementCardGrid
+                announcements={pageAnnouncements}
+                onSelect={(id) => setDialogState({ mode: 'edit', id })}
+              />
+            )
           ) : (
-            <HostAnnouncementEditor
-              announcements={draft}
-              disabled={updateSettings.isPending}
-              onChange={setDraft}
-              trailingActions={
-                <Button type="button" variant="outline" className="min-h-[44px] gap-1.5" asChild>
-                  <Link to={superAdminPaths.developments}>
-                    <Landmark className="size-4" aria-hidden />
-                    Development announcements
-                  </Link>
-                </Button>
-              }
-            />
+            <AnnouncementsEmptyState filtered={hasActiveFilters} />
           )}
-        </CardContent>
-      </Card>
+
+          {pageCount > 1 ? (
+            <AdminListPagination
+              ariaLabel="Announcements pagination"
+              page={safePage}
+              pageCount={pageCount}
+              pageItems={pageItems}
+              onPageChange={setPage}
+            />
+          ) : null}
+
+          <SuperAdminAnnouncementResultsMeta
+            visibleCount={pageAnnouncements.length}
+            totalCount={filtered.length}
+          />
+        </>
+      )}
+
+      <SuperAdminAnnouncementDialog
+        state={dialogState}
+        onOpenChange={(open) => {
+          if (!open) setDialogState(null);
+        }}
+      />
     </div>
   );
 }
