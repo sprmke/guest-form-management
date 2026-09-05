@@ -46,7 +46,7 @@ function HostAvatar({ host, className }: { host: HostSummary; className?: string
 }
 
 export function SuperAdminHostCard({ host }: Props) {
-  const href = superAdminPaths.hostOrgs(host.id);
+  const href = superAdminPaths.hostDetail(host.id);
 
   return (
     <article className={`${CARD_CLASS} group`}>
@@ -85,7 +85,7 @@ export function SuperAdminHostCard({ host }: Props) {
 }
 
 export function SuperAdminHostListRow({ host }: Props) {
-  const href = superAdminPaths.hostOrgs(host.id);
+  const href = superAdminPaths.hostDetail(host.id);
 
   return (
     <article className="border-border/50 bg-card hover:border-primary/30 flex flex-col gap-3 rounded-xl border p-3 transition-colors sm:flex-row sm:items-center sm:justify-between sm:p-4">

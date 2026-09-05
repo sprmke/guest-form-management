@@ -15,7 +15,7 @@ type Props = {
 };
 
 export function SuperAdminHostOrgCard({ organization }: Props) {
-  const href = superAdminPaths.orgProperties(organization.slug);
+  const href = superAdminPaths.organizationHub(organization.slug);
 
   return (
     <Link to={href} className={cn(CARD_CLASS, 'block p-4 sm:p-5')}>

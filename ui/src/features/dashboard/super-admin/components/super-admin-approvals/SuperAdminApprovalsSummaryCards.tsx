@@ -6,10 +6,17 @@ import type { ApprovalQueueItem } from '@/features/dashboard/super-admin/types/a
 
 type Props = {
   approvals: ApprovalQueueItem[];
+  /** Server-computed platform-wide counts; falls back to the current page when omitted. */
+  summary?: {
+    pending: number;
+    orgVerifications: number;
+    listingVerifications: number;
+    reviews: number;
+  };
 };
 
-export function SuperAdminApprovalsSummaryCards({ approvals }: Props) {
-  const summary = superAdminApprovalsSummaryFromList(approvals);
+export function SuperAdminApprovalsSummaryCards({ approvals, summary: serverSummary }: Props) {
+  const summary = serverSummary ?? superAdminApprovalsSummaryFromList(approvals);
 
   return (
     <section

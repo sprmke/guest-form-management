@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import {
   AlertTriangle,
   BookOpen,
   Building2,
+  ChevronLeft,
   Megaphone,
   FileCheck2,
   Home,
@@ -205,24 +206,33 @@ export function DevelopmentSettingsCard({ slug }: Props) {
         className="min-h-0 flex-1"
         sections={SETTINGS_SECTIONS}
         header={
-          <AdminPageHeader
-            variant="compact"
-            title={development.name}
-            subtitle="Profile and media for this development."
-            actions={
-              isDirty ? (
-                <Button
-                  type="button"
-                  onClick={() => void handleSave()}
-                  disabled={busy}
-                  className="min-h-[44px] gap-1.5 lg:hidden"
-                >
-                  <Save className="size-4" aria-hidden />
-                  {busy ? 'Saving…' : 'Save Changes'}
-                </Button>
-              ) : null
-            }
-          />
+          <div className="space-y-1.5">
+            <Link
+              to={superAdminPaths.developments}
+              className="text-muted-foreground hover:text-foreground inline-flex min-h-[44px] items-center gap-1 text-sm font-medium transition-colors"
+            >
+              <ChevronLeft className="size-4" aria-hidden />
+              Developments
+            </Link>
+            <AdminPageHeader
+              variant="compact"
+              title={development.name}
+              subtitle="Profile and media for this development."
+              actions={
+                isDirty ? (
+                  <Button
+                    type="button"
+                    onClick={() => void handleSave()}
+                    disabled={busy}
+                    className="min-h-[44px] gap-1.5 lg:hidden"
+                  >
+                    <Save className="size-4" aria-hidden />
+                    {busy ? 'Saving…' : 'Save Changes'}
+                  </Button>
+                ) : null
+              }
+            />
+          </div>
         }
         footer={
           isDirty ? (
