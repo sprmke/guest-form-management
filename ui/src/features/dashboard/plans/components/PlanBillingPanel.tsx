@@ -104,7 +104,7 @@ export function PlanBillingPanel({ plan, subscription, transactions }: PlanBilli
                 {renewal ? 'Next renewal' : 'Billing period'}
               </p>
               <p className="text-foreground mt-1 text-base font-semibold tabular-nums">
-                {renewal ?? periodStart ?? '—'}
+                {renewal ?? periodStart ?? '-'}
               </p>
               {periodStart && renewal ? (
                 <p className="text-muted-foreground mt-0.5 text-xs">Since {periodStart}</p>

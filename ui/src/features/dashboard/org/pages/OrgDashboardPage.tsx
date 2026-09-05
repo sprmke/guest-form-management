@@ -19,7 +19,6 @@ import { OrgRecentBookingsList } from '@/features/dashboard/org/components/org-d
 import { OrgRevenueBookingsChart } from '@/features/dashboard/org/components/org-dashboard/OrgRevenueBookingsChart';
 import { useOrganizations } from '@/features/dashboard/org/hooks/useOrganizations';
 import { useOrgDashboardStats } from '@/features/dashboard/org/hooks/useOrgDashboardStats';
-import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 import {
   canCreateParkingsInOrg,
   canCreatePropertiesInOrg,
@@ -35,6 +34,7 @@ import {
   resolveDashboardPeriod,
   writeDashboardPeriodParams,
 } from '@/features/dashboard/property/lib/dashboardPeriod';
+import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 
 import { FloatingPanel, FloatingToolbar } from '@/components/mobile/FloatingPanel';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';

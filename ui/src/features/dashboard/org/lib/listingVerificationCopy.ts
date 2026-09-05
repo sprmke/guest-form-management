@@ -36,7 +36,7 @@ export const LISTING_VERIFICATION_DOC_LABELS = {
 
 export const LISTING_VERIFICATION_DOC_HELP = {
   additionalProof:
-    'A second document that backs the first — e.g. Certificate of Title, Deed of Sale, Sublease Contract, or Notarized Authorization (SPA).',
+    'A second document that backs the first (e.g. Certificate of Title, Deed of Sale, Sublease Contract, or Notarized Authorization (SPA)).',
   azurePmoConfirmation:
     'e.g. Property Management email confirmation, approved GAF, gate pass, or building pass.',
 } as const;

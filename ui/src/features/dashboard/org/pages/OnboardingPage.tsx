@@ -954,7 +954,7 @@ export function OnboardingPage() {
                             {parkingSlotDuplicate ? (
                               <p role="alert" className="text-destructive text-xs">
                                 Slot taken
-                                {parkingConflict?.orgName ? ` — ${parkingConflict.orgName}` : ''}
+                                {parkingConflict?.orgName ? `: ${parkingConflict.orgName}` : ''}
                               </p>
                             ) : null}
                           </div>
@@ -967,7 +967,7 @@ export function OnboardingPage() {
                                 value={parkingCode}
                                 readOnly
                                 aria-readonly="true"
-                                placeholder="—"
+                                placeholder="-"
                                 className="bg-muted/40 text-muted-foreground h-10 cursor-default font-mono tabular-nums"
                               />
                             </div>
@@ -978,7 +978,7 @@ export function OnboardingPage() {
                                 value={parkingDisplayName}
                                 readOnly
                                 aria-readonly="true"
-                                placeholder="—"
+                                placeholder="-"
                                 className="bg-muted/40 text-muted-foreground h-10 cursor-default"
                               />
                             </div>

@@ -32,7 +32,7 @@ export function toastAiQuotaExceeded(message?: string, options?: ToastAiQuotaOpt
       label: isCreditMessage ? 'Buy credits' : 'Upgrade',
       onClick: () => {
         if (isCreditMessage) {
-          toast.message('Buy more AI credits — coming soon. Contact support for a manual top-up.');
+          toast.message('Buy more AI credits (coming soon). Contact support for a manual top-up.');
           return;
         }
         const feature = options?.feature ?? 'aiMarketingGeneration';
@@ -41,7 +41,7 @@ export function toastAiQuotaExceeded(message?: string, options?: ToastAiQuotaOpt
           openModal(feature);
           return;
         }
-        toast.message('AI upgrade billing is coming soon — contact support for higher limits.');
+        toast.message('AI upgrade billing is coming soon. Contact support for higher limits.');
       },
     },
   });

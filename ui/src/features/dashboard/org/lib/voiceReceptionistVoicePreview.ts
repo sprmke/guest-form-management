@@ -1,11 +1,11 @@
 /** Shared voice labels for Gemini Live prebuilt voices (UI mirror of edge list). */
 
 export const GEMINI_LIVE_VOICE_LABELS: Record<string, string> = {
-  Puck: 'Puck — Upbeat',
-  Charon: 'Charon — Informative',
-  Kore: 'Kore — Firm',
-  Fenrir: 'Fenrir — Excitable',
-  Aoede: 'Aoede — Breezy',
+  Puck: 'Puck (Upbeat)',
+  Charon: 'Charon (Informative)',
+  Kore: 'Kore (Firm)',
+  Fenrir: 'Fenrir (Excitable)',
+  Aoede: 'Aoede (Breezy)',
 };
 
 export function geminiLiveVoiceLabel(voiceId: string): string {

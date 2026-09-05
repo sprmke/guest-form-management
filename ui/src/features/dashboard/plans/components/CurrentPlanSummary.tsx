@@ -187,7 +187,7 @@ export function CurrentPlanSummary({
             <span className="mt-0.5 size-1.5 shrink-0 rounded-full bg-current" aria-hidden />
             {subscription?.status === 'suspended'
               ? 'Dashboard access is limited until payment is received.'
-              : `Payment is past due — pay by ${subscriptionGraceLabel(subscription) ?? 'soon'} to keep full access.`}
+              : `Payment is past due. Pay by ${subscriptionGraceLabel(subscription) ?? 'soon'} to keep full access.`}
           </p>
           {showPayNow ? (
             <Button

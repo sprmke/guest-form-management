@@ -30,8 +30,8 @@ export function HostVerificationRejectedPage({ organizationName, rejectionReason
         </h1>
         <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
           {organizationName
-            ? `We're sorry — ${organizationName} did not pass host verification, so this account no longer has access to the platform.`
-            : "We're sorry — this account did not pass host verification, so it no longer has access to the platform."}
+            ? `We're sorry. ${organizationName} did not pass host verification, so this account no longer has access to the platform.`
+            : "We're sorry. This account did not pass host verification, so it no longer has access to the platform."}
         </p>
         <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
           To try again, start a new application and submit clear, complete documents that meet our

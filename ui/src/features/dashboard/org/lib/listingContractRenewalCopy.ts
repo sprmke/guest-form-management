@@ -5,7 +5,7 @@ export function listingContractRenewalTitle(phase: ListingContractRenewalPhase):
     case 'pre_expiry':
       return 'Contract renewal reminder';
     case 'grace':
-      return 'Contract expired — renewal required';
+      return 'Contract expired. Renewal required';
     case 'locked':
       return 'Listing access locked';
     case 'granted':
