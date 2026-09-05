@@ -61,7 +61,7 @@ export function SuperAdminHostsTable({ hosts }: Props) {
       </AdminTableHeadRow>
       <tbody>
         {hosts.map((host, index) => {
-          const href = superAdminPaths.hostOrgs(host.id);
+          const href = superAdminPaths.hostDetail(host.id);
 
           return (
             <tr

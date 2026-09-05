@@ -6,10 +6,12 @@ import { superAdminSupportSummaryFromList } from '@/features/dashboard/super-adm
 
 type Props = {
   tickets: AdminSupportTicket[];
+  /** Server-computed platform-wide counts; falls back to the current page when omitted. */
+  summary?: { total: number; open: number; inProgress: number; resolved: number };
 };
 
-export function SuperAdminSupportSummaryCards({ tickets }: Props) {
-  const summary = superAdminSupportSummaryFromList(tickets);
+export function SuperAdminSupportSummaryCards({ tickets, summary: serverSummary }: Props) {
+  const summary = serverSummary ?? superAdminSupportSummaryFromList(tickets);
 
   return (
     <section

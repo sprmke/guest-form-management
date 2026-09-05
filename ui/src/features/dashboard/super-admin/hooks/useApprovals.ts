@@ -123,15 +123,21 @@ export type ApprovalsFilters = {
   type: SuperAdminApprovalTypeFilter;
 };
 
-export function useApprovals(filters: ApprovalsFilters, page: number, limit: number) {
+export function useApprovals(
+  filters: ApprovalsFilters,
+  page: number,
+  limit: number,
+  organizationId?: string
+) {
   return useQuery({
-    queryKey: [...APPROVALS_QUERY_KEY, filters, page, limit],
+    queryKey: [...APPROVALS_QUERY_KEY, filters, page, limit, organizationId ?? null],
     placeholderData: keepPreviousData,
     queryFn: () => {
       const params = new URLSearchParams();
       if (filters.search.trim()) params.set('search', filters.search.trim());
       if (filters.status !== 'all') params.set('status', filters.status);
       if (filters.type !== 'all') params.set('type', filters.type);
+      if (organizationId) params.set('organizationId', organizationId);
       params.set('page', String(page));
       params.set('limit', String(limit));
 
@@ -150,6 +156,29 @@ export function useApprovals(filters: ApprovalsFilters, page: number, limit: num
         total: data.total,
       }));
     },
+  });
+}
+
+export type ApprovalsSummary = {
+  total: number;
+  pending: number;
+  orgVerifications: number;
+  listingVerifications: number;
+  reviews: number;
+};
+
+/** Platform-wide (or org-scoped) approval counts for the summary cards — not page-scoped. */
+export function useApprovalsSummary(organizationId?: string) {
+  return useQuery({
+    queryKey: [...APPROVALS_QUERY_KEY, 'summary', organizationId ?? null],
+    queryFn: () => {
+      const params = new URLSearchParams({ summary: 'true' });
+      if (organizationId) params.set('organizationId', organizationId);
+      return callEdgeFunction<{ summary: ApprovalsSummary }>(
+        `list-super-admin-approvals?${params.toString()}`
+      ).then((d) => d.summary);
+    },
+    staleTime: 30_000,
   });
 }
 

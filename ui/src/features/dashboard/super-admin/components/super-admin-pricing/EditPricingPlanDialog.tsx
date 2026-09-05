@@ -68,6 +68,7 @@ const BOOLEAN_FEATURE_KEYS = [
   'publicPagesAutosave',
   'bookingImport',
   'calendarSync',
+  'smartPricing',
 ] as const satisfies ReadonlyArray<keyof PlanFeatures>;
 
 export function EditPricingPlanDialog({
