@@ -16,7 +16,10 @@ import {
 } from '@/features/dashboard/announcements/lib/hostAnnouncementPresentation';
 import { HOST_ANNOUNCEMENT_SEVERITY_MARKER_CLASS } from '@/features/dashboard/announcements/lib/hostAnnouncementSeverity';
 import { hostAnnouncementDetailPath } from '@/features/dashboard/announcements/lib/hostAnnouncementsPaths';
-import type { HostAnnouncement } from '@/features/dashboard/announcements/lib/hostAnnouncementTypes';
+import {
+  hostAnnouncementBodyPlainText,
+  type HostAnnouncement,
+} from '@/features/dashboard/announcements/lib/hostAnnouncementTypes';
 import { AdminSectionGroupHeading } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 import { useNotificationsOrgScope } from '@/features/dashboard/notifications/lib/notificationsScope';
 
@@ -76,7 +79,7 @@ function HostAnnouncementListRow({
             unread ? 'text-muted-foreground' : 'text-muted-foreground/75'
           )}
         >
-          {announcement.body}
+          {hostAnnouncementBodyPlainText(announcement.body)}
         </p>
         {showReadMore ? (
           <span className="text-primary inline-flex items-center gap-0.5 text-sm font-semibold">
@@ -158,7 +161,9 @@ function HostAnnouncementGroupSection({
                 <h3 className="text-foreground text-sm font-semibold leading-snug sm:text-[15px]">
                   {announcement.title}
                 </h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{announcement.body}</p>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  {hostAnnouncementBodyPlainText(announcement.body)}
+                </p>
               </div>
             </div>
           );

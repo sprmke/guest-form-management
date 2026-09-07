@@ -28,3 +28,15 @@ export function announcementScheduleStartFromDate(date: Date): string {
 export function announcementScheduleEndFromDate(date: Date): string {
   return dayjs(date).tz(MANILA).endOf('day').toISOString();
 }
+
+/** Compact "Starts …" / "Ends …" / range label for admin list rows; null when unscheduled. */
+export function announcementScheduleSummary(
+  startsAt: string | null,
+  endsAt: string | null
+): string | null {
+  if (!startsAt && !endsAt) return null;
+  const format = (iso: string) => dayjs(iso).tz(MANILA).format('MMM D, YYYY');
+  if (startsAt && endsAt) return `${format(startsAt)} – ${format(endsAt)}`;
+  if (startsAt) return `From ${format(startsAt)}`;
+  return `Until ${format(endsAt as string)}`;
+}

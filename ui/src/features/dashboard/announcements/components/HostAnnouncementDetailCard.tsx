@@ -1,5 +1,7 @@
 import { ArrowUpRight } from 'lucide-react';
 
+import { StayGuideRichContent } from '@/features/guest/stay-guide/components/StayGuideRichContent';
+
 import { HostAnnouncementStatusCard } from '@/features/dashboard/announcements/components/HostAnnouncementStatusCard';
 import { HOST_ANNOUNCEMENT_SEVERITY_MARKER_CLASS } from '@/features/dashboard/announcements/lib/hostAnnouncementSeverity';
 import type { HostAnnouncement } from '@/features/dashboard/announcements/lib/hostAnnouncementTypes';
@@ -35,9 +37,10 @@ export function HostAnnouncementDetailCard({ announcement }: HostAnnouncementDet
           <h2 className="text-foreground text-sm font-semibold leading-snug tracking-tight sm:text-[15px]">
             {announcement.title}
           </h2>
-          <p className="text-muted-foreground whitespace-pre-wrap text-sm leading-relaxed sm:text-[15px] sm:leading-7">
-            {announcement.body}
-          </p>
+          <StayGuideRichContent
+            html={announcement.body}
+            className="text-sm leading-relaxed sm:text-[15px] sm:leading-7"
+          />
           {announcement.linkUrl ? (
             <Button asChild variant="outline" className="w-full sm:w-auto">
               <a href={announcement.linkUrl} target="_blank" rel="noreferrer">

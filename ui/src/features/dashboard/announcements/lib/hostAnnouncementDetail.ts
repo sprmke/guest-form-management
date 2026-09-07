@@ -1,9 +1,12 @@
-import type { HostAnnouncement } from '@/features/dashboard/announcements/lib/hostAnnouncementTypes';
+import {
+  hostAnnouncementBodyPlainText,
+  type HostAnnouncement,
+} from '@/features/dashboard/announcements/lib/hostAnnouncementTypes';
 
 export const HOST_ANNOUNCEMENT_LIST_BODY_MAX_CHARS = 140;
 
 export function isLongHostAnnouncementBody(body: string): boolean {
-  return body.trim().length > HOST_ANNOUNCEMENT_LIST_BODY_MAX_CHARS;
+  return hostAnnouncementBodyPlainText(body).length > HOST_ANNOUNCEMENT_LIST_BODY_MAX_CHARS;
 }
 
 export function formatHostAnnouncementUpdatedAt(iso: string): string {
