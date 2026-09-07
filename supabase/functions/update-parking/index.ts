@@ -3,6 +3,7 @@
  */
 
 import { allocateParkingSlug, createServiceClient, serializeParking } from '../_shared/orgAuth.ts';
+import { buildActorContext, diffRecord, logActivity } from '../_shared/activityLog.ts';
 import {
   jsonError,
   jsonSuccess,
@@ -36,7 +37,8 @@ serveAuthenticated('update-parking', async (req) => {
     headers: req.headers,
   });
 
-  const { parkingRow } = await resolveScopedParkingAccess(scopedReq, 'org:parkings:manage');
+  const parkingAccess = await resolveScopedParkingAccess(scopedReq, 'org:parkings:manage');
+  const { parkingRow } = parkingAccess;
   const patch: Record<string, unknown> = {};
 
   if (typeof body.name === 'string') {
@@ -174,6 +176,22 @@ serveAuthenticated('update-parking', async (req) => {
   }
 
   invalidateParkingBrandColorCache(parkingRow.id);
+
+  await logActivity({
+    action: 'parking.updated',
+    organizationId: parkingRow.organization_id,
+    parkingId: parkingRow.id,
+    scope: 'parking',
+    actor: buildActorContext('dashboard', { orgAccess: parkingAccess }, req),
+    targetType: 'parking',
+    targetId: parkingRow.id,
+    targetLabel: (data.name as string | undefined) ?? parkingRow.name,
+    changes: diffRecord(
+      parkingRow as unknown as Record<string, unknown>,
+      data as Record<string, unknown>,
+      { include: Object.keys(patch), exclude: ['slug', 'updated_at'] }
+    ),
+  });
 
   return jsonSuccess(req, { parking: serializeParking(data) });
 });

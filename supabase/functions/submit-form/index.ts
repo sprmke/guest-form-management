@@ -17,6 +17,7 @@ import { refreshGuestStayGuideAccessWindow } from '../_shared/guestStayGuide.ts'
 import type { GuestSubmission } from '../_shared/types.ts';
 import { createNotification } from '../_shared/notificationService.ts';
 import { bookingNotificationMetadata } from '../_shared/notificationEnrichment.ts';
+import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
 import {
   resolvePublicPropertyId,
   resolveOrganizationIdForProperty,
@@ -454,6 +455,30 @@ serve(async (req) => {
         });
       } catch (notifErr) {
         console.error('[submit-form] Could not create notification (non-fatal):', notifErr);
+      }
+      try {
+        const organizationId = await resolveOrganizationIdForProperty(propertyId);
+        const guestName = String(notifyBooking.primary_guest_name ?? '').trim() || null;
+        await logActivity({
+          action: 'booking.created',
+          organizationId,
+          propertyId,
+          actor: buildActorContext(
+            'public_form',
+            {
+              guest: { name: guestName, email: String(notifyBooking.guest_email ?? '') || null },
+            },
+            req
+          ),
+          targetType: 'booking',
+          targetId: String(submissionData.id),
+          targetLabel: guestName
+            ? `${guestName}${notifyBooking.check_in_date ? ` · ${notifyBooking.check_in_date}` : ''}`
+            : null,
+          metadata: { channel: 'guest_form' },
+        });
+      } catch (activityErr) {
+        console.error('[submit-form] Could not log activity (non-fatal):', activityErr);
       }
     }
 

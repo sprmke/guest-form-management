@@ -12,6 +12,8 @@ import {
 } from '../_shared/httpResponse.ts';
 import { withIdempotency } from '../_shared/idempotency.ts';
 import { verifyParkingTeamAccess } from '../_shared/orgAuth.ts';
+import { buildActorContext } from '../_shared/activityLog.ts';
+import { logParkingStatusChange } from '../_shared/parkingActivity.ts';
 import { verifyBookingBelongsToParking } from '../_shared/parkingScope.ts';
 import { canTransition, isParkingStatus } from '../_shared/parkingStatusMachine.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
@@ -39,7 +41,7 @@ serveAuthenticated(
     }
 
     const parkingId = String(booking.parking_id);
-    await verifyParkingTeamAccess(req, parkingId, 'bookings:edit');
+    const parkingAccess = await verifyParkingTeamAccess(req, parkingId, 'bookings:edit');
     await verifyBookingBelongsToParking(bookingId, parkingId);
 
     const fromStatus = String(booking.status ?? '');
@@ -56,6 +58,14 @@ serveAuthenticated(
     }
 
     const updated = await DatabaseService.updateBookingStatus(bookingId, toStatus);
+
+    await logParkingStatusChange({
+      booking,
+      fromStatus,
+      toStatus,
+      actor: buildActorContext('dashboard', { parkingAccess }, req),
+    });
+
     return jsonResponse(req, { success: true, data: updated });
   })
 );

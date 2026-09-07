@@ -11,6 +11,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
 import type { TransitionPayload } from '../_shared/workflowOrchestrator.ts';
+import { buildActorContext } from '../_shared/activityLog.ts';
 import { notifyTelegramAdminSdFormSubmitted } from '../_shared/telegramAdmin.ts';
 import { isSdRefundBank, type SdRefundBank } from '../_shared/sdRefundBank.ts';
 import { antiSpamGate } from '../_shared/antiSpam.ts';
@@ -121,7 +122,8 @@ serve(async (req) => {
         sendReadyForCheckinEmail: false,
         sendSdRefundFormEmail: false,
       },
-      false
+      false,
+      buildActorContext('public_form', { guest: {} }, req)
     );
 
     try {

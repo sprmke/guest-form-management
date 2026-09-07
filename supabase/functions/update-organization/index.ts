@@ -4,6 +4,7 @@
  */
 
 import { verifyOrgAccess } from '../_shared/orgAuth.ts';
+import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
 import {
   applyOrganizationProfilePatch,
   OrgProfilePatchError,
@@ -25,7 +26,8 @@ serveAuthenticated('update-organization', async (req) => {
     return jsonError(req, 'orgId is required');
   }
 
-  const { org } = await verifyOrgAccess(req, { orgId }, 'org.settings.basic:edit');
+  const orgAccess = await verifyOrgAccess(req, { orgId }, 'org.settings.basic:edit');
+  const { org } = orgAccess;
 
   try {
     const organization = await applyOrganizationProfilePatch(org, {
@@ -38,6 +40,18 @@ serveAuthenticated('update-organization', async (req) => {
       contactRole: typeof body.contactRole === 'string' ? body.contactRole : undefined,
       contactPhone: typeof body.contactPhone === 'string' ? body.contactPhone : undefined,
       contactEmail: typeof body.contactEmail === 'string' ? body.contactEmail : undefined,
+    });
+    await logActivity({
+      action: 'org.updated',
+      organizationId: org.id,
+      scope: 'org',
+      actor: buildActorContext('dashboard', { orgAccess }, req),
+      targetType: 'organization',
+      targetId: org.id,
+      targetLabel: (organization as { name?: string })?.name ?? org.name,
+      metadata: {
+        fields: Object.keys(body).filter((k) => k !== 'orgId' && body[k] !== undefined),
+      },
     });
     return jsonSuccess(req, { organization });
   } catch (e) {

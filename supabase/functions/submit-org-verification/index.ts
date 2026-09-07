@@ -21,6 +21,10 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { catchPlanFeatureError, requireOrgPropertyFeature } from '../_shared/planEntitlements.ts';
+import {
+  isOrgEligibleForHostRewardGateBypass,
+  maybeGrantHostVerificationReward,
+} from '../_shared/hostVerificationReward.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('submit-org-verification', async (req) => {
@@ -32,7 +36,7 @@ serveAuthenticated('submit-org-verification', async (req) => {
   if (!orgId) return jsonError(req, 'orgId is required');
   if (!tier) return jsonError(req, 'tier must be base or enhanced');
 
-  const { org } = await verifyOrgOwner(req, orgId);
+  const { user, org } = await verifyOrgOwner(req, orgId);
   const supabase = createServiceClient();
 
   const currentSettings =
@@ -65,12 +69,15 @@ serveAuthenticated('submit-org-verification', async (req) => {
       baseChangesRequestedDocs: [],
     };
   } else {
-    try {
-      await requireOrgPropertyFeature(orgId, 'recommendedBadgeEligible');
-    } catch (err) {
-      const planErr = catchPlanFeatureError(req, err);
-      if (planErr) return planErr;
-      throw err;
+    const rewardGateBypass = await isOrgEligibleForHostRewardGateBypass(orgId);
+    if (!rewardGateBypass) {
+      try {
+        await requireOrgPropertyFeature(orgId, 'recommendedBadgeEligible');
+      } catch (err) {
+        const planErr = catchPlanFeatureError(req, err);
+        if (planErr) return planErr;
+        throw err;
+      }
     }
 
     if (verification.enhancedStatus === 'approved') {
@@ -119,6 +126,18 @@ serveAuthenticated('submit-org-verification', async (req) => {
     return jsonError(req, 'Failed to submit verification', 500);
   }
 
+  let rewardGrant: Awaited<ReturnType<typeof maybeGrantHostVerificationReward>> | null = null;
+  if (tier === 'enhanced') {
+    try {
+      rewardGrant = await maybeGrantHostVerificationReward(orgId, {
+        trigger: 'recommended_verification_submitted',
+        assignedBy: user.id,
+      });
+    } catch (err) {
+      console.error('[submit-org-verification] reward grant', err);
+    }
+  }
+
   return jsonSuccess(req, {
     organization: serializeOrganization(data),
     verification: {
@@ -127,5 +146,6 @@ serveAuthenticated('submit-org-verification', async (req) => {
       platformAdminPlatform: verification.platformAdminPlatform,
       verifiedBadge: verification.enhancedStatus === 'approved',
     },
+    rewardGrant,
   });
 });

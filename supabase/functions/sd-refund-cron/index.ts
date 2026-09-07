@@ -44,6 +44,7 @@ import {
   verifyBookingBelongsToProperty,
 } from '../_shared/propertyScope.ts';
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
+import { buildActorContext } from '../_shared/activityLog.ts';
 import { checkGuestBalanceSettlement } from '../_shared/totalGuestBalance.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
 import { sendSdRefundFormRequest } from '../_shared/emailService.ts';
@@ -419,7 +420,8 @@ serve(async (req) => {
             sendReadyForCheckinEmail: false,
             sendSdRefundFormEmail: sendEmailOnTransition,
           },
-          false // manual=false — cron-driven transition
+          false, // manual=false — cron-driven transition
+          buildActorContext('cron', { cron: 'sd-refund-cron' })
         );
 
         console.log(`[sd-refund-cron] Transitioned booking ${bookingId} → READY_FOR_CHECKOUT`);

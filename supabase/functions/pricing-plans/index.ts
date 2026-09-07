@@ -14,9 +14,16 @@ import {
   normalizeVolumeRampAtCount,
   normalizeVolumeRampFloorPhp,
 } from '../_shared/planPricing.ts';
-import { jsonError, jsonSuccess, readJsonBody, requireHttpMethod, parsePageLimit } from '../_shared/httpResponse.ts';
+import {
+  jsonError,
+  jsonSuccess,
+  readJsonBody,
+  requireHttpMethod,
+  parsePageLimit,
+} from '../_shared/httpResponse.ts';
 import { postgrestOrIlikeValue } from '../_shared/publicSearch.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
+import { requireSuperAdminStepUp } from '../_shared/superAdminVerification.ts';
 
 function serializePlan(row: Record<string, unknown>) {
   return {
@@ -60,7 +67,10 @@ function parseVolumeDiscountTiersInput(
   return normalizeVolumeDiscountTiers(raw);
 }
 
-serveSuperAdmin('pricing-plans', async (req) => {
+serveSuperAdmin('pricing-plans', async (req, user) => {
+  const stepUp = await requireSuperAdminStepUp(req, user, 'pricing_plans');
+  if (stepUp) return stepUp;
+
   const supabase = createServiceClient();
   const url = new URL(req.url);
   const planId = url.searchParams.get('planId')?.trim() || null;

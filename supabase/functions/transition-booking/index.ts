@@ -3,6 +3,7 @@
  */
 
 import { isBookingStatus } from '../_shared/statusMachine.ts';
+import { buildActorContext } from '../_shared/activityLog.ts';
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
 import { jsonResponse, readJsonBody, requireHttpMethod } from '../_shared/httpResponse.ts';
 import { withIdempotency } from '../_shared/idempotency.ts';
@@ -18,7 +19,8 @@ serveAuthenticated(
   'transition-booking',
   withIdempotency(async (req) => {
     requireHttpMethod(req, 'POST');
-    const { property } = await resolveScopedPropertyAccess(req, 'bookings.detail.workflow:edit');
+    const propertyAccess = await resolveScopedPropertyAccess(req, 'bookings.detail.workflow:edit');
+    const { property } = propertyAccess;
     const propertyId = property.id;
     const body = await readJsonBody(req);
     const { bookingId, toStatus, payload = {}, devControls = {}, manual = true } = body;
@@ -40,7 +42,8 @@ serveAuthenticated(
       toStatus,
       payload,
       devControls,
-      manual
+      manual,
+      buildActorContext('dashboard', { propertyAccess }, req)
     );
 
     return jsonResponse(req, { success: true, data: result });

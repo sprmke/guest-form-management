@@ -20,6 +20,7 @@ import {
   requireTeamPropertyAccess,
   updatePropertyTeamMember,
 } from '../_shared/propertyTeamService.ts';
+import { logTeamActivity } from '../_shared/teamActivity.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('property-team-members', async (req) => {
@@ -39,6 +40,13 @@ serveAuthenticated('property-team-members', async (req) => {
     const ctx = await requireTeamPropertyAccess(req, propertyId, TEAM_API_PERMISSIONS.updateMember);
     try {
       const member = await updatePropertyTeamMember(ctx, body);
+      await logTeamActivity({
+        ctx,
+        req,
+        action: 'team.member_permissions_changed',
+        targetType: 'member',
+        targetId: typeof body.memberId === 'string' ? body.memberId : null,
+      });
       return jsonSuccess(req, { member });
     } catch (e) {
       const planErr = catchPlanFeatureError(req, e);
@@ -60,6 +68,13 @@ serveAuthenticated('property-team-members', async (req) => {
     }
     try {
       await removePropertyTeamMember(ctx, memberId);
+      await logTeamActivity({
+        ctx,
+        req,
+        action: 'team.member_removed',
+        targetType: 'member',
+        targetId: memberId,
+      });
       return jsonSuccess(req, { removed: true });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Remove failed';

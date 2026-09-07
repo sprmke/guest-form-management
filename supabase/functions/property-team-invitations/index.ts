@@ -23,6 +23,7 @@ import {
   resendPropertyInvitation,
 } from '../_shared/propertyTeamService.ts';
 import { identityFromRequest, rateLimitGate } from '../_shared/rateLimit.ts';
+import { logTeamActivity } from '../_shared/teamActivity.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('property-team-invitations', async (req, user) => {
@@ -67,6 +68,14 @@ serveAuthenticated('property-team-invitations', async (req, user) => {
       }
       try {
         const invitation = await resendPropertyInvitation(ctx, invitationId);
+        await logTeamActivity({
+          ctx,
+          req,
+          action: 'team.invite_resent',
+          targetType: 'invitation',
+          targetId: invitationId,
+          targetLabel: (invitation as { email?: string })?.email ?? null,
+        });
         return jsonSuccess(req, { invitation });
       } catch (e) {
         return jsonErrorFromCatch(req, e, 'Resend failed');
@@ -77,6 +86,14 @@ serveAuthenticated('property-team-invitations', async (req, user) => {
     try {
       await requireTeamInviteAllowed(ctx.property.id);
       const invitation = await createPropertyInvitation(ctx, body);
+      await logTeamActivity({
+        ctx,
+        req,
+        action: 'team.invite_sent',
+        targetType: 'invitation',
+        targetId: (invitation as { id?: string })?.id ?? null,
+        targetLabel: (invitation as { email?: string })?.email ?? null,
+      });
       return jsonSuccess(req, { invitation });
     } catch (e) {
       const planErr = catchPlanFeatureError(req, e);
@@ -98,6 +115,13 @@ serveAuthenticated('property-team-invitations', async (req, user) => {
     }
     try {
       await cancelPropertyInvitation(ctx.property.id, invitationId);
+      await logTeamActivity({
+        ctx,
+        req,
+        action: 'team.invite_revoked',
+        targetType: 'invitation',
+        targetId: invitationId,
+      });
       return jsonSuccess(req, { cancelled: true });
     } catch (e) {
       return jsonErrorFromCatch(req, e, 'Cancel failed');
