@@ -14,7 +14,8 @@ export type NotificationType =
   | 'calendar_conflict'
   | 'booking_external_imported'
   | 'booking_guest_form_completed'
-  | 'smart_pricing_updated';
+  | 'smart_pricing_updated'
+  | 'property_settings_copied';
 
 export type NotificationRecord = {
   id: string;

@@ -1,6 +1,14 @@
 import { Link, useNavigate } from 'react-router-dom';
 
-import { Building2, Calendar, Copy, ExternalLink, MoreHorizontal, Settings } from 'lucide-react';
+import {
+  Building2,
+  Calendar,
+  Copy,
+  CopyPlus,
+  ExternalLink,
+  MoreHorizontal,
+  Settings,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 import { OrgPropertyImageCarousel } from '@/features/dashboard/org/components/org-properties/OrgPropertyImageCarousel';
@@ -37,6 +45,7 @@ type Props = {
   organizationName?: string | null;
   developmentName?: string | null;
   developmentHref?: string | null;
+  onCopySettings?: (propertyId: string) => void;
 };
 
 async function copyGuestLink(propertySlug: string) {
@@ -121,11 +130,13 @@ function OrgPropertyActionsMenu({
   dashboardHref,
   settingsHref,
   guestHref,
+  onCopySettings,
 }: {
   property: Property;
   dashboardHref: string;
   settingsHref: string;
   guestHref: string;
+  onCopySettings?: () => void;
 }) {
   const model = orgPropertyCardModel(property);
 
@@ -171,6 +182,12 @@ function OrgPropertyActionsMenu({
           <Copy className="size-4" aria-hidden />
           Copy guest link
         </DropdownMenuItem>
+        {onCopySettings ? (
+          <DropdownMenuItem onSelect={onCopySettings}>
+            <CopyPlus className="size-4" aria-hidden />
+            Copy settings
+          </DropdownMenuItem>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -183,6 +200,7 @@ export function OrgPropertyCard({
   organizationName,
   developmentName,
   developmentHref,
+  onCopySettings,
 }: Props) {
   const navigate = useNavigate();
   const model = orgPropertyCardModel(property);
@@ -214,6 +232,7 @@ export function OrgPropertyCard({
             dashboardHref={dashboardHref}
             settingsHref={settingsHref}
             guestHref={guestHref}
+            onCopySettings={onCopySettings ? () => onCopySettings(property.id) : undefined}
           />
         </div>
       </div>
@@ -247,6 +266,7 @@ export function OrgPropertyListRow({
   organizationName,
   developmentName,
   developmentHref,
+  onCopySettings,
 }: Props) {
   const navigate = useNavigate();
   const model = orgPropertyCardModel(property);
@@ -300,6 +320,7 @@ export function OrgPropertyListRow({
                   dashboardHref={dashboardHref}
                   settingsHref={settingsHref}
                   guestHref={guestHref}
+                  onCopySettings={onCopySettings ? () => onCopySettings(property.id) : undefined}
                 />
               </div>
             </div>

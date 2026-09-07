@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo } from 'react';
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
 
 import { Navigate, useParams } from 'react-router-dom';
 
@@ -31,8 +31,19 @@ export function useOptionalParkingContext(): ParkingContextValue | null {
   return useContext(ParkingContext);
 }
 
+/** Provide parking scope outside the normal route shell (e.g. Setup Guide). */
+export function ProvideParkingContext({
+  value,
+  children,
+}: {
+  value: ParkingContextValue;
+  children: ReactNode;
+}) {
+  return <ParkingContext.Provider value={value}>{children}</ParkingContext.Provider>;
+}
+
 type Props = {
-  children: React.ReactNode;
+  children: ReactNode;
 };
 
 export function RequireParkingContext({ children }: Props) {

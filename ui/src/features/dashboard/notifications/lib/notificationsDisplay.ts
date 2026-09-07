@@ -5,6 +5,7 @@ import {
   CalendarX,
   Car,
   ClipboardCheck,
+  Copy,
   FileCheck,
   LogIn,
   LogOut,
@@ -51,6 +52,7 @@ const NOTIFICATION_ICONS: Record<NotificationType, LucideIcon> = {
   booking_external_imported: RefreshCw,
   booking_guest_form_completed: ClipboardCheck,
   smart_pricing_updated: Sparkles,
+  property_settings_copied: Copy,
 };
 
 /** Category glyph shared by the bell list, Activity page, and realtime toast. */

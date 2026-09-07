@@ -32,6 +32,8 @@ type Props = {
   /** Persist to the server (modal Save). Draft-only if omitted. */
   onPersist?: (next: PropertyLocationFields) => Promise<void>;
   onFieldInteract?: (fieldId: string) => void;
+  /** Inline picker (Setup Guide). */
+  embedded?: boolean;
 };
 
 export function PropertyLocationSettingsBlock({
@@ -41,6 +43,7 @@ export function PropertyLocationSettingsBlock({
   onChange,
   onPersist,
   onFieldInteract,
+  embedded = false,
 }: Props) {
   const [manageOpen, setManageOpen] = useState(false);
   const [session, setSession] = useState<PropertyLocationFields | null>(null);
@@ -157,6 +160,17 @@ export function PropertyLocationSettingsBlock({
     session && sessionDirty && (session.latitude == null || session.longitude == null)
       ? 'Pin your property on the map'
       : null;
+
+  if (embedded) {
+    return (
+      <PropertyLocationPicker
+        value={value}
+        disabled={disabled || persistPending}
+        onFieldInteract={onFieldInteract}
+        onChange={(patch) => onChange({ ...value, ...patch })}
+      />
+    );
+  }
 
   return (
     <>

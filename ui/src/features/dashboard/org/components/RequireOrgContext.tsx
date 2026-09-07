@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo } from 'react';
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
 
 import { Navigate, useParams } from 'react-router-dom';
 
@@ -30,8 +30,19 @@ export function useOptionalOrgContext(): OrgContextValue | null {
   return useContext(OrgContext);
 }
 
+/** Provide org/property scope outside the normal route shell (e.g. Setup Guide). */
+export function ProvideOrgContext({
+  value,
+  children,
+}: {
+  value: OrgContextValue;
+  children: ReactNode;
+}) {
+  return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>;
+}
+
 type Props = {
-  children: React.ReactNode;
+  children: ReactNode;
 };
 
 export function RequireOrgContext({ children }: Props) {

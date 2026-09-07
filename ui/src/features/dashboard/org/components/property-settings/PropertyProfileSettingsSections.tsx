@@ -121,6 +121,10 @@ type ProfileSectionsProps = {
   locationPersistPending?: boolean;
   /** When true for a section id, that section's fields are read-only. */
   sectionEditLocked?: Partial<Record<PropertySettingsSectionId, boolean>>;
+  /** When set, only these section cards render (Setup Guide step bodies). */
+  visibleSectionIds?: readonly PropertySettingsSectionId[];
+  /** Inline editors instead of nested Manage modals (Setup Guide). */
+  embedded?: boolean;
 };
 
 export function PropertyProfileMainSections({
@@ -149,7 +153,11 @@ export function PropertyProfileMainSections({
   onPersistLocation,
   locationPersistPending = false,
   sectionEditLocked = {},
+  visibleSectionIds,
+  embedded = false,
 }: ProfileSectionsProps) {
+  const sectionIsVisible = (sectionId: PropertySettingsSectionId) =>
+    !visibleSectionIds || visibleSectionIds.includes(sectionId);
   const [amenitiesManageOpen, setAmenitiesManageOpen] = useState(false);
   const [houseRulesManageOpen, setHouseRulesManageOpen] = useState(false);
   const fieldError = resolveFieldError;
@@ -289,547 +297,609 @@ export function PropertyProfileMainSections({
 
   return (
     <>
-      <AdminSection
-        id="basic"
-        title="Basic Information"
-        icon={Info}
-        description="Name, contact details, and brand color."
-      >
-        <SettingsField
-          id="property-name"
-          label="Property Name"
-          required
-          error={
-            fieldError('property-name') ??
-            (nameUnavailable
-              ? (nameConflictMessage ?? 'A property with this name already exists')
-              : null)
-          }
-          help="This is the name guests will see when searching for your property."
+      {sectionIsVisible('basic') ? (
+        <AdminSection
+          id="basic"
+          title="Basic Information"
+          icon={Info}
+          description="Name, contact details, and brand color."
         >
-          <AvailabilityCheckInput
-            id="property-name"
-            value={draft.name}
-            onChange={(event) => setField('name', event.target.value, 'property-name')}
-            disabled={lock('basic')}
-            placeholder="Enter property name"
-            maxLength={120}
-            aria-invalid={Boolean(fieldError('property-name') || nameUnavailable)}
-            className={cn((fieldError('property-name') || nameUnavailable) && 'border-destructive')}
-            checkState={nameAvailabilityState}
-          />
-        </SettingsField>
-
-        <SettingsField id="property-slug" label="URL Slug">
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-            <span className="text-muted-foreground truncate text-sm">{propertySlugPrefix}</span>
-            <Input
-              id="property-slug"
-              value={slugPreview}
-              readOnly
-              disabled={lock('basic')}
-              placeholder="property-slug"
-              className="bg-muted/40 max-w-xs"
-              autoComplete="off"
-              spellCheck={false}
-              aria-readonly="true"
-            />
-          </div>
-        </SettingsField>
-
-        <BrandColorField
-          id="property-brand-color"
-          value={brandColor}
-          resolvedColor={inheritedBrandColor}
-          resetValue={inheritedBrandColor}
-          disabled={lock('basic')}
-          error={fieldError('property-brand-color')}
-          help="Applies to this property’s dashboard pages & public-facing pages such as guest forms, email templates, and other related content."
-          photoUrls={collectPropertyPhotoUrls(draft.media)}
-          onChange={(value) => {
-            markFieldInteracted('property-brand-color');
-            onBrandColorChange(value);
-          }}
-        />
-
-        <FieldGrid>
           <SettingsField
-            id="property-type"
-            label="Property Type"
+            id="property-name"
+            label="Property Name"
             required
-            error={fieldError('property-type')}
+            error={
+              fieldError('property-name') ??
+              (nameUnavailable
+                ? (nameConflictMessage ?? 'A property with this name already exists')
+                : null)
+            }
+            help="This is the name guests will see when searching for your property."
           >
-            <Input
-              id="property-type"
-              value={propertyTypeLabel}
-              readOnly
+            <AvailabilityCheckInput
+              id="property-name"
+              value={draft.name}
+              onChange={(event) => setField('name', event.target.value, 'property-name')}
               disabled={lock('basic')}
-              tabIndex={-1}
-              aria-readonly="true"
-              aria-invalid={Boolean(fieldError('property-type'))}
+              placeholder="Enter property name"
+              maxLength={120}
+              aria-invalid={Boolean(fieldError('property-name') || nameUnavailable)}
               className={cn(
-                readOnlyFieldClass,
-                fieldError('property-type') && 'border-destructive'
+                (fieldError('property-name') || nameUnavailable) && 'border-destructive'
               )}
+              checkState={nameAvailabilityState}
             />
           </SettingsField>
 
-          {isCondo ? (
+          <SettingsField id="property-slug" label="URL Slug">
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+              <span className="text-muted-foreground truncate text-sm">{propertySlugPrefix}</span>
+              <Input
+                id="property-slug"
+                value={slugPreview}
+                readOnly
+                disabled={lock('basic')}
+                placeholder="property-slug"
+                className="bg-muted/40 max-w-xs"
+                autoComplete="off"
+                spellCheck={false}
+                aria-readonly="true"
+              />
+            </div>
+          </SettingsField>
+
+          <BrandColorField
+            id="property-brand-color"
+            value={brandColor}
+            resolvedColor={inheritedBrandColor}
+            resetValue={inheritedBrandColor}
+            disabled={lock('basic')}
+            error={fieldError('property-brand-color')}
+            help="Applies to this property’s dashboard pages & public-facing pages such as guest forms, email templates, and other related content."
+            photoUrls={collectPropertyPhotoUrls(draft.media)}
+            onChange={(value) => {
+              markFieldInteracted('property-brand-color');
+              onBrandColorChange(value);
+            }}
+          />
+
+          <FieldGrid>
             <SettingsField
-              id="property-residence"
-              label="Residence"
+              id="property-type"
+              label="Property Type"
               required
-              error={fieldError('property-residence')}
+              error={fieldError('property-type')}
             >
               <Input
-                id="property-residence"
-                value={draft.residenceName.trim() || residenceOptions[0] || ''}
+                id="property-type"
+                value={propertyTypeLabel}
                 readOnly
                 disabled={lock('basic')}
                 tabIndex={-1}
                 aria-readonly="true"
-                aria-invalid={Boolean(fieldError('property-residence'))}
+                aria-invalid={Boolean(fieldError('property-type'))}
                 className={cn(
                   readOnlyFieldClass,
-                  fieldError('property-residence') && 'border-destructive'
+                  fieldError('property-type') && 'border-destructive'
                 )}
               />
             </SettingsField>
-          ) : null}
 
-          {isCondo ? (
-            <>
+            {isCondo ? (
               <SettingsField
-                id="property-tower"
-                label="Tower"
+                id="property-residence"
+                label="Residence"
                 required
-                error={fieldError('property-tower')}
+                error={fieldError('property-residence')}
               >
                 <Input
+                  id="property-residence"
+                  value={draft.residenceName.trim() || residenceOptions[0] || ''}
+                  readOnly
+                  disabled={lock('basic')}
+                  tabIndex={-1}
+                  aria-readonly="true"
+                  aria-invalid={Boolean(fieldError('property-residence'))}
+                  className={cn(
+                    readOnlyFieldClass,
+                    fieldError('property-residence') && 'border-destructive'
+                  )}
+                />
+              </SettingsField>
+            ) : null}
+
+            {isCondo ? (
+              <>
+                <SettingsField
                   id="property-tower"
-                  value={draft.tower || ''}
-                  readOnly
-                  disabled={lock('basic')}
-                  tabIndex={-1}
-                  aria-readonly="true"
-                  aria-invalid={Boolean(fieldError('property-tower') || hasDuplicate)}
-                  className={cn(
-                    readOnlyFieldClass,
-                    (fieldError('property-tower') || hasDuplicate) && 'border-destructive'
-                  )}
-                />
-              </SettingsField>
+                  label="Tower"
+                  required
+                  error={fieldError('property-tower')}
+                >
+                  <Input
+                    id="property-tower"
+                    value={draft.tower || ''}
+                    readOnly
+                    disabled={lock('basic')}
+                    tabIndex={-1}
+                    aria-readonly="true"
+                    aria-invalid={Boolean(fieldError('property-tower') || hasDuplicate)}
+                    className={cn(
+                      readOnlyFieldClass,
+                      (fieldError('property-tower') || hasDuplicate) && 'border-destructive'
+                    )}
+                  />
+                </SettingsField>
 
-              <SettingsField
-                id="property-unit"
-                label="Unit"
-                required
-                error={fieldError('property-unit')}
-              >
-                <Input
+                <SettingsField
                   id="property-unit"
-                  value={draft.unitNumber}
+                  label="Unit"
+                  required
+                  error={fieldError('property-unit')}
+                >
+                  <Input
+                    id="property-unit"
+                    value={draft.unitNumber}
+                    readOnly
+                    disabled={lock('basic')}
+                    tabIndex={-1}
+                    aria-readonly="true"
+                    aria-invalid={Boolean(fieldError('property-unit') || hasDuplicate)}
+                    className={cn(
+                      readOnlyFieldClass,
+                      'tabular-nums',
+                      (fieldError('property-unit') || hasDuplicate) && 'border-destructive'
+                    )}
+                  />
+                </SettingsField>
+              </>
+            ) : null}
+          </FieldGrid>
+
+          {isCondo && towerUnitReady && hasDuplicate && towerConflict ? (
+            <TowerUnitConflictAlert
+              tower={draft.tower}
+              unitNumber={draft.unitNumber}
+              conflict={towerConflict}
+            />
+          ) : null}
+
+          <SettingsField id="property-description" label="Description">
+            <Textarea
+              id="property-description"
+              value={draft.description}
+              onChange={(event) => onChange('description', event.target.value)}
+              disabled={lock('basic')}
+              placeholder="Describe your property..."
+              rows={12}
+              maxLength={1000}
+            />
+            <p className="text-muted-foreground text-xs">
+              {draft.description.length}/1000 characters
+            </p>
+          </SettingsField>
+        </AdminSection>
+      ) : null}
+
+      {sectionIsVisible('details') ? (
+        <AdminSection
+          id="details"
+          title="Property Details"
+          icon={Home}
+          description="Bedrooms, bathrooms, floor, and max guests."
+        >
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+            <SettingsField
+              id="property-unit-type"
+              label="Unit type"
+              required
+              error={fieldError('property-unit-type')}
+            >
+              <Select
+                value={draft.unitTypeId || undefined}
+                onValueChange={handleUnitTypeChange}
+                disabled={lock('details') || unitTypes.length === 0}
+              >
+                <SelectTrigger
+                  id="property-unit-type"
+                  aria-invalid={Boolean(fieldError('property-unit-type'))}
+                  className={cn(fieldError('property-unit-type') && 'border-destructive')}
+                >
+                  <SelectValue placeholder="Select unit type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {unitTypes.map((entry) => (
+                    <SelectItem key={entry.id} value={entry.id}>
+                      {entry.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </SettingsField>
+
+            <SettingsField
+              id="property-bedrooms"
+              label="Bedrooms"
+              required
+              error={fieldError('property-bedrooms')}
+            >
+              <div className="relative">
+                <Bed
+                  className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
+                  aria-hidden
+                />
+                <Input
+                  id="property-bedrooms"
+                  type="number"
+                  value={draft.bedrooms}
                   readOnly
-                  disabled={lock('basic')}
+                  disabled={lock('details')}
                   tabIndex={-1}
                   aria-readonly="true"
-                  aria-invalid={Boolean(fieldError('property-unit') || hasDuplicate)}
+                  aria-invalid={Boolean(fieldError('property-bedrooms'))}
                   className={cn(
-                    readOnlyFieldClass,
-                    'tabular-nums',
-                    (fieldError('property-unit') || hasDuplicate) && 'border-destructive'
+                    'bg-muted/40 pl-9 tabular-nums',
+                    fieldError('property-bedrooms') && 'border-destructive'
                   )}
                 />
-              </SettingsField>
-            </>
-          ) : null}
-        </FieldGrid>
+              </div>
+            </SettingsField>
 
-        {isCondo && towerUnitReady && hasDuplicate && towerConflict ? (
-          <TowerUnitConflictAlert
-            tower={draft.tower}
-            unitNumber={draft.unitNumber}
-            conflict={towerConflict}
-          />
-        ) : null}
-
-        <SettingsField id="property-description" label="Description">
-          <Textarea
-            id="property-description"
-            value={draft.description}
-            onChange={(event) => onChange('description', event.target.value)}
-            disabled={lock('basic')}
-            placeholder="Describe your property..."
-            rows={12}
-            maxLength={1000}
-          />
-          <p className="text-muted-foreground text-xs">
-            {draft.description.length}/1000 characters
-          </p>
-        </SettingsField>
-      </AdminSection>
-
-      <AdminSection
-        id="details"
-        title="Property Details"
-        icon={Home}
-        description="Bedrooms, bathrooms, floor, and max guests."
-      >
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-          <SettingsField
-            id="property-unit-type"
-            label="Unit type"
-            required
-            error={fieldError('property-unit-type')}
-          >
-            <Select
-              value={draft.unitTypeId || undefined}
-              onValueChange={handleUnitTypeChange}
-              disabled={lock('details') || unitTypes.length === 0}
+            <SettingsField
+              id="property-bathrooms"
+              label="Bathrooms"
+              required
+              error={fieldError('property-bathrooms')}
             >
-              <SelectTrigger
-                id="property-unit-type"
-                aria-invalid={Boolean(fieldError('property-unit-type'))}
-                className={cn(fieldError('property-unit-type') && 'border-destructive')}
-              >
-                <SelectValue placeholder="Select unit type" />
-              </SelectTrigger>
-              <SelectContent>
-                {unitTypes.map((entry) => (
-                  <SelectItem key={entry.id} value={entry.id}>
-                    {entry.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </SettingsField>
+              <div className="relative">
+                <Bath
+                  className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
+                  aria-hidden
+                />
+                <Input
+                  id="property-bathrooms"
+                  type="number"
+                  step={0.5}
+                  value={draft.bathrooms}
+                  readOnly
+                  disabled={lock('details')}
+                  tabIndex={-1}
+                  aria-readonly="true"
+                  aria-invalid={Boolean(fieldError('property-bathrooms'))}
+                  className={cn(
+                    'bg-muted/40 pl-9 tabular-nums',
+                    fieldError('property-bathrooms') && 'border-destructive'
+                  )}
+                />
+              </div>
+            </SettingsField>
 
-          <SettingsField
-            id="property-bedrooms"
-            label="Bedrooms"
-            required
-            error={fieldError('property-bedrooms')}
-          >
-            <div className="relative">
-              <Bed
-                className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
-                aria-hidden
-              />
-              <Input
-                id="property-bedrooms"
-                type="number"
-                value={draft.bedrooms}
-                readOnly
-                disabled={lock('details')}
-                tabIndex={-1}
-                aria-readonly="true"
-                aria-invalid={Boolean(fieldError('property-bedrooms'))}
-                className={cn(
-                  'bg-muted/40 pl-9 tabular-nums',
-                  fieldError('property-bedrooms') && 'border-destructive'
-                )}
-              />
-            </div>
-          </SettingsField>
-
-          <SettingsField
-            id="property-bathrooms"
-            label="Bathrooms"
-            required
-            error={fieldError('property-bathrooms')}
-          >
-            <div className="relative">
-              <Bath
-                className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
-                aria-hidden
-              />
-              <Input
-                id="property-bathrooms"
-                type="number"
-                step={0.5}
-                value={draft.bathrooms}
-                readOnly
-                disabled={lock('details')}
-                tabIndex={-1}
-                aria-readonly="true"
-                aria-invalid={Boolean(fieldError('property-bathrooms'))}
-                className={cn(
-                  'bg-muted/40 pl-9 tabular-nums',
-                  fieldError('property-bathrooms') && 'border-destructive'
-                )}
-              />
-            </div>
-          </SettingsField>
-
-          <SettingsField
-            id="property-floors"
-            label="Floor"
-            required
-            error={fieldError('property-floors')}
-          >
-            <Input
+            <SettingsField
               id="property-floors"
-              type="number"
-              min={residenceDefaults.floors.min}
-              max={residenceDefaults.floors.max}
-              value={draft.floors}
-              onChange={(event) =>
-                setField(
-                  'floors',
-                  clampToRange(Number(event.target.value), residenceDefaults.floors),
-                  'property-floors'
-                )
-              }
-              disabled={lock('details')}
-              aria-invalid={Boolean(fieldError('property-floors'))}
-              className={cn(fieldError('property-floors') && 'border-destructive')}
-            />
-          </SettingsField>
-
-          <SettingsField
-            id="property-max-adults"
-            label="Max Adults"
-            required
-            error={fieldError('property-max-adults')}
-          >
-            <div className="relative">
-              <Users
-                className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
-                aria-hidden
-              />
+              label="Floor"
+              required
+              error={fieldError('property-floors')}
+            >
               <Input
-                id="property-max-adults"
+                id="property-floors"
                 type="number"
-                value={draft.maxAdults}
-                readOnly
+                min={residenceDefaults.floors.min}
+                max={residenceDefaults.floors.max}
+                value={draft.floors}
+                onChange={(event) =>
+                  setField(
+                    'floors',
+                    clampToRange(Number(event.target.value), residenceDefaults.floors),
+                    'property-floors'
+                  )
+                }
                 disabled={lock('details')}
-                tabIndex={-1}
-                aria-readonly="true"
-                className={cn(
-                  'bg-muted/40 pl-9 tabular-nums',
-                  fieldError('property-max-adults') && 'border-destructive'
-                )}
+                aria-invalid={Boolean(fieldError('property-floors'))}
+                className={cn(fieldError('property-floors') && 'border-destructive')}
               />
-            </div>
-          </SettingsField>
+            </SettingsField>
 
-          <SettingsField
-            id="property-max-children"
-            label="Max Children"
-            required
-            error={fieldError('property-max-children')}
-          >
-            <div className="relative">
-              <Baby
-                className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
-                aria-hidden
-              />
-              <Input
-                id="property-max-children"
-                type="number"
-                value={draft.maxChildren}
-                readOnly
-                disabled={lock('details')}
-                tabIndex={-1}
-                aria-readonly="true"
-                className={cn(
-                  'bg-muted/40 pl-9 tabular-nums',
-                  fieldError('property-max-children') && 'border-destructive'
-                )}
-              />
-            </div>
-          </SettingsField>
-        </div>
+            <SettingsField
+              id="property-max-adults"
+              label="Max Adults"
+              required
+              error={fieldError('property-max-adults')}
+            >
+              <div className="relative">
+                <Users
+                  className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
+                  aria-hidden
+                />
+                <Input
+                  id="property-max-adults"
+                  type="number"
+                  value={draft.maxAdults}
+                  readOnly
+                  disabled={lock('details')}
+                  tabIndex={-1}
+                  aria-readonly="true"
+                  className={cn(
+                    'bg-muted/40 pl-9 tabular-nums',
+                    fieldError('property-max-adults') && 'border-destructive'
+                  )}
+                />
+              </div>
+            </SettingsField>
 
-        <FieldGrid>
-          <SettingsField
-            id="property-check-in"
-            label="Check-in Time"
-            required
-            error={fieldError('property-check-in')}
-          >
-            <TimePicker
+            <SettingsField
+              id="property-max-children"
+              label="Max Children"
+              required
+              error={fieldError('property-max-children')}
+            >
+              <div className="relative">
+                <Baby
+                  className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
+                  aria-hidden
+                />
+                <Input
+                  id="property-max-children"
+                  type="number"
+                  value={draft.maxChildren}
+                  readOnly
+                  disabled={lock('details')}
+                  tabIndex={-1}
+                  aria-readonly="true"
+                  className={cn(
+                    'bg-muted/40 pl-9 tabular-nums',
+                    fieldError('property-max-children') && 'border-destructive'
+                  )}
+                />
+              </div>
+            </SettingsField>
+          </div>
+
+          <FieldGrid>
+            <SettingsField
               id="property-check-in"
-              value={draft.checkInTime}
-              onChange={(value) => setField('checkInTime', value, 'property-check-in')}
-              disabled={lock('details')}
-              aria-invalid={Boolean(fieldError('property-check-in'))}
-            />
-          </SettingsField>
+              label="Check-in Time"
+              required
+              error={fieldError('property-check-in')}
+            >
+              <TimePicker
+                id="property-check-in"
+                value={draft.checkInTime}
+                onChange={(value) => setField('checkInTime', value, 'property-check-in')}
+                disabled={lock('details')}
+                aria-invalid={Boolean(fieldError('property-check-in'))}
+              />
+            </SettingsField>
 
-          <SettingsField
-            id="property-check-out"
-            label="Check-out Time"
-            required
-            error={fieldError('property-check-out')}
-          >
-            <TimePicker
+            <SettingsField
               id="property-check-out"
-              value={draft.checkOutTime}
-              onChange={(value) => setField('checkOutTime', value, 'property-check-out')}
+              label="Check-out Time"
+              required
+              error={fieldError('property-check-out')}
+            >
+              <TimePicker
+                id="property-check-out"
+                value={draft.checkOutTime}
+                onChange={(value) => setField('checkOutTime', value, 'property-check-out')}
+                disabled={lock('details')}
+                aria-invalid={Boolean(fieldError('property-check-out'))}
+              />
+            </SettingsField>
+          </FieldGrid>
+
+          <label className="flex min-h-[44px] cursor-pointer items-start gap-3">
+            <Checkbox
+              checked={draft.selfCheckIn}
+              onCheckedChange={(checked) => onChange('selfCheckIn', checked === true)}
               disabled={lock('details')}
-              aria-invalid={Boolean(fieldError('property-check-out'))}
+              className="mt-0.5"
             />
-          </SettingsField>
-        </FieldGrid>
-
-        <label className="flex min-h-[44px] cursor-pointer items-start gap-3">
-          <Checkbox
-            checked={draft.selfCheckIn}
-            onCheckedChange={(checked) => onChange('selfCheckIn', checked === true)}
-            disabled={lock('details')}
-            className="mt-0.5"
-          />
-          <span className="space-y-1">
-            <span className="block text-sm font-medium">Self Check-in Available</span>
-            <span className="text-muted-foreground block text-sm">
-              Guests can check themselves in using a lockbox, smart lock, or similar method.
+            <span className="space-y-1">
+              <span className="block text-sm font-medium">Self Check-in Available</span>
+              <span className="text-muted-foreground block text-sm">
+                Guests can check themselves in using a lockbox, smart lock, or similar method.
+              </span>
             </span>
-          </span>
-        </label>
-      </AdminSection>
+          </label>
+        </AdminSection>
+      ) : null}
 
-      <AdminSection
-        id="media"
-        title="Photos & Videos"
-        icon={ImageIcon}
-        description="Listing photos and videos."
-      >
-        {propertySettingsSectionBanner('media', sectionMessages) ? (
-          <PropertySettingsSectionAlert
-            message={propertySettingsSectionBanner('media', sectionMessages)!}
+      {sectionIsVisible('media') ? (
+        <AdminSection
+          id="media"
+          title="Photos & Videos"
+          icon={ImageIcon}
+          description="Listing photos and videos."
+        >
+          {propertySettingsSectionBanner('media', sectionMessages) ? (
+            <PropertySettingsSectionAlert
+              message={propertySettingsSectionBanner('media', sectionMessages)!}
+            />
+          ) : null}
+          <PropertyMediaUpload
+            items={draft.media}
+            onChange={(media) => onChange('media', media)}
+            onPersisted={onMediaPersisted}
+            onPersistOrder={onPersistMediaOrder}
+            disabled={lock('media') || mediaGalleryBusy}
           />
-        ) : null}
-        <PropertyMediaUpload
-          items={draft.media}
-          onChange={(media) => onChange('media', media)}
-          onPersisted={onMediaPersisted}
-          onPersistOrder={onPersistMediaOrder}
-          disabled={lock('media') || mediaGalleryBusy}
-        />
-      </AdminSection>
+        </AdminSection>
+      ) : null}
 
-      <AdminSection
-        id="amenities"
-        title="Amenities"
-        icon={Sparkles}
-        description="What's included with the stay."
-      >
-        {propertySettingsSectionBanner('amenities', sectionMessages) ? (
-          <PropertySettingsSectionAlert
-            message={propertySettingsSectionBanner('amenities', sectionMessages)!}
+      {sectionIsVisible('amenities') ? (
+        <AdminSection
+          id="amenities"
+          title="Amenities"
+          icon={Sparkles}
+          description="What's included with the stay."
+        >
+          {propertySettingsSectionBanner('amenities', sectionMessages) ? (
+            <PropertySettingsSectionAlert
+              message={propertySettingsSectionBanner('amenities', sectionMessages)!}
+            />
+          ) : null}
+          {embedded ? (
+            <PropertyAmenitiesManageDialog
+              open
+              onOpenChange={() => undefined}
+              inline
+            enabledAmenities={draft.enabledAmenities}
+            customAmenities={draft.customAmenities}
+            newCustomAmenityInputs={newCustomAmenityInputs}
+            onNewCustomAmenityInputChange={onNewCustomAmenityInputChange}
+            onToggleAmenity={toggleAmenity}
+            onAddCustomAmenity={addCustomAmenity}
+            onRemoveCustomAmenity={removeCustomAmenity}
+            disabled={lock('amenities')}
+                      />
+          ) : (
+            <>
+          <div className="bg-muted/40 flex min-h-[44px] w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 sm:px-4 sm:py-3">
+            <p className="min-w-0 text-xs font-medium sm:text-sm">
+              {draft.enabledAmenities.length} amenities selected
+              {draft.customAmenities.length > 0 ? ` · ${draft.customAmenities.length} custom` : ''}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="settings-action"
+              onClick={() => setAmenitiesManageOpen(true)}
+            >
+              Manage
+            </Button>
+          </div>
+          <PropertyAmenitiesManageDialog
+            open={amenitiesManageOpen}
+            onOpenChange={setAmenitiesManageOpen}
+            enabledAmenities={draft.enabledAmenities}
+            customAmenities={draft.customAmenities}
+            newCustomAmenityInputs={newCustomAmenityInputs}
+            onNewCustomAmenityInputChange={onNewCustomAmenityInputChange}
+            onToggleAmenity={toggleAmenity}
+            onAddCustomAmenity={addCustomAmenity}
+            onRemoveCustomAmenity={removeCustomAmenity}
+            disabled={lock('amenities')}
           />
-        ) : null}
-        <div className="bg-muted/40 flex min-h-[44px] w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 sm:px-4 sm:py-3">
-          <p className="min-w-0 text-xs font-medium sm:text-sm">
-            {draft.enabledAmenities.length} amenities selected
-            {draft.customAmenities.length > 0 ? ` · ${draft.customAmenities.length} custom` : ''}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="settings-action"
-            onClick={() => setAmenitiesManageOpen(true)}
-          >
-            Manage
-          </Button>
-        </div>
-        <PropertyAmenitiesManageDialog
-          open={amenitiesManageOpen}
-          onOpenChange={setAmenitiesManageOpen}
-          enabledAmenities={draft.enabledAmenities}
-          customAmenities={draft.customAmenities}
-          newCustomAmenityInputs={newCustomAmenityInputs}
-          onNewCustomAmenityInputChange={onNewCustomAmenityInputChange}
-          onToggleAmenity={toggleAmenity}
-          onAddCustomAmenity={addCustomAmenity}
-          onRemoveCustomAmenity={removeCustomAmenity}
-          disabled={lock('amenities')}
-        />
-      </AdminSection>
+            </>
+          )}
+        </AdminSection>
+      ) : null}
 
-      <AdminSection
-        id="house-rules"
-        title="House Rules"
-        icon={ListChecks}
-        description="Rules guests see before they book."
-      >
-        <div className="bg-muted/40 flex min-h-[44px] w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 sm:px-4 sm:py-3">
-          <p className="min-w-0 text-xs font-medium sm:text-sm">
-            {draft.enabledHouseRules.length} rules selected
-            {draft.customHouseRules.length > 0 ? ` · ${draft.customHouseRules.length} custom` : ''}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="settings-action"
-            onClick={() => setHouseRulesManageOpen(true)}
-          >
-            Manage
-          </Button>
-        </div>
-        <PropertyHouseRulesManageDialog
-          open={houseRulesManageOpen}
-          onOpenChange={setHouseRulesManageOpen}
-          enabledHouseRules={draft.enabledHouseRules}
-          customHouseRules={draft.customHouseRules}
-          newCustomHouseRuleInputs={newCustomHouseRuleInputs}
-          onNewCustomHouseRuleInputChange={onNewCustomHouseRuleInputChange}
-          onToggleHouseRule={toggleHouseRule}
-          onAddCustomHouseRule={addCustomHouseRule}
-          onRemoveCustomHouseRule={removeCustomHouseRule}
+      {sectionIsVisible('house-rules') ? (
+        <AdminSection
+          id="house-rules"
+          title="House Rules"
+          icon={ListChecks}
+          description="Rules guests see before they book."
+        >
+          {embedded ? (
+            <PropertyHouseRulesManageDialog
+              open
+              onOpenChange={() => undefined}
+              inline
+            enabledHouseRules={draft.enabledHouseRules}
+            customHouseRules={draft.customHouseRules}
+            newCustomHouseRuleInputs={newCustomHouseRuleInputs}
+            onNewCustomHouseRuleInputChange={onNewCustomHouseRuleInputChange}
+            onToggleHouseRule={toggleHouseRule}
+            onAddCustomHouseRule={addCustomHouseRule}
+            onRemoveCustomHouseRule={removeCustomHouseRule}
+            disabled={lock('house-rules')}
+                      />
+          ) : (
+            <>
+          <div className="bg-muted/40 flex min-h-[44px] w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 sm:px-4 sm:py-3">
+            <p className="min-w-0 text-xs font-medium sm:text-sm">
+              {draft.enabledHouseRules.length} rules selected
+              {draft.customHouseRules.length > 0
+                ? ` · ${draft.customHouseRules.length} custom`
+                : ''}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="settings-action"
+              onClick={() => setHouseRulesManageOpen(true)}
+            >
+              Manage
+            </Button>
+          </div>
+          <PropertyHouseRulesManageDialog
+            open={houseRulesManageOpen}
+            onOpenChange={setHouseRulesManageOpen}
+            enabledHouseRules={draft.enabledHouseRules}
+            customHouseRules={draft.customHouseRules}
+            newCustomHouseRuleInputs={newCustomHouseRuleInputs}
+            onNewCustomHouseRuleInputChange={onNewCustomHouseRuleInputChange}
+            onToggleHouseRule={toggleHouseRule}
+            onAddCustomHouseRule={addCustomHouseRule}
+            onRemoveCustomHouseRule={removeCustomHouseRule}
+            disabled={lock('house-rules')}
+          />
+            </>
+          )}
+        </AdminSection>
+      ) : null}
+
+      {sectionIsVisible('guest-form') ? (
+        <PropertyGuestFormSettingsSection
+          draft={draft}
           disabled={lock('house-rules')}
+          onChange={onChange}
+          setField={setField}
+          resolveFieldError={fieldError}
         />
-      </AdminSection>
+      ) : null}
 
-      <PropertyGuestFormSettingsSection
-        draft={draft}
-        disabled={lock('house-rules')}
-        onChange={onChange}
-        setField={setField}
-        resolveFieldError={fieldError}
-      />
-
-      <PropertyCancellationPolicySection
-        policy={draft.cancellationPolicy}
-        disabled={lock('house-rules')}
-        resolveFieldError={fieldError}
-        markFieldInteracted={markFieldInteracted}
-        onChange={(policy) => onChange('cancellationPolicy', policy)}
-      />
-
-      <AdminSection id="location" title="Location" icon={MapPin} description="Address and map pin.">
-        <PropertyLocationSettingsBlock
-          disabled={lock('location')}
-          persistPending={locationPersistPending}
-          onFieldInteract={markFieldInteracted}
-          onPersist={onPersistLocation}
-          value={{
-            address: draft.address,
-            city: draft.city,
-            province: draft.province,
-            country: draft.country,
-            zipCode: draft.zipCode,
-            latitude: draft.latitude,
-            longitude: draft.longitude,
-            mapsUrl: draft.mapsUrl,
-            placeId: draft.placeId,
-          }}
-          onChange={(next) => {
-            onChange('address', next.address);
-            onChange('city', next.city);
-            onChange('province', next.province);
-            onChange('country', next.country);
-            onChange('zipCode', next.zipCode);
-            onChange('latitude', next.latitude);
-            onChange('longitude', next.longitude);
-            onChange('mapsUrl', next.mapsUrl);
-            onChange('placeId', next.placeId);
-          }}
+      {sectionIsVisible('cancellation') ? (
+        <PropertyCancellationPolicySection
+          policy={draft.cancellationPolicy}
+          disabled={lock('house-rules')}
+          resolveFieldError={fieldError}
+          markFieldInteracted={markFieldInteracted}
+          onChange={(policy) => onChange('cancellationPolicy', policy)}
         />
-      </AdminSection>
+      ) : null}
+
+      {sectionIsVisible('location') ? (
+        <AdminSection
+          id="location"
+          title="Location"
+          icon={MapPin}
+          description="Address and map pin."
+        >
+          <PropertyLocationSettingsBlock
+          embedded={embedded}
+            disabled={lock('location')}
+            persistPending={locationPersistPending}
+            onFieldInteract={markFieldInteracted}
+            onPersist={onPersistLocation}
+            value={{
+              address: draft.address,
+              city: draft.city,
+              province: draft.province,
+              country: draft.country,
+              zipCode: draft.zipCode,
+              latitude: draft.latitude,
+              longitude: draft.longitude,
+              mapsUrl: draft.mapsUrl,
+              placeId: draft.placeId,
+            }}
+            onChange={(next) => {
+              onChange('address', next.address);
+              onChange('city', next.city);
+              onChange('province', next.province);
+              onChange('country', next.country);
+              onChange('zipCode', next.zipCode);
+              onChange('latitude', next.latitude);
+              onChange('longitude', next.longitude);
+              onChange('mapsUrl', next.mapsUrl);
+              onChange('placeId', next.placeId);
+            }}
+          />
+        </AdminSection>
+      ) : null}
     </>
   );
 }

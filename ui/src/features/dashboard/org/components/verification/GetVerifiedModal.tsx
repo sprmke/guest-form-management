@@ -57,6 +57,7 @@ import {
 } from '@/features/dashboard/org/lib/verificationCopy';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
+import { useHostRewardOffer } from '@/features/dashboard/setup-guide/hooks/useHostRewardOffer';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -609,11 +610,19 @@ function RecommendedTierStepPanel({
   );
 }
 
-export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) {
+export function GetVerifiedModal({
+  
+  open,
+  onOpenChange,
+  forced = false,
+}: Props) {
   const queryClient = useQueryClient();
   const org = useCurrentOrganization();
   const { canUse: canSubmitRecommendedBadge, isLoading: recommendedEntitlementsLoading } =
     useFeatureGate('recommendedBadgeEligible');
+  const { data: hostRewardOffer } = useHostRewardOffer(org?.id);
+  const rewardBypass = Boolean(hostRewardOffer?.enabled && hostRewardOffer.eligible);
+  const canSubmitRecommended = canSubmitRecommendedBadge || rewardBypass;
   const { open: openUpgradeModal } = useUpgradeModal();
   const detail = readOrgVerificationDetail(org?.settings);
   const hostModes = resolveHostModes(org);
@@ -754,7 +763,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
   const handleSubmitVerified = async () => {
     setVerifiedTouched(true);
     if (!org || !canSubmitVerified) return;
-    if (!canSubmitRecommendedBadge) {
+    if (!canSubmitRecommended) {
       if (!recommendedEntitlementsLoading) openUpgradeModal('recommendedBadgeEligible');
       return;
     }
@@ -789,6 +798,12 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
         }),
       });
       await queryClient.invalidateQueries({ queryKey: ORGANIZATIONS_QUERY_KEY });
+      await queryClient.invalidateQueries({ queryKey: ['host-reward-offer', org.id] });
+      await queryClient.invalidateQueries({ queryKey: ['org-plan'] });
+      await queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey.some((part) => part === 'entitlements' || part === 'org-plan'),
+      });
       toast.success('Recommended tier submitted');
       handleOpenChange(false);
     } catch (err) {
