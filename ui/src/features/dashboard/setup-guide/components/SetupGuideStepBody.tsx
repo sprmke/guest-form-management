@@ -1,0 +1,739 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+
+import { Link } from 'react-router-dom';
+
+import type { AppSettingsDto } from '@/features/dashboard/bookings/hooks/useAppSettings';
+import { OrgListingVerificationRollup } from '@/features/dashboard/org/components/listing-authorization/OrgListingVerificationRollup';
+import {
+  OrgBasicInformationSection,
+  OrgSocialsBrandingSection,
+} from '@/features/dashboard/org/components/org-settings/OrgProfileSettingsSections';
+import { PropertyLocationPicker } from '@/features/dashboard/org/components/property-settings/PropertyLocationPicker';
+import { PropertyOperationalSettingsSections } from '@/features/dashboard/org/components/property-settings/PropertyOperationalSettingsSections';
+import { PropertyPaymentMethodsSection } from '@/features/dashboard/org/components/property-settings/PropertyPaymentMethodsSection';
+import { PropertyProfileMainSections } from '@/features/dashboard/org/components/property-settings/PropertyProfileSettingsSections';
+import { SensitiveSettingsOtpDialog } from '@/features/dashboard/org/components/property-settings/SensitiveSettingsOtpDialog';
+import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { BrandColorField } from '@/features/dashboard/org/components/settings/BrandColorField';
+import { GetVerifiedModal } from '@/features/dashboard/org/components/verification/GetVerifiedModal';
+import { useOrgSettingsController } from '@/features/dashboard/org/hooks/useOrgSettingsController';
+import { useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
+import { useParkingSettingsController } from '@/features/dashboard/org/hooks/useParkingSettingsController';
+import { usePropertySettingsController } from '@/features/dashboard/org/hooks/usePropertySettingsController';
+import type { PropertySettingsSectionId } from '@/features/dashboard/org/lib/propertySettingsCompletion';
+import { orgTeamPath, propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
+import { ParkingBookingAutomationSection } from '@/features/dashboard/parking/components/ParkingBookingAutomationSection';
+import { ParkingDetailsSection } from '@/features/dashboard/parking/components/ParkingDetailsSection';
+import { ParkingEmailAutomationSection } from '@/features/dashboard/parking/components/ParkingEmailAutomationSection';
+import { ParkingFeaturesSection } from '@/features/dashboard/parking/components/ParkingFeaturesSection';
+import { ParkingMediaUpload } from '@/features/dashboard/parking/components/ParkingMediaUpload';
+import { PARKING_DESCRIPTION_MAX } from '@/features/dashboard/parking/lib/parkingSettingsForm';
+import { SETUP_GUIDE_PARKING_SAVE_SCOPE } from '@/features/dashboard/parking/lib/parkingSettingsSavePlan';
+import { useSetupGuide } from '@/features/dashboard/setup-guide/components/SetupGuideProvider';
+import {
+  SetupGuideParkingHost,
+  SetupGuidePropertyHost,
+} from '@/features/dashboard/setup-guide/components/SetupGuideSettingsHost';
+import { useHostRewardOffer } from '@/features/dashboard/setup-guide/hooks/useHostRewardOffer';
+import { useSetupGuideStateWrite } from '@/features/dashboard/setup-guide/hooks/useSetupGuideStateWrite';
+import type { SetupGuideStep } from '@/features/dashboard/setup-guide/lib/setupGuideTypes';
+
+import { AppSettingsCardSkeleton } from '@/components/skeletons/AdminSkeletons';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+
+export type SetupGuideSaveHandler = (() => Promise<boolean>) | null;
+
+const SetupGuideSaveContext = createContext<{
+  registerSave: (handler: SetupGuideSaveHandler) => void;
+} | null>(null);
+
+export function SetupGuideSaveProvider({
+  children,
+  registerSave,
+}: {
+  children: ReactNode;
+  registerSave: (handler: SetupGuideSaveHandler) => void;
+}) {
+  const value = useMemo(() => ({ registerSave }), [registerSave]);
+  return <SetupGuideSaveContext.Provider value={value}>{children}</SetupGuideSaveContext.Provider>;
+}
+
+function useRegisterStepSave(handler: SetupGuideSaveHandler) {
+  const ctx = useContext(SetupGuideSaveContext);
+  useEffect(() => {
+    ctx?.registerSave(handler);
+    return () => ctx?.registerSave(null);
+  }, [ctx, handler]);
+}
+
+export function useSetupGuideSaveBridge() {
+  const handlerRef = useRef<SetupGuideSaveHandler>(null);
+  const [hasSave, setHasSave] = useState(false);
+
+  const registerSave = useCallback((handler: SetupGuideSaveHandler) => {
+    handlerRef.current = handler;
+    setHasSave(Boolean(handler));
+  }, []);
+
+  const runSave = useCallback(async () => {
+    if (!handlerRef.current) return true;
+    return handlerRef.current();
+  }, []);
+
+  return { registerSave, runSave, hasSave };
+}
+
+function WelcomeStep() {
+  useRegisterStepSave(null);
+  return (
+    <p className="text-muted-foreground text-sm">
+      We&apos;ll walk through the settings that get your listings ready for guests. You can leave
+      anytime and continue later from Finish setup.
+    </p>
+  );
+}
+
+function OrgBrandStep() {
+  const {
+    operatorData,
+    operatorError,
+    operatorLoadError,
+    canEditBasicSettings,
+    canEditSocials,
+    profileDraft,
+    operatorDraft,
+    markFieldInteracted,
+    canSaveAny,
+    nameUnavailable,
+    nameConflictMessage,
+    nameAvailabilityState,
+    busy,
+    isLoading,
+    setProfileField,
+    setOperatorField,
+    handleSave,
+    orgUrlPrefix,
+    operatorSources,
+    formBusy,
+    slugPreview,
+    resolveFieldError,
+  } = useOrgSettingsController();
+
+  const save = useCallback(async () => {
+    if (!canSaveAny) return true;
+    return handleSave();
+  }, [canSaveAny, handleSave]);
+  useRegisterStepSave(save);
+
+  if (isLoading || !profileDraft || !operatorDraft || !operatorData) {
+    return <AppSettingsCardSkeleton />;
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {operatorError ? (
+        <p className="text-destructive text-sm">
+          {(operatorLoadError as Error)?.message ?? 'Could not load organization settings'}
+        </p>
+      ) : null}
+      <OrgBasicInformationSection
+        draft={profileDraft}
+        disabled={formBusy || !canEditBasicSettings || busy}
+        orgUrlPrefix={orgUrlPrefix}
+        slugPreview={slugPreview}
+        logoSource={operatorSources?.emailLogoUrl}
+        logoUrl={operatorData.emailLogoUrl}
+        nameUnavailable={nameUnavailable}
+        nameConflictMessage={nameConflictMessage}
+        nameAvailabilityState={nameAvailabilityState}
+        resolveFieldError={resolveFieldError}
+        markFieldInteracted={markFieldInteracted}
+        onChange={setProfileField}
+      />
+      <OrgSocialsBrandingSection
+        operatorDraft={operatorDraft}
+        disabled={formBusy || !canEditSocials || busy}
+        resolveFieldError={resolveFieldError}
+        markFieldInteracted={markFieldInteracted}
+        onOperatorChange={setOperatorField}
+      />
+    </div>
+  );
+}
+
+function PropertySectionsInner({
+  profileSectionIds,
+  operationalSectionIds,
+  showVoice = false,
+}: {
+  profileSectionIds?: readonly PropertySettingsSectionId[];
+  operationalSectionIds?: readonly PropertySettingsSectionId[];
+  showVoice?: boolean;
+}) {
+  const {
+    appSettings,
+    appSettingsLoading,
+    voiceSettings,
+    voiceSettingsLoading,
+    voiceSettingsError,
+    voiceSettingsLoadError,
+    canEnableReceptionist,
+    inheritedBrandColor,
+    profileDraft,
+    operationalDraft,
+    voiceDraft,
+    newCustomAmenityInputs,
+    setNewCustomAmenityInputs,
+    newCustomHouseRuleInputs,
+    setNewCustomHouseRuleInputs,
+    paymentOtpOpen,
+    paymentOtpFingerprint,
+    markFieldInteracted,
+    mediaGalleryBusy,
+    gafTowerUnit,
+    nameUnavailable,
+    nameConflictMessage,
+    nameAvailabilityState,
+    towerConflict,
+    settingsCompletion,
+    resolveFieldError,
+    isDirty,
+    busy,
+    propertySlugPrefix,
+    slugPreview,
+    setProfileField,
+    handleMediaPersisted,
+    persistMediaOrder,
+    locationPersistPending,
+    persistLocation,
+    setOperationalField,
+    setAutomationToggle,
+    setVoiceField,
+    handleSave,
+    handlePaymentOtpOpenChange,
+    handlePaymentOtpVerified,
+    sectionEditLocked,
+  } = usePropertySettingsController();
+
+  const save = useCallback(async () => {
+    if (!isDirty) return true;
+    return handleSave();
+  }, [handleSave, isDirty]);
+  useRegisterStepSave(save);
+
+  if (appSettingsLoading || !operationalDraft || !appSettings) {
+    return <AppSettingsCardSkeleton />;
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {profileSectionIds?.length ? (
+        <PropertyProfileMainSections
+          draft={profileDraft}
+          onChange={setProfileField}
+          disabled={busy}
+          sectionEditLocked={sectionEditLocked}
+          propertySlugPrefix={propertySlugPrefix}
+          slugPreview={slugPreview}
+          towerConflict={towerConflict}
+          nameUnavailable={nameUnavailable}
+          nameConflictMessage={nameConflictMessage}
+          nameAvailabilityState={nameAvailabilityState}
+          newCustomAmenityInputs={newCustomAmenityInputs}
+          onNewCustomAmenityInputChange={(categoryId, value) =>
+            setNewCustomAmenityInputs((current) => ({ ...current, [categoryId]: value }))
+          }
+          newCustomHouseRuleInputs={newCustomHouseRuleInputs}
+          onNewCustomHouseRuleInputChange={(categoryId, value) =>
+            setNewCustomHouseRuleInputs((current) => ({ ...current, [categoryId]: value }))
+          }
+          onMediaPersisted={handleMediaPersisted}
+          onPersistMediaOrder={persistMediaOrder}
+          mediaGalleryBusy={mediaGalleryBusy}
+          resolveFieldError={resolveFieldError}
+          markFieldInteracted={markFieldInteracted}
+          sectionMessages={settingsCompletion.sectionMessages}
+          brandColor={operationalDraft.brandColor}
+          inheritedBrandColor={inheritedBrandColor}
+          onBrandColorChange={(value) => setOperationalField('brandColor', value)}
+          onPersistLocation={persistLocation}
+          locationPersistPending={locationPersistPending}
+          visibleSectionIds={profileSectionIds}
+          embedded
+        />
+      ) : null}
+
+      {operationalSectionIds?.length ? (
+        <PropertyOperationalSettingsSections
+          data={appSettings}
+          draft={operationalDraft}
+          residenceName={profileDraft.residenceName}
+          towerUnitLabel={gafTowerUnit}
+          disabled={busy}
+          sectionEditLocked={sectionEditLocked}
+          onChange={setOperationalField}
+          onAutomationToggleChange={setAutomationToggle}
+          resolveFieldError={resolveFieldError}
+          markFieldInteracted={markFieldInteracted}
+          sectionMessages={settingsCompletion.sectionMessages}
+          showVoiceReceptionist={showVoice && canEnableReceptionist}
+          voiceReceptionist={{
+            draft: voiceDraft,
+            propertyName: profileDraft.name.trim(),
+            availableVoices: voiceSettings?.availableVoices ?? [],
+            isLoading: voiceSettingsLoading,
+            isError: voiceSettingsError,
+            errorMessage: (voiceSettingsLoadError as Error)?.message ?? null,
+            onChange: setVoiceField,
+          }}
+          visibleSectionIds={operationalSectionIds}
+          embedded
+        />
+      ) : null}
+
+      <SensitiveSettingsOtpDialog
+        open={paymentOtpOpen}
+        onOpenChange={handlePaymentOtpOpenChange}
+        scope="property"
+        patchFingerprint={paymentOtpFingerprint}
+        onVerified={handlePaymentOtpVerified}
+        busy={busy}
+      />
+    </div>
+  );
+}
+
+function PropertySectionsStep({
+  propertyId,
+  profileSectionIds,
+  operationalSectionIds,
+  showVoice,
+}: {
+  propertyId: string;
+  profileSectionIds?: readonly PropertySettingsSectionId[];
+  operationalSectionIds?: readonly PropertySettingsSectionId[];
+  showVoice?: boolean;
+}) {
+  return (
+    <SetupGuidePropertyHost propertyId={propertyId}>
+      <PropertySectionsInner
+        profileSectionIds={profileSectionIds}
+        operationalSectionIds={operationalSectionIds}
+        showVoice={showVoice}
+      />
+    </SetupGuidePropertyHost>
+  );
+}
+
+function PropertyPricingStep({ propertyId }: { propertyId: string }) {
+  const { org, persisted } = useSetupGuide();
+  const write = useSetupGuideStateWrite(org?.id);
+  const { data: propsData } = usePropertiesForOrg(org?.slug);
+  const property = propsData?.properties.find((entry) => entry.id === propertyId);
+
+  const save = useCallback(async () => {
+    const reviewed = new Set(persisted.reviewedSteps);
+    reviewed.add(`property.${propertyId}.pricing`);
+    await write.setReviewedSteps([...reviewed]);
+    return true;
+  }, [persisted.reviewedSteps, propertyId, write]);
+  useRegisterStepSave(save);
+
+  if (!org || !property) {
+    return <AppSettingsCardSkeleton />;
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-muted-foreground text-sm">
+        Review nightly rates and fees when you&apos;re ready. Defaults already work for go-live.
+      </p>
+      <Button type="button" variant="outline" className="min-h-11 w-full sm:w-auto" asChild>
+        <Link to={propertySectionPath(org.slug, property.slug, 'pricing')}>Open pricing</Link>
+      </Button>
+    </div>
+  );
+}
+
+function usePropertiesForOrg(orgSlug: string | undefined) {
+  return useProperties(orgSlug);
+}
+
+function parkingPaymentSettingsDto(settings: { gcashQrImageUrl?: string | null }): AppSettingsDto {
+  const gcashQrImageUrl = settings.gcashQrImageUrl?.trim() ?? '';
+  return {
+    gcashQrImageUrl,
+    fieldSources: {
+      gcashQrImageUrl: gcashQrImageUrl ? 'db' : 'default',
+    },
+  } as AppSettingsDto;
+}
+
+function ParkingSectionsInner({
+  parkingId,
+  mode,
+}: {
+  parkingId: string;
+  mode: 'basics' | 'location' | 'photo' | 'payments' | 'email' | 'pricing';
+}) {
+  const { org, persisted } = useSetupGuide();
+  const write = useSetupGuideStateWrite(org?.id);
+  const {
+    settings,
+    settingsLoading,
+    uploadQr,
+    coverImage,
+    setCoverImage,
+    operationalDraft,
+    featuresDraft,
+    setFeaturesDraft,
+    newCustomFeatureInput,
+    setNewCustomFeatureInput,
+    locationDraft,
+    setLocationDraft,
+    profileDraft,
+    inheritedBrandColor,
+    setBrandColorPreview,
+    setProfileField,
+    detailsDraft,
+    setDetailsDraft,
+    automationDraft,
+    paymentOtpOpen,
+    paymentOtpFingerprint,
+    qrUploadingMethodId,
+    setQrUploadingMethodId,
+    markFieldInteracted,
+    isDirty,
+    resolveFieldError,
+    busy,
+    setPaymentMethods,
+    handleSave,
+    handlePaymentOtpOpenChange,
+    handlePaymentOtpVerified,
+    setAutomationToggle,
+  } = useParkingSettingsController();
+
+  const save = useCallback(async () => {
+    if (mode === 'pricing') {
+      const reviewed = new Set(persisted.reviewedSteps);
+      reviewed.add(`parking.${parkingId}.pricing`);
+      await write.setReviewedSteps([...reviewed]);
+      return true;
+    }
+    if (!isDirty) return true;
+    if (mode === 'email') {
+      return handleSave({ scopeSectionIds: SETUP_GUIDE_PARKING_SAVE_SCOPE.email });
+    }
+    return handleSave({ scopeSectionIds: [...SETUP_GUIDE_PARKING_SAVE_SCOPE[mode]] });
+  }, [handleSave, isDirty, mode, parkingId, persisted.reviewedSteps, write]);
+  useRegisterStepSave(save);
+
+  if (settingsLoading || !operationalDraft || !settings) {
+    return <AppSettingsCardSkeleton />;
+  }
+
+  if (mode === 'pricing') {
+    return (
+      <p className="text-muted-foreground text-sm">
+        Confirm your parking base rate on Pricing when you&apos;re ready. Defaults already work for
+        go-live.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {mode === 'basics' ? (
+        <>
+          <div className="flex flex-col gap-3">
+            <BrandColorField
+              id="setup-parking-brand-color"
+              value={profileDraft.brandColor}
+              resolvedColor={inheritedBrandColor}
+              resetValue={inheritedBrandColor}
+              disabled={busy}
+              onChange={(value) => {
+                setProfileField('brandColor', value);
+                setBrandColorPreview?.(value.trim() || inheritedBrandColor);
+              }}
+            />
+            <div className="space-y-1.5">
+              <label htmlFor="setup-parking-description" className="text-sm font-medium">
+                Description
+              </label>
+              <Textarea
+                id="setup-parking-description"
+                value={profileDraft.description}
+                disabled={busy}
+                maxLength={PARKING_DESCRIPTION_MAX}
+                rows={3}
+                onChange={(event) => setProfileField('description', event.target.value)}
+                onBlur={() => markFieldInteracted('parking-description')}
+              />
+              <p className="text-muted-foreground text-right text-xs tabular-nums">
+                {profileDraft.description.length}/{PARKING_DESCRIPTION_MAX}
+              </p>
+            </div>
+          </div>
+          <ParkingDetailsSection
+            draft={detailsDraft}
+            onChange={setDetailsDraft}
+            disabled={busy}
+            resolveFieldError={resolveFieldError}
+            markFieldInteracted={markFieldInteracted}
+            dense
+          />
+        </>
+      ) : null}
+
+      {mode === 'photo' ? (
+        <>
+          <ParkingMediaUpload
+            coverImage={coverImage}
+            onCoverChange={setCoverImage}
+            disabled={busy}
+          />
+          <ParkingFeaturesSection
+            draft={featuresDraft}
+            onChange={setFeaturesDraft}
+            disabled={busy}
+            newCustomInput={newCustomFeatureInput}
+            onNewCustomInputChange={setNewCustomFeatureInput}
+          />
+        </>
+      ) : null}
+
+      {mode === 'location' ? (
+        <PropertyLocationPicker
+          disabled={busy}
+          value={locationDraft}
+          onChange={(patch) => setLocationDraft((current) => ({ ...current, ...patch }))}
+          addressError={resolveFieldError('property-address')}
+          mapError={resolveFieldError('property-location-map')}
+          onFieldInteract={markFieldInteracted}
+        />
+      ) : null}
+
+      {mode === 'payments' ? (
+        <PropertyPaymentMethodsSection
+          data={parkingPaymentSettingsDto(settings)}
+          methods={operationalDraft.paymentMethods}
+          disabled={busy}
+          resolveFieldError={resolveFieldError}
+          markFieldInteracted={markFieldInteracted}
+          onChange={setPaymentMethods}
+          onMethodQrFile={(methodId, file) => {
+            markFieldInteracted(`payment-method-${methodId}-qr`);
+            setQrUploadingMethodId(methodId);
+            void uploadQr
+              .mutateAsync(file)
+              .then((uploaded: { publicUrl?: string; url?: string }) => {
+                const url = uploaded.publicUrl ?? uploaded.url ?? '';
+                setPaymentMethods(
+                  operationalDraft.paymentMethods.map((method) =>
+                    method.id === methodId ? { ...method, qrImageUrl: url } : method
+                  )
+                );
+              })
+              .finally(() => setQrUploadingMethodId(null));
+          }}
+          qrUploadingMethodId={qrUploadingMethodId}
+        />
+      ) : null}
+
+      {mode === 'email' && automationDraft ? (
+        <>
+          <ParkingEmailAutomationSection
+            value={automationDraft}
+            disabled={busy}
+            onChange={setAutomationToggle}
+          />
+          <ParkingBookingAutomationSection
+            value={automationDraft}
+            disabled={busy}
+            onChange={setAutomationToggle}
+          />
+        </>
+      ) : null}
+
+      <SensitiveSettingsOtpDialog
+        open={paymentOtpOpen}
+        onOpenChange={handlePaymentOtpOpenChange}
+        scope="parking"
+        patchFingerprint={paymentOtpFingerprint}
+        onVerified={handlePaymentOtpVerified}
+        busy={busy}
+      />
+    </div>
+  );
+}
+
+function ParkingSectionsStep(props: {
+  parkingId: string;
+  mode: 'basics' | 'location' | 'photo' | 'payments' | 'email' | 'pricing';
+}) {
+  return (
+    <SetupGuideParkingHost parkingId={props.parkingId}>
+      <ParkingSectionsInner {...props} />
+    </SetupGuideParkingHost>
+  );
+}
+
+function VerificationStep() {
+  const [hostOpen, setHostOpen] = useState(false);
+  const { org } = useSetupGuide();
+  useRegisterStepSave(null);
+  if (!org) return null;
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-muted-foreground text-sm">
+        Upload host verification and listing ownership proof so listings can go live after review.
+      </p>
+      <Button type="button" className="min-h-11 w-full sm:w-auto" onClick={() => setHostOpen(true)}>
+        Host verification
+      </Button>
+      <GetVerifiedModal open={hostOpen} onOpenChange={setHostOpen} />
+      <OrgListingVerificationRollup orgId={org.id} orgSlug={org.slug} allowUpload />
+    </div>
+  );
+}
+
+function TeamStep() {
+  const { org } = useSetupGuide();
+  useRegisterStepSave(null);
+  if (!org) return null;
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-muted-foreground text-sm">Invite teammates when you&apos;re ready.</p>
+      <Button type="button" variant="outline" className="min-h-11 w-full sm:w-auto" asChild>
+        <Link to={orgTeamPath(org.slug)}>Open team</Link>
+      </Button>
+    </div>
+  );
+}
+
+function RecommendedStep() {
+  const [open, setOpen] = useState(false);
+  const org = useOptionalOrgContext();
+  const { data: offer } = useHostRewardOffer(org?.org?.id);
+  useRegisterStepSave(null);
+
+  const rewardLine =
+    offer?.enabled && offer.eligible
+      ? `Eligible for ${offer.durationDays} days of ${offer.planCode ?? 'Pro'} after ${
+          offer.trigger === 'recommended_verification_submitted' ? 'submit' : 'approval'
+        }.`
+      : offer?.enabled
+        ? 'Recommended verification is optional.'
+        : null;
+
+  return (
+    <div className="flex flex-col gap-3">
+      {rewardLine ? <p className="text-muted-foreground text-sm">{rewardLine}</p> : null}
+      <Button type="button" className="min-h-11 w-full sm:w-auto" onClick={() => setOpen(true)}>
+        Get Recommended
+      </Button>
+      <GetVerifiedModal open={open} onOpenChange={setOpen} />
+    </div>
+  );
+}
+
+function DoneStep() {
+  const { closeGuide, requiredRemaining } = useSetupGuide();
+  useRegisterStepSave(null);
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-muted-foreground text-sm">
+        {requiredRemaining > 0
+          ? `${requiredRemaining} required item${requiredRemaining === 1 ? '' : 's'} still open. Finish anytime from Finish setup.`
+          : 'Required setup looks complete. Keep polishing from Settings anytime.'}
+      </p>
+      <Button type="button" className="min-h-11 w-full sm:w-auto" onClick={() => closeGuide()}>
+        Done
+      </Button>
+    </div>
+  );
+}
+
+export function SetupGuideStepBody({ step }: { step: SetupGuideStep | undefined }) {
+  if (!step) return null;
+
+  switch (step.kind) {
+    case 'welcome':
+      return <WelcomeStep />;
+    case 'org.brand':
+      return <OrgBrandStep />;
+    case 'property.basics':
+      return (
+        <PropertySectionsStep
+          propertyId={step.propertyId!}
+          profileSectionIds={['basic', 'details']}
+        />
+      );
+    case 'property.location':
+      return (
+        <PropertySectionsStep propertyId={step.propertyId!} profileSectionIds={['location']} />
+      );
+    case 'property.content':
+      return (
+        <PropertySectionsStep
+          propertyId={step.propertyId!}
+          profileSectionIds={['media', 'amenities', 'house-rules', 'cancellation']}
+        />
+      );
+    case 'property.pricing':
+      return <PropertyPricingStep propertyId={step.propertyId!} />;
+    case 'property.payments':
+      return (
+        <PropertySectionsStep propertyId={step.propertyId!} operationalSectionIds={['payment']} />
+      );
+    case 'property.guestform':
+      return (
+        <PropertySectionsStep
+          propertyId={step.propertyId!}
+          profileSectionIds={['guest-form']}
+          operationalSectionIds={['building-forms']}
+          showVoice
+        />
+      );
+    case 'property.email':
+      return (
+        <PropertySectionsStep
+          propertyId={step.propertyId!}
+          operationalSectionIds={['email-automations']}
+        />
+      );
+    case 'parking.basics':
+      return <ParkingSectionsStep parkingId={step.parkingId!} mode="basics" />;
+    case 'parking.location':
+      return <ParkingSectionsStep parkingId={step.parkingId!} mode="location" />;
+    case 'parking.photo':
+      return <ParkingSectionsStep parkingId={step.parkingId!} mode="photo" />;
+    case 'parking.pricing':
+      return <ParkingSectionsStep parkingId={step.parkingId!} mode="pricing" />;
+    case 'parking.payments':
+      return <ParkingSectionsStep parkingId={step.parkingId!} mode="payments" />;
+    case 'parking.email':
+      return <ParkingSectionsStep parkingId={step.parkingId!} mode="email" />;
+    case 'org.verification':
+      return <VerificationStep />;
+    case 'org.team':
+      return <TeamStep />;
+    case 'org.recommended':
+      return <RecommendedStep />;
+    case 'org.done':
+      return <DoneStep />;
+    default:
+      return <p className="text-muted-foreground text-sm">This step is not available yet.</p>;
+  }
+}
