@@ -1,6 +1,7 @@
 import type {
   ActionConfirmationBlock,
   ChatBlock,
+  DynamicFormField,
 } from '@/features/dashboard/ai-assistant/lib/aiAssistantApi';
 import { statusLabel } from '@/features/dashboard/bookings/lib/bookingStatus';
 
@@ -164,6 +165,67 @@ export function canvasBlockSummary(block: ChatBlock): string {
   }
   if (block.type === 'data_table') return `${block.rows?.length ?? 0} rows`;
   return '';
+}
+
+/** Resolves a filled field value to its host-facing display text (select/radio → option label). */
+export function dynamicFormValueDisplay(
+  field: DynamicFormField,
+  rawValue: string | undefined
+): string {
+  const raw = (rawValue ?? '').trim();
+  if (!raw) return '';
+  if (field.fieldType === 'checkbox') return raw === 'true' ? 'Yes' : 'No';
+  if (field.fieldType === 'select' || field.fieldType === 'radio') {
+    return field.options?.find((opt) => opt.value === raw)?.label ?? raw;
+  }
+  return raw;
+}
+
+/** Builds "Label: value" recap lines for a submitted form — used for both the chat bubble and the message sent to the model. */
+export function dynamicFormValuesToLines(
+  fields: DynamicFormField[],
+  values: Record<string, string>
+): string[] {
+  return fields
+    .map((field) => {
+      const display = dynamicFormValueDisplay(field, values[field.key]);
+      if (!display) return null;
+      return `${field.label}: ${display}`;
+    })
+    .filter((line): line is string => line != null);
+}
+
+/** Buckets a `dynamic_form`'s field count/complexity into a 60–100% chat bubble width. */
+export function dynamicFormWidthClass(fields: DynamicFormField[]): string {
+  const hasLongField = fields.some(
+    (field) => field.fieldType === 'textarea' || (field.maxLength ?? 0) > 300
+  );
+  const score = fields.length + (hasLongField ? 1 : 0);
+  if (score <= 2) return 'max-w-[60%]';
+  if (score === 3) return 'max-w-[70%]';
+  if (score === 4) return 'max-w-[85%]';
+  return 'max-w-[100%]';
+}
+
+/** Assistant chat bubble width — widens (up to full width) when the turn includes a form. */
+export function assistantBubbleWidthClass(blocks: ChatBlock[]): string {
+  const form = blocks.find(
+    (block): block is Extract<ChatBlock, { type: 'dynamic_form' }> => block.type === 'dynamic_form'
+  );
+  if (!form) return 'max-w-[92%]';
+  return `w-full ${dynamicFormWidthClass(form.fields)}`;
+}
+
+export function patchDynamicFormStatus(
+  blocks: ChatBlock[],
+  formId: string,
+  values: Record<string, string>
+): ChatBlock[] {
+  return blocks.map((block) =>
+    block.type === 'dynamic_form' && block.formId === formId
+      ? { ...block, status: 'submitted' as const, values }
+      : block
+  );
 }
 
 export function patchActionConfirmationStatus(

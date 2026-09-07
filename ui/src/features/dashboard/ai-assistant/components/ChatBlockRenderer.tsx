@@ -3,6 +3,7 @@ import { ActivityTimelineBlock } from '@/features/dashboard/ai-assistant/compone
 import { BookingCardBlock } from '@/features/dashboard/ai-assistant/components/blocks/BookingCardBlock';
 import { ChatCanvasCompactCard } from '@/features/dashboard/ai-assistant/components/blocks/ChatCanvasCompactCard';
 import { DataTableBlock } from '@/features/dashboard/ai-assistant/components/blocks/DataTableBlock';
+import { DynamicFormBlock } from '@/features/dashboard/ai-assistant/components/blocks/DynamicFormBlock';
 import { FileListBlock } from '@/features/dashboard/ai-assistant/components/blocks/FileListBlock';
 import { ImageBlock } from '@/features/dashboard/ai-assistant/components/blocks/ImageBlock';
 import { LinkListBlock } from '@/features/dashboard/ai-assistant/components/blocks/LinkListBlock';
@@ -23,6 +24,10 @@ type Props = {
   onRunQuickAction?: (action: { label: string; prompt: string }) => void;
   quickActionsDisabled?: boolean;
   onOpenCanvas?: (block: ChatBlock) => void;
+  onSubmitForm?: (
+    block: Extract<ChatBlock, { type: 'dynamic_form' }>,
+    values: Record<string, string>
+  ) => void;
   variant?: 'inline' | 'canvas';
 };
 
@@ -33,6 +38,7 @@ export function ChatBlockRenderer({
   onRunQuickAction,
   quickActionsDisabled,
   onOpenCanvas,
+  onSubmitForm,
   variant = 'inline',
 }: Props) {
   return (
@@ -69,6 +75,15 @@ export function ChatBlockRenderer({
                 actions={block.actions}
                 disabled={quickActionsDisabled}
                 onRunAction={onRunQuickAction}
+              />
+            );
+          case 'dynamic_form':
+            return (
+              <DynamicFormBlock
+                key={i}
+                {...block}
+                onSubmit={onSubmitForm}
+                disabled={quickActionsDisabled || block.status === 'submitted'}
               />
             );
           case 'action_confirmation':

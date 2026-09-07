@@ -7,6 +7,7 @@ import { ChatComposerContextHub } from '@/features/dashboard/ai-assistant/compon
 import { ChatComposerSearchAllProvider } from '@/features/dashboard/ai-assistant/components/ChatComposerSearchAllContext';
 import { ChatComposerVoiceButton } from '@/features/dashboard/ai-assistant/components/ChatComposerVoiceButton';
 import { ChatContextCommandPalette } from '@/features/dashboard/ai-assistant/components/ChatContextCommandPalette';
+import { ChatContextPillSuggestions } from '@/features/dashboard/ai-assistant/components/ChatContextPillSuggestions';
 import { useSpeechToText } from '@/features/dashboard/ai-assistant/hooks/useSpeechToText';
 import {
   ATTACHED_CONTEXT_MAX,
@@ -52,6 +53,8 @@ type Props = {
   pageBookingId?: string | null;
   overlayContainer?: HTMLElement | null;
   onAttachedContextChange?: (items: AttachedContextItem[]) => void;
+  /** Mid-conversation suggestion pick from a pinned pill. Defaults to sending with current context. */
+  onPickSuggestion?: (prompt: string, attachedContext: AttachedContextItem[]) => void;
 };
 
 export function ChatComposer({
@@ -62,6 +65,7 @@ export function ChatComposer({
   pageBookingId: _pageBookingId,
   overlayContainer,
   onAttachedContextChange,
+  onPickSuggestion,
 }: Props) {
   const [value, setValue] = useState('');
   const [attachedContext, setAttachedContext] = useState<AttachedContextItem[]>([]);
@@ -69,6 +73,7 @@ export function ChatComposer({
   const [attachOpen, setAttachOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteMounted, setPaletteMounted] = useState(false);
+  const [pillSuggestionType, setPillSuggestionType] = useState<AttachedContextItem | null>(null);
   const reactId = useId();
   const imageInputId = `${reactId}-image`;
   const fileInputId = `${reactId}-file`;
@@ -161,6 +166,19 @@ export function ChatComposer({
     setAttachments([]);
   };
 
+  // Tapping a ranked prompt inside a pinned pill's popover sends it as a chat message,
+  // carrying the current pinned context (including that pill).
+  const pickPillSuggestion = (prompt: string) => {
+    if (disabled || sending) return;
+    stopSpeech();
+    setPillSuggestionType(null);
+    if (onPickSuggestion) {
+      onPickSuggestion(prompt, attachedContext);
+    } else {
+      onSend({ text: prompt, attachedContext, attachments: [] });
+    }
+  };
+
   return (
     <ChatComposerSearchAllProvider onSearchAll={openPalette}>
       <div className="border-border/60 shrink-0 border-t p-3">
@@ -168,16 +186,55 @@ export function ChatComposer({
           <div className="mb-2 flex flex-wrap gap-1.5">
             {attachedContext.map((item) => {
               const Icon = ATTACHED_CONTEXT_ICONS[item.type];
+              const pillKey = `${item.type}:${item.id}`;
+              const isPillSuggestionOpen =
+                pillSuggestionType != null &&
+                pillSuggestionType.type === item.type &&
+                pillSuggestionType.id === item.id;
               return (
                 <span
-                  key={`${item.type}:${item.id}`}
-                  className="bg-muted text-foreground inline-flex max-w-full items-center gap-1 rounded-full px-2.5 py-1 text-xs"
+                  key={pillKey}
+                  className="bg-muted text-foreground inline-flex max-w-full items-center gap-0 rounded-full py-0.5 pl-0.5 pr-1 text-xs"
                 >
-                  <Icon className="h-3 w-3 shrink-0" aria-hidden />
-                  <span className="truncate">{item.label}</span>
+                  <Popover
+                    open={isPillSuggestionOpen}
+                    onOpenChange={(next) => setPillSuggestionType(next ? item : null)}
+                  >
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        disabled={disabled || sending}
+                        aria-label={`Suggested prompts for ${item.label}`}
+                        aria-expanded={isPillSuggestionOpen}
+                        className={cn(
+                          'native-press focus-visible:ring-ring inline-flex min-h-[32px] min-w-0 cursor-pointer items-center gap-1 rounded-full px-1.5 py-1 focus-visible:outline-none focus-visible:ring-2',
+                          'transition-colors duration-150',
+                          '[@media(hover:hover)]:hover:text-primary',
+                          isPillSuggestionOpen && 'text-primary',
+                          'disabled:pointer-events-none disabled:opacity-50'
+                        )}
+                      >
+                        <Icon className="h-3 w-3 shrink-0" aria-hidden />
+                        <span className="max-w-[12rem] truncate">{item.label}</span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="start"
+                      side="top"
+                      container={overlayContainer}
+                      className="w-[min(calc(100vw-2rem),22rem)] p-0"
+                      onCloseAutoFocus={(event) => event.preventDefault()}
+                    >
+                      <ChatContextPillSuggestions
+                        moduleType={item.type}
+                        onPick={pickPillSuggestion}
+                        disabled={disabled || sending}
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <button
                     type="button"
-                    className="focus-visible:ring-ring inline-flex min-h-[24px] min-w-[24px] items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2"
+                    className="focus-visible:ring-ring ml-0.5 inline-flex min-h-[24px] min-w-[24px] items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2"
                     aria-label={`Remove ${item.label}`}
                     onClick={() => setAttachedContext((prev) => removeAttachedContext(prev, item))}
                   >

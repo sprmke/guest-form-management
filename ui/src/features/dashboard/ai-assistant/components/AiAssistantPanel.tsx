@@ -21,7 +21,11 @@ import {
   pickRandomSuggestions,
 } from '@/features/dashboard/ai-assistant/lib/assistantSuggestions';
 import type { AttachedContextItem } from '@/features/dashboard/ai-assistant/lib/attachedContext';
-import { patchActionConfirmationStatus } from '@/features/dashboard/ai-assistant/lib/chatBlockDisplay';
+import {
+  dynamicFormValuesToLines,
+  patchActionConfirmationStatus,
+} from '@/features/dashboard/ai-assistant/lib/chatBlockDisplay';
+import { selectContextualSuggestions } from '@/features/dashboard/ai-assistant/lib/moduleSuggestions';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
@@ -74,15 +78,35 @@ export function AiAssistantPanel({ open, onOpenChange, readOnly = false }: Props
   const [overlayRoot, setOverlayRoot] = useState<HTMLDivElement | null>(null);
   const [canvasBlock, setCanvasBlock] = useState<ChatBlock | null>(null);
   const composerContextRef = useRef<AttachedContextItem[]>([]);
+  const [pinnedContext, setPinnedContext] = useState<AttachedContextItem[]>([]);
   const canvasOpen = canvasBlock != null;
-  const questions = useMemo(
-    () => pickRandomSuggestions(ASSISTANT_QUESTIONS, SUGGESTION_VISIBLE_COUNT),
-    [suggestionNonce]
+  const pinnedModuleTypes = useMemo(
+    () => Array.from(new Set(pinnedContext.map((item) => item.type))),
+    [pinnedContext]
   );
-  const actions = useMemo(
-    () => pickRandomSuggestions(ASSISTANT_ACTIONS, SUGGESTION_VISIBLE_COUNT),
-    [suggestionNonce]
-  );
+  // Once the host pins context (a booking, a property, a finance item, …), swap the
+  // random starter pool for that module's ranked prompts — merged fairly by rank when
+  // multiple modules are pinned. Falls back to the random pool when nothing is pinned.
+  const questions = useMemo(() => {
+    const contextual = selectContextualSuggestions(
+      pinnedModuleTypes,
+      'question',
+      SUGGESTION_VISIBLE_COUNT
+    );
+    return contextual.length > 0
+      ? contextual
+      : pickRandomSuggestions(ASSISTANT_QUESTIONS, SUGGESTION_VISIBLE_COUNT);
+  }, [pinnedModuleTypes, suggestionNonce]);
+  const actions = useMemo(() => {
+    const contextual = selectContextualSuggestions(
+      pinnedModuleTypes,
+      'action',
+      SUGGESTION_VISIBLE_COUNT
+    );
+    return contextual.length > 0
+      ? contextual
+      : pickRandomSuggestions(ASSISTANT_ACTIONS, SUGGESTION_VISIBLE_COUNT);
+  }, [pinnedModuleTypes, suggestionNonce]);
 
   const {
     conversationId,
@@ -97,6 +121,7 @@ export function AiAssistantPanel({ open, onOpenChange, readOnly = false }: Props
     upgradeHook,
     canRegenerate,
     sendMessage,
+    submitDynamicForm,
     cancelTurn,
     regenerateLastTurn,
     resolveAction,
@@ -153,6 +178,33 @@ export function AiAssistantPanel({ open, onOpenChange, readOnly = false }: Props
       });
     },
     [readOnly, sending, pending, messages, sendMessage, openUpgradeModal]
+  );
+
+  const handleSubmitDynamicForm = useCallback(
+    (block: Extract<ChatBlock, { type: 'dynamic_form' }>, values: Record<string, string>) => {
+      if (readOnly) {
+        openUpgradeModal('aiDashboardAssistant');
+        return;
+      }
+      if (sending || pending) return;
+
+      const lastUserContext = [...messages]
+        .reverse()
+        .find((message) => message.role === 'user')?.attachedContext;
+      const attachedContext =
+        composerContextRef.current.length > 0 ? composerContextRef.current : lastUserContext;
+
+      const lines = dynamicFormValuesToLines(block.fields, values);
+      void submitDynamicForm(block.formId, values, {
+        text:
+          lines.length > 0
+            ? `Here are the details you asked for:\n${lines.join('\n')}`
+            : 'Submitted.',
+        displayText: lines.join('\n') || block.title || 'Submitted',
+        attachedContext,
+      });
+    },
+    [readOnly, sending, pending, messages, submitDynamicForm, openUpgradeModal]
   );
 
   return (
@@ -303,6 +355,7 @@ export function AiAssistantPanel({ open, onOpenChange, readOnly = false }: Props
                   onRunQuickAction={handleRunQuickAction}
                   quickActionsDisabled={sending || pending}
                   onOpenCanvas={setCanvasBlock}
+                  onSubmitForm={handleSubmitDynamicForm}
                   questions={questions}
                   actions={actions}
                   onPickSuggestion={(prompt) => {
@@ -351,6 +404,15 @@ export function AiAssistantPanel({ open, onOpenChange, readOnly = false }: Props
                   overlayContainer={overlayRoot}
                   onAttachedContextChange={(items) => {
                     composerContextRef.current = items;
+                    setPinnedContext(items);
+                  }}
+                  onPickSuggestion={(prompt, attachedContext) => {
+                    if (readOnly) {
+                      openUpgradeModal('aiDashboardAssistant');
+                      return;
+                    }
+                    if (sending || pending) return;
+                    void sendMessage({ text: prompt, attachedContext });
                   }}
                 />
               </>

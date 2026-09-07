@@ -26,6 +26,7 @@ import type { ChatSendInput } from '@/features/dashboard/ai-assistant/lib/chatAt
 import {
   hostFacingUserMessageText,
   patchActionConfirmationStatus,
+  patchDynamicFormStatus,
 } from '@/features/dashboard/ai-assistant/lib/chatBlockDisplay';
 import { useOrgScopeKey, useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
 
@@ -294,6 +295,17 @@ export function useAiAssistantChat(pageContext: PageContext) {
     [runTurn]
   );
 
+  /** Marks an in-thread dynamic_form as submitted (read-only recap), then sends the filled values as the next turn. */
+  const submitDynamicForm = useCallback(
+    async (formId: string, values: Record<string, string>, payload: ChatSendInput) => {
+      setMessages((prev) =>
+        prev.map((msg) => ({ ...msg, blocks: patchDynamicFormStatus(msg.blocks, formId, values) }))
+      );
+      await runTurn(payload);
+    },
+    [runTurn]
+  );
+
   const regenerateLastTurn = useCallback(async () => {
     if (sending || pending) return;
     let lastUserIndex = -1;
@@ -375,6 +387,7 @@ export function useAiAssistantChat(pageContext: PageContext) {
     upgradeHook,
     canRegenerate,
     sendMessage,
+    submitDynamicForm,
     cancelTurn,
     regenerateLastTurn,
     resolveAction,

@@ -15,6 +15,10 @@ type Props = {
   onRunQuickAction?: (action: { label: string; prompt: string }) => void;
   quickActionsDisabled?: boolean;
   onOpenCanvas?: (block: ChatBlock) => void;
+  onSubmitForm?: (
+    block: Extract<ChatBlock, { type: 'dynamic_form' }>,
+    values: Record<string, string>
+  ) => void;
   className?: string;
 };
 
@@ -25,18 +29,21 @@ export function AssistantMessageCard({
   onRunQuickAction,
   quickActionsDisabled,
   onOpenCanvas,
+  onSubmitForm,
   className,
 }: Props) {
   const { stepEntries, content, quickActions } = partitionAssistantBlocks(blocks);
   const hasContent = content.length > 0;
   const hasFooter = quickActions.length > 0;
+  const hasDynamicForm = blocks.some((block) => block.type === 'dynamic_form');
 
   if (!stepEntries && !hasContent && !hasFooter) return null;
 
   return (
     <div
       className={cn(
-        'border-border/60 bg-card w-full max-w-[92%] overflow-hidden rounded-2xl rounded-bl-md border shadow-sm',
+        'border-border/60 bg-card w-full overflow-hidden rounded-2xl rounded-bl-md border shadow-sm',
+        hasDynamicForm ? 'max-w-full' : 'max-w-[92%]',
         className
       )}
     >
@@ -52,6 +59,7 @@ export function AssistantMessageCard({
             onRunQuickAction={onRunQuickAction}
             quickActionsDisabled={quickActionsDisabled}
             onOpenCanvas={onOpenCanvas}
+            onSubmitForm={onSubmitForm}
             variant="inline"
           />
         </div>

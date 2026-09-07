@@ -440,22 +440,22 @@ function sanitizeDynamicForm(
     });
   if (fields.length === 0) return null;
 
-  const next: ChatBlock = {
+  const title = asDisplay(block.title);
+  const description = asDisplay(block.description);
+  const submitLabel = asDisplay(block.submitLabel);
+  const toolName = asDisplay(block.toolName);
+
+  return {
     type: 'dynamic_form',
     formId: asDisplay(block.formId) || crypto.randomUUID(),
     fields,
     status: block.status === 'submitted' ? 'submitted' : 'pending',
+    ...(title ? { title } : {}),
+    ...(description ? { description } : {}),
+    ...(submitLabel ? { submitLabel } : {}),
+    ...(toolName ? { toolName } : {}),
+    ...(block.values && typeof block.values === 'object' ? { values: block.values } : {}),
   };
-  const title = asDisplay(block.title);
-  if (title) next.title = title;
-  const description = asDisplay(block.description);
-  if (description) next.description = description;
-  const submitLabel = asDisplay(block.submitLabel);
-  if (submitLabel) next.submitLabel = submitLabel;
-  const toolName = asDisplay(block.toolName);
-  if (toolName) next.toolName = toolName;
-  if (block.values && typeof block.values === 'object') next.values = block.values;
-  return next;
 }
 
 function sanitizeBookingCard(

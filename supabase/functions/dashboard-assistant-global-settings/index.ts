@@ -10,8 +10,12 @@ import {
 } from '../_shared/dashboardAssistantSettings.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
+import { requireSuperAdminStepUp } from '../_shared/superAdminVerification.ts';
 
 serveSuperAdmin('dashboard-assistant-global-settings', async (req, user) => {
+  const stepUp = await requireSuperAdminStepUp(req, user, 'dashboard_assistant_global_settings');
+  if (stepUp) return stepUp;
+
   if (req.method === 'GET') {
     const settings = await getDashboardAssistantGlobalSettings();
     return jsonSuccess(req, settings);

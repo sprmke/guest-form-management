@@ -14,7 +14,7 @@ import type {
 import type { TurnProgressLiveState } from '@/features/dashboard/ai-assistant/lib/assistantStream';
 import type { AssistantSuggestion } from '@/features/dashboard/ai-assistant/lib/assistantSuggestions';
 import { isAssistantImageMime } from '@/features/dashboard/ai-assistant/lib/chatAttachments';
-
+import { assistantBubbleWidthClass } from '@/features/dashboard/ai-assistant/lib/chatBlockDisplay';
 
 import { Button } from '@/components/ui/button';
 
@@ -31,6 +31,10 @@ type Props = {
   onRunQuickAction?: (action: { label: string; prompt: string }) => void;
   quickActionsDisabled?: boolean;
   onOpenCanvas?: (block: ChatBlock) => void;
+  onSubmitForm?: (
+    block: Extract<ChatBlock, { type: 'dynamic_form' }>,
+    values: Record<string, string>
+  ) => void;
   questions: AssistantSuggestion[];
   actions: AssistantSuggestion[];
   onPickSuggestion: (prompt: string) => void;
@@ -53,6 +57,7 @@ export function ChatThread({
   onRunQuickAction,
   quickActionsDisabled = false,
   onOpenCanvas,
+  onSubmitForm,
   questions,
   actions,
   onPickSuggestion,
@@ -94,7 +99,7 @@ export function ChatThread({
             className={
               msg.role === 'user'
                 ? 'bg-primary text-primary-foreground max-w-[85%] rounded-2xl rounded-br-md px-3 py-2'
-                : 'group min-w-0 max-w-[92%]'
+                : `group min-w-0 ${assistantBubbleWidthClass(msg.blocks)}`
             }
           >
             {msg.role === 'user' ? (
@@ -121,7 +126,9 @@ export function ChatThread({
                     ))}
                   </ul>
                 ) : null}
-                {msg.text ? <p className="break-words text-sm">{msg.text}</p> : null}
+                {msg.text ? (
+                  <p className="whitespace-pre-line break-words text-sm">{msg.text}</p>
+                ) : null}
               </div>
             ) : (
               <>
@@ -131,6 +138,7 @@ export function ChatThread({
                   onRunQuickAction={onRunQuickAction}
                   quickActionsDisabled={quickActionsDisabled}
                   onOpenCanvas={onOpenCanvas}
+                  onSubmitForm={onSubmitForm}
                 />
                 {canRegenerate && index === lastMessageIndex && onRegenerate ? (
                   <Button
