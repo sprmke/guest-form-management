@@ -10,6 +10,7 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { acceptOrgInvitation } from '../_shared/orgTeamService.ts';
+import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('accept-org-invite', async (req, user) => {
@@ -22,6 +23,19 @@ serveAuthenticated('accept-org-invite', async (req, user) => {
 
   try {
     const result = await acceptOrgInvitation(user.id, user.email, token);
+    await logActivity({
+      action: 'team.invite_accepted',
+      organizationId: result.organizationId,
+      scope: 'org',
+      actor: buildActorContext(
+        'dashboard',
+        { authUser: user, actorType: 'team_member', role: 'org_admin', memberId: result.memberId },
+        req
+      ),
+      targetType: 'member',
+      targetId: result.memberId,
+      targetLabel: user.email,
+    });
     return jsonSuccess(req, result);
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Accept failed';

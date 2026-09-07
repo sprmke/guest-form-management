@@ -13,6 +13,8 @@ import {
 import { sendParkingNoHostAvailableEmail } from './parkingBroadcastEmail.ts';
 import { parkingAutomationEnabled } from './parkingAutomationToggles.ts';
 import { releaseParkingClaim } from './parkingPaymentOrchestrator.ts';
+import { buildActorContext } from './activityLog.ts';
+import { logParkingStatusChange } from './parkingActivity.ts';
 
 export function verifyParkingBroadcastExpireCronSecret(req: Request): boolean {
   const expected = Deno.env.get('PARKING_BROADCAST_EXPIRE_CRON_SECRET')?.trim();
@@ -98,6 +100,14 @@ export async function advanceOrTerminateParkingBatch(
       return { advanced: false, terminated: false };
     }
     if (!terminated) return { advanced: false, terminated: false };
+
+    await logParkingStatusChange({
+      booking: terminated,
+      fromStatus: 'PENDING_HOST_ACCEPTANCE',
+      toStatus: 'NO_HOST_AVAILABLE',
+      actor: buildActorContext('cron', { cron: 'expire-parking-broadcasts' }),
+      metadata: { reason: 'no_candidates_left' },
+    });
 
     const guestEmail = String(terminated.guest_email ?? '').trim();
     if (guestEmail && organizationId) {

@@ -10,6 +10,8 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { acceptParkingInvitation } from '../_shared/parkingTeamService.ts';
+import { resolveOrganizationIdForParking } from '../_shared/parkingScope.ts';
+import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('accept-parking-invite', async (req, user) => {
@@ -22,6 +24,25 @@ serveAuthenticated('accept-parking-invite', async (req, user) => {
 
   try {
     const result = await acceptParkingInvitation(user.id, user.email, token);
+    try {
+      const organizationId = await resolveOrganizationIdForParking(result.parkingId);
+      await logActivity({
+        action: 'team.invite_accepted',
+        organizationId,
+        parkingId: result.parkingId,
+        scope: 'parking',
+        actor: buildActorContext(
+          'dashboard',
+          { authUser: user, actorType: 'team_member', role: 'member', memberId: result.memberId },
+          req
+        ),
+        targetType: 'member',
+        targetId: result.memberId,
+        targetLabel: user.email,
+      });
+    } catch (activityErr) {
+      console.error('[accept-parking-invite] activity log failed (non-fatal):', activityErr);
+    }
     return jsonSuccess(req, result);
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Accept failed';

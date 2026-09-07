@@ -10,6 +10,8 @@
  */
 
 import { createServiceClient, type ParkingRow } from './orgAuth.ts';
+import { type ActorContext } from './activityLog.ts';
+import { logParkingStatusChange } from './parkingActivity.ts';
 import { sendParkingAwaitingPaymentEmail } from './parkingBroadcastEmail.ts';
 import { parkingAutomationEnabled } from './parkingAutomationToggles.ts';
 import { advanceOrTerminateParkingBatch } from './parkingBroadcastExpireCron.ts';
@@ -38,7 +40,7 @@ export async function claimParkingBooking(
   bookingId: string,
   endorsementNote: string,
   parkingRow: ParkingRow,
-  options?: { skipAwaitingPaymentEmail?: boolean }
+  options?: { skipAwaitingPaymentEmail?: boolean; actor?: ActorContext }
 ): Promise<Record<string, unknown>> {
   if (endorsementNote.length > 2000) {
     throw new ParkingBroadcastActionError('endorsementNote must be 2000 characters or fewer');
@@ -108,6 +110,14 @@ export async function claimParkingBooking(
     .eq('booking_id', bookingId)
     .eq('response', 'pending');
 
+  await logParkingStatusChange({
+    booking: claimed,
+    fromStatus: 'PENDING_HOST_ACCEPTANCE',
+    toStatus: 'PENDING_PAYMENT',
+    action: 'parking.claimed',
+    actor: options?.actor ?? { actorType: 'system', source: 'dashboard' },
+  });
+
   const guestEmail = String(claimed.guest_email ?? '').trim();
   if (guestEmail && options?.skipAwaitingPaymentEmail !== true) {
     const checkInDate = String(claimed.parking_check_in_date ?? claimed.check_in_date ?? '');
@@ -142,13 +152,17 @@ export async function claimParkingBooking(
  */
 export async function declineParkingBooking(
   parkingId: string,
-  bookingId: string
+  bookingId: string,
+  options?: { actor?: ActorContext }
 ): Promise<{ bookingTerminated: boolean }> {
   const supabase = createServiceClient();
 
   const { data: booking } = await supabase
     .from('guest_submissions')
-    .select('parking_broadcast_batch_number')
+    .select(
+      'id, parking_broadcast_batch_number, parking_id, parking_request_organization_id, ' +
+        'primary_guest_name, guest_facebook_name, parking_check_in_date, check_in_date'
+    )
     .eq('id', bookingId)
     .maybeSingle();
   const batchNumber = Number(booking?.parking_broadcast_batch_number ?? 1);
@@ -167,6 +181,17 @@ export async function declineParkingBooking(
   }
   if (!declined) {
     throw new ParkingBroadcastActionError('Already responded to this request', 409);
+  }
+
+  if (booking) {
+    await logParkingStatusChange({
+      booking: { ...booking, parking_id: booking.parking_id ?? parkingId },
+      fromStatus: 'PENDING_HOST_ACCEPTANCE',
+      toStatus: 'PENDING_HOST_ACCEPTANCE',
+      action: 'parking.declined',
+      actor: options?.actor ?? { actorType: 'system', source: 'dashboard' },
+      metadata: { parking_id: parkingId, batch_number: batchNumber },
+    });
   }
 
   const { data: remainingPending } = await supabase

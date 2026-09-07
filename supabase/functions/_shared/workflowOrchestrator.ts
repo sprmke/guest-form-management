@@ -34,6 +34,7 @@ import {
 import { createNotification } from './notificationService.ts';
 import { bookingNotificationMetadata } from './notificationEnrichment.ts';
 import { resolveOrganizationIdForProperty } from './propertyScope.ts';
+import { type ActorContext, logActivity } from './activityLog.ts';
 import {
   BookingStatus,
   canTransition,
@@ -333,7 +334,13 @@ export class WorkflowOrchestrator {
     toStatus: BookingStatus,
     payload: TransitionPayload = {},
     devControls: DevControlFlags = {},
-    manual = true
+    manual = true,
+    /**
+     * Who initiated this transition — threaded to the activity log. Omit for
+     * automated / unattributed callers (degrades to `system`, never crashes).
+     * Build it with `buildActorContext(...)` in the calling edge handler.
+     */
+    actor?: ActorContext
   ): Promise<TransitionResult> {
     console.log(
       `[orchestrator] Transitioning booking ${bookingId} → ${toStatus} (manual=${manual})`
@@ -766,7 +773,8 @@ export class WorkflowOrchestrator {
             'READY_FOR_CHECKIN',
             {},
             { ...devControls, sendReadyForCheckinEmail: true },
-            false // automated — not a manual admin click
+            false, // automated — not a manual admin click
+            actor // preserve attribution across the auto-advance
           );
         } catch (err) {
           // Non-fatal: log and fall through so the caller still gets a valid
@@ -1125,6 +1133,22 @@ export class WorkflowOrchestrator {
       if (refreshedFinal) updatedBooking = refreshedFinal;
     }
 
+    // ── Activity log — one row per transition, emitted here so every caller
+    //    (dashboard, cron, webhook, guest form, AI assistant) is covered once.
+    if (flag(devControls, 'saveToDatabase')) {
+      await this.logTransitionActivity({
+        booking: updatedBooking,
+        propertyId,
+        fromStatus,
+        toStatus: String(updatedBooking.status ?? toStatus) as BookingStatus,
+        completionTarget: payload.document_completion_target ?? null,
+        completionsChanged,
+        manual,
+        actor,
+        resolveOrgId: resolveNotificationOrgId,
+      });
+    }
+
     return {
       success: true,
       booking: updatedBooking,
@@ -1135,6 +1159,66 @@ export class WorkflowOrchestrator {
         ...(externalSuppressed ? { externalSuppressed: true } : {}),
       },
     };
+  }
+
+  /**
+   * Emit the single activity-log row for a completed transition. Never throws
+   * (logActivity swallows) and never blocks — a logging gap must not fail a
+   * booking transition.
+   */
+  private static async logTransitionActivity(args: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    booking: any;
+    propertyId: string | null;
+    fromStatus: BookingStatus;
+    toStatus: BookingStatus;
+    completionTarget: string | null;
+    completionsChanged: boolean;
+    manual: boolean;
+    actor?: ActorContext;
+    resolveOrgId: () => Promise<string | null>;
+  }): Promise<void> {
+    try {
+      const { booking, propertyId, fromStatus, toStatus } = args;
+      const statusChanged = fromStatus !== toStatus;
+      const isDocSubstep = !statusChanged && (args.completionsChanged || !!args.completionTarget);
+      if (!statusChanged && !isDocSubstep) return; // pure no-op
+
+      const organizationId = await args.resolveOrgId();
+      if (!organizationId) return;
+
+      const actor: ActorContext = args.actor ?? { actorType: 'system', source: 'cron' };
+      const guestName =
+        (typeof booking.primary_guest_name === 'string' && booking.primary_guest_name.trim()) ||
+        (typeof booking.guest_facebook_name === 'string' && booking.guest_facebook_name.trim()) ||
+        null;
+      const checkIn = typeof booking.check_in_date === 'string' ? booking.check_in_date : null;
+      const targetLabel = guestName ? `${guestName}${checkIn ? ` · ${checkIn}` : ''}` : 'a booking';
+
+      const action = isDocSubstep
+        ? 'booking.document_substep_completed'
+        : toStatus === 'CANCELLED'
+          ? 'booking.cancelled'
+          : 'booking.status_changed';
+
+      await logActivity({
+        action,
+        organizationId,
+        propertyId: propertyId ?? undefined,
+        actor,
+        targetType: 'booking',
+        targetId: String(booking.id ?? ''),
+        targetLabel,
+        metadata: {
+          from_status: fromStatus,
+          to_status: toStatus,
+          manual: args.manual,
+          ...(isDocSubstep && args.completionTarget ? { requirement: args.completionTarget } : {}),
+        },
+      });
+    } catch (err) {
+      console.error('[orchestrator] logTransitionActivity failed (non-fatal):', err);
+    }
   }
 }
 

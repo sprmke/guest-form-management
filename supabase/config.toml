@@ -393,6 +393,13 @@ static_files = [
   "./functions/_shared/email-templates/fragments/*.html",
 ]
 
+[functions.super-admin-verification]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+
 [functions.dashboard-stats]
 verify_jwt = false
 
@@ -475,6 +482,12 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.list-super-admin-audit]
+verify_jwt = false
+
+[functions.list-activity-log]
+verify_jwt = false
+
+[functions.activity-log-export]
 verify_jwt = false
 
 [functions.platform-settings]
@@ -565,6 +578,12 @@ verify_jwt = false
 [functions.update-organization]
 verify_jwt = false
 
+[functions.setup-guide-state]
+verify_jwt = false
+
+[functions.get-host-reward-offer]
+verify_jwt = false
+
 [functions.check-organization-name]
 verify_jwt = false
 
@@ -585,6 +604,13 @@ verify_jwt = false
 
 [functions.update-property]
 verify_jwt = false
+
+[functions.copy-property-settings]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
 
 [functions.delete-property]
 verify_jwt = false

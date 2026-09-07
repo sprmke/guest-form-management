@@ -1010,7 +1010,7 @@ export function patchEnablesInboxAutoSend(
   return willAutoSend && !currentlyAutoSend;
 }
 
-async function syncAiCreditsFromPlan(
+export async function syncAiCreditsFromPlan(
   organizationId: string,
   planCode: string,
   monthlyCreditAllowance: number,
@@ -1026,7 +1026,15 @@ async function syncAiCreditsFromPlan(
 
 async function writeOrgSubscriptionEvent(input: {
   orgSubscriptionId: string;
-  eventType: 'assigned' | 'plan_changed' | 'status_changed' | 'property_added' | 'property_removed';
+  eventType:
+    | 'assigned'
+    | 'plan_changed'
+    | 'status_changed'
+    | 'property_added'
+    | 'property_removed'
+    | 'reward_granted'
+    | 'reward_expired'
+    | 'reward_revoked';
   previousPlanId?: string | null;
   newPlanId?: string | null;
   previousStatus?: string | null;

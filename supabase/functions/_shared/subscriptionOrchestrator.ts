@@ -30,6 +30,7 @@ import {
   readWebhookKind,
 } from './paymongoWebhookMetadata.ts';
 import { handleParkingPaymentWebhookEvent } from './parkingPaymentOrchestrator.ts';
+import { expireHostVerificationRewards } from './hostVerificationReward.ts';
 
 export { getPlatformPaymentSettings, type PlatformPaymentSettings };
 function db() {
@@ -257,6 +258,7 @@ export async function fulfillOrgSubscriptionPayment(input: {
         current_period_end: periodEnd.toISOString(),
         grace_period_ends_at: null,
         status: 'active',
+        source: 'purchase',
       })
       .eq('id', orgSubscriptionId);
     if (subUpdateError) throw new Error(subUpdateError.message);
@@ -621,6 +623,15 @@ export async function runPlatformBillingCycle(): Promise<Record<string, number>>
         }
       }
     }
+  }
+
+  try {
+    const rewardSweep = await expireHostVerificationRewards();
+    (counters as Record<string, number>).rewardExpired = rewardSweep.expired;
+    (counters as Record<string, number>).rewardExpireErrors = rewardSweep.errors;
+  } catch (err) {
+    console.error('[platform-billing-cron] host verification reward expiry', err);
+    counters.errors += 1;
   }
 
   return counters;
