@@ -122,9 +122,10 @@ export function canCancelBookingAtStatus(status: string | null | undefined): boo
 /**
  * Reschedule (booking-detail `⋯` → **Reschedule**) is offered up to — but not
  * including — Ready for Check-out: once the stay is underway there is nothing
- * left to move. It forces the row back to Pending Documents (or Pending Review
- * for a property with no configured document requirements) — see
- * `hooks/useRescheduleBooking.ts` and `.cursor/rules/booking-workflow.mdc` §6.
+ * left to move. It always forces the row back to **Pending Review** so the
+ * host re-runs the pricing + document proceed from the top of the pipeline
+ * after a date move — see `hooks/useRescheduleBooking.ts` and
+ * `.cursor/rules/booking-workflow.mdc` §6.
  */
 const RESCHEDULABLE_STATUSES: ReadonlySet<BookingStatus> = new Set([
   'PENDING_REVIEW',

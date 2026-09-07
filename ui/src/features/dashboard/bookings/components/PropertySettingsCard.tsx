@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   ClipboardList,
+  CopyPlus,
   FormInput,
   Gift,
   Globe,
@@ -61,6 +62,7 @@ import { SensitiveSettingsOtpDialog } from '@/features/dashboard/org/components/
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useCheckPropertyName } from '@/features/dashboard/org/hooks/useCheckPropertyName';
 import { useDeleteProperty } from '@/features/dashboard/org/hooks/useDeleteProperty';
+import { useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
 import {
   orgSettingsToFormValues,
@@ -107,7 +109,10 @@ import {
 } from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
-import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
+import {
+  MobileHeroActionMenu,
+  type MobileHeroActionMenuItem,
+} from '@/components/mobile/MobileHeroActionButton';
 import { AppSettingsCardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -145,9 +150,11 @@ function mergeProfileDraftAfterSave(
   };
 }
 
-export function PropertySettingsCard() {
+export function usePropertySettingsController() {
   const navigate = useNavigate();
   const { property, orgSlug, propertySlug } = useOrgContext();
+  const { data: orgPropertiesData } = useProperties(orgSlug);
+  const canCopyFromOtherProperty = (orgPropertiesData?.properties.length ?? 0) >= 2;
   const { data: propertyAccess } = usePropertyPermissions();
   const canEditSettingsSection = useCallback(
     (sectionId: PropertySettingsSectionId) => {
@@ -229,6 +236,9 @@ export function PropertySettingsCard() {
   const [paymentOtpFingerprint, setPaymentOtpFingerprint] = useState('');
   const [savingReviewId, setSavingReviewId] = useState<string | null>(null);
   const paymentOtpSucceededRef = useRef(false);
+  const pendingSaveDeferredRef = useRef<{
+    resolve: (ok: boolean) => void;
+  } | null>(null);
 
   const markFieldInteracted = useCallback((fieldId: string) => {
     setInteractedFields((current) => {
@@ -600,12 +610,12 @@ export function PropertySettingsCard() {
   const handleSave = async (options?: {
     skipPaymentVerification?: boolean;
     settingsVerificationToken?: string;
-  }) => {
-    if (!operationalDraft || !operationalBaseline || !appSettings) return;
+  }): Promise<boolean> => {
+    if (!operationalDraft || !operationalBaseline || !appSettings) return false;
 
     if (towerConflict) {
       toast.error('Tower and unit combination is already in use');
-      return;
+      return false;
     }
 
     const plan = planPropertySettingsSave({
@@ -629,7 +639,7 @@ export function PropertySettingsCard() {
       setShowValidationErrors(true);
       toast.error(saveDisabledReason ?? 'Complete payment fields to save');
       scrollToSettingsSection('payment');
-      return;
+      return false;
     }
 
     if (!plan.hasSavableWork && !voiceDirty) {
@@ -642,7 +652,7 @@ export function PropertySettingsCard() {
       if (plan.firstBlockedSectionId) {
         scrollToSettingsSection(plan.firstBlockedSectionId);
       }
-      return;
+      return false;
     }
 
     const paymentWillSave = plan.operationalSections.includes('payment');
@@ -650,7 +660,9 @@ export function PropertySettingsCard() {
       const fingerprint = await computePaymentSettingsFingerprint(operationalDraft.paymentMethods);
       setPaymentOtpFingerprint(fingerprint);
       setPaymentOtpOpen(true);
-      return;
+      return await new Promise<boolean>((resolve) => {
+        pendingSaveDeferredRef.current = { resolve };
+      });
     }
 
     setShowValidationErrors(false);
@@ -670,7 +682,7 @@ export function PropertySettingsCard() {
         !voiceDirty
       ) {
         toast.error('You do not have permission to save these settings');
-        return;
+        return false;
       }
 
       const profilePayload = buildProfilePatchForSections(
@@ -732,7 +744,7 @@ export function PropertySettingsCard() {
       if (voiceDirty && voiceDraft) {
         if (voiceDraft.enabled && !canEnableReceptionist) {
           if (!receptionistEntitlementsLoading) openUpgradeModal('aiReceptionist');
-          return;
+          return false;
         }
         const saved = await updateVoiceSettings.mutateAsync(
           buildVoiceReceptionistPatch(voiceDraft)
@@ -751,12 +763,15 @@ export function PropertySettingsCard() {
         } else {
           toast.success('Settings saved');
         }
+        return true;
       }
+      return false;
     } catch (error) {
       if (options?.settingsVerificationToken) {
         revertPaymentDraft();
       }
       toast.error(friendlyToastError(error, 'Could not save settings'));
+      return false;
     } finally {
       setPaymentOtpOpen(false);
       paymentOtpSucceededRef.current = false;
@@ -776,19 +791,26 @@ export function PropertySettingsCard() {
     });
   }, [operationalBaseline]);
 
-  const handlePaymentOtpOpenChange = (open: boolean) => {
+    const handlePaymentOtpOpenChange = (open: boolean) => {
     if (!open && !paymentOtpSucceededRef.current) {
       revertPaymentDraft();
+      const deferred = pendingSaveDeferredRef.current;
+      pendingSaveDeferredRef.current = null;
+      deferred?.resolve(false);
     }
     if (!open) paymentOtpSucceededRef.current = false;
     setPaymentOtpOpen(open);
   };
 
-  const handlePaymentOtpVerified = (verificationToken: string) => {
+    const handlePaymentOtpVerified = (verificationToken: string) => {
     paymentOtpSucceededRef.current = true;
+    const deferred = pendingSaveDeferredRef.current;
+    pendingSaveDeferredRef.current = null;
     void handleSave({
       skipPaymentVerification: true,
       settingsVerificationToken: verificationToken,
+    }).then((ok) => {
+      deferred?.resolve(ok);
     });
   };
 
@@ -830,9 +852,224 @@ export function PropertySettingsCard() {
     navigate(orgPropertiesPath(orgSlug));
   };
 
+  return {
+    navigate,
+    property,
+    orgSlug,
+    propertySlug,
+    canCopyFromOtherProperty,
+    propertyAccess,
+    canEditSettingsSection,
+    sectionEditLocked,
+    canEditDangerZone,
+    canDeleteProperty,
+    appSettings,
+    appSettingsLoading,
+    appSettingsError,
+    appSettingsLoadError,
+    propertyTeam,
+    updateProperty,
+    deleteProperty,
+    updateAppSettings,
+    voiceSettings,
+    voiceSettingsLoading,
+    voiceSettingsError,
+    voiceSettingsLoadError,
+    updateVoiceSettings,
+    canEnableReceptionist,
+    receptionistEntitlementsLoading,
+    canUseAiOverrides,
+    openUpgradeModal,
+    orgBrandColor,
+    inheritedBrandColor,
+    orgSettings,
+    orgSocialLinks,
+    profileBaseline,
+    setProfileBaseline,
+    profileDraft,
+    setProfileDraft,
+    operationalDraft,
+    setOperationalDraft,
+    operationalBaseline,
+    setOperationalBaseline,
+    voiceDraft,
+    setVoiceDraft,
+    voiceBaseline,
+    setVoiceBaseline,
+    newCustomAmenityInputs,
+    setNewCustomAmenityInputs,
+    newCustomHouseRuleInputs,
+    setNewCustomHouseRuleInputs,
+    showValidationErrors,
+    setShowValidationErrors,
+    interactedFields,
+    setInteractedFields,
+    paymentOtpOpen,
+    setPaymentOtpOpen,
+    paymentOtpFingerprint,
+    setPaymentOtpFingerprint,
+    savingReviewId,
+    setSavingReviewId,
+    paymentOtpSucceededRef,
+    markFieldInteracted,
+    profileDirtyRef,
+    operationalDirtyRef,
+    voiceDirtyRef,
+    skipProfileSyncRef,
+    mediaGalleryBusy,
+    setMediaGalleryBusy,
+    gafTowerUnit,
+    profileDirty,
+    nameChanged,
+    nameCheck,
+    nameUnavailable,
+    nameConflictMessage,
+    nameChecking,
+    nameAvailabilityState,
+    towerConflictDetail,
+    towerUnitListed,
+    towerUnitBlocksSave,
+    draftCompletion,
+    savedCompletion,
+    towerConflict,
+    settingsCompletion,
+    resolveFieldError,
+    operationalDirty,
+    handleSaveExternalReview,
+    voiceDirty,
+    isDirty,
+    savePlan,
+    paymentDirty,
+    paymentBlocksSave,
+    saveDisabledByValidation,
+    saveDisabledReason,
+    busy,
+    saveDisabled,
+    propertySlugPrefix,
+    slugPreview,
+    navSections,
+    scrollToSettingsSection,
+    setProfileField,
+    handleMediaPersisted,
+    persistMediaOrder,
+    locationPersistPending,
+    setLocationPersistPending,
+    persistLocation,
+    setOperationalField,
+    setAutomationToggle,
+    setVoiceField,
+    handleSave,
+    revertPaymentDraft,
+    handlePaymentOtpOpenChange,
+    handlePaymentOtpVerified,
+    handleArchiveProperty,
+    handleRestoreProperty,
+    handleDeleteProperty,
+  };
+}
+
+export function PropertySettingsCard() {
+  const {
+    navigate,
+    property,
+    orgSlug,
+    canCopyFromOtherProperty,
+    sectionEditLocked,
+    canEditDangerZone,
+    canDeleteProperty,
+    appSettings,
+    appSettingsLoading,
+    appSettingsError,
+    appSettingsLoadError,
+    updateProperty,
+    deleteProperty,
+    voiceSettings,
+    voiceSettingsLoading,
+    voiceSettingsError,
+    voiceSettingsLoadError,
+    canEnableReceptionist,
+    canUseAiOverrides,
+    inheritedBrandColor,
+    orgSocialLinks,
+    profileDraft,
+    operationalDraft,
+    operationalBaseline,
+    voiceDraft,
+    newCustomAmenityInputs,
+    setNewCustomAmenityInputs,
+    newCustomHouseRuleInputs,
+    setNewCustomHouseRuleInputs,
+    paymentOtpOpen,
+    paymentOtpFingerprint,
+    savingReviewId,
+    markFieldInteracted,
+    mediaGalleryBusy,
+    gafTowerUnit,
+    nameUnavailable,
+    nameConflictMessage,
+    nameAvailabilityState,
+    towerConflict,
+    settingsCompletion,
+    resolveFieldError,
+    handleSaveExternalReview,
+    isDirty,
+    saveDisabledReason,
+    busy,
+    saveDisabled,
+    propertySlugPrefix,
+    slugPreview,
+    navSections,
+    setProfileField,
+    handleMediaPersisted,
+    persistMediaOrder,
+    locationPersistPending,
+    persistLocation,
+    setOperationalField,
+    setAutomationToggle,
+    setVoiceField,
+    handleSave,
+    handlePaymentOtpOpenChange,
+    handlePaymentOtpVerified,
+    handleArchiveProperty,
+    handleRestoreProperty,
+    handleDeleteProperty,
+  } = usePropertySettingsController();
+
   if (appSettingsLoading) {
     return <AppSettingsCardSkeleton />;
   }
+
+  const copyFromHref =
+    orgSlug && property?.id && canCopyFromOtherProperty
+      ? `${orgPropertiesPath(orgSlug)}?copyTarget=${encodeURIComponent(property.id)}`
+      : null;
+
+  const goCopyFrom = () => {
+    if (!copyFromHref) return;
+    navigate(copyFromHref);
+  };
+
+  const heroTrailingItems = (() => {
+    const items: MobileHeroActionMenuItem[] = [];
+    if (copyFromHref) {
+      items.push({
+        key: 'copy-from',
+        label: 'Copy from…',
+        Icon: CopyPlus,
+        onSelect: goCopyFrom,
+      });
+    }
+    if (isDirty) {
+      items.push({
+        key: 'save',
+        label: busy ? 'Saving' : 'Save changes',
+        Icon: Save,
+        onSelect: () => void handleSave(),
+        disabled: saveDisabled,
+      });
+    }
+    return items;
+  })();
 
   return (
     <AdminMobilePage
@@ -841,29 +1078,37 @@ export function PropertySettingsCard() {
       titleId="property-settings-heading"
       className="flex min-h-0 flex-1 flex-col"
       heroTrailing={
-        isDirty ? (
-          <MobileHeroActionButton
-            aria-label={busy ? 'Saving' : 'Save changes'}
-            disabled={saveDisabled}
-            title={saveDisabledReason}
-            onClick={() => void handleSave()}
-          >
-            <Save className="size-5" aria-hidden />
-          </MobileHeroActionButton>
+        heroTrailingItems.length > 0 ? (
+          <MobileHeroActionMenu items={heroTrailingItems} label="Settings actions" />
         ) : undefined
       }
       desktopActions={
-        isDirty ? (
-          <Button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={saveDisabled}
-            title={saveDisabledReason}
-            className="min-h-[44px] gap-1.5"
-          >
-            <Save className="size-4" aria-hidden />
-            {busy ? 'Saving...' : 'Save Changes'}
-          </Button>
+        copyFromHref || isDirty ? (
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+            {copyFromHref ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={goCopyFrom}
+                className="min-h-[44px] gap-1.5"
+              >
+                <CopyPlus className="size-4" aria-hidden />
+                Copy from…
+              </Button>
+            ) : null}
+            {isDirty ? (
+              <Button
+                type="button"
+                onClick={() => void handleSave()}
+                disabled={saveDisabled}
+                title={saveDisabledReason}
+                className="min-h-[44px] gap-1.5"
+              >
+                <Save className="size-4" aria-hidden />
+                {busy ? 'Saving...' : 'Save Changes'}
+              </Button>
+            ) : null}
+          </div>
         ) : undefined
       }
     >

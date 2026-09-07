@@ -106,6 +106,11 @@ export function buildOrgNavSections(
       Icon: Users,
     },
     {
+      label: 'Activity',
+      href: orgSectionPath(orgSlug, 'activity'),
+      Icon: ScrollText,
+    },
+    {
       label: 'Plans & Billing',
       href: orgPlansPath(orgSlug),
       Icon: CreditCard,
@@ -174,6 +179,11 @@ export function buildPropertyNavSections(
           label: 'Notifications',
           href: propertySectionPath(orgSlug, propertySlug, 'notifications'),
           Icon: Bell,
+        },
+        {
+          label: 'Activity',
+          href: propertySectionPath(orgSlug, propertySlug, 'activity'),
+          Icon: ScrollText,
         },
         {
           label: 'Templates',
@@ -250,6 +260,11 @@ export function buildParkingNavSections(orgSlug: string, parkingSlug: string): S
           label: 'Notifications',
           href: parkingSectionPath(orgSlug, parkingSlug, 'notifications'),
           Icon: Bell,
+        },
+        {
+          label: 'Activity',
+          href: parkingSectionPath(orgSlug, parkingSlug, 'activity'),
+          Icon: ScrollText,
         },
         {
           label: 'Settings',

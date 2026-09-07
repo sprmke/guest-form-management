@@ -50,6 +50,7 @@ export const ORG_NAV_VIEW_PERMISSION: Record<string, string> = {
   Team: 'org.team:view',
   Settings: 'org.settings:view',
   Plans: 'org.plans:view',
+  Activity: 'org.dashboard:view',
 };
 
 /** Minimum view permission per org route section. */
@@ -61,6 +62,8 @@ export const ORG_SECTION_VIEW_PERMISSION = {
   team: 'org.team:view',
   settings: 'org.settings:view',
   plans: 'org.plans:view',
+  // Activity is a transparency / accountability surface — any org-hub member may view it.
+  activity: 'org.dashboard:view',
   'help-support': 'org.dashboard:view',
 } as const satisfies Record<string, string>;
 
@@ -82,6 +85,8 @@ export function orgSectionPath(orgSlug: string, section: OrgSection): string {
       return `/org/${orgSlug}/settings`;
     case 'plans':
       return `/org/${orgSlug}/plans`;
+    case 'activity':
+      return `/org/${orgSlug}/activity`;
     case 'help-support':
       return `/org/${orgSlug}/help-support`;
   }

@@ -31,6 +31,7 @@ export type PropertySection =
   | 'team'
   | 'settings'
   | 'inbox'
+  | 'activity'
   | 'announcements'
   | 'help-support';
 
@@ -177,6 +178,7 @@ export const PROPERTY_NAV_VIEW_PERMISSION: Record<string, TeamPermissionId> = {
   Team: 'team:view',
   Settings: 'settings:view',
   Inbox: 'inbox:view',
+  Activity: 'bookings:view',
   Announcements: 'bookings:view',
 };
 
@@ -195,6 +197,8 @@ export const PROPERTY_SECTION_VIEW_PERMISSION = {
   team: 'team:view',
   settings: 'settings:view',
   inbox: 'inbox:view',
+  // Activity is a transparency surface — any member who can see bookings can see it.
+  activity: 'bookings:view',
   // Help + Announcements stay baseline for any active property member (RequirePropertyPermission special-cases them).
   announcements: 'bookings:view',
   'help-support': 'bookings:view',

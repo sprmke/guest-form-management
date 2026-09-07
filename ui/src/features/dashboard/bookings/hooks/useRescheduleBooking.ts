@@ -6,10 +6,9 @@
  * `PENDING_REVIEW` and runs through the orchestrator on the next Proceed), a
  * reschedule is a deliberate, host-confirmed reset: the modal makes the status
  * change mandatory, so this hook writes it in the same `guest_submissions`
- * patch. It resets to `PENDING_DOCUMENTS` when the property has at least one
- * configured document requirement, and to `PENDING_REVIEW` when it has none
- * (a D2 property skips `PENDING_DOCUMENTS` in the pipeline — see
- * `bookingPipeline`), so the booking never strands on a skipped stage.
+ * patch. It always resets to **Pending Review** so the host re-runs the
+ * pricing + document proceed from the top of the pipeline after a date move
+ * (see `bookingPipeline`).
  *
  * This is a non-orchestrator status write — the same sanctioned exception as the
  * guest-edit revert paths (`.cursor/rules/booking-workflow.mdc` §6). It clears
@@ -28,7 +27,6 @@ import { countParkingNights } from '@/features/guest/pay-parking/lib/payParkingH
 import { supabase } from '@/lib/supabase/client';
 import { toGuestSubmissionDate } from '@/utils/format/dates';
 
-
 import { BOOKING_QUERY_KEY } from './useBooking';
 import { invalidateBookingAiReviewQueries } from './useBookingAiReview';
 import {
@@ -38,18 +36,11 @@ import {
 
 import type { BookingRow } from '../lib/types';
 
-export type RescheduleResetTarget = 'PENDING_DOCUMENTS' | 'PENDING_REVIEW';
-
 type MutationArgs = {
   bookingId: string;
   /** `YYYY-MM-DD` — new stay boundaries picked in the reschedule calendar. */
   checkInDate: string;
   checkOutDate: string;
-  /**
-   * `PENDING_DOCUMENTS` for a property with configured document requirements,
-   * `PENDING_REVIEW` for a property with none (see hook doc comment).
-   */
-  resetTo: RescheduleResetTarget;
   /**
    * Row's current `document_requirement_completions` value (from the loaded
    * booking) so the reset merges the gaf/pet clear into the JSONB map instead
@@ -66,7 +57,6 @@ export function useRescheduleBooking() {
       bookingId,
       checkInDate,
       checkOutDate,
-      resetTo,
       currentDocumentRequirementCompletions,
     }: MutationArgs) => {
       const nowIso = new Date().toISOString();
@@ -78,7 +68,7 @@ export function useRescheduleBooking() {
         document_requirement_completions: pendingDocumentsClearCompletionsJsonbPatch(
           currentDocumentRequirementCompletions
         ),
-        status: resetTo,
+        status: 'PENDING_REVIEW',
         status_updated_at: nowIso,
         updated_at: nowIso,
       };

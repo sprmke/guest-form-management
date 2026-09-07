@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 
 import { guestParkingRequestStatusPath } from '@/features/guest/lib/guestPublicPaths';
 
+import { EntityActivityHistory } from '@/features/dashboard/activity/components/EntityActivityHistory';
 import { BookingAiAssistantAuditCard } from '@/features/dashboard/ai-assistant/components/BookingAiAssistantAuditCard';
 import { BookingDetailAssetPreviewModal } from '@/features/dashboard/bookings/components/booking-detail/BookingDetailAssetPreviewModal';
 import { BookingDetailHeader } from '@/features/dashboard/bookings/components/booking-detail/BookingDetailHeader';
@@ -49,7 +50,6 @@ import { BookingMetaCard } from '@/features/dashboard/bookings/components/Bookin
 import { OwnerParkingConfirmSheet } from '@/features/dashboard/bookings/components/OwnerParkingConfirmSheet';
 import { WorkflowPanel } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowPanel';
 import { useAdminBookedDates } from '@/features/dashboard/bookings/hooks/useAdminBookedDates';
-import { useAppSettings } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { bookingDetailQueryKey, useBooking } from '@/features/dashboard/bookings/hooks/useBooking';
 import {
   invalidateBookingAiReviewQueries,
@@ -63,14 +63,10 @@ import { useEnsureNeedParking } from '@/features/dashboard/bookings/hooks/useEns
 import { useLinkedParkingBooking } from '@/features/dashboard/bookings/hooks/useLinkedParkingBooking';
 import { useOwnerDefaultParking } from '@/features/dashboard/bookings/hooks/useOwnerDefaultParking';
 import type { OwnerDefaultParkingSlot } from '@/features/dashboard/bookings/hooks/useOwnerDefaultParking';
-import {
-  useRescheduleBooking,
-  type RescheduleResetTarget,
-} from '@/features/dashboard/bookings/hooks/useRescheduleBooking';
+import { useRescheduleBooking } from '@/features/dashboard/bookings/hooks/useRescheduleBooking';
 import { hasBookingAiReviewRun } from '@/features/dashboard/bookings/lib/bookingAiReviewProgress';
 import { buildBookingDetailActions } from '@/features/dashboard/bookings/lib/bookingDetailActions';
 import { canRescheduleBookingAtStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
-import { DEFAULT_DOCUMENT_REQUIREMENTS } from '@/features/dashboard/bookings/lib/documentRequirements';
 import {
   absoluteBookingParkingFindUrl,
   absoluteBookingParkingOwnDefaultUrl,
@@ -157,11 +153,6 @@ export function BookingDetailPage() {
   const hasOwnDefaultParking = Boolean(ownerDefaultQuery.data?.defaultParking?.slug);
   const [ownerParkingSheetOpen, setOwnerParkingSheetOpen] = useState(false);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
-  const { data: appSettings } = useAppSettings();
-  const documentRequirements =
-    appSettings?.resolvedDocumentRequirements ?? DEFAULT_DOCUMENT_REQUIREMENTS;
-  const rescheduleResetTo: RescheduleResetTarget =
-    documentRequirements.length > 0 ? 'PENDING_DOCUMENTS' : 'PENDING_REVIEW';
   const canReschedule = canEditStay && !!booking && canRescheduleBookingAtStatus(booking.status);
   const { data: bookedDates = [] } = useAdminBookedDates(property.slug, canReschedule);
   const rescheduleMut = useRescheduleBooking();
@@ -370,7 +361,6 @@ export function BookingDetailPage() {
           bookingId: booking.id,
           checkInDate,
           checkOutDate,
-          resetTo: rescheduleResetTo,
           currentDocumentRequirementCompletions: booking.document_requirement_completions,
         },
         {
@@ -384,7 +374,7 @@ export function BookingDetailPage() {
         }
       );
     },
-    [booking, rescheduleMut, rescheduleResetTo]
+    [booking, rescheduleMut]
   );
 
   const hostActions = useMemo(
@@ -540,6 +530,11 @@ export function BookingDetailPage() {
                             onCopyBookingId={() => void copyBookingIdToClipboard()}
                           />
                           <BookingAiAssistantAuditCard bookingId={booking.id} />
+                          <EntityActivityHistory
+                            targetType="booking"
+                            targetId={booking.id}
+                            className="bg-card rounded-xl border p-4"
+                          />
                         </div>
                       )}
                       {viewTab === 'guests' && (
@@ -595,7 +590,6 @@ export function BookingDetailPage() {
           onOpenChange={setRescheduleOpen}
           booking={booking}
           bookedDates={bookedDates}
-          resetTo={rescheduleResetTo}
           onConfirm={handleRescheduleConfirm}
           isSubmitting={rescheduleMut.isPending}
         />

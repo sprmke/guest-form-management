@@ -6,19 +6,18 @@
  *     (`createDisabledDateMatcher(bookedDates, booking.id)` lets the booking keep
  *     its own nights while every other stay + owner-blocked range stays blocked).
  *  2. Confirm — the status reset is mandatory copy, not a choice: continuing
- *     moves the booking back to Pending Documents (or Pending Review for a
- *     property with no configured document requirements) and clears document
- *     progress. See `hooks/useRescheduleBooking.ts`.
+ *     moves the booking back to Pending Review and clears document progress
+ *     (approved GAF/pet PDFs, parking, and guest balance settlement). See
+ *     `hooks/useRescheduleBooking.ts`.
  */
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { CalendarClock, Loader2 } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CalendarClock, Loader2 } from 'lucide-react';
 
 import { countParkingNights } from '@/features/guest/pay-parking/lib/payParkingHelpers';
 
 import { bookingEditDatePickerClass } from '@/features/dashboard/bookings/components/bookingEditFormShared';
-import type { RescheduleResetTarget } from '@/features/dashboard/bookings/hooks/useRescheduleBooking';
 import { STATUS_LABELS } from '@/features/dashboard/bookings/lib/bookingStatus';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
@@ -44,8 +43,6 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   booking: BookingRow;
   bookedDates: BookedDateRange[];
-  /** Where the mandatory status reset lands — decided by the caller from the property's document requirements. */
-  resetTo: RescheduleResetTarget;
   onConfirm: (checkInDate: string, checkOutDate: string) => void;
   isSubmitting?: boolean;
 };
@@ -61,7 +58,6 @@ export function RescheduleBookingModal({
   onOpenChange,
   booking,
   bookedDates,
-  resetTo,
   onConfirm,
   isSubmitting = false,
 }: Props) {
@@ -98,7 +94,8 @@ export function RescheduleBookingModal({
     };
   }, [bookedDates, booking.id, checkIn]);
 
-  const resetLabel = STATUS_LABELS[resetTo];
+  const resetLabel = STATUS_LABELS['PENDING_REVIEW'];
+  const guestName = booking.primary_guest_name || 'this guest';
 
   return (
     <AdminDialogShell
@@ -114,7 +111,7 @@ export function RescheduleBookingModal({
       description={
         step === 'dates'
           ? `Currently ${formatYmdToFullLongDate(currentCheckIn)} – ${formatYmdToFullLongDate(currentCheckOut)}.`
-          : `Rescheduling ${booking.primary_guest_name || 'this guest'} moves the booking back to ${resetLabel} and clears document progress (approved GAF/pet PDFs, parking, and guest balance settlement). Request emails and PDFs are not re-sent; use Automation Triggers if the new dates need fresh paperwork.`
+          : undefined
       }
       footerClassName="flex-col gap-2 sm:flex-row sm:justify-end"
       footer={
@@ -215,16 +212,41 @@ export function RescheduleBookingModal({
           ) : null}
         </div>
       ) : (
-        <div className="border-border/60 bg-muted/30 space-y-1 rounded-lg border px-3 py-2.5 text-sm">
-          <p className="text-muted-foreground line-through">
-            {formatYmdToFullLongDate(currentCheckIn)} – {formatYmdToFullLongDate(currentCheckOut)}
-          </p>
-          <p className="text-foreground font-medium">
-            {formatYmdToFullLongDate(nextCheckIn)} – {formatYmdToFullLongDate(nextCheckOut)}
-            <span className="text-muted-foreground ml-1.5 font-normal tabular-nums">
-              ({nights} {nights === 1 ? 'night' : 'nights'})
-            </span>
-          </p>
+        <div className="space-y-3">
+          <div
+            className="flex gap-2.5 rounded-lg border border-amber-500/30 bg-amber-50/60 p-3 dark:border-amber-500/25 dark:bg-amber-500/10"
+            role="note"
+          >
+            <AlertTriangle
+              className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-500"
+              aria-hidden
+            />
+            <p className="text-foreground text-sm leading-relaxed">
+              Rescheduling {guestName} moves the booking back to {resetLabel} and clears document
+              progress (approved GAF/pet PDFs, parking, and guest balance settlement). Request
+              emails and PDFs are not re-sent; use Automation Triggers if the new dates need fresh
+              paperwork.
+            </p>
+          </div>
+
+          <div className="border-border/60 bg-muted/30 space-y-2 rounded-lg border p-3">
+            <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wide">
+              Stay dates
+            </p>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground line-through">
+                {formatYmdToFullLongDate(currentCheckIn)} –{' '}
+                {formatYmdToFullLongDate(currentCheckOut)}
+              </span>
+              <ArrowRight className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
+              <span className="text-foreground font-medium">
+                {formatYmdToFullLongDate(nextCheckIn)} – {formatYmdToFullLongDate(nextCheckOut)}
+              </span>
+            </div>
+            <p className="text-muted-foreground text-xs tabular-nums">
+              {nights} {nights === 1 ? 'night' : 'nights'}
+            </p>
+          </div>
         </div>
       )}
     </AdminDialogShell>

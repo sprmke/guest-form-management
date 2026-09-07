@@ -17,6 +17,7 @@ import { resolveAppSettings } from './appSettings.ts';
 import { manilaTodayYmd } from './calendarAvailabilityManila.ts';
 import { createServiceClient } from './orgAuth.ts';
 import { createNotification } from './notificationService.ts';
+import { buildActorContext } from './activityLog.ts';
 import { resolveOrganizationIdForProperty } from './propertyScope.ts';
 import {
   buildExportCalendar, // re-exported for the ical-export function's convenience
@@ -945,7 +946,14 @@ async function reconcileExternalBookings(
     }
 
     try {
-      await WorkflowOrchestrator.transition(row.id, 'CANCELLED', {}, {}, false);
+      await WorkflowOrchestrator.transition(
+        row.id,
+        'CANCELLED',
+        {},
+        {},
+        false,
+        buildActorContext('cron', { cron: 'calendar-sync-cron' })
+      );
       result.bookingsCancelled++;
       await writeEvent(supabase, {
         feedId: feed.id,

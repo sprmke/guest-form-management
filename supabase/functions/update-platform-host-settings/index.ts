@@ -15,8 +15,12 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
+import { requireSuperAdminStepUp } from '../_shared/superAdminVerification.ts';
 
-serveSuperAdmin('update-platform-host-settings', async (req) => {
+serveSuperAdmin('update-platform-host-settings', async (req, user) => {
+  const stepUp = await requireSuperAdminStepUp(req, user, 'platform_host_settings');
+  if (stepUp) return stepUp;
+
   requireHttpMethod(req, 'PATCH');
 
   const body = await readJsonBody(req);
