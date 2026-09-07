@@ -657,7 +657,7 @@ export function VideoEditor({ onPublish }: Props) {
       setProject((prev) => (prev ? { ...prev, music: exportMusic } : prev));
     }
     if (strippedJamendo) {
-      toast.message('Exporting without music — track could not be cached');
+      toast.message('Exporting without music. Track could not be cached');
     }
 
     const exportProps: VideoCompositionProps = {
@@ -927,7 +927,7 @@ export function VideoEditor({ onPublish }: Props) {
 
         setAiGenerateOpen(false);
         if (failedCount > 0) {
-          toast.warning(`Saved ${savedRecords.length} of 3 formats — retry Generate for the rest`);
+          toast.warning(`Saved ${savedRecords.length} of 3 formats. Retry Generate for the rest`);
         } else {
           toast.success('Custom videos added for Story, Post, and Landscape');
         }

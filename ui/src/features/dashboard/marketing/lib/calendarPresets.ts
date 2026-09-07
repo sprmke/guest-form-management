@@ -143,7 +143,7 @@ export const CALENDAR_PRESET_CATEGORIES: CalendarPresetCategory[] = [
       {
         value: 'petal-note',
         label: 'Petal Note',
-        description: 'No cell fills — states read purely by ink color',
+        description: 'No cell fills. States read purely by ink color',
         color: '#e8a186',
         secondary: '#fbe0d9',
       },
@@ -766,7 +766,7 @@ export const CALENDAR_PRESET_STYLES: Record<string, Partial<CalendarStyles>> = {
       background: { type: 'solid', color: '#f3f0f9' },
       dayNumberColor: '#c9b8e8',
       border: { width: 2.5, style: 'solid', color: '#e3d9f5', radius: 16 },
-      text: { ...d().blocked.text, show: true, content: '—', color: '#c9b8e8' },
+      text: { ...d().blocked.text, show: true, content: '-', color: '#c9b8e8' },
       pattern: { show: false, type: 'none', color: '#c9b8e8', opacity: 0 },
     },
   },

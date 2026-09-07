@@ -959,7 +959,7 @@ export function CalendarBuilder({
 
         setAiGenerateOpen(false);
         if (failedCount > 0) {
-          toast.warning(`Saved ${savedRecords.length} of 3 formats — retry Generate for the rest`);
+          toast.warning(`Saved ${savedRecords.length} of 3 formats. Retry Generate for the rest`);
         } else {
           toast.success('Custom templates added for Square, Portrait, and Landscape');
         }

@@ -12,16 +12,10 @@ import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
+import { AdminDialogShell } from '@/components/AdminDialogShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  ResponsiveModal,
-  ResponsiveModalContent,
-  ResponsiveModalFooter,
-  ResponsiveModalHeader,
-  ResponsiveModalTitle,
-} from '@/components/ui/responsive-modal';
 
 type Props = {
   contentType: 'calendar' | 'design' | 'video';
@@ -121,30 +115,32 @@ export function SaveMarketingTemplateButton({
         </Button>
       </TierBadgeAnchor>
 
-      <ResponsiveModal open={open} onOpenChange={setOpen}>
-        <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),24rem)]">
-          <ResponsiveModalHeader>
-            <ResponsiveModalTitle>Save template</ResponsiveModalTitle>
-          </ResponsiveModalHeader>
-          <div className="space-y-2">
-            <Label htmlFor="template-name">Name</Label>
-            <Input
-              id="template-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="h-10"
-            />
-          </div>
-          <ResponsiveModalFooter className="gap-2">
+      <AdminDialogShell
+        open={open}
+        onOpenChange={setOpen}
+        title="Save template"
+        sizeClassName="max-w-[min(calc(100vw-1.5rem),24rem)] sm:max-w-[min(90vw,24rem)]"
+        footer={
+          <>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
             <Button type="button" disabled={isPending} onClick={() => void handleSave()}>
               Save
             </Button>
-          </ResponsiveModalFooter>
-        </ResponsiveModalContent>
-      </ResponsiveModal>
+          </>
+        }
+      >
+        <div className="space-y-2">
+          <Label htmlFor="template-name">Name</Label>
+          <Input
+            id="template-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="h-10"
+          />
+        </div>
+      </AdminDialogShell>
     </>
   );
 }

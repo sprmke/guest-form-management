@@ -192,7 +192,7 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
       const bytes = media.blob?.size ?? dataUrlByteLength(mediaUrl);
       if (bytes > UPLOAD_MAX_BYTES.image) {
         toast.error(
-          `${formatMaxBytesError(UPLOAD_MAX_BYTES.image)} — export as JPEG to publish this design.`
+          `${formatMaxBytesError(UPLOAD_MAX_BYTES.image)}. Export as JPEG to publish this design.`
         );
         return;
       }

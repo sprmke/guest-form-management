@@ -12,7 +12,7 @@ export const SAMPLE_MARKETING_REVIEW = {
   quote: 'Felt like home the moment we arrived.',
   author: 'Recent guest',
   rating: 5,
-  attribution: '— Recent guest',
+  attribution: '- Recent guest',
   stars: reviewStarLabel(5),
 } as const;
 

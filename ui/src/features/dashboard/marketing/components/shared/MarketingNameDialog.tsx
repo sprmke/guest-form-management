@@ -1,15 +1,9 @@
 import { useEffect, useState } from 'react';
 
+import { AdminDialogShell } from '@/components/AdminDialogShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  ResponsiveModal,
-  ResponsiveModalContent,
-  ResponsiveModalFooter,
-  ResponsiveModalHeader,
-  ResponsiveModalTitle,
-} from '@/components/ui/responsive-modal';
 
 type Props = {
   open: boolean;
@@ -48,32 +42,34 @@ export function MarketingNameDialog({
   };
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
-      <ResponsiveModalContent className="sm:max-w-[24rem]">
-        <ResponsiveModalHeader>
-          <ResponsiveModalTitle>{title}</ResponsiveModalTitle>
-        </ResponsiveModalHeader>
-        <div className="space-y-2">
-          <Label htmlFor="marketing-name-input">{label}</Label>
-          <Input
-            id="marketing-name-input"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            className="h-10"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleConfirm();
-            }}
-          />
-        </div>
-        <ResponsiveModalFooter className="gap-2">
+    <AdminDialogShell
+      open={open}
+      onOpenChange={onOpenChange}
+      title={title}
+      sizeClassName="max-w-[min(calc(100vw-1.5rem),24rem)] sm:max-w-[24rem]"
+      footer={
+        <>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button type="button" onClick={handleConfirm}>
+          <Button type="button" onClick={() => void handleConfirm()}>
             {confirmLabel}
           </Button>
-        </ResponsiveModalFooter>
-      </ResponsiveModalContent>
-    </ResponsiveModal>
+        </>
+      }
+    >
+      <div className="space-y-2">
+        <Label htmlFor="marketing-name-input">{label}</Label>
+        <Input
+          id="marketing-name-input"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="h-10"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') void handleConfirm();
+          }}
+        />
+      </div>
+    </AdminDialogShell>
   );
 }

@@ -1079,7 +1079,7 @@ function buildFullyBookedWaitlistMark(
 function reviewFields(binding: DesignBinding) {
   return {
     quote: binding.reviewQuote?.trim() || 'Felt like home the moment we arrived.',
-    attribution: binding.reviewAttribution?.trim() || '— Recent guest',
+    attribution: binding.reviewAttribution?.trim() || '- Recent guest',
     stars: binding.reviewStars?.trim() || '★★★★★',
   };
 }

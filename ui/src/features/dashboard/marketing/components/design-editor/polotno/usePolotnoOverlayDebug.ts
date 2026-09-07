@@ -98,7 +98,7 @@ function inspectOverlay(
   };
 
   if (isMisplaced) {
-    console.warn(LOG, 'misplaced overlay — popper did not anchor transition container', payload);
+    console.warn(LOG, 'misplaced overlay: popper did not anchor transition container', payload);
   } else {
     console.info(LOG, 'overlay mounted', payload);
   }
@@ -146,7 +146,7 @@ export function usePolotnoOverlayDebug(studioRootRef: RefObject<HTMLElement | nu
     if (!isPolotnoOverlayDebugEnabled()) return;
 
     const studioRoot = studioRootRef.current;
-    console.info(LOG, 'debug enabled — open font picker / hover toolbar icons and watch console', {
+    console.info(LOG, 'debug enabled: open font picker / hover toolbar icons and watch console', {
       studioRoot: studioRoot?.className ?? null,
       studioRect: studioRoot?.getBoundingClientRect(),
       bodyChildren: document.body.childElementCount,

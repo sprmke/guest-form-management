@@ -103,7 +103,7 @@ export function openSlotDatesForMonth(
   }
 
   while (open.length < count) {
-    open.push({ dateNum: '—', dayName: 'OPEN' });
+    open.push({ dateNum: '-', dayName: 'OPEN' });
   }
 
   return open.slice(0, count);

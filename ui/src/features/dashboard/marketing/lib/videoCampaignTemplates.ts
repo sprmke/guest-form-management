@@ -145,7 +145,7 @@ export function defaultVideoFields(
       return {
         headline: 'GUESTS KEEP COMING BACK',
         subheadline: '“Felt like home the moment we arrived.”',
-        promoLine: '— recent stay',
+        promoLine: '- recent stay',
         ctaLine: 'Plan yours',
         slotLabels: [],
         rulesLine: property,
