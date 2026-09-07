@@ -119,7 +119,7 @@ doing it from the dedicated `/admin/pricing/subscriptions` or `/admin/approvals`
 - [Super Admin Overview](./overview.md)
 - [Org subscriptions](./org-subscriptions.md) · [Approvals](./approvals.md) · [Support](./support.md)
 - [`docs/PROJECT.md`](../../PROJECT.md) — Super Admin console note
-- [`docs/workflow/in-progress/super-admin-console-overhaul.md`](../../../workflow/in-progress/super-admin-console-overhaul.md)
+- [`docs/workflow/done/super-admin-console-overhaul.md`](../../../workflow/done/super-admin-console-overhaul.md)
 
 ---
 

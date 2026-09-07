@@ -2,7 +2,7 @@
 title: 'Form validation and environment variables'
 status: active
 tags: [architecture]
-updated: 2026-09-01
+updated: 2026-09-06
 ---
 
 # Form validation and environment variables
@@ -38,9 +38,11 @@ Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split.
 | `supabase/.env.prod.example`                                      | Multi-tenant prod bootstrap template  |
 | Gitignored `*.local`, `.env.development`, `.env.production`, etc. | Real values — never commit            |
 
-**Backups:** `.env-backups/<date>/` (gitignored). Re-format after edits: `bun scripts/dev/reorganize-env-files.mjs`.
+**Backups:** `.env-backups/<date>/` (gitignored). Re-format after edits: `bun run env:reorganize` (`scripts/dev/reorganize-env-files.mjs`).
 
-**Format:** Short `# Section` headers; optional vars commented in `*.example` only. Operator settings (email, payment, Telegram) live in DB — not env.
+**Hosted multi-tenant DEV sync:** `bun run env:sync:dev` merges shared secrets from `supabase/.env.local` → `supabase/.env.dev.local`, aligns `ui/.env.development.dev`, pushes Edge secrets to the linked DEV project (`fwor…`), and unsets legacy Google/Gmail Calendar/Sheets secrets. Does **not** touch Vercel or LEGACY prod. Vercel Preview vars for `kame-homes`: `bun scripts/dev/sync-vercel-dev-env.mjs` (requires `vercel login`).
+
+**Format:** Short `# Section` headers; optional vars commented in `*.example` only. Operator settings (email, payment, Telegram) live in DB — not env. Contact email is **UI-only** (`VITE_PLATFORM_CONTACT_EMAIL`) — never put `PLATFORM_CONTACT_EMAIL` in Edge env.
 
 ### Secrets hygiene
 
@@ -120,10 +122,11 @@ When invoking `supabase functions serve` manually, `./dev.sh` / `bun run dev:api
 
 #### Encryption
 
-| Variable                           | Notes                                                                         |
-| ---------------------------------- | ----------------------------------------------------------------------------- |
-| `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` | 32-byte hex/base64 — encrypts Telegram tokens at rest (legacy name)           |
-| `SETTINGS_VERIFICATION_SECRET`     | HMAC for settings OTP tokens; falls back to encryption key, then service role |
+| Variable                           | Notes                                                                                                                   |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` | 32-byte hex/base64 — encrypts Telegram tokens at rest (legacy name)                                                     |
+| `SETTINGS_VERIFICATION_SECRET`     | HMAC for settings OTP tokens; falls back to encryption key, then service role                                           |
+| `SUPER_ADMIN_VERIFICATION_SECRET`  | Optional — HMAC for the super-admin step-up sudo token; falls back to `SETTINGS_VERIFICATION_SECRET`, then service role |
 
 #### Anti-spam — Cloudflare Turnstile
 

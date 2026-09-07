@@ -69,7 +69,7 @@ Message is authored with the same TipTap rich-text editor used for property/stay
 ## Save path
 
 1. Open a row/card (or **Add announcement**) on **`/admin/announcements`** → big modal → **Save changes** / **Add announcement**
-2. Dialog replaces (or appends) that one entry in the full array and calls `PATCH update-platform-host-settings` with `{ announcements: [...] }`, then closes on success
+2. Dialog replaces (or appends) that one entry in the full array and calls `PATCH update-platform-host-settings` with `{ announcements: [...] }`, then closes on success — the first save in a session prompts for a step-up email OTP (~15-min sudo window; see [`overview.md`](overview.md#step-up-verification-all-admin-pages))
 3. **Delete** in the dialog footer removes the entry the same way
 4. Hosts read merged platform + development rows via **`list-host-announcements`**
 

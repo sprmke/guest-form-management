@@ -62,29 +62,31 @@ Supabase applies migrations in **filename sort order**. Among workflow redesign 
 2. The **Phase 0 batch** (`20260501000000`–`20260501000010`) runs next — see **§1.1**.
 3. Everything below runs **after** `20260501000010_*`:
 
-| File                                                                      | Purpose (short)                                                                                                         |
-| ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `20260502000000_widen_status_enum.sql`                                    | New workflow `status` literals + legacy row backfill                                                                    |
-| `20260503000000_add_sd_refund_details_status.sql`                         | Guest SD form columns + `READY_FOR_CHECKOUT`                                                                            |
-| `20260504000000_sd_settlement_line_items.sql`                             | JSONB line items + sync from numeric arrays                                                                             |
-| `20260530120000_guest_additional_fee.sql`                                 | `guest_additional_fee` column                                                                                           |
-| `20260531120000_fix_guest_submissions_status_check_pending_documents.sql` | Status CHECK allows `PENDING_DOCUMENTS`                                                                                 |
-| `20260527120000_finance_line_items.sql`                                   | `finance_line_items` operating expense/income table                                                                     |
-| `20260601120000_finance_line_items_recurrence.sql`                        | Recurrence columns (local / fresh reset order)                                                                          |
-| `20260601130000_gmail_mail_oauth_integration.sql`                         | `gmail_mail_integration` + OAuth state                                                                                  |
-| `20260708120000_finance_line_items_recurrence.sql`                        | Recurrence catch-up for hosted DBs that already applied `20260601120000` as Gmail                                       |
-| `20260710170000_app_settings_gaf_details.sql`                             | GAF PDF defaults (`app_settings` GAF columns)                                                                           |
-| `20260710180000_app_settings_gaf_signature.sql`                           | GAF unit-owner signature URL column                                                                                     |
-| `20260710190000_app_settings_gaf_guests_onsite_contact.sql`               | Rename GAF on-site contact column                                                                                       |
-| `20260602120000_document_substep_manual_incomplete.sql`                   | Manual incomplete flags / doc pipeline (dropped in `20261014120000`)                                                    |
-| `20261014120000_drop_document_manual_incomplete.sql`                      | Drops `gaf_manual_incomplete` / `pet_manual_incomplete`; strips JSONB `manualIncomplete`                                |
-| `20260603120000_guest_balance_settlement.sql`                             | Guest balance settlement columns                                                                                        |
-| `20260604140000_parking_owner.sql`                                        | `parking_owner` display name                                                                                            |
-| `20260605120000_rename_status_to_ready_for_checkout.sql`                  | Rename intermediate status to `READY_FOR_CHECKOUT`                                                                      |
-| `20260606120000_next_stay_voucher.sql`                                    | Next-stay voucher columns                                                                                               |
-| `20260607120000_drop_sd_refund_cash_pickup_note.sql`                      | Drops legacy cash pickup note column                                                                                    |
-| `20260607130000_sd_refund_bank_gotyme.sql`                                | SD refund bank allow-list (GCash / GoTyme / Maribank)                                                                   |
-| `20260709120000_backfill_calendar_event_dates.sql`                        | Documents Google Calendar occupied-night window fix; run **`backfill-calendar-event-dates`** edge function after deploy |
+| File                                                                      | Purpose (short)                                                                                                                   |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `20260502000000_widen_status_enum.sql`                                    | New workflow `status` literals + legacy row backfill                                                                              |
+| `20260503000000_add_sd_refund_details_status.sql`                         | Guest SD form columns + `READY_FOR_CHECKOUT`                                                                                      |
+| `20260504000000_sd_settlement_line_items.sql`                             | JSONB line items + sync from numeric arrays                                                                                       |
+| `20260530120000_guest_additional_fee.sql`                                 | `guest_additional_fee` column                                                                                                     |
+| `20260531120000_fix_guest_submissions_status_check_pending_documents.sql` | Status CHECK allows `PENDING_DOCUMENTS`                                                                                           |
+| `20260527120000_finance_line_items.sql`                                   | `finance_line_items` operating expense/income table                                                                               |
+| `20260601120000_finance_line_items_recurrence.sql`                        | Recurrence columns (local / fresh reset order)                                                                                    |
+| `20260601130000_gmail_mail_oauth_integration.sql`                         | `gmail_mail_integration` + OAuth state                                                                                            |
+| `20260708120000_finance_line_items_recurrence.sql`                        | Recurrence catch-up for hosted DBs that already applied `20260601120000` as Gmail                                                 |
+| `20260710170000_app_settings_gaf_details.sql`                             | GAF PDF defaults (`app_settings` GAF columns)                                                                                     |
+| `20260710180000_app_settings_gaf_signature.sql`                           | GAF unit-owner signature URL column                                                                                               |
+| `20260710190000_app_settings_gaf_guests_onsite_contact.sql`               | Rename GAF on-site contact column                                                                                                 |
+| `20260602120000_document_substep_manual_incomplete.sql`                   | Manual incomplete flags / doc pipeline (dropped in `20261014120000`)                                                              |
+| `20261014120000_drop_document_manual_incomplete.sql`                      | Drops `gaf_manual_incomplete` / `pet_manual_incomplete`; strips JSONB `manualIncomplete`                                          |
+| `20260603120000_guest_balance_settlement.sql`                             | Guest balance settlement columns                                                                                                  |
+| `20260604140000_parking_owner.sql`                                        | `parking_owner` display name                                                                                                      |
+| `20260605120000_rename_status_to_ready_for_checkout.sql`                  | Rename intermediate status to `READY_FOR_CHECKOUT`                                                                                |
+| `20260606120000_next_stay_voucher.sql`                                    | Next-stay voucher columns                                                                                                         |
+| `20260607120000_drop_sd_refund_cash_pickup_note.sql`                      | Drops legacy cash pickup note column                                                                                              |
+| `20260607130000_sd_refund_bank_gotyme.sql`                                | SD refund bank allow-list (GCash / GoTyme / Maribank)                                                                             |
+| `20260709120000_backfill_calendar_event_dates.sql`                        | Documents Google Calendar occupied-night window fix; run **`backfill-calendar-event-dates`** edge function after deploy           |
+| `20261306120000_property_settings_copy_log.sql`                           | Append-only **`property_settings_copy_log`** for org **Copy settings** runs (`copy-property-settings`); RLS on, service_role only |
+| `20261306120100_property_settings_copied_notification_type.sql`           | Adds **`property_settings_copied`** to notifications type check                                                                   |
 
 See also **§9** for SD bank allow-list rollback notes.
 
@@ -480,6 +482,23 @@ Notes:
 - `…120000` must precede any code that reads `external_source` (the `workflowOrchestrator` no-guest-side-effect guard keys on `guest_email` blank, so it is safe even before the column exists, but `calendarSyncRun` writes the columns).
 - Verify: `\d guest_submissions` shows the 7 new columns; `SELECT conname FROM pg_constraint WHERE conname = 'notifications_type_check'` then check the definition includes the 12 types.
 - No new edge secrets. The completion link reuses `publicGuestAppOrigin` resolution; the token endpoints are `verify_jwt = false` (`config.toml`).
+
+## 11c. Additive: Org Activity & Audit Log (Phase 0 + Phase 1, September 2026)
+
+One append-only `activity_log` table + a narrow `guest_submissions` trigger. Plan + emitter ledger: [`docs/workflow/in-progress/org-activity-audit-log.md`](../../workflow/in-progress/org-activity-audit-log.md). **All additive; no backfill, no data rewrite.**
+
+| File                                                        | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Reversible?                                                                                                                                  |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `20261306150000_activity_log.sql`                           | New table **`activity_log`** (append-only; `PRIMARY KEY (id, created_at)`; only FK is `actor_user_id → auth.users ON DELETE SET NULL`; CHECK constraints on `scope` / `actor_type` / `severity` / `source` + a scope/target coherence check + generous payload-size checks). 8 indexes (feed keyset, partial property/parking/destructive, category, actor, target, BRIN). RLS **enabled, no policies**, `GRANT ALL TO service_role` — no RLS read path. `BEFORE UPDATE OR DELETE` trigger `activity_log_block_mutation()` rejects mutation (service role included); DELETE only under `SET activity_log.allow_purge = 'on'`.  | Yes — `DROP TABLE public.activity_log CASCADE; DROP FUNCTION public.activity_log_block_mutation();`. No other table touched.                 |
+| `20261306150100_activity_log_guest_submissions_trigger.sql` | `AFTER INSERT OR UPDATE OR DELETE ON guest_submissions` trigger `trg_activity_log_guest_submissions` — `WHEN` the JWT role is `authenticated`/`anon` (service-role writes skipped). SECURITY DEFINER function resolves the org via `property_id` / `parking_id` / `parking_request_organization_id`, emits `booking.created` / `booking.details_edited` / `booking.deleted` with an allow-listed **changed-column-name** diff (`status` + workflow columns excluded; no from/to values stored). Whole body wrapped in `EXCEPTION WHEN others` → `RAISE WARNING` + return, so an audit hiccup never rolls back a booking write. | Yes — `DROP TRIGGER trg_activity_log_guest_submissions ON public.guest_submissions; DROP FUNCTION public.activity_log_guest_submissions();`. |
+
+Notes:
+
+- **Order matters:** `…150000` must run before `…150100` (the trigger inserts into `activity_log`). Both must run before deploying the edge-function bundle that imports `_shared/activityLog.ts`.
+- **Timestamp note:** filenames follow the repo's synthetic future-dated sequence and sit **after** the latest existing migration (`20261306140000_host_verification_reward.sql`) — not the `20261305130200` slot the plan doc originally suggested (that would sort before already-applied migrations).
+- **Retention / partitioning** (`activity_log.allow_purge` GUC + monthly range partitions on `created_at`) are a **roadmap** item — not in these migrations. v1 ships a single table; BRIN + btree handle millions of rows.
+- Verify after applying: `\d public.activity_log` shows the composite PK + 8 indexes + `rowsecurity = t` with `SELECT count(*) FROM pg_policies WHERE tablename = 'activity_log'` returning `0`; `UPDATE public.activity_log SET summary = 'x'` raises `activity_log is append-only`; a `SET request.jwt.claims` to `role = service_role` then an `UPDATE guest_submissions` writes **no** `activity_log` row, while `role = authenticated` on an allow-listed column change writes one.
+- No new edge secrets. `list-activity-log` is `verify_jwt = false` (`config.toml`), gated by `verifyOrgAccess` in the handler.
 
 ---
 

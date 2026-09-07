@@ -25,6 +25,8 @@ Route: `/admin/pricing/subscriptions`
 
 **Access:** `RequireSuperAdmin`.
 
+**Step-up OTP:** assign/change, price override, extend period, and run-billing-cron each need a fresh email verification code (~15-min sudo window) — see [`overview.md`](overview.md#step-up-verification-all-admin-pages) / `.cursor/rules/admin-auth.mdc` §8.
+
 **Browser tab title:** `Kame Homes - Org subscriptions`
 
 ---

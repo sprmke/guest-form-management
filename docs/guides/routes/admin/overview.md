@@ -22,7 +22,7 @@ Route: `/admin`
 | Range toggle    | n/a              | —          | Done | 30d / 90d / 12mo — scopes the AI-spend KPI + AI-cost chart                                                                                                    |
 | Sidebar nav     | n/a              | —          | Done | Grouped into labelled sections (`SUPER_ADMIN_NAV_GROUPS`) below a header-less Overview link                                                                   |
 
-> Tracked by [`docs/workflow/in-progress/super-admin-console-overhaul.md`](../../../workflow/in-progress/super-admin-console-overhaul.md).
+> Tracked by [`docs/workflow/done/super-admin-console-overhaul.md`](../../../workflow/done/super-admin-console-overhaul.md).
 
 ---
 
@@ -31,6 +31,8 @@ Route: `/admin`
 Landing page for the **platform super-admin** area — a distinct tier from org/property admin and from the legacy `ADMIN_ALLOWED_EMAILS` gate. It is a **data dashboard**: the `super-admin-overview` edge function (`?range=30d|90d|12mo`) returns KPI rollups, a 12-month org/subscription growth series, live plan mix, AI cost by feature, an attention queue, and recent activity. There is no "Jump to" destinations grid on this page anymore — the Platform sidebar is the single place to browse every destination, so the dashboard stays focused on metrics.
 
 **Access:** `RequireSuperAdmin` — email must be in `SUPER_ADMIN_EMAILS` (server) / `VITE_SUPER_ADMIN_EMAILS` (client UX gate). Uses the same signed-in session as the legacy admin dashboard (`useAdminSession`), so a super admin must already be signed in via Google OAuth; being super admin does not require being in `ADMIN_ALLOWED_EMAILS`.
+
+**Step-up verification (all `/admin/*` pages):** the first time you save a sensitive change in a session — an org subscription or billing period, platform payment or parking-commission settings, a parking payout or clawback, an AI credit-wallet adjustment, AI or dashboard-assistant global settings, the plan catalog, platform settings, platform host announcements, or a contract-consideration decision — a **Confirm it's you** dialog opens (the same modal as the host payment-settings flow). You click **Send OTP**, a 6-digit code is emailed to _your own_ signed-in email, and you enter it. One successful code keeps every sensitive action unlocked for ~15 minutes; after that you are asked again. Read-only pages, lists, and viewing detail never prompt. The code expires in 10 minutes, allows 5 attempts, and is capped at 3 sends per 15 minutes. If email is down you cannot complete these actions — there is no bypass by design.
 
 ---
 
