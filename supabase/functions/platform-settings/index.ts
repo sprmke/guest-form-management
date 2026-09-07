@@ -13,6 +13,7 @@ import {
 } from '../_shared/httpResponse.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
 import { logSuperAdminAction } from '../_shared/superAdminAudit.ts';
+import { requireSuperAdminStepUp } from '../_shared/superAdminVerification.ts';
 
 function serialize(row: Record<string, unknown>) {
   return {
@@ -24,6 +25,18 @@ function serialize(row: Record<string, unknown>) {
     legalTermsUrl: (row.legal_terms_url as string | null) ?? null,
     legalPrivacyUrl: (row.legal_privacy_url as string | null) ?? null,
     publicRateLimitPerMin: Number(row.public_rate_limit_per_min ?? 60),
+    hostRewardEnabled: row.host_reward_enabled === true,
+    hostRewardPlanCode: (row.host_reward_plan_code as string | null) ?? 'growth',
+    hostRewardDurationDays: Number(row.host_reward_duration_days ?? 30),
+    hostRewardTrigger:
+      row.host_reward_trigger === 'recommended_verification_submitted'
+        ? 'recommended_verification_submitted'
+        : 'recommended_verification_approved',
+    hostRewardCampaignStart: (row.host_reward_campaign_start as string | null) ?? null,
+    hostRewardCampaignEnd: (row.host_reward_campaign_end as string | null) ?? null,
+    hostRewardMaxPerOrg: Number(row.host_reward_max_per_org ?? 1),
+    hostRewardApplyToPaidOrg:
+      row.host_reward_apply_to_paid_org === 'extend' ? 'extend' : 'skip',
     updatedAt: row.updated_at as string,
   };
 }
@@ -37,6 +50,9 @@ function trimmedOrNull(v: unknown): string | null | undefined {
 }
 
 serveSuperAdmin('platform-settings', async (req, user) => {
+  const stepUp = await requireSuperAdminStepUp(req, user, 'platform_settings');
+  if (stepUp) return stepUp;
+
   const supabase = createServiceClient();
 
   if (req.method === 'GET') {
@@ -83,6 +99,69 @@ serveSuperAdmin('platform-settings', async (req, user) => {
         return jsonError(req, 'publicRateLimitPerMin must be 1–10000');
       }
       patch.public_rate_limit_per_min = n;
+    }
+
+    if (body.hostRewardEnabled !== undefined) {
+      if (typeof body.hostRewardEnabled !== 'boolean') {
+        return jsonError(req, 'hostRewardEnabled must be a boolean');
+      }
+      patch.host_reward_enabled = body.hostRewardEnabled;
+    }
+    const hostRewardPlanCode = trimmedOrNull(body.hostRewardPlanCode);
+    if (hostRewardPlanCode !== undefined) {
+      const { data: planRow, error: planError } = await supabase
+        .from('pricing_plans')
+        .select('id')
+        .eq('code', hostRewardPlanCode)
+        .eq('is_active', true)
+        .maybeSingle();
+      if (planError) return jsonError(req, planError.message, 500);
+      if (!planRow) return jsonError(req, 'hostRewardPlanCode must match an active pricing plan');
+      patch.host_reward_plan_code = hostRewardPlanCode;
+    }
+    if (body.hostRewardDurationDays != null) {
+      const n = Number(body.hostRewardDurationDays);
+      if (!Number.isInteger(n) || n < 1 || n > 366) {
+        return jsonError(req, 'hostRewardDurationDays must be 1–366');
+      }
+      patch.host_reward_duration_days = n;
+    }
+    if (body.hostRewardTrigger !== undefined) {
+      if (
+        body.hostRewardTrigger !== 'recommended_verification_submitted' &&
+        body.hostRewardTrigger !== 'recommended_verification_approved'
+      ) {
+        return jsonError(
+          req,
+          'hostRewardTrigger must be recommended_verification_submitted or recommended_verification_approved'
+        );
+      }
+      patch.host_reward_trigger = body.hostRewardTrigger;
+    }
+    if (body.hostRewardCampaignStart !== undefined) {
+      if (body.hostRewardCampaignStart !== null && typeof body.hostRewardCampaignStart !== 'string') {
+        return jsonError(req, 'hostRewardCampaignStart must be a string or null');
+      }
+      patch.host_reward_campaign_start = body.hostRewardCampaignStart;
+    }
+    if (body.hostRewardCampaignEnd !== undefined) {
+      if (body.hostRewardCampaignEnd !== null && typeof body.hostRewardCampaignEnd !== 'string') {
+        return jsonError(req, 'hostRewardCampaignEnd must be a string or null');
+      }
+      patch.host_reward_campaign_end = body.hostRewardCampaignEnd;
+    }
+    if (body.hostRewardMaxPerOrg != null) {
+      const n = Number(body.hostRewardMaxPerOrg);
+      if (!Number.isInteger(n) || n < 1 || n > 100) {
+        return jsonError(req, 'hostRewardMaxPerOrg must be 1–100');
+      }
+      patch.host_reward_max_per_org = n;
+    }
+    if (body.hostRewardApplyToPaidOrg !== undefined) {
+      if (body.hostRewardApplyToPaidOrg !== 'skip' && body.hostRewardApplyToPaidOrg !== 'extend') {
+        return jsonError(req, 'hostRewardApplyToPaidOrg must be skip or extend');
+      }
+      patch.host_reward_apply_to_paid_org = body.hostRewardApplyToPaidOrg;
     }
 
     const { data, error } = await supabase

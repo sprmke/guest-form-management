@@ -19,6 +19,7 @@ import {
   updateOrgTeamMember,
 } from '../_shared/orgTeamService.ts';
 import { catchPlanFeatureError } from '../_shared/planEntitlements.ts';
+import { logTeamActivity } from '../_shared/teamActivity.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('org-team-members', async (req) => {
@@ -46,6 +47,14 @@ serveAuthenticated('org-team-members', async (req) => {
     const ctx = await requireOrgTeamContext(req, orgId, orgSlug);
     try {
       const member = await updateOrgTeamMember(ctx, body);
+      await logTeamActivity({
+        ctx,
+        req,
+        action: 'team.member_permissions_changed',
+        targetType: 'member',
+        targetId: typeof body.memberId === 'string' ? body.memberId : null,
+        metadata: { fields: Object.keys(body).filter((k) => k !== 'memberId' && k !== 'orgId') },
+      });
       return jsonSuccess(req, { member });
     } catch (e) {
       const planErr = catchPlanFeatureError(req, e);
@@ -70,6 +79,13 @@ serveAuthenticated('org-team-members', async (req) => {
     }
     try {
       await removeOrgTeamMember(ctx, memberId);
+      await logTeamActivity({
+        ctx,
+        req,
+        action: 'team.member_removed',
+        targetType: 'member',
+        targetId: memberId,
+      });
       return jsonSuccess(req, { removed: true });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Remove failed';

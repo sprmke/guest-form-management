@@ -24,6 +24,7 @@ import {
   requireTeamParkingAccess,
   updateParkingCustomRole,
 } from '../_shared/parkingTeamService.ts';
+import { logTeamActivity } from '../_shared/teamActivity.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('parking-team-custom-roles', async (req) => {
@@ -55,6 +56,14 @@ serveAuthenticated('parking-team-custom-roles', async (req) => {
       );
       await requirePropertyFeature(entitlementPropertyId, 'customRoles');
       const customRole = await createParkingCustomRole(ctx, body);
+      await logTeamActivity({
+        ctx,
+        req,
+        action: 'team.custom_role_created',
+        targetType: 'custom_role',
+        targetId: (customRole as { id?: string })?.id ?? null,
+        targetLabel: (customRole as { name?: string })?.name ?? null,
+      });
       return jsonSuccess(req, { customRole });
     } catch (e) {
       const planErr = catchPlanFeatureError(req, e);
@@ -79,6 +88,14 @@ serveAuthenticated('parking-team-custom-roles', async (req) => {
       );
       await requirePropertyFeature(entitlementPropertyId, 'customRoles');
       const customRole = await updateParkingCustomRole(ctx, body);
+      await logTeamActivity({
+        ctx,
+        req,
+        action: 'team.custom_role_updated',
+        targetType: 'custom_role',
+        targetId: (customRole as { id?: string })?.id ?? null,
+        targetLabel: (customRole as { name?: string })?.name ?? null,
+      });
       return jsonSuccess(req, { customRole });
     } catch (e) {
       const planErr = catchPlanFeatureError(req, e);
@@ -110,6 +127,13 @@ serveAuthenticated('parking-team-custom-roles', async (req) => {
       );
       await requirePropertyFeature(entitlementPropertyId, 'customRoles');
       await deleteParkingCustomRole(ctx, roleId);
+      await logTeamActivity({
+        ctx,
+        req,
+        action: 'team.custom_role_deleted',
+        targetType: 'custom_role',
+        targetId: roleId,
+      });
       return jsonSuccess(req, { deleted: true });
     } catch (e) {
       const planErr = catchPlanFeatureError(req, e);

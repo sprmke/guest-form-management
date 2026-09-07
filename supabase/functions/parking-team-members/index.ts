@@ -18,6 +18,7 @@ import {
   requireTeamParkingAccess,
   updateParkingTeamMember,
 } from '../_shared/parkingTeamService.ts';
+import { logTeamActivity } from '../_shared/teamActivity.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('parking-team-members', async (req) => {
@@ -44,6 +45,13 @@ serveAuthenticated('parking-team-members', async (req) => {
     );
     try {
       const member = await updateParkingTeamMember(ctx, body);
+      await logTeamActivity({
+        ctx,
+        req,
+        action: 'team.member_permissions_changed',
+        targetType: 'member',
+        targetId: typeof body.memberId === 'string' ? body.memberId : null,
+      });
       return jsonSuccess(req, { member });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Update failed';
@@ -67,6 +75,13 @@ serveAuthenticated('parking-team-members', async (req) => {
     }
     try {
       await removeParkingTeamMember(ctx, memberId);
+      await logTeamActivity({
+        ctx,
+        req,
+        action: 'team.member_removed',
+        targetType: 'member',
+        targetId: memberId,
+      });
       return jsonSuccess(req, { removed: true });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Remove failed';

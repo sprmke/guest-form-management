@@ -3,6 +3,7 @@
  */
 
 import { createServiceClient, verifyPropertyOwner } from '../_shared/orgAuth.ts';
+import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
 import {
   jsonError,
   jsonSuccess,
@@ -21,7 +22,7 @@ serveAuthenticated('delete-property', async (req) => {
     return jsonError(req, 'propertyId is required');
   }
 
-  const { property } = await verifyPropertyOwner(req, propertyId);
+  const { user, property, org } = await verifyPropertyOwner(req, propertyId);
   const supabase = createServiceClient();
 
   const { count: bookingCount, error: countError } = await supabase
@@ -76,6 +77,21 @@ serveAuthenticated('delete-property', async (req) => {
     console.error('[delete-property]', deleteError.message);
     return jsonError(req, 'Failed to delete property', 500);
   }
+
+  await logActivity({
+    action: 'property.deleted',
+    organizationId: org.id,
+    propertyId: property.id,
+    scope: 'property',
+    actor: buildActorContext(
+      'dashboard',
+      { authUser: user, actorType: 'org_owner', role: 'owner' },
+      req
+    ),
+    targetType: 'property',
+    targetId: property.id,
+    targetLabel: property.name,
+  });
 
   return jsonSuccess(req, { deletedPropertyId: property.id });
 });

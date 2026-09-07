@@ -13,6 +13,7 @@ import {
   adminExtendOrgSubscription,
   runPlatformBillingCycle,
 } from '../_shared/subscriptionOrchestrator.ts';
+import { revokeHostVerificationReward } from '../_shared/hostVerificationReward.ts';
 import {
   jsonError,
   jsonSuccess,
@@ -23,6 +24,7 @@ import {
 import { postgrestOrIlikeValue } from '../_shared/publicSearch.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
 import { logSuperAdminAction } from '../_shared/superAdminAudit.ts';
+import { requireSuperAdminStepUp } from '../_shared/superAdminVerification.ts';
 
 // Statuses that count as an org's current ("live") subscription — mirrors the partial unique
 // index (org_subscriptions_one_live_per_org_idx) plus 'suspended', which can still be the
@@ -41,6 +43,9 @@ async function enrolledPropertyIds(
 }
 
 serveSuperAdmin('org-subscriptions-admin', async (req, admin) => {
+  const stepUp = await requireSuperAdminStepUp(req, admin, 'org_subscription');
+  if (stepUp) return stepUp;
+
   const supabase = createServiceClient();
   const url = new URL(req.url);
   const organizationIdParam = url.searchParams.get('organizationId')?.trim() || null;
@@ -77,6 +82,47 @@ serveSuperAdmin('org-subscriptions-admin', async (req, admin) => {
           properties: propertiesRes.count ?? 0,
         },
       });
+    }
+
+    if (url.searchParams.get('rewards') === 'true') {
+      const { data, error } = await supabase
+        .from('org_subscriptions')
+        .select(
+          `
+          id,
+          organization_id,
+          status,
+          current_period_start,
+          current_period_end,
+          created_at,
+          organizations ( id, name, slug ),
+          pricing_plans ( code, name )
+        `
+        )
+        .eq('source', 'reward')
+        .in('status', ['trialing', 'active'])
+        .order('current_period_end', { ascending: true })
+        .limit(50);
+      if (error) return jsonError(req, error.message, 500);
+
+      const grants = (data ?? []).map((row) => {
+        const org = row.organizations as Record<string, unknown> | null | undefined;
+        const plan = row.pricing_plans as Record<string, unknown> | null | undefined;
+        return {
+          orgSubscriptionId: row.id as string,
+          organizationId: row.organization_id as string,
+          organizationName: (org?.name as string | undefined) ?? 'Unknown org',
+          organizationSlug: (org?.slug as string | undefined) ?? null,
+          status: row.status as string,
+          planCode: (plan?.code as string | undefined) ?? null,
+          planName: (plan?.name as string | undefined) ?? null,
+          periodStart: (row.current_period_start as string | null) ?? null,
+          periodEnd: (row.current_period_end as string | null) ?? null,
+          createdAt: row.created_at as string,
+        };
+      });
+
+      return jsonSuccess(req, { grants });
     }
 
     if (organizationIdParam) {
@@ -329,6 +375,29 @@ serveSuperAdmin('org-subscriptions-admin', async (req, admin) => {
         status,
         note: typeof body.note === 'string' ? body.note.trim() || null : null,
         adminUserId: admin.id,
+      });
+
+      const subscription = await getActiveOrgSubscription(organizationId);
+      return jsonSuccess(req, { subscription });
+    }
+
+    if (action === 'revoke_reward') {
+      const orgSubscriptionId =
+        typeof body.orgSubscriptionId === 'string'
+          ? body.orgSubscriptionId.trim()
+          : typeof body.subscriptionId === 'string'
+            ? body.subscriptionId.trim()
+            : '';
+      if (!orgSubscriptionId) return jsonError(req, 'orgSubscriptionId is required');
+
+      await revokeHostVerificationReward(orgSubscriptionId, admin.id);
+
+      await logSuperAdminAction(admin, {
+        action: 'org_subscription.revoke_reward',
+        targetType: 'organization',
+        targetId: organizationId,
+        summary: `Revoked host verification reward subscription ${orgSubscriptionId}`,
+        metadata: { orgSubscriptionId },
       });
 
       const subscription = await getActiveOrgSubscription(organizationId);

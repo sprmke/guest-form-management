@@ -3,6 +3,7 @@
  */
 
 import { createServiceClient } from '../_shared/orgAuth.ts';
+import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
 import {
   jsonError,
   jsonSuccess,
@@ -28,7 +29,8 @@ serveAuthenticated('delete-parking', async (req) => {
     headers: req.headers,
   });
 
-  const { parkingRow } = await resolveScopedParkingAccess(scopedReq, 'org:parkings:manage');
+  const access = await resolveScopedParkingAccess(scopedReq, 'org:parkings:manage');
+  const { parkingRow } = access;
   const supabase = createServiceClient();
 
   const { error: deleteError } = await supabase.from('parkings').delete().eq('id', parkingRow.id);
@@ -37,6 +39,17 @@ serveAuthenticated('delete-parking', async (req) => {
     console.error('[delete-parking]', deleteError.message);
     return jsonError(req, 'Failed to delete parking', 500);
   }
+
+  await logActivity({
+    action: 'parking.deleted',
+    organizationId: parkingRow.organization_id,
+    parkingId: parkingRow.id,
+    scope: 'parking',
+    actor: buildActorContext('dashboard', { orgAccess: access }, req),
+    targetType: 'parking',
+    targetId: parkingRow.id,
+    targetLabel: parkingRow.name ?? null,
+  });
 
   return jsonSuccess(req, { deletedParkingId: parkingRow.id });
 });

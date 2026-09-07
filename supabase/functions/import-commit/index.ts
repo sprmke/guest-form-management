@@ -13,6 +13,7 @@
 
 import { importCommitStatusForCheckIn } from '../_shared/importCommitStatus.ts';
 import { resolveImportAccessWithPlan } from '../_shared/importAccess.ts';
+import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
 import {
   isImportBatchStatus,
   type ImportBatchStatus,
@@ -106,14 +107,14 @@ serveAuthenticated('import-commit', async (req) => {
   const supabase = createServiceClient();
 
   // Load and validate batch.
-  const { data: batch, error: batchError } = await supabase
+  const { data: batch, error: batchLoadError } = await supabase
     .from('import_batches')
     .select('id, organization_id, property_id, status')
     .eq('id', batchId)
     .maybeSingle();
 
-  if (batchError) {
-    console.error('[import-commit] batch load failed:', batchError.message);
+  if (batchLoadError) {
+    console.error('[import-commit] batch load failed:', batchLoadError.message);
     return jsonError(req, 'Failed to load import batch');
   }
   if (!batch) return jsonError(req, 'Import batch not found', 404);
@@ -254,6 +255,20 @@ serveAuthenticated('import-commit', async (req) => {
   console.log(
     `[import-commit] batch ${batchId} — status=${finalStatus}, inserted=${inserted}, skipped=${skipped}, failed=${failed.length}`
   );
+
+  if (inserted > 0) {
+    // One summary row for the whole batch — never one per imported booking.
+    await logActivity({
+      action: 'booking.bulk_imported',
+      organizationId: access.orgId,
+      propertyId: access.propertyId,
+      actor: buildActorContext('dashboard', { propertyAccess: access }, req),
+      targetType: 'property',
+      targetId: access.propertyId,
+      targetLabel: access.property?.name ?? null,
+      metadata: { batch_id: batchId, count: inserted, skipped, failed: failed.length },
+    });
+  }
 
   return jsonSuccess(req, {
     batchId,

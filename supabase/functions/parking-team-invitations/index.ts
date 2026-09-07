@@ -22,6 +22,7 @@ import {
   resendParkingInvitation,
 } from '../_shared/parkingTeamService.ts';
 import { identityFromRequest, rateLimitGate } from '../_shared/rateLimit.ts';
+import { logTeamActivity } from '../_shared/teamActivity.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('parking-team-invitations', async (req, user) => {
@@ -66,6 +67,14 @@ serveAuthenticated('parking-team-invitations', async (req, user) => {
       }
       try {
         const invitation = await resendParkingInvitation(ctx, invitationId);
+        await logTeamActivity({
+          ctx,
+          req,
+          action: 'team.invite_resent',
+          targetType: 'invitation',
+          targetId: invitationId,
+          targetLabel: (invitation as { email?: string })?.email ?? null,
+        });
         return jsonSuccess(req, { invitation });
       } catch (e) {
         return jsonErrorFromCatch(req, e, 'Resend failed');
@@ -79,6 +88,14 @@ serveAuthenticated('parking-team-invitations', async (req, user) => {
     );
     try {
       const invitation = await createParkingInvitation(ctx, body);
+      await logTeamActivity({
+        ctx,
+        req,
+        action: 'team.invite_sent',
+        targetType: 'invitation',
+        targetId: (invitation as { id?: string })?.id ?? null,
+        targetLabel: (invitation as { email?: string })?.email ?? null,
+      });
       return jsonSuccess(req, { invitation });
     } catch (e) {
       return jsonErrorFromCatch(req, e, 'Invite failed', { conflictOnAlready: true });
@@ -98,6 +115,13 @@ serveAuthenticated('parking-team-invitations', async (req, user) => {
     }
     try {
       await cancelParkingInvitation(ctx.parking.id, invitationId);
+      await logTeamActivity({
+        ctx,
+        req,
+        action: 'team.invite_revoked',
+        targetType: 'invitation',
+        targetId: invitationId,
+      });
       return jsonSuccess(req, { cancelled: true });
     } catch (e) {
       return jsonErrorFromCatch(req, e, 'Cancel failed');

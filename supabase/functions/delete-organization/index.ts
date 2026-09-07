@@ -3,6 +3,7 @@
  */
 
 import { createServiceClient, verifyOrgOwner } from '../_shared/orgAuth.ts';
+import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
 import { PROPERTY_MEDIA_BUCKET } from '../_shared/propertyMedia.ts';
 import {
   jsonError,
@@ -21,7 +22,7 @@ serveAuthenticated('delete-organization', async (req) => {
     return jsonError(req, 'orgId is required');
   }
 
-  const { org } = await verifyOrgOwner(req, orgId);
+  const { user, org } = await verifyOrgOwner(req, orgId);
   const supabase = createServiceClient();
 
   const { data: properties, error: propertiesError } = await supabase
@@ -94,6 +95,21 @@ serveAuthenticated('delete-organization', async (req) => {
     console.error('[delete-organization]', deleteError.message);
     return jsonError(req, 'Failed to delete organization', 500);
   }
+
+  await logActivity({
+    action: 'org.deleted',
+    organizationId: org.id,
+    scope: 'org',
+    actor: buildActorContext(
+      'dashboard',
+      { authUser: user, actorType: 'org_owner', role: 'owner' },
+      req
+    ),
+    targetType: 'organization',
+    targetId: org.id,
+    targetLabel: org.name,
+    metadata: { property_count: propertyIds.length },
+  });
 
   return jsonSuccess(req, { deletedOrganizationId: org.id });
 });

@@ -22,6 +22,7 @@ import {
   type ImportBatchStatus,
 } from '../_shared/importBatchStatusMachine.ts';
 import { WorkflowOrchestrator, type DevControlFlags } from '../_shared/workflowOrchestrator.ts';
+import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
 import {
   jsonError,
   jsonSuccess,
@@ -63,6 +64,7 @@ serveAuthenticated('import-revert', async (req) => {
   requireHttpMethod(req, 'POST');
 
   const access = await resolveImportAccess(req);
+  const actor = buildActorContext('dashboard', { propertyAccess: access }, req);
   const body = await readJsonBody(req);
 
   const batchId = typeof body.batchId === 'string' ? body.batchId.trim() : '';
@@ -212,7 +214,8 @@ serveAuthenticated('import-revert', async (req) => {
         'CANCELLED',
         {},
         REVERT_DEV_CONTROLS,
-        true // manual override
+        true, // manual override
+        actor
       );
       cancelled += 1;
     } catch (err) {
@@ -255,6 +258,24 @@ serveAuthenticated('import-revert', async (req) => {
   console.log(
     `[import-revert] batch ${batchId} — cancelled=${cancelled}, moved=${movedDetails.length}, failed=${revertFailed.length}`
   );
+
+  // One summary row for the batch — the per-booking `booking.cancelled` rows are
+  // emitted by the orchestrator; this ties them together.
+  await logActivity({
+    action: 'booking.import_reverted',
+    organizationId: access.orgId,
+    propertyId: access.propertyId,
+    actor,
+    targetType: 'property',
+    targetId: access.propertyId,
+    targetLabel: access.property?.name ?? null,
+    metadata: {
+      batch_id: batchId,
+      count: cancelled,
+      failed: revertFailed.length,
+      moved: movedDetails.length,
+    },
+  });
 
   return jsonSuccess(req, {
     batchId,
