@@ -22,13 +22,14 @@ When you add a function that imports `emailService` or `workflowOrchestrator`, c
 
 ## Function categories & JWT policy
 
-This repo has three categories. Set JWT policy in `supabase/config.toml` accordingly.
+This repo has four categories. Set JWT policy in `supabase/config.toml` accordingly.
 
-| Category             | Functions                                                                                                                                                                                                                                    | `verify_jwt` | Notes                                                                                                                                                                                                                                           |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public (guest)       | `submit-form`, `get-form`, `get-booked-dates`, `get-guest-payment-info`, `get-public-property`                                                                                                                                               | `false`      | UI passes anon key. Never trust request body blindly.                                                                                                                                                                                           |
-| Admin                | `list-bookings`, `transition-booking`, `upload-booking-asset`, `upload-app-settings-asset`, `parking-broadcast-email`, `cancel-booking`, `app-settings`, `telegram-marketing-settings`, `telegram-staff-settings`, `telegram-admin-settings` | `false`      | Kong JWT gate off (ES256 tokens); **first line** of handler must call `verifyAdminJwt(req)` — that is the real gate.                                                                                                                            |
-| Scheduled / internal | `sd-refund-cron`, `telegram-marketing-cron`, `telegram-staff-cron`, `telegram-admin-cron`                                                                                                                                                    | `false`      | Invoked by hosted **`pg_cron` + `net.http_post`** (see `docs/archive/operations/scheduled-jobs-and-testing.md`); handlers do **not** call `verifyAdminJwt` except SD scoped body. Telegram crons optionally check **`X-Telegram-Cron-Secret`**. |
+| Category                     | Functions                                                                                                                                                                                                                                    | `verify_jwt` | Notes                                                                                                                                                                                                                                           |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public (guest)               | `submit-form`, `get-form`, `get-booked-dates`, `get-guest-payment-info`, `get-public-property`                                                                                                                                               | `false`      | UI passes anon key. Never trust request body blindly.                                                                                                                                                                                           |
+| Admin                        | `list-bookings`, `transition-booking`, `upload-booking-asset`, `upload-app-settings-asset`, `parking-broadcast-email`, `cancel-booking`, `app-settings`, `telegram-marketing-settings`, `telegram-staff-settings`, `telegram-admin-settings` | `false`      | Kong JWT gate off (ES256 tokens); **first line** of handler must call `verifyAdminJwt(req)` — that is the real gate.                                                                                                                            |
+| Org / property authenticated | `copy-property-settings`                                                                                                                                                                                                                     | `false`      | `serveAuthenticated`; handler auth via **`verifyPropertyAccess`** (source `settings:view`; per-target group edit leaves + plan gates). Not `verifyAdminJwt`.                                                                                    |
+| Scheduled / internal         | `sd-refund-cron`, `telegram-marketing-cron`, `telegram-staff-cron`, `telegram-admin-cron`                                                                                                                                                    | `false`      | Invoked by hosted **`pg_cron` + `net.http_post`** (see `docs/archive/operations/scheduled-jobs-and-testing.md`); handlers do **not** call `verifyAdminJwt` except SD scoped body. Telegram crons optionally check **`X-Telegram-Cron-Secret`**. |
 
 ## Handler skeleton (copy this)
 
@@ -119,7 +120,8 @@ Any **new anonymous write endpoint** (or a self-service-authed one that fans out
 4. Document env vars in `docs/architecture/validation-and-env.md`.
 5. Update the API table in `docs/architecture/edge-functions.md`.
 6. If the function participates in the booking workflow, make it go through `workflowOrchestrator`.
-7. Add a `README` comment at the top of `index.ts` with: purpose, trigger, idempotency strategy.
+7. If the handler **mutates org / property / parking data** (or records a guest/public action worth accountability), call **`logActivity`** from `_shared/activityLog.ts` after the write succeeds — `buildActorContext` + a redacted `diffRecord`, never in a `catch`, never blocking the response. See **`.cursor/rules/audit-logging.mdc`** / the `audit-logging` skill. Mark `activity-log: N/A — <why>` if it genuinely does not apply.
+8. Add a `README` comment at the top of `index.ts` with: purpose, trigger, idempotency strategy.
 
 ## Don'ts
 
@@ -127,3 +129,12 @@ Any **new anonymous write endpoint** (or a self-service-authed one that fans out
 - Don’t hand-roll JWT verification — use `supabase.auth.getUser`.
 - Don’t log guest PII beyond what’s strictly needed for debugging; never log tokens.
 - Don’t create or touch buckets inline — declare them in a migration under `supabase/migrations/`.
+
+## Setup Guide / host reward functions
+
+- `setup-guide-state` — JWT + any active org member; writes via `set_org_setup_guide_state` RPC only.
+- `get-host-reward-offer` — JWT + any active org member; read-only offer/eligibility for the Setup Guide Recommended step.
+
+## Copy property settings
+
+- `copy-property-settings` — `verify_jwt = false`; `serveAuthenticated` + `verifyPropertyAccess` (not `verifyAdminJwt`). Same-org targets only; per-(target, group) leaf + plan skip+report. Needs `static_files` for settings-change notice email templates.

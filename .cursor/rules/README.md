@@ -6,20 +6,21 @@ Agent context for **Vite + React + Supabase Edge Functions**. Adapted from [prop
 
 Keep this list **small**. Heavy domain specs use globs.
 
-| File                            | Purpose                                               |
-| ------------------------------- | ----------------------------------------------------- |
-| `project-context.mdc`           | Lean stack + doc index + where-to-edit pointers       |
-| `ai-usage.mdc`                  | Session hygiene, model routing, subagent discipline   |
-| `documentation-maintenance.mdc` | Sync docs with code                                   |
-| `ui-minimal-copy.mdc`           | No extra UI prose                                     |
-| `human-copy.mdc`                | Production-grade copy; no AI tells / em dashes        |
-| `superpowers-opt-in.mdc`        | Superpowers opt-in only (see `/superpowers-*`)        |
-| `git-commits.mdc`               | No Cursor author/co-author in commits                 |
-| `no-prod-deploy.mdc`            | Block prod Supabase/DB deploys (unlock: **kamewave**) |
-| `markitdown-mcp.mdc`            | Convert PDF/Office attachments via MarkItDown MCP     |
-| `route-guides.mdc`              | Page behavior docs must stay in sync                  |
-| `plans-and-permissions.mdc`     | New features must decide Plans + Team RBAC (or N/A)   |
-| `ponytail.mdc`                  | Lazy senior dev mode — minimal diffs, reuse first     |
+| File                            | Purpose                                                     |
+| ------------------------------- | ----------------------------------------------------------- |
+| `project-context.mdc`           | Lean stack + doc index + where-to-edit pointers             |
+| `ai-usage.mdc`                  | Session hygiene, model routing, subagent discipline         |
+| `documentation-maintenance.mdc` | Sync docs with code                                         |
+| `ui-minimal-copy.mdc`           | No extra UI prose                                           |
+| `human-copy.mdc`                | Production-grade copy; no AI tells / em dashes              |
+| `superpowers-opt-in.mdc`        | Superpowers opt-in only (see `/superpowers-*`)              |
+| `git-commits.mdc`               | No Cursor author/co-author in commits                       |
+| `no-prod-deploy.mdc`            | Block prod Supabase/DB deploys (unlock: **kamewave**)       |
+| `markitdown-mcp.mdc`            | Convert PDF/Office attachments via MarkItDown MCP           |
+| `route-guides.mdc`              | Page behavior docs must stay in sync                        |
+| `plans-and-permissions.mdc`     | New features must decide Plans + Team RBAC (or N/A)         |
+| `audit-logging.mdc`             | Mutating changes must emit an `activity_log` event (or N/A) |
+| `ponytail.mdc`                  | Lazy senior dev mode — minimal diffs, reuse first           |
 
 ## New developer setup (AI tooling)
 
@@ -97,6 +98,7 @@ Run **`bun run check:ai-tooling-sync`** after changing hooks, commands, agents, 
 | `docs-first`                | Read docs before implementing; then write docs back (same change)     |
 | `documentation-maintenance` | Same-change docs writes — Claude Code equivalent of always-on rule    |
 | `plans-and-permissions`     | New features: Plans entitlements + Team RBAC checklist (or N/A)       |
+| `audit-logging`             | Mutating changes emit an `activity_log` event (or mark N/A)           |
 | `supabase-stack`            | Postgres, Storage, edge platform                                      |
 | `fix-migration-issues`      | Local `db:migrate` when schema drifts — never default to reset/deploy |
 | `supabase-auth`             | OAuth, JWT, RBAC                                                      |
