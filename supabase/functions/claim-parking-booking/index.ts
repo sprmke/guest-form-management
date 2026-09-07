@@ -3,6 +3,7 @@
  */
 
 import { verifyParkingTeamAccess } from '../_shared/orgAuth.ts';
+import { buildActorContext } from '../_shared/activityLog.ts';
 import {
   jsonError,
   jsonSuccess,
@@ -26,10 +27,13 @@ serveAuthenticated('claim-parking-booking', async (req) => {
     return jsonError(req, 'bookingId and parkingId are required');
   }
 
-  const { parking: parkingRow } = await verifyParkingTeamAccess(req, parkingId, 'bookings:edit');
+  const parkingAccess = await verifyParkingTeamAccess(req, parkingId, 'bookings:edit');
+  const { parking: parkingRow } = parkingAccess;
 
   try {
-    const claimed = await claimParkingBooking(parkingId, bookingId, endorsementNote, parkingRow);
+    const claimed = await claimParkingBooking(parkingId, bookingId, endorsementNote, parkingRow, {
+      actor: buildActorContext('dashboard', { parkingAccess }, req),
+    });
     return jsonSuccess(req, { booking: claimed });
   } catch (err) {
     if (err instanceof ParkingBroadcastActionError) {

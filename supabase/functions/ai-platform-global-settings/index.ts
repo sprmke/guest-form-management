@@ -12,6 +12,7 @@ import { isValidAiFeature } from '../_shared/aiModelRouter.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
 import { logSuperAdminAction } from '../_shared/superAdminAudit.ts';
+import { requireSuperAdminStepUp } from '../_shared/superAdminVerification.ts';
 
 function isPositiveInt(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0;
@@ -25,6 +26,9 @@ function isValidFeatureList(value: unknown): value is AiFeature[] {
 }
 
 serveSuperAdmin('ai-platform-global-settings', async (req, user) => {
+  const stepUp = await requireSuperAdminStepUp(req, user, 'ai_global_settings');
+  if (stepUp) return stepUp;
+
   if (req.method === 'GET') {
     const data = await getAiPlatformGlobalSettings();
     return jsonSuccess(req, {

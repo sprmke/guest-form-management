@@ -16,6 +16,7 @@ import { createServiceClient } from '../_shared/orgAuth.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
 import { logSuperAdminAction } from '../_shared/superAdminAudit.ts';
+import { requireSuperAdminStepUp } from '../_shared/superAdminVerification.ts';
 
 async function resolveOrganization(
   orgId: string | null,
@@ -33,6 +34,9 @@ async function resolveOrganization(
 }
 
 serveSuperAdmin('ai-platform-credit-wallet', async (req, admin) => {
+  const stepUp = await requireSuperAdminStepUp(req, admin, 'ai_credit_wallet');
+  if (stepUp) return stepUp;
+
   const url = new URL(req.url);
   const orgId = url.searchParams.get('org_id')?.trim() || null;
   const orgSlug = url.searchParams.get('org_slug')?.trim() || null;

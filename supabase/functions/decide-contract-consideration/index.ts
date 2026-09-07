@@ -25,8 +25,12 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
+import { requireSuperAdminStepUp } from '../_shared/superAdminVerification.ts';
 
 serveSuperAdmin('decide-contract-consideration', async (req, user) => {
+  const stepUp = await requireSuperAdminStepUp(req, user, 'contract_consideration');
+  if (stepUp) return stepUp;
+
   requireHttpMethod(req, 'POST');
   const body = await readJsonBody(req);
 

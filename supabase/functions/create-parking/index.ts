@@ -8,6 +8,7 @@ import {
   serializeParking,
   verifyOrgAccess,
 } from '../_shared/orgAuth.ts';
+import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
 import {
   jsonError,
   jsonSuccess,
@@ -38,7 +39,7 @@ serveAuthenticated('create-parking', async (req) => {
     return jsonError(req, 'orgId is required');
   }
 
-  await verifyOrgAccess(req, { orgId }, 'org:parkings:create');
+  const orgAccess = await verifyOrgAccess(req, { orgId }, 'org:parkings:create');
 
   const parsed = parseParkingSlotFromBody(body);
   if (!parsed.ok) {
@@ -135,6 +136,17 @@ serveAuthenticated('create-parking', async (req) => {
   } catch (e) {
     console.error('[create-parking] preferred parking defaults:', e);
   }
+
+  await logActivity({
+    action: 'parking.created',
+    organizationId: orgId,
+    parkingId: data.id as string,
+    scope: 'parking',
+    actor: buildActorContext('dashboard', { orgAccess }, req),
+    targetType: 'parking',
+    targetId: data.id as string,
+    targetLabel: (data.name as string | undefined) ?? null,
+  });
 
   return jsonSuccess(req, { parking: serializeParking(data) });
 });

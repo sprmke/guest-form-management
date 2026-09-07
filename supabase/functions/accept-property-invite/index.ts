@@ -10,6 +10,8 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { acceptPropertyInvitation } from '../_shared/propertyTeamService.ts';
+import { resolveOrganizationIdForProperty } from '../_shared/propertyScope.ts';
+import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('accept-property-invite', async (req, user) => {
@@ -22,6 +24,25 @@ serveAuthenticated('accept-property-invite', async (req, user) => {
 
   try {
     const result = await acceptPropertyInvitation(user.id, user.email, token);
+    try {
+      const organizationId = await resolveOrganizationIdForProperty(result.propertyId);
+      await logActivity({
+        action: 'team.invite_accepted',
+        organizationId,
+        propertyId: result.propertyId,
+        scope: 'property',
+        actor: buildActorContext(
+          'dashboard',
+          { authUser: user, actorType: 'team_member', role: 'member', memberId: result.memberId },
+          req
+        ),
+        targetType: 'member',
+        targetId: result.memberId,
+        targetLabel: user.email,
+      });
+    } catch (activityErr) {
+      console.error('[accept-property-invite] activity log failed (non-fatal):', activityErr);
+    }
     return jsonSuccess(req, result);
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Accept failed';

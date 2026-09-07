@@ -3,6 +3,7 @@
  */
 
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
+import { buildActorContext } from '../_shared/activityLog.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
 import { notifyTelegramCancellation } from '../_shared/telegramMarketing.ts';
 import {
@@ -21,7 +22,8 @@ import { releaseAppliedVoucherOnCancel } from '../_shared/voucherRedemption.ts';
 
 serveAuthenticated('cancel-booking', async (req) => {
   requireHttpMethod(req, 'POST');
-  const { property } = await resolveScopedPropertyAccess(req, 'bookings.detail.workflow:edit');
+  const propertyAccess = await resolveScopedPropertyAccess(req, 'bookings.detail.workflow:edit');
+  const { property } = propertyAccess;
   const propertyId = property.id;
   const body = await readJsonBody(req);
   const { bookingId, confirm, devControls = {} } = body;
@@ -55,7 +57,8 @@ serveAuthenticated('cancel-booking', async (req) => {
     'CANCELLED',
     {},
     devControls,
-    true
+    true,
+    buildActorContext('dashboard', { propertyAccess }, req)
   );
 
   try {

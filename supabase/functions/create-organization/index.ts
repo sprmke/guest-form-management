@@ -12,6 +12,7 @@ import {
   serializeParking,
   serializeProperty,
 } from '../_shared/orgAuth.ts';
+import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
 import {
   DUPLICATE_ORGANIZATION_NAME_MESSAGE,
   findOrganizationNameConflict,
@@ -364,6 +365,48 @@ serveAuthenticated('create-organization', async (req, user) => {
     .select('*')
     .eq('id', org.id)
     .single();
+
+  const actor = buildActorContext(
+    'dashboard',
+    { authUser: user, actorType: 'org_owner', role: 'owner' },
+    req
+  );
+  await logActivity({
+    action: 'org.created',
+    organizationId: org.id,
+    scope: 'org',
+    actor,
+    targetType: 'organization',
+    targetId: org.id,
+    targetLabel: name,
+    metadata: { with_property: !!property, with_parking: !!parking },
+  });
+  if (property && typeof (property as { id?: string }).id === 'string') {
+    await logActivity({
+      action: 'property.created',
+      organizationId: org.id,
+      propertyId: (property as { id: string }).id,
+      scope: 'property',
+      actor,
+      targetType: 'property',
+      targetId: (property as { id: string }).id,
+      targetLabel: (property as { name?: string }).name ?? null,
+      metadata: { via: 'org_onboarding' },
+    });
+  }
+  if (parking && typeof (parking as { id?: string }).id === 'string') {
+    await logActivity({
+      action: 'parking.created',
+      organizationId: org.id,
+      parkingId: (parking as { id: string }).id,
+      scope: 'parking',
+      actor,
+      targetType: 'parking',
+      targetId: (parking as { id: string }).id,
+      targetLabel: (parking as { name?: string }).name ?? null,
+      metadata: { via: 'org_onboarding' },
+    });
+  }
 
   return jsonSuccess(req, {
     organization: serializeOrganization((refreshedOrg ?? org) as typeof org),

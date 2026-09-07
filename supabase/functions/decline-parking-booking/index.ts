@@ -5,6 +5,7 @@
  */
 
 import { verifyParkingTeamAccess } from '../_shared/orgAuth.ts';
+import { buildActorContext } from '../_shared/activityLog.ts';
 import {
   jsonError,
   jsonSuccess,
@@ -27,10 +28,12 @@ serveAuthenticated('decline-parking-booking', async (req) => {
     return jsonError(req, 'bookingId and parkingId are required');
   }
 
-  await verifyParkingTeamAccess(req, parkingId, 'bookings:edit');
+  const parkingAccess = await verifyParkingTeamAccess(req, parkingId, 'bookings:edit');
 
   try {
-    const result = await declineParkingBooking(parkingId, bookingId);
+    const result = await declineParkingBooking(parkingId, bookingId, {
+      actor: buildActorContext('dashboard', { parkingAccess }, req),
+    });
     return jsonSuccess(req, result);
   } catch (err) {
     if (err instanceof ParkingBroadcastActionError) {

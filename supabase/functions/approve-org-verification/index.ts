@@ -18,6 +18,7 @@ import {
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { logSuperAdminAction } from '../_shared/superAdminAudit.ts';
 import { verifySuperAdminJwt } from '../_shared/superAdminAuth.ts';
+import { maybeGrantHostVerificationReward } from '../_shared/hostVerificationReward.ts';
 
 serveAuthenticated('approve-org-verification', async (req) => {
   requireHttpMethod(req, 'POST');
@@ -97,5 +98,20 @@ serveAuthenticated('approve-org-verification', async (req) => {
     metadata: { tier },
   });
 
-  return jsonSuccess(req, { organization: serializeOrganization(data as OrgRow) });
+  let rewardGrant: Awaited<ReturnType<typeof maybeGrantHostVerificationReward>> | null = null;
+  if (tier === 'enhanced') {
+    try {
+      rewardGrant = await maybeGrantHostVerificationReward(orgId, {
+        trigger: 'recommended_verification_approved',
+        assignedBy: admin.id,
+      });
+    } catch (err) {
+      console.error('[approve-org-verification] reward grant', err);
+    }
+  }
+
+  return jsonSuccess(req, {
+    organization: serializeOrganization(data as OrgRow),
+    rewardGrant,
+  });
 });

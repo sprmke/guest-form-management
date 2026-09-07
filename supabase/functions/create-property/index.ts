@@ -8,6 +8,7 @@ import {
   serializeProperty,
   verifyOrgAccess,
 } from '../_shared/orgAuth.ts';
+import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
 import {
   DUPLICATE_PROPERTY_NAME_MESSAGE,
   findPropertyNameConflict,
@@ -46,7 +47,7 @@ serveAuthenticated('create-property', async (req, user) => {
     return jsonError(req, 'orgId is required');
   }
 
-  await verifyOrgAccess(req, { orgId }, 'org:properties:create');
+  const orgAccess = await verifyOrgAccess(req, { orgId }, 'org:properties:create');
 
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   if (name.length < 2 || name.length > 120) {
@@ -147,6 +148,17 @@ serveAuthenticated('create-property', async (req, user) => {
   } catch (e) {
     console.error('[create-property] subscription auto-enroll:', e);
   }
+
+  await logActivity({
+    action: 'property.created',
+    organizationId: orgId,
+    propertyId: data.id as string,
+    scope: 'property',
+    actor: buildActorContext('dashboard', { orgAccess }, req),
+    targetType: 'property',
+    targetId: data.id as string,
+    targetLabel: (data.name as string | undefined) ?? name,
+  });
 
   return jsonSuccess(req, {
     property: serializeProperty(data),

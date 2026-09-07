@@ -29,6 +29,7 @@ import { verifyResendWebhookSignature } from '../_shared/resendWebhookVerify.ts'
 import { servePublic } from '../_shared/serveEdge.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
+import { buildActorContext } from '../_shared/activityLog.ts';
 
 type ResendReceivedEvent = {
   type?: string;
@@ -371,7 +372,8 @@ async function processReceivedEmail(event: ResendReceivedEvent): Promise<{
     'PENDING_DOCUMENTS',
     payload,
     { ...APPROVAL_INTAKE_DEV_CONTROLS },
-    false
+    false,
+    buildActorContext('email_inbound', { emailInbound: 'resend_inbound' })
   );
 
   try {
