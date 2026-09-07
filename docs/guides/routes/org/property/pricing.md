@@ -38,6 +38,8 @@ booking record.
 Parking listings use the same grid at `/org/:orgSlug/parking/:parkingSlug/pricing` (base
 rates only — no fee sidebar). See [Parking Pricing](../parking/pricing.md).
 
+Rates, fees, holiday rules, and Smart Pricing settings are bulk-copyable via org **Properties → Copy settings** (date overrides and blocked dates are not).
+
 ---
 
 ## Host-facing knowledge

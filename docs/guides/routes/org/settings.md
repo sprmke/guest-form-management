@@ -295,3 +295,7 @@ Danger zone: slug confirmation + `delete-organization`; blocked when booking his
 - [`docs/architecture/validation-and-env.md`](../../../architecture/validation-and-env.md) — `PUBLIC_GUEST_APP_ORIGIN`, `FACEBOOK_REVIEWS_URL`
 - [`docs/archive/operations/ai-platform-billing.md`](../../../archive/operations/ai-platform-billing.md) — billing and quota guidance
 - [`docs/workflow/done/ai-usage-metering-credits-foundation.md`](../../../workflow/done/ai-usage-metering-credits-foundation.md) — credits shadow ledger + wallet plan
+
+## Setup Guide
+
+The same sections can be completed inside the post-onboarding [Setup Guide](./setup-guide.md) overlay (identical storage and validation).

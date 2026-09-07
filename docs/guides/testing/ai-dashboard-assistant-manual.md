@@ -19,29 +19,30 @@ This flow has **never been run through an actual browser** as of 2026-08-15 — 
 
 ## 0. What you are proving
 
-| #   | Capability                 | Pass criteria                                                                                                                                                                                                                       |
-| --- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Launcher visibility        | Floating button appears only when both kill switches are on for the org (and property, if scoped); hidden on `/admin/*`                                                                                                             |
-| 2   | Tier-0 read                | A plain question returns a grounded answer with no confirmation UI                                                                                                                                                                  |
-| 3   | Tier-1 auto-execute        | A safe forward status move executes immediately with a "done automatically" card                                                                                                                                                    |
-| 4   | Tier-2 propose → confirm   | A risky action (cancel, refund finalize, price change, override) shows Confirm/Cancel and only runs after Confirm                                                                                                                   |
-| 5   | Tier-2 deny                | Clicking Cancel leaves the booking untouched and marks the card "cancelled"                                                                                                                                                         |
-| 6   | Tier-2 idempotency         | Confirming an already-resolved action is a clean no-op, never a double-execute                                                                                                                                                      |
-| 7   | Tier-2 expiry              | A proposal older than 15 minutes can no longer be confirmed                                                                                                                                                                         |
-| 8   | Permission re-check        | A low-permission (**Read Only** template) property member cannot get a write action to execute, even if the model tries                                                                                                             |
-| 9   | Cross-scope escalation     | Asking about a _different_ booking/property than the one currently open always requires confirmation                                                                                                                                |
-| 10  | Bulk escalation            | A request that bundles 2+ write actions in one turn always requires confirmation, regardless of each action's own tier                                                                                                              |
-| 11  | Booking-detail audit trail | Actions taken on a booking show up in its "Actions taken by AI assistant" card, newest first                                                                                                                                        |
-| 12  | Org/global kill switch     | Turning either off removes the launcher; turning back on restores it                                                                                                                                                                |
-| 13  | Per-property opt-out       | Disabling the assistant on one property hides the launcher only there, not org-wide                                                                                                                                                 |
-| 14  | Quota                      | Hitting the daily message limit shows the upgrade message instead of erroring                                                                                                                                                       |
-| 15  | Mobile 375px               | Launcher + slide-over panel usable at iPhone SE width, 44×44px targets                                                                                                                                                              |
-| 16  | Starter prompts            | Empty chat shows a Questions / Actions switcher (not page tabs), 5 randomized items for the active side                                                                                                                             |
-| 17  | Attachments + booking pin  | Paperclip attaches JPEG/PNG/WebP/PDF; calendar pins a stay; send works with files and no text                                                                                                                                       |
-| 18  | Speech-to-text             | Mic fills the composer on Chrome/Safari/Edge (HTTPS); primary listening state; tap again to stop; send clears listening                                                                                                             |
-| 19  | Turn progress + streaming  | While waiting: phased/tool checklist (not bare dots); text answer streams in before cards finalize; multi-tool turns show “What I did” timeline                                                                                     |
-| 20  | Cancel + regenerate        | Stop icon aborts in-flight turn; cancel before Tier-1 commit leaves no app writes; partial commit shows applied-changes banner; Regenerate on last assistant message re-runs prior text turn (not available after attachment sends) |
-| 21  | Usage meter                | Panel header shows `today / daily limit` pill; increments after a successful send                                                                                                                                                   |
+| #   | Capability                        | Pass criteria                                                                                                                                                                                                                       |
+| --- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Launcher visibility               | Floating button appears only when both kill switches are on for the org (and property, if scoped); hidden on `/admin/*`                                                                                                             |
+| 2   | Tier-0 read                       | A plain question returns a grounded answer with no confirmation UI                                                                                                                                                                  |
+| 3   | Tier-1 auto-execute               | A safe forward status move executes immediately with a "done automatically" card                                                                                                                                                    |
+| 4   | Tier-2 propose → confirm          | A risky action (cancel, refund finalize, price change, override) shows Confirm/Cancel and only runs after Confirm                                                                                                                   |
+| 5   | Tier-2 deny                       | Clicking Cancel leaves the booking untouched and marks the card "cancelled"                                                                                                                                                         |
+| 6   | Tier-2 idempotency                | Confirming an already-resolved action is a clean no-op, never a double-execute                                                                                                                                                      |
+| 7   | Tier-2 expiry                     | A proposal older than 15 minutes can no longer be confirmed                                                                                                                                                                         |
+| 8   | Permission re-check               | A low-permission (**Read Only** template) property member cannot get a write action to execute, even if the model tries                                                                                                             |
+| 9   | Cross-scope escalation            | Asking about a _different_ booking/property than the one currently open always requires confirmation                                                                                                                                |
+| 10  | Bulk escalation                   | A request that bundles 2+ write actions in one turn always requires confirmation, regardless of each action's own tier                                                                                                              |
+| 11  | Booking-detail audit trail        | Actions taken on a booking show up in its "Actions taken by AI assistant" card, newest first                                                                                                                                        |
+| 12  | Org/global kill switch            | Turning either off removes the launcher; turning back on restores it                                                                                                                                                                |
+| 13  | Per-property opt-out              | Disabling the assistant on one property hides the launcher only there, not org-wide                                                                                                                                                 |
+| 14  | Quota                             | Hitting the daily message limit shows the upgrade message instead of erroring                                                                                                                                                       |
+| 15  | Mobile 375px                      | Launcher + slide-over panel usable at iPhone SE width, 44×44px targets                                                                                                                                                              |
+| 16  | Starter prompts                   | Empty chat shows a Questions / Actions switcher (not page tabs), 5 items for the active side — randomized with no pinned context, ranked by module once context is pinned (merged fairly when multiple modules are pinned)          |
+| 16b | Mid-conversation pill suggestions | Each pinned context chip opens a compact Questions / Actions popover with that module's ranked prompts; tapping sends a message carrying the pinned context; X still removes the pin                                                |
+| 17  | Attachments + booking pin         | Paperclip attaches JPEG/PNG/WebP/PDF; calendar pins a stay; send works with files and no text                                                                                                                                       |
+| 18  | Speech-to-text                    | Mic fills the composer on Chrome/Safari/Edge (HTTPS); primary listening state; tap again to stop; send clears listening                                                                                                             |
+| 19  | Turn progress + streaming         | While waiting: phased/tool checklist (not bare dots); text answer streams in before cards finalize; multi-tool turns show “What I did” timeline                                                                                     |
+| 20  | Cancel + regenerate               | Stop icon aborts in-flight turn; cancel before Tier-1 commit leaves no app writes; partial commit shows applied-changes banner; Regenerate on last assistant message re-runs prior text turn (not available after attachment sends) |
+| 21  | Usage meter                       | Panel header shows `today / daily limit` pill; increments after a successful send                                                                                                                                                   |
 
 ---
 
@@ -77,6 +78,17 @@ This flow has **never been run through an actual browser** as of 2026-08-15 — 
 2. Switch to **Actions** — list swaps to 5 action starters. Tap one — it should send as a chat message (not only fill the composer). Starters can mention parking claim/decline, inbox reply, Meta publish, or a weekend rate override as well as booking moves.
 3. Open **History** (clock icon). Expect past conversations only (no Questions/Actions switcher). Titles wrap inside the panel (no overflow). Long IDs are shortened. Rows group by day; search filters the list. Trash → confirm → the row is gone. Deleting the open chat starts a new one.
 4. Tap **New conversation** (plus). Expect a **different** set of 5 questions and 5 actions (random, so a rare duplicate set is OK).
+5. **Pin one module's context** (e.g. a booking) via the bookmark picker before sending anything. Expect the starter cluster to refresh to that module's ranked prompts (e.g. booking prompts like "What's the status of this booking?" / "Move this booking to the next status") — no longer random, and stable across re-renders until the pin changes.
+6. **Pin a second module** on top (e.g. a property, then a finance item). Expect the list to mix prompts from all pinned modules — each pinned module's top prompt should appear before any pinned module's second prompt, rather than one module dominating the list.
+7. **Remove all pins.** Expect the starter cluster to fall back to the random pool from step 1.
+
+### 2.2 Mid-conversation pill suggestions (#16b)
+
+1. In an **existing** conversation (messages already present), pin one or more context items via the bookmark picker. Each pinned chip appears above the composer; the chip body is a button (text shifts to the primary teal on hover or while open).
+2. Tap the body of a pinned chip (icon + label). Expect a compact popover anchored to the chip with a **Questions / Actions** toggle and up to 6 ranked prompts for that single module — scrollable if longer than the viewport.
+3. Switch to **Actions** inside the popover. Expect the ranked action prompts for the same module. Tap one — the popover closes and the prompt is sent as a new chat message carrying the currently pinned context (the chip you tapped stays pinned).
+4. Tap the **X** on a chip. Expect the chip removed and its popover gone; remaining chips still open their own popovers independently.
+5. Pin two different modules (e.g. a booking and a finance item). Open each pill's popover in turn — each shows only its own module's prompts (not merged), so the host can drill into one module at a time mid-conversation.
 
 ### 2.2 Attachments + context pin (#17)
 
@@ -334,6 +346,17 @@ Pass when: the Tier-0 call returns a real number matching the DB; the propose ca
 2. Ask: **"File a bug report: subject 'Assistant test', describe the issue, attach this screenshot."**
 3. Expect `propose_create_support_ticket` confirm card.
 4. After confirm, open **Help & Support → Tickets** — new ticket appears with attachment on the first message.
+
+### 12.2b Support ticket create via form (`dynamic_form`)
+
+1. Ask: **"I want to file a support ticket."** (no other details).
+2. Expect a **`dynamic_form`** card — category (select: Broken/Idea/Question/Business), subject (text), description (textarea), and severity (select, only relevant for a bug report) — not the fields listed as plain text. Card should be noticeably wider than a plain text reply (4 fields + a textarea → full width), required labels show a red `*`.
+3. Tap **Submit** with everything blank — button is disabled (no click possible). Fill subject only — still disabled until category, description, and (if bug report) severity are also filled.
+4. Type an obviously invalid value if you add an email/phone field via a different prompt — error text should match the app's normal copy (`Please enter a valid email address`, `Phone number must be 11 digits (ex. 09876543210)`), not a generic message.
+5. Pick **Broken**, fill subject + description, pick a severity — Submit enables — tap it.
+6. Expect: the form collapses to a read-only recap (check icon + the values you entered) in that same assistant turn; the next turn shows the `propose_create_support_ticket` confirm card pre-filled from your answers (no re-asking).
+7. Confirm → open **Help & Support → Tickets** — new ticket appears with the category/severity you picked.
+8. Repeat step 1–3 picking **Business** — expect a "how to reach you" field to appear instead of severity.
 
 ### 12.3 Announcements + plan snapshot (read)
 

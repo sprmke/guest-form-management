@@ -41,6 +41,8 @@ Route: `/org/:orgSlug/property/:propertySlug/settings`
 
 Living operator spec for property settings: what each section does, how data is saved, and setup completeness. **Save Changes** persists only dirty sections that pass validation — incomplete required areas still show a red dot for setup tracking. Field helpers use a **?** beside the label (`FieldLabel` `help` / `SettingsField` `help`) — not muted text under the control.
 
+Many section values can also be **seeded from another property** via org **Properties → Copy settings** (4-step wizard), or from this page via **Copy from…** (opens the same wizard with this property locked as the target). Payment methods are not included.
+
 ### Permissions (Phase 5)
 
 Route/nav: `settings:view`. Each section has its own edit leaf (`settings.basicInfo:edit`, `settings.media:edit`, …). Shared listing fields (media, amenities, house rules, cancellation, socials) use the same `settings.*` ids from Public Pages (Q2). Integrations is `settings.integrations:view` only. Archive/restore: `settings.dangerZone:edit`. Permanent delete stays owner-only (D10). Payment OTP still required **in addition to** `settings.payment:edit`. Profile/content saves go through `update-property` with the matching section leaf (no longer owner-only).
@@ -75,6 +77,8 @@ Property Settings is where you complete operational setup: basic info, capacity,
   A: It's the shortest gap your cleaner needs between one guest checking out and the next guest checking in **on the same day**. Set it under **Guest Form → Cleaning Time** — it's required and always at least 1 hour. Guests can't pick a check-in or check-out time on the booking form that leaves less than that gap.
 - Q: How do next-stay vouchers work?
   A: Under **Reviews & vouchers**, open **Manage** on Next-stay vouchers. Turn them on, pick a **reveal style** (Reel, Wheel, or Flip), choose which discounts to include (5% through free stay), and set a **Weight** for each — higher weight = more often. **Odds** update automatically; you do not need the weights to add to 100. Use the nightly rate select (weekday / weekend / custom) to see about how much each prize saves. Guests who leave a review can claim one of those discounts. Apply the code manually on their next booking — automatic redemption is not built yet.
+- Q: Can I copy settings from another property onto this one?
+  A: Yes. Use **Copy from…** on this Settings page (when you have at least two properties), or **Copy settings** on the org Properties page. Pick the source property and which groups to copy. Payment methods are not copied.
 
 ---
 
@@ -503,6 +507,7 @@ Keep UI and edge copies in sync when changing rules.
 ## Related docs
 
 - [Organization Settings — AI platform](../settings.md) § AI platform
+- [Organization Properties — Copy settings](../properties.md) § Copy settings
 - [Super Admin AI Management — Platform AI](../../admin/settings.md) § Platform AI
 - [`docs/archive/operations/ai-platform-billing.md`](../../../../archive/operations/ai-platform-billing.md) — billing and quota guidance
 
@@ -516,3 +521,7 @@ Keep UI and edge copies in sync when changing rules.
 - [ ] Automated tests for property settings validation
 - [x] Remove deprecated `voice-receptionist-global-settings` edge function and UI card
 - [ ] Drop legacy `voice_receptionist_global_settings` table after verifying the platform switch is seeded on hosted environments
+
+## Setup Guide
+
+The same sections can be completed inside the post-onboarding [Setup Guide](../setup-guide.md) overlay (identical storage and validation).

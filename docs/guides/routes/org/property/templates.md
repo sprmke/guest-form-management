@@ -19,6 +19,8 @@ On **phone/tablet**, the page scrolls inside the section layout (`AdminSectionNa
 
 Operators edit per-property copy here. **Preview and live sends use the same renderer** (`renderPropertyTemplateSendEmail` + `fragments/configurable-template-send.html`). Dynamic blocks (tables, payment breakdown, CTAs) are **`{{placeholders}}` in the template body** — visible in Preview when sample/send HTML is injected.
 
+Template bodies (and section images) are bulk-copyable via org **Properties → Copy settings**.
+
 **Plan gating (`customTemplates`, Starter+):** Standard templates (house rules, check-in/out, parking reminders) are free — edit, preview, placeholders, reset, and save with no plan gate and no WYSIWYG blur. Email templates stay editable/previewable on Free; **Reset** always restores the shipped default (ungated `action: reset`); **Save** opens the upgrade modal when not entitled (server also gates email-key content PATCH). **Add Custom Template** (page header / mobile hero) and create/save **custom** templates require Starter+ — client pre-flight plus `property-templates-settings` (`action: create`, custom-key PATCH, and email-key PATCH). Delete custom stays open. Email and custom cards show a `TierBadge` (replacing the old Email category pill). The **Email templates** and **Custom templates** section headings also show a `TierBadge` when the org is below Starter.
 
 ### Permissions (Phase 5)

@@ -31,6 +31,8 @@ Property-scoped **team management**. Members, invitations, and custom roles load
 
 Org owner and org admins appear in the member list **virtually** (`fromOrg: true`) — not stored in `property_members`. Org-level team lives at `/org/:orgSlug/team`.
 
+Custom role definitions (not members or invitations) are bulk-copyable via org **Properties → Copy settings**.
+
 ---
 
 ## Host-facing knowledge
