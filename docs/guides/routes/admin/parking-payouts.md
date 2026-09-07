@@ -39,6 +39,8 @@ Two things on one page, per Phase 4 of the parking marketplace build:
 
 **Access:** `RequireSuperAdmin`.
 
+**Step-up OTP:** saving commission/rate config and every mark-disbursed / record-clawback action need a fresh email verification code (~15-min sudo window) — see [`overview.md`](overview.md#step-up-verification-all-admin-pages) / `.cursor/rules/admin-auth.mdc` §8.
+
 **Browser tab title:** `Kame Homes - Parking payouts`
 
 ---

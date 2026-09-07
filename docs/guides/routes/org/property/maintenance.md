@@ -42,6 +42,8 @@ Maintenance Telegram defaults: **Notifications → Maintenance**.
 
 Legacy **`?tab=settings`** redirects to **`/notifications?module=maintenance`**.
 
+Recurring reminder definitions (not one-offs or done history) are bulk-copyable via org **Properties → Copy settings**.
+
 ---
 
 ## Host-facing knowledge

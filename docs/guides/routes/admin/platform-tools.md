@@ -18,12 +18,12 @@ Routes:
 
 ## Progress overview
 
-| Section           | E2E save | Validation | Docs | Notes                                                                                                 |
-| ----------------- | -------- | ---------- | ---- | ----------------------------------------------------------------------------------------------------- |
-| AI usage          | n/a      | —          | Done | Spend trend + cost-by-feature charts + top-orgs table + quota breaches. Read-only.                    |
-| Audit log         | n/a      | —          | Done | Search + paginated list; org-hub **Activity** tab filters to one org.                                 |
-| Platform settings | Done     | client     | Done | `SuperAdminSettingsCard` — signups on/off, maintenance mode, default plan, support/legal, rate limit. |
-| ⌘K search palette | n/a      | —          | Done | Fans out over orgs / properties / parkings / tickets; Enter navigates.                                |
+| Section           | E2E save | Validation | Docs | Notes                                                                                                                                                                   |
+| ----------------- | -------- | ---------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AI usage          | n/a      | —          | Done | Spend trend + cost-by-feature charts + top-orgs table + quota breaches. Read-only.                                                                                      |
+| Audit log         | n/a      | —          | Done | Search + paginated list; org-hub **Activity** tab filters to one org.                                                                                                   |
+| Platform settings | Done     | client     | Done | Signups, maintenance, default plan, support/legal, rate limit, **Host verification reward** card (config + live grants list with Revoke via `org-subscriptions-admin`). |
+| ⌘K search palette | n/a      | —          | Done | Fans out over orgs / properties / parkings / tickets; Enter navigates.                                                                                                  |
 
 ---
 
@@ -50,17 +50,23 @@ Routes:
 - **⌘K palette** (`SuperAdminCommandPalette`, mounted once in `SuperAdminShell`): debounced
   `super-admin-search?q=` fans out over `organizations`/`properties`/`parkings`/`support_tickets`
   with a small per-source `ilike` limit; results are grouped by type, Enter navigates.
+- **Step-up OTP** (`SuperAdminStepUpProvider`, mounted once in `SuperAdminShell`): saving
+  `platform-settings` here (like every gated `/admin/*` mutation) needs a fresh email
+  verification code — a ~15-min sudo window shared across all sensitive actions. Full list and
+  mechanics in [`overview.md`](overview.md#step-up-verification-all-admin-pages) and
+  `.cursor/rules/admin-auth.mdc` §8.
 
 ---
 
 ## API reference
 
-| Method  | Endpoint                 | Notes                                                                                             |
-| ------- | ------------------------ | ------------------------------------------------------------------------------------------------- |
-| GET     | `super-admin-ai-usage`   | `?range=30d\|90d\|12mo` → `totals`, `dailySeries`, `featureBreakdown`, `topOrgs`, `quotaBreaches` |
-| GET     | `list-super-admin-audit` | `?q=`, `?actor=`, `?targetType=`, `?targetId=`, `?page=`, `?limit=`                               |
-| GET/PUT | `platform-settings`      | Singleton row; PUT accepts a partial patch                                                        |
-| GET     | `super-admin-search`     | `?q=` (min 2 chars) → grouped `results[]` with `href`                                             |
+| Method  | Endpoint                               | Notes                                                                                             |
+| ------- | -------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| GET     | `super-admin-ai-usage`                 | `?range=30d\|90d\|12mo` → `totals`, `dailySeries`, `featureBreakdown`, `topOrgs`, `quotaBreaches` |
+| GET     | `list-super-admin-audit`               | `?q=`, `?actor=`, `?targetType=`, `?targetId=`, `?page=`, `?limit=`                               |
+| GET     | `org-subscriptions-admin?rewards=true` | Live `source=reward` grants for Host verification reward card                                     |
+| GET/PUT | `platform-settings`                    | Singleton row; PUT accepts a partial patch                                                        |
+| GET     | `super-admin-search`                   | `?q=` (min 2 chars) → grouped `results[]` with `href`                                             |
 
 ---
 

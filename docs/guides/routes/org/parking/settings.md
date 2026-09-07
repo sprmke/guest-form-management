@@ -157,3 +157,7 @@ Since parking type, residence, tower, level, and slot number can't change in Set
 | Brand resolve (edge)       | `supabase/functions/_shared/parkingBranding.ts`                                                                        |
 | Public API                 | `get-public-parking` → `loadPublicParkingBySlug`                                                                       |
 | Public UI                  | `ParkingDetailPage`, `ParkingOverview`, `ParkingPublicBrandShell`                                                      |
+
+## Setup Guide
+
+The same sections can be completed inside the post-onboarding [Setup Guide](../setup-guide.md) overlay (identical storage and validation).

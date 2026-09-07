@@ -35,6 +35,8 @@ Deep links:
 
 Single hub for **in-app activity** (booking workflow + inbox events in the bell) and **Telegram notification bots** on a property.
 
+Telegram module settings (and optional credentials) are bulk-copyable via org **Properties → Copy settings**.
+
 ### This device (PWA)
 
 Above the Activity feed (only when the app runs as an installed PWA and/or there are queued changes):

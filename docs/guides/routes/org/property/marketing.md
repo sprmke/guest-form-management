@@ -19,6 +19,8 @@ Legacy redirect: `/marketing` → `…/property/:propertySlug/marketing` (Conten
 
 Property-scoped **Marketing Content Studio**: build availability calendars, social graphics, and short promo videos, then download or publish to connected Facebook Pages and Instagram. Telegram marketing alerts live on **Notifications**, not this page.
 
+Saved marketing designs are bulk-copyable via org **Properties → Copy settings** (publication history is not).
+
 ---
 
 ## Host-facing knowledge

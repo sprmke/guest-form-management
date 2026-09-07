@@ -209,3 +209,7 @@ When a property or parking listing's hosting contract nears expiry, is in grace,
 | Shared types      | `ui/.../lib/orgVerification.ts` + `supabase/functions/_shared/orgVerification.ts`                                            |
 | Edge              | `create-organization`, `upload-org-verification-asset`, `submit-org-verification`                                            |
 | Storage           | migration `20260922120000_org_verification_assets.sql`                                                                       |
+
+## Post-registration Setup Guide
+
+After onboarding finishes, hosts land on the listing dashboard. The **Setup Guide** overlay covers initial settings. See [org/setup-guide.md](./org/setup-guide.md).

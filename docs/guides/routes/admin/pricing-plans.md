@@ -27,6 +27,8 @@ Super-admin CRUD surface for the **`pricing_plans`** **subscription** tier catal
 
 **Access:** `RequireSuperAdmin` — email in `SUPER_ADMIN_EMAILS`.
 
+**Step-up OTP:** creating or editing a plan needs a fresh email verification code (~15-min sudo window) — see [`overview.md`](overview.md#step-up-verification-all-admin-pages) / `.cursor/rules/admin-auth.mdc` §8.
+
 ---
 
 ## Behavior

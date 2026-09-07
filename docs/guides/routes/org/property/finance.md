@@ -40,6 +40,8 @@ Single-page finance view — no tabs. A **date range** picker in the page header
 
 The parking-scoped finance page (`/org/:orgSlug/parking/:parkingSlug/finance`) reuses this same page and components but hides the stays ledger and stays export section (parking has no `guest_submissions` rows) — see `scope.parkingId` gating throughout.
 
+Recurring series definitions (not one-offs or history) are bulk-copyable via org **Properties → Copy settings**.
+
 ---
 
 ## Host-facing knowledge

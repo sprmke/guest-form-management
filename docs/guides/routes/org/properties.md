@@ -2,7 +2,7 @@
 title: 'Organization Properties — operator guide'
 status: active
 tags: [guides, routes, org, properties]
-updated: 2026-08-17
+updated: 2026-09-06
 ---
 
 # Organization Properties — operator guide
@@ -13,13 +13,14 @@ Route: `/org/:orgSlug/properties`
 
 ## Progress overview
 
-| Section           | E2E save | Validation | Docs | Notes                                                    |
-| ----------------- | -------- | ---------- | ---- | -------------------------------------------------------- |
-| Summary cards     | Done     | —          | Done | Total, total revenue, avg monthly revenue, avg occupancy |
-| Search & filters  | Done     | —          | Done | Name, slug, tower, address, status, type                 |
-| Grid / list views | Done     | —          | Done | Gallery carousel + booking KPIs                          |
-| Property cards    | Done     | —          | Done | Name title, tower/unit subtitle                          |
-| Add property      | Done     | Done       | Done | Dialog → settings on create                              |
+| Section           | E2E save | Validation | Docs | Notes                                                                                              |
+| ----------------- | -------- | ---------- | ---- | -------------------------------------------------------------------------------------------------- |
+| Summary cards     | Done     | —          | Done | Total, total revenue, avg monthly revenue, avg occupancy                                           |
+| Search & filters  | Done     | —          | Done | Name, slug, tower, address, status, type                                                           |
+| Grid / list views | Done     | —          | Done | Gallery carousel + booking KPIs                                                                    |
+| Property cards    | Done     | —          | Done | Name title, tower/unit subtitle                                                                    |
+| Add property      | Done     | Done       | Done | Dialog → settings on create                                                                        |
+| Copy settings     | Done     | Done       | Done | 4-step wizard; Phases 0–4 coded; see [[workflow/for-testing/property-settings-copy-to-properties]] |
 
 ---
 
@@ -31,20 +32,24 @@ Org-level inventory of all properties. On **phone/tablet**, uses the shared **br
 
 **Add property:** Requires **`org.properties:create`** (grantable on org templates; owners and platform admins always have it).
 
+**Copy settings:** Shown when the org has **at least two** properties (header button + property ⋯ menu). Server enforces per-target edit permissions and plan gates (skip + report).
+
 ---
 
 ## Host-facing knowledge
 
-This page is the catalog of every rental you operate under the organization. Summary cards at the top show how many properties you have and how they’re performing this month; each property card shows photos, location, and booking stats. Use it to jump into a property dashboard, open settings, or copy the guest booking link.
+This page is the catalog of every rental you operate under the organization. Summary cards at the top show how many properties you have and how they’re performing this month; each property card shows photos, location, and booking stats. Use it to jump into a property dashboard, open settings, or copy the guest booking link. When you have more than one property, **Copy settings** lets you reuse configuration from one unit onto others without redoing setup by hand.
 
 **Common host questions**
 
 - Q: Why does revenue on a card differ from what I expect for all-time earnings?
   A: Revenue and occupancy on this page use the **current calendar month** (Philippines time), not lifetime totals. Active booking counts are pipeline bookings still in progress.
 - Q: Why can’t I see the **Add property** button?
-  A: Your org role needs **Add Properties** permission (`org.properties:create`). Owners always have it; invited members only if their template or custom permissions include it.
+  A: Your org role needs permission to add properties. Owners always have it; invited members only if their template or custom permissions include it.
 - Q: How do I send a guest to book a specific unit?
   A: Open the property’s actions menu and choose **Copy guest link** or **Guest calendar**. Both point guests to that property’s public booking entry.
+- Q: How do I copy settings from one property to another?
+  A: On **Properties**, tap **Copy settings** in the header, or open a property’s ⋯ menu and choose **Copy settings**. Pick the source property, choose which groups to copy (listing, pricing, templates, notifications, and more), select one or more other properties, review the preview, then confirm. Name, address, and tower/unit stay on each target. Bookings, guests, payment methods, team members, and calendar date blocks are never copied. If a target’s plan or your permissions don’t allow a group, that group is skipped for that property and listed in the review.
 
 ---
 
@@ -105,12 +110,13 @@ On phone/tablet (`max-lg`) Status + Type collapse into a single **refine sheet**
 
 ## Actions menu
 
-| Action          | Target                                 |
-| --------------- | -------------------------------------- |
-| Open dashboard  | `/org/:orgSlug/property/:propertySlug` |
-| Settings        | `…/settings`                           |
-| Guest calendar  | Public `/?property=<slug>` (new tab)   |
-| Copy guest link | Clipboard                              |
+| Action          | Target                                                                                                     |
+| --------------- | ---------------------------------------------------------------------------------------------------------- |
+| Open dashboard  | `/org/:orgSlug/property/:propertySlug`                                                                     |
+| Settings        | `…/settings`                                                                                               |
+| Guest calendar  | Public `/?property=<slug>` (new tab)                                                                       |
+| Copy guest link | Clipboard                                                                                                  |
+| Copy settings   | Opens **Copy settings** wizard (source = this property); hidden when the org has fewer than two properties |
 
 ---
 
@@ -120,12 +126,39 @@ On phone/tablet (`max-lg`) Status + Type collapse into a single **refine sheet**
 
 ---
 
+## Copy settings
+
+**Entry:** Header **Copy settings** (desktop) / hero ⋯ (mobile), or property card/list **⋯ → Copy settings**. Visible when `properties.length >= 2`. Property **Settings → Copy from…** opens the same dialog with that property locked as the only target (`?copyTarget=` on the Properties route).
+
+**Wizard (`CopyPropertySettingsDialog`)** — four steps:
+
+1. **Source** — pre-filled from the card menu; otherwise pick from ACTIVE/INACTIVE org properties. Skipped when launched via **Copy from…** (targets step is locked instead).
+2. **Groups** — checkbox tree by category (Listing, Pricing, Guest form, Notifications, Templates, Public pages, Marketing, AI & voice, Team roles, Recurring finance, Recurring maintenance). Opt-in extras (default off): contact details, email recipients, Telegram credentials, skip already customized.
+3. **Targets** — multi-select of other org properties; **Select all**. Locked to one property when opened via **Copy from…**.
+4. **Confirm** — loads a dry-run preview per target (will copy / skipped / failed / already set). Primary **Copy settings** runs the real copy. Preview uses a separate request from the copy mutation so the footer does not show “Copying…” during preview. Batches over 10 targets require an extra confirm checkbox. **Back** stays available while the preview loads.
+
+**What is copied (when selected):** listing details and content, amenities, house rules, cancellation, brand/socials, photos/videos, guest-form toggles, building-form fields (+ signature assets), email automation timing/toggles (+ recipients if opted in), pricing rates/fees/holiday rules, Smart Pricing settings, voucher config, Telegram notification config (+ shared bot token; per-module credentials if opted in), inbox snippets, templates (incl. section images), public-page template/config (showcase stays unpublished), marketing designs, voice receptionist + AI overrides, custom team **role definitions**, recurring finance/maintenance **series definitions** (new series on the target from the next due date).
+
+**What is never copied:** property identity (name, slug, tower/unit, address, maps), payment methods, bookings/guests, date overrides / blocked dates, channel sync feeds, Meta connections / inbox threads, team members & invitations, plans/billing, finance/maintenance one-offs and history, reviews proof, Google calendar/spreadsheet IDs, announcement read state. Cross-org and parking listings are out of scope.
+
+**Per-target skips:** For each selected group, the edge function checks that target’s edit permission leaf(s) and plan feature (when gated). Failures are skip+report; the rest of the batch continues. Same-org only.
+
+**Plans / Team RBAC:** No new plan feature or permission id. Reuses existing per-group edit leaves and plan keys from the clone registry. Entry is not gated by a dedicated org leaf.
+
+**After a real run:** `property_settings_copy_log` row; in-app `property_settings_copied` per target with applied groups; settings-change notice email to org owner / target notify recipients. Recent runs appear under **Copy history** on the org Properties page (`POST copy-property-settings` with `{ action: 'listLogs', orgSlug }`).
+
+Full registry table: [[workflow/for-testing/property-settings-copy-to-properties]] §2.
+
+---
+
 ## API reference
 
-| Action       | Endpoint                                                                      |
-| ------------ | ----------------------------------------------------------------------------- |
-| List + stats | `GET list-properties?orgSlug=` → `{ properties: [{ …, stats }] }`             |
-| Create       | `POST create-property` — **`org:properties:create`** (owner / platform admin) |
+| Action        | Endpoint                                                                                                                                    |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| List + stats  | `GET list-properties?orgSlug=` → `{ properties: [{ …, stats }] }`                                                                           |
+| Create        | `POST create-property` — **`org:properties:create`** (owner / platform admin)                                                               |
+| Copy settings | `POST copy-property-settings` — body `{ sourcePropertyId, targetPropertyIds, groups, options?, dryRun? }` → `{ dryRun, results[], logId? }` |
+| Copy history  | `POST copy-property-settings` — body `{ action: 'listLogs', orgSlug, limit? }` → `{ logs[] }` (org member; service-role read)               |
 
 ### `stats` shape (per property)
 
@@ -143,16 +176,20 @@ Server: `list-properties` loads org properties, batch-loads `guest_submissions` 
 
 ## Implementation map
 
-| Concern           | Path                                                                                                                |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Page              | `ui/src/features/dashboard/org/pages/OrgPropertiesPage.tsx`                                                         |
-| Cards / list      | `ui/src/features/dashboard/org/components/org-properties/OrgPropertyCard.tsx`                                       |
-| Carousel          | `ui/src/features/dashboard/org/components/org-properties/OrgPropertyImageCarousel.tsx`                              |
-| Summary / toolbar | `ui/src/features/dashboard/org/components/org-properties/OrgPropertiesSummaryCards.tsx`, `OrgPropertiesToolbar.tsx` |
-| Card model        | `ui/src/features/dashboard/org/lib/orgPropertyCardModel.ts`                                                         |
-| Title helpers     | `ui/src/features/dashboard/org/lib/propertyDisplay.ts`                                                              |
-| Stats aggregation | `supabase/functions/_shared/propertyListStats.ts`, `dashboardService.ts#computePropertyPeriodStats`                 |
-| List API          | `supabase/functions/list-properties/index.ts`                                                                       |
+| Concern                  | Path                                                                                                                                                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page                     | `ui/src/features/dashboard/org/pages/OrgPropertiesPage.tsx`                                                                                                               |
+| Cards / list             | `ui/src/features/dashboard/org/components/org-properties/OrgPropertyCard.tsx`                                                                                             |
+| Copy settings UI         | `ui/src/features/dashboard/org/components/org-properties/CopyPropertySettingsDialog.tsx`                                                                                  |
+| Copy history UI          | `ui/src/features/dashboard/org/components/org-properties/CopyPropertySettingsHistory.tsx`                                                                                 |
+| Copy settings hook / API | `ui/src/features/dashboard/org/hooks/useCopyPropertySettings.ts`, `usePropertySettingsCopyLogs.ts`, `lib/copyPropertySettingsApi.ts`, `lib/copyPropertySettingsGroups.ts` |
+| Carousel                 | `ui/src/features/dashboard/org/components/org-properties/OrgPropertyImageCarousel.tsx`                                                                                    |
+| Summary / toolbar        | `ui/src/features/dashboard/org/components/org-properties/OrgPropertiesSummaryCards.tsx`, `OrgPropertiesToolbar.tsx`                                                       |
+| Card model               | `ui/src/features/dashboard/org/lib/orgPropertyCardModel.ts`                                                                                                               |
+| Title helpers            | `ui/src/features/dashboard/org/lib/propertyDisplay.ts`                                                                                                                    |
+| Stats aggregation        | `supabase/functions/_shared/propertyListStats.ts`, `dashboardService.ts#computePropertyPeriodStats`                                                                       |
+| List API                 | `supabase/functions/list-properties/index.ts`                                                                                                                             |
+| Copy API                 | `supabase/functions/copy-property-settings/index.ts` + `_shared/propertySettingsClone*.ts`, `propertyAssetClone.ts`                                                       |
 
 ---
 
@@ -161,6 +198,7 @@ Server: `list-properties` loads org properties, batch-loads `guest_submissions` 
 - [Route index](../README.md)
 - [Property settings](./property/settings.md)
 - [`docs/PROJECT.md`](../../PROJECT.md)
+- Plan: [[workflow/for-testing/property-settings-copy-to-properties]]
 
 ---
 
@@ -168,3 +206,4 @@ Server: `list-properties` loads org properties, batch-loads `guest_submissions` 
 
 - [ ] Delete/archive shortcuts from card actions menu (today: settings → Danger zone)
 - [ ] Per-property deep link to filtered bookings list from stats row
+- [ ] Optional plpgsql atomic RPCs for multi-row clone groups (deferred / out of v1)
