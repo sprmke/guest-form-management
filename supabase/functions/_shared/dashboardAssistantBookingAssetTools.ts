@@ -36,6 +36,7 @@ import {
 } from './sendBookingWorkflowEmail.ts';
 import { STATUS_HUMAN_LABEL, type BookingStatus } from './statusMachine.ts';
 import { WorkflowOrchestrator } from './workflowOrchestrator.ts';
+import { buildActorContext } from './activityLog.ts';
 import type { AttachedContextItem } from './dashboardAssistantAttachedContext.ts';
 
 /** Minimal tool context — matches `BookingAssetToolContext` without circular imports. */
@@ -303,7 +304,18 @@ export async function executeApplyBookingAttachment(
           toStatus as BookingStatus,
           { document_completion_target: documentCompletionTarget },
           {},
-          true
+          true,
+          buildActorContext(
+            'ai_assistant',
+            {
+              assistant: {
+                conversationId: ctx.conversationId ?? 'unknown',
+                userId: ctx.userId,
+                email: ctx.userEmail,
+              },
+            },
+            ctx.req
+          )
         );
       } catch (err) {
         return {

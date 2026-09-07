@@ -101,6 +101,9 @@ import {
   type ParkingProfileDraft,
 } from '@/features/dashboard/parking/lib/parkingSettingsForm';
 import { setParkingSettingsIssueSections } from '@/features/dashboard/parking/lib/parkingSettingsIssuesStore';
+import {
+  planParkingSettingsSave,
+} from '@/features/dashboard/parking/lib/parkingSettingsSavePlan';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
@@ -151,7 +154,7 @@ function parkingTypeLabel(value: string): string {
   return PARKING_TYPES.find((type) => type.value === value)?.label ?? value;
 }
 
-export function ParkingSettingsCard() {
+export function useParkingSettingsController() {
   const navigate = useNavigate();
   const { parking, orgSlug } = useParkingContext();
   const inheritedBrandColor = useOrgBrandColor();
@@ -199,6 +202,10 @@ export function ParkingSettingsCard() {
   const [paymentOtpFingerprint, setPaymentOtpFingerprint] = useState('');
   const [qrUploadingMethodId, setQrUploadingMethodId] = useState<string | null>(null);
   const paymentOtpSucceededRef = useRef(false);
+  const pendingSaveScopeRef = useRef<readonly ParkingSettingsSectionId[] | null>(null);
+  const pendingSaveDeferredRef = useRef<{
+    resolve: (ok: boolean) => void;
+  } | null>(null);
 
   const markFieldInteracted = useCallback((fieldId: string) => {
     setInteractedFields((current) => {
@@ -371,7 +378,18 @@ export function ParkingSettingsCard() {
     updateSettings.isPending ||
     deleteParking.isPending ||
     uploadQr.isPending;
-  const saveDisabledByValidation = isDirty && !draftCompletion.isComplete;
+  const fullPageSavePlan = planParkingSettingsSave({
+    dirty: {
+      profile: profileDirty,
+      details: detailsDirty,
+      features: featuresDirty,
+      location: locationDirty,
+      payment: Boolean(operationalDirty),
+      automation: automationDirty,
+    },
+    completion: draftCompletion,
+  });
+  const saveDisabledByValidation = isDirty && !fullPageSavePlan.hasSavableWork;
   const saveDisabled = busy || saveDisabledByValidation;
 
   useEffect(() => {
@@ -405,35 +423,58 @@ export function ParkingSettingsCard() {
   const handleSave = async (options?: {
     skipPaymentVerification?: boolean;
     settingsVerificationToken?: string;
-  }) => {
-    if (!operationalDraft || !operationalBaseline) return;
+    scopeSectionIds?: readonly ParkingSettingsSectionId[] | null;
+  }): Promise<boolean> => {
+    if (!operationalDraft || !operationalBaseline) return false;
 
     if (!isDirty) {
       toast.message('No changes to save');
-      return;
+      return false;
     }
 
-    if (!draftCompletion.isComplete) {
+    const plan = planParkingSettingsSave({
+      dirty: {
+        profile: profileDirty,
+        details: detailsDirty,
+        features: featuresDirty,
+        location: locationDirty,
+        payment: Boolean(operationalDirty),
+        automation: automationDirty,
+      },
+      completion: draftCompletion,
+      scopeSectionIds: options?.scopeSectionIds,
+    });
+
+    if (!plan.hasSavableWork) {
       setShowValidationErrors(true);
-      toast.error(draftCompletion.firstErrorMessage ?? 'Please fix the highlighted fields');
-      if (draftCompletion.firstIssueSectionId) {
+      toast.error(
+        plan.firstBlockedMessage ??
+          draftCompletion.firstErrorMessage ??
+          'Please fix the highlighted fields'
+      );
+      if (plan.firstBlockedSectionId) {
+        scrollToSettingsSection(plan.firstBlockedSectionId);
+      } else if (draftCompletion.firstIssueSectionId) {
         scrollToSettingsSection(draftCompletion.firstIssueSectionId);
       }
-      return;
+      return false;
     }
 
     const paymentChanged =
-      operationalDirty &&
+      plan.savePayment &&
       paymentMethodsDraftIsDirty(
         operationalDraft.paymentMethods,
         operationalBaseline.paymentMethods
       );
 
-    if (paymentChanged && operationalDirty && !options?.skipPaymentVerification) {
+    if (paymentChanged && !options?.skipPaymentVerification) {
       const fingerprint = await computePaymentSettingsFingerprint(operationalDraft.paymentMethods);
       setPaymentOtpFingerprint(fingerprint);
       setPaymentOtpOpen(true);
-      return;
+      pendingSaveScopeRef.current = options?.scopeSectionIds ?? null;
+      return await new Promise<boolean>((resolve) => {
+        pendingSaveDeferredRef.current = { resolve };
+      });
     }
 
     setShowValidationErrors(false);
@@ -441,7 +482,7 @@ export function ParkingSettingsCard() {
     try {
       let savedSomething = false;
 
-      if (profileDirty) {
+      if (plan.saveProfile) {
         const settingsPatch = parkingProfileSettingsPatch(profileDraft, inheritedBrandColor);
         await updateParking.mutateAsync({
           parkingId: parking.id,
@@ -451,7 +492,7 @@ export function ParkingSettingsCard() {
         savedSomething = true;
       }
 
-      if (operationalDirty) {
+      if (plan.savePayment) {
         await updateSettings.mutateAsync({
           paymentMethods: operationalDraft.paymentMethods,
           paymentProvider: operationalDraft.paymentProvider,
@@ -465,7 +506,7 @@ export function ParkingSettingsCard() {
         savedSomething = true;
       }
 
-      if (automationDirty) {
+      if (plan.saveAutomation) {
         await updateSettings.mutateAsync({
           automationToggles: automationDraft,
         });
@@ -473,31 +514,34 @@ export function ParkingSettingsCard() {
         savedSomething = true;
       }
 
-      if (featuresDirty || locationDirty || detailsDirty) {
+      if (plan.saveFeatures || plan.saveLocation || plan.saveDetails) {
         await updateParking.mutateAsync({
           parkingId: parking.id,
           settings: {
-            ...(featuresDirty ? parkingFeaturesSettingsPatch(featuresDraft) : {}),
-            ...(locationDirty ? parkingLocationSettingsPatch(locationDraft) : {}),
-            ...(detailsDirty ? parkingDetailsSettingsPatch(detailsDraft) : {}),
+            ...(plan.saveFeatures ? parkingFeaturesSettingsPatch(featuresDraft) : {}),
+            ...(plan.saveLocation ? parkingLocationSettingsPatch(locationDraft) : {}),
+            ...(plan.saveDetails ? parkingDetailsSettingsPatch(detailsDraft) : {}),
           },
-          ...(detailsDirty ? { acceptedVehicleTypes: detailsDraft.acceptedVehicleTypes } : {}),
+          ...(plan.saveDetails ? { acceptedVehicleTypes: detailsDraft.acceptedVehicleTypes } : {}),
         });
-        if (featuresDirty) setFeaturesBaseline(featuresDraft);
-        if (locationDirty) setLocationBaseline(locationDraft);
-        if (detailsDirty) setDetailsBaseline(detailsDraft);
+        if (plan.saveFeatures) setFeaturesBaseline(featuresDraft);
+        if (plan.saveLocation) setLocationBaseline(locationDraft);
+        if (plan.saveDetails) setDetailsBaseline(detailsDraft);
         savedSomething = true;
       }
 
       if (savedSomething) {
         setInteractedFields({});
         toast.success('Settings saved');
+        return true;
       }
+      return false;
     } catch (error) {
       if (options?.settingsVerificationToken) {
         revertPaymentDraft();
       }
       toast.error(friendlyToastError(error, 'Could not save settings'));
+      return false;
     } finally {
       setPaymentOtpOpen(false);
       paymentOtpSucceededRef.current = false;
@@ -520,6 +564,9 @@ export function ParkingSettingsCard() {
   const handlePaymentOtpOpenChange = (open: boolean) => {
     if (!open && !paymentOtpSucceededRef.current) {
       revertPaymentDraft();
+      const deferred = pendingSaveDeferredRef.current;
+      pendingSaveDeferredRef.current = null;
+      deferred?.resolve(false);
     }
     if (!open) paymentOtpSucceededRef.current = false;
     setPaymentOtpOpen(open);
@@ -527,9 +574,16 @@ export function ParkingSettingsCard() {
 
   const handlePaymentOtpVerified = (verificationToken: string) => {
     paymentOtpSucceededRef.current = true;
+    const scopeSectionIds = pendingSaveScopeRef.current;
+    pendingSaveScopeRef.current = null;
+    const deferred = pendingSaveDeferredRef.current;
+    pendingSaveDeferredRef.current = null;
     void handleSave({
       skipPaymentVerification: true,
       settingsVerificationToken: verificationToken,
+      scopeSectionIds,
+    }).then((ok) => {
+      deferred?.resolve(ok);
     });
   };
 
@@ -566,6 +620,159 @@ export function ParkingSettingsCard() {
   const setAutomationToggle = (key: keyof ParkingAutomationToggles, enabled: boolean) => {
     setAutomationDraft((current) => ({ ...current, [key]: enabled }));
   };
+
+  return {
+    navigate,
+    parking,
+    orgSlug,
+    inheritedBrandColor,
+    setBrandColorPreview,
+    settings,
+    settingsLoading,
+    updateParking,
+    deleteParking,
+    updateSettings,
+    uploadQr,
+    profileBaseline,
+    setProfileBaseline,
+    profileDraft,
+    setProfileDraft,
+    coverImage,
+    setCoverImage,
+    operationalBaseline,
+    setOperationalBaseline,
+    operationalDraft,
+    setOperationalDraft,
+    featuresBaseline,
+    setFeaturesBaseline,
+    featuresDraft,
+    setFeaturesDraft,
+    newCustomFeatureInput,
+    setNewCustomFeatureInput,
+    locationBaseline,
+    setLocationBaseline,
+    locationDraft,
+    setLocationDraft,
+    detailsBaseline,
+    setDetailsBaseline,
+    detailsDraft,
+    setDetailsDraft,
+    deleteOpen,
+    setDeleteOpen,
+    archiveOpen,
+    setArchiveOpen,
+    restoreOpen,
+    setRestoreOpen,
+    automationBaseline,
+    setAutomationBaseline,
+    automationDraft,
+    setAutomationDraft,
+    showValidationErrors,
+    setShowValidationErrors,
+    interactedFields,
+    setInteractedFields,
+    paymentOtpOpen,
+    setPaymentOtpOpen,
+    paymentOtpFingerprint,
+    setPaymentOtpFingerprint,
+    qrUploadingMethodId,
+    setQrUploadingMethodId,
+    paymentOtpSucceededRef,
+    markFieldInteracted,
+    profileDirtyRef,
+    operationalDirtyRef,
+    automationDirtyRef,
+    featuresDirtyRef,
+    locationDirtyRef,
+    detailsDirtyRef,
+    displayName,
+    parkingCode,
+    parkingSlugPrefix,
+    profileDirty,
+    operationalDirty,
+    automationDirty,
+    featuresDirty,
+    locationDirty,
+    detailsDirty,
+    isDirty,
+    isArchived,
+    draftCompletion,
+    savedCompletion,
+    resolveFieldError,
+    navSections,
+    scrollToSettingsSection,
+    busy,
+    saveDisabledByValidation,
+    saveDisabled,
+    setProfileField,
+    setPaymentMethods,
+    handleSave,
+    revertPaymentDraft,
+    handlePaymentOtpOpenChange,
+    handlePaymentOtpVerified,
+    handleDelete,
+    handleArchive,
+    handleRestore,
+    setAutomationToggle,
+  };
+}
+
+export function ParkingSettingsCard() {
+  const {
+    parking,
+    orgSlug,
+    inheritedBrandColor,
+    setBrandColorPreview,
+    settings,
+    settingsLoading,
+    updateParking,
+    deleteParking,
+    uploadQr,
+    profileDraft,
+    coverImage,
+    setCoverImage,
+    operationalDraft,
+    featuresDraft,
+    setFeaturesDraft,
+    newCustomFeatureInput,
+    setNewCustomFeatureInput,
+    locationDraft,
+    setLocationDraft,
+    detailsDraft,
+    setDetailsDraft,
+    deleteOpen,
+    setDeleteOpen,
+    archiveOpen,
+    setArchiveOpen,
+    restoreOpen,
+    setRestoreOpen,
+    automationDraft,
+    paymentOtpOpen,
+    paymentOtpFingerprint,
+    qrUploadingMethodId,
+    setQrUploadingMethodId,
+    markFieldInteracted,
+    displayName,
+    parkingCode,
+    parkingSlugPrefix,
+    isDirty,
+    isArchived,
+    draftCompletion,
+    resolveFieldError,
+    navSections,
+    busy,
+    saveDisabledByValidation,
+    saveDisabled,
+    setProfileField,
+    setPaymentMethods,
+    handleSave,
+    handlePaymentOtpOpenChange,
+    handlePaymentOtpVerified,
+    handleDelete,
+    handleArchive,
+    handleRestore,
+    setAutomationToggle,
+  } = useParkingSettingsController();
 
   if (settingsLoading || !settings || !operationalDraft) {
     return <AppSettingsCardSkeleton />;

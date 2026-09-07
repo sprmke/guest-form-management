@@ -18,6 +18,8 @@ type Props = {
   disabled?: boolean;
   resolveFieldError?: (fieldId: string) => string | null;
   markFieldInteracted?: (fieldId: string) => void;
+  /** Compact card chrome for Setup Guide and other embedded hosts. */
+  dense?: boolean;
 };
 
 function FieldGrid({ children }: { children: React.ReactNode }) {
@@ -60,6 +62,7 @@ export function ParkingDetailsSection({
   disabled = false,
   resolveFieldError = () => null,
   markFieldInteracted = () => {},
+  dense = false,
 }: Props) {
   const setField = <K extends keyof ParkingDetailsDraft>(key: K, value: ParkingDetailsDraft[K]) => {
     onChange({ ...draft, [key]: value });
@@ -80,6 +83,7 @@ export function ParkingDetailsSection({
       title="Parking Details"
       icon={Home}
       description="Vehicle types, dimensions, and check-in times."
+      dense={dense}
     >
       <SettingsField id="parking-accepted-vehicle-types" label="Accepted vehicle types">
         <div className="grid gap-2 sm:grid-cols-2">

@@ -105,7 +105,10 @@
     "rollback:functions:prod": "./scripts/deploy/rollback-functions.sh prod",
     "migrations:status:dev": "./scripts/deploy/migration-status.sh dev",
     "migrations:status:prod": "./scripts/deploy/migration-status.sh prod",
-    "env:status": "./scripts/dev/check-linked-project.sh"
+    "env:status": "./scripts/dev/check-linked-project.sh",
+    "env:reorganize": "bun scripts/dev/reorganize-env-files.mjs",
+    "env:sync:dev": "bun scripts/dev/sync-dev-env.mjs",
+    "env:sync:vercel:dev": "bun scripts/dev/sync-vercel-dev-env.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.0",

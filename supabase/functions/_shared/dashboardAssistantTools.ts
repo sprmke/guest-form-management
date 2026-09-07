@@ -138,6 +138,7 @@ import {
   humanizeTransitionError,
 } from './dashboardAssistantActionDisplay.ts';
 import { WorkflowOrchestrator } from './workflowOrchestrator.ts';
+import { buildActorContext } from './activityLog.ts';
 import {
   classifyActionRisk,
   READ_TOOL_NAMES,
@@ -270,6 +271,22 @@ export type ToolExecutionContext = {
   /** Storage paths attached on this user turn (host uploaded this message). */
   turnAttachmentPaths?: string[];
 };
+
+/** Activity-log actor for an AI-assistant-initiated write — single emit path,
+ *  attributed to `ai_assistant` with the conversation id + initiating user. */
+export function assistantActorContext(ctx: ToolExecutionContext) {
+  return buildActorContext(
+    'ai_assistant',
+    {
+      assistant: {
+        conversationId: ctx.conversationId ?? 'unknown',
+        userId: ctx.userId,
+        email: ctx.userEmail,
+      },
+    },
+    ctx.req
+  );
+}
 
 export type ToolResult = {
   ok: boolean;
@@ -1897,7 +1914,14 @@ async function toolProposeTransitionBooking(
   });
 
   try {
-    const result = await WorkflowOrchestrator.transition(bookingId, toStatus, payload, {}, true);
+    const result = await WorkflowOrchestrator.transition(
+      bookingId,
+      toStatus,
+      payload,
+      {},
+      true,
+      assistantActorContext(ctx)
+    );
     return {
       ok: true,
       riskTier: tier,
@@ -3175,7 +3199,14 @@ export async function executeConfirmedAction(
       expectedTier: 'tier2_confirmed',
     });
 
-    const result = await WorkflowOrchestrator.transition(bookingId, 'CANCELLED', {}, {}, true);
+    const result = await WorkflowOrchestrator.transition(
+      bookingId,
+      'CANCELLED',
+      {},
+      {},
+      true,
+      assistantActorContext(ctx)
+    );
     return {
       ok: true,
       riskTier: 'tier2_confirmed',
@@ -3213,7 +3244,14 @@ export async function executeConfirmedAction(
     });
 
     try {
-      const result = await WorkflowOrchestrator.transition(bookingId, toStatus, payload, {}, true);
+      const result = await WorkflowOrchestrator.transition(
+        bookingId,
+        toStatus,
+        payload,
+        {},
+        true,
+        assistantActorContext(ctx)
+      );
       return {
         ok: true,
         riskTier: 'tier2_confirmed',
