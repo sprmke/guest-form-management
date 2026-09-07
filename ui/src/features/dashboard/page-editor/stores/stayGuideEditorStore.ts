@@ -160,7 +160,9 @@ export const useStayGuideEditorStore = create<State & Actions>()(
 
     reorderSections: (orderedIds) =>
       set((state) => {
-        const byId = new Map(state.config.sections.map((entry) => [entry.id, entry]));
+        const byId = new Map(
+          state.config.sections.map((entry: StayGuideSectionConfigEntry) => [entry.id, entry])
+        );
         state.config.sections = orderedIds
           .map((id, order) => {
             const existing = byId.get(id);
@@ -176,14 +178,14 @@ export const useStayGuideEditorStore = create<State & Actions>()(
       set((state) => {
         const byId = new Map(
           state.config.sections
-            .filter((entry) => isStayGuideChapterSectionId(entry.id))
-            .map((entry) => [entry.id, entry])
+            .filter((entry: StayGuideSectionConfigEntry) => isStayGuideChapterSectionId(entry.id))
+            .map((entry: StayGuideSectionConfigEntry) => [entry.id, entry])
         );
         const reordered = orderedIds
           .map((id) => byId.get(id))
           .filter((entry): entry is StayGuideSectionConfigEntry => Boolean(entry));
         let chapterIndex = 0;
-        state.config.sections = state.config.sections.map((entry) => {
+        state.config.sections = state.config.sections.map((entry: StayGuideSectionConfigEntry) => {
           if (!isStayGuideChapterSectionId(entry.id)) return entry;
           return reordered[chapterIndex++] ?? entry;
         });

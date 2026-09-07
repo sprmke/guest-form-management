@@ -71,6 +71,7 @@
     "html-to-image": "^1.11.13",
     "idb": "^8.0.3",
     "idb-keyval": "^6.2.1",
+    "immer": "^11.1.18",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "konva": "^10.3.0",

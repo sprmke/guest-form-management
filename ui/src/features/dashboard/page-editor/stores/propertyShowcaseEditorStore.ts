@@ -7,6 +7,7 @@ import {
   SHOWCASE_PRESET_PALETTE_IDS,
   SHOWCASE_SECTION_IDS,
   type PropertyShowcaseConfig,
+  type PropertyShowcaseSectionConfig,
   type ShowcasePaletteMode,
   type ShowcaseSectionId,
   type ShowcaseTemplateKey,
@@ -211,7 +212,9 @@ export const usePropertyShowcaseEditorStore = create<
     setSectionVisible: (id, visible) =>
       set((state) => {
         if (REQUIRED_VISIBLE.has(id)) return;
-        const section = state.config.sections.find((entry) => entry.id === id);
+        const section = state.config.sections.find(
+          (entry: PropertyShowcaseSectionConfig) => entry.id === id
+        );
         if (!section) return;
         section.visible = visible;
         state.isDirty = true;
@@ -220,7 +223,12 @@ export const usePropertyShowcaseEditorStore = create<
 
     reorderSections: (orderedIds) =>
       set((state) => {
-        const byId = new Map(state.config.sections.map((section) => [section.id, section]));
+        const byId = new Map(
+          state.config.sections.map((section: PropertyShowcaseSectionConfig) => [
+            section.id,
+            section,
+          ])
+        );
         state.config.sections = orderedIds.map((id, order) => {
           const existing = byId.get(id)!;
           return { ...existing, order };
@@ -232,7 +240,9 @@ export const usePropertyShowcaseEditorStore = create<
 
     setSectionCopy: (id, copy) =>
       set((state) => {
-        const section = state.config.sections.find((entry) => entry.id === id);
+        const section = state.config.sections.find(
+          (entry: PropertyShowcaseSectionConfig) => entry.id === id
+        );
         if (!section) return;
         section.copy = {
           heading: copy.heading?.trim() || undefined,
@@ -245,7 +255,9 @@ export const usePropertyShowcaseEditorStore = create<
 
     setSectionColumns: (id, columns) =>
       set((state) => {
-        const section = state.config.sections.find((entry) => entry.id === id);
+        const section = state.config.sections.find(
+          (entry: PropertyShowcaseSectionConfig) => entry.id === id
+        );
         if (!section) return;
         section.columns = Math.min(4, Math.max(1, Math.round(columns)));
         state.isDirty = true;
@@ -254,7 +266,9 @@ export const usePropertyShowcaseEditorStore = create<
 
     setSectionImageSlots: (id, imageSlots) =>
       set((state) => {
-        const section = state.config.sections.find((entry) => entry.id === id);
+        const section = state.config.sections.find(
+          (entry: PropertyShowcaseSectionConfig) => entry.id === id
+        );
         if (!section) return;
         section.imageSlots = imageSlots.slice(0, 12);
         state.isDirty = true;
@@ -263,7 +277,9 @@ export const usePropertyShowcaseEditorStore = create<
 
     setSectionCta: (id, ctaLabel, ctaTarget) =>
       set((state) => {
-        const section = state.config.sections.find((entry) => entry.id === id);
+        const section = state.config.sections.find(
+          (entry: PropertyShowcaseSectionConfig) => entry.id === id
+        );
         if (!section) return;
         section.ctaLabel = ctaLabel?.trim() || undefined;
         section.ctaTarget = ctaTarget?.trim() || undefined;
@@ -274,7 +290,9 @@ export const usePropertyShowcaseEditorStore = create<
     setSectionHeroEyebrow: (id, heroEyebrow) =>
       set((state) => {
         if (id !== 'hero') return;
-        const section = state.config.sections.find((entry) => entry.id === id);
+        const section = state.config.sections.find(
+          (entry: PropertyShowcaseSectionConfig) => entry.id === id
+        );
         if (!section) return;
         section.heroEyebrow = heroEyebrow;
         state.isDirty = true;
@@ -284,7 +302,9 @@ export const usePropertyShowcaseEditorStore = create<
     setSectionLocationLead: (id, locationLead) =>
       set((state) => {
         if (id !== 'location') return;
-        const section = state.config.sections.find((entry) => entry.id === id);
+        const section = state.config.sections.find(
+          (entry: PropertyShowcaseSectionConfig) => entry.id === id
+        );
         if (!section) return;
         section.locationLead = locationLead;
         state.isDirty = true;

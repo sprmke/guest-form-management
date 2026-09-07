@@ -95,7 +95,9 @@ export const usePropertyLandingEditorStore = create<
     setSectionVisible: (id, visible) =>
       set((state) => {
         if (PROPERTY_LANDING_MANDATORY_SECTIONS.has(id)) return;
-        const section = state.config.sections.find((entry) => entry.id === id);
+        const section = state.config.sections.find(
+          (entry: PropertyLandingSectionConfig['sections'][number]) => entry.id === id
+        );
         if (!section) return;
         section.visible = visible;
         state.isDirty = true;
