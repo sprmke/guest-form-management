@@ -66,7 +66,7 @@ const SETTINGS_SECTIONS: AdminSectionNavItem[] = [
   { id: 'danger', label: 'Danger zone', icon: AlertTriangle },
 ];
 
-export function OrgSettingsPage() {
+export function useOrgSettingsController() {
   const { orgSlug } = useParams<{ orgSlug: string }>();
   const navigate = useNavigate();
   const { data, isLoading: orgsLoading } = useOrganizations();
@@ -187,8 +187,10 @@ export function OrgSettingsPage() {
       ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const handleSave = async () => {
-    if (!org || !profileDraft || !operatorDraft || !profileBaseline || !operatorBaseline) return;
+  const handleSave = async (): Promise<boolean> => {
+    if (!org || !profileDraft || !operatorDraft || !profileBaseline || !operatorBaseline) {
+      return false;
+    }
 
     const plan = planOrgSettingsSave({
       profileDraft,
@@ -211,7 +213,7 @@ export function OrgSettingsPage() {
       if (plan.firstBlockedSectionId) {
         scrollToOrgSettingsSection(plan.firstBlockedSectionId);
       }
-      return;
+      return false;
     }
 
     setShowValidationErrors(false);
@@ -248,9 +250,12 @@ export function OrgSettingsPage() {
         } else {
           toast.success('Settings saved');
         }
+        return true;
       }
+      return false;
     } catch (error) {
       toast.error(friendlyToastError(error, 'Could not save settings'));
+      return false;
     }
   };
 
@@ -328,6 +333,102 @@ export function OrgSettingsPage() {
       ),
     [settingsCompletion.fieldErrors, interactedFields, showValidationErrors]
   );
+
+  return {
+    navigate,
+    data,
+    orgsLoading,
+    propsLoading,
+    orgAccess,
+    operatorData,
+    operatorLoading,
+    operatorError,
+    operatorLoadError,
+    updateOrganization,
+    updateOrgSettings,
+    deleteOrganization,
+    org,
+    canEditBasicSettings,
+    canEditSocials,
+    canDeleteOrganization,
+    profileBaseline,
+    setProfileBaseline,
+    operatorBaseline,
+    setOperatorBaseline,
+    profileDraft,
+    setProfileDraft,
+    operatorDraft,
+    setOperatorDraft,
+    showValidationErrors,
+    setShowValidationErrors,
+    interactedFields,
+    setInteractedFields,
+    markFieldInteracted,
+    profileDirtyRef,
+    operatorDirtyRef,
+    profileDirty,
+    operatorDirty,
+    canSaveProfile,
+    canSaveOperator,
+    canSaveAny,
+    nameChanged,
+    nameCheck,
+    nameUnavailable,
+    nameConflictMessage,
+    nameChecking,
+    nameAvailabilityState,
+    busy,
+    isLoading,
+    setProfileField,
+    setOperatorField,
+    scrollToOrgSettingsSection,
+    handleSave,
+    handleDeleteOrganization,
+    orgUrlPrefix,
+    operatorSources,
+    formBusy,
+    slugPreview,
+    savedCompletion,
+    hasOrgLogo,
+    completionInput,
+    settingsCompletion,
+    navSections,
+    resolveFieldError,
+    orgSlug,
+  };
+}
+
+export function OrgSettingsPage() {
+  const {
+    operatorData,
+    operatorError,
+    operatorLoadError,
+    deleteOrganization,
+    org,
+    canEditBasicSettings,
+    canEditSocials,
+    canDeleteOrganization,
+    profileDraft,
+    operatorDraft,
+    markFieldInteracted,
+    canSaveAny,
+    nameUnavailable,
+    nameConflictMessage,
+    nameChecking,
+    nameAvailabilityState,
+    busy,
+    isLoading,
+    setProfileField,
+    setOperatorField,
+    handleSave,
+    handleDeleteOrganization,
+    orgUrlPrefix,
+    operatorSources,
+    formBusy,
+    slugPreview,
+    navSections,
+    resolveFieldError,
+  } = useOrgSettingsController();
 
   return (
     <RequireAdmin>

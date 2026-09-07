@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { Settings } from 'lucide-react';
 
+import { HostVerificationRewardCard } from '@/features/dashboard/super-admin/components/HostVerificationRewardCard';
 import { SuperAdminPage } from '@/features/dashboard/super-admin/components/shared/SuperAdminPage';
 import {
   SuperAdminSettingsCard,
@@ -16,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+
 
 export function SuperAdminPlatformSettingsPage() {
   const { data, isLoading, error } = usePlatformSettings();
@@ -163,6 +165,7 @@ export function SuperAdminPlatformSettingsPage() {
           </SuperAdminSettingsRow>
         </div>
       </SuperAdminSettingsCard>
+      <HostVerificationRewardCard />
     </SuperAdminPage>
   );
 }

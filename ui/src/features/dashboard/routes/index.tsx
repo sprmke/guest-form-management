@@ -1,6 +1,7 @@
 import { Fragment } from 'react';
 import type { ReactNode } from 'react';
 
+import { activityParkingRoute, activityPropertyRoute } from '@/features/dashboard/activity/routes';
 import {
   hostAnnouncementsParkingRoute,
   hostAnnouncementsPropertyRoute,
@@ -52,6 +53,7 @@ export const dashboardRoutes: ReactNode[] = [
         {marketingPropertyRoute(propertyRoute)}
         {propertyTeamRoute(propertyRoute)}
         {propertyInboxRoute(propertyRoute)}
+        {activityPropertyRoute(propertyRoute)}
         {hostAnnouncementsPropertyRoute(propertyRoute)}
         {helpSupportPropertyRoute(propertyRoute)}
         {propertyPlansRoute(propertyRoute)}
@@ -63,6 +65,7 @@ export const dashboardRoutes: ReactNode[] = [
       <>
         {parkingAdminRoutes(parkingRoute)}
         {parkingTeamRoute(parkingRoute)}
+        {activityParkingRoute(parkingRoute)}
         {hostAnnouncementsParkingRoute(parkingRoute)}
         {helpSupportParkingRoute(parkingRoute)}
       </>

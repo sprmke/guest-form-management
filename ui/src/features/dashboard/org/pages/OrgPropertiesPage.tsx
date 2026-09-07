@@ -1,12 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
-import { Plus } from 'lucide-react';
+import { CopyPlus, Plus } from 'lucide-react';
 
 import { AdminMetricCardSkeleton } from '@/features/dashboard/bookings/components/AdminMetricCard';
 import { RequireAdmin } from '@/features/dashboard/bookings/components/RequireAdmin';
 import { AddPropertyDialog } from '@/features/dashboard/org/components/AddPropertyDialog';
+import {
+  CopyPropertySettingsDialog,
+  type CopyPropertySettingsDialogProperty,
+} from '@/features/dashboard/org/components/org-properties/CopyPropertySettingsDialog';
+import { CopyPropertySettingsHistory } from '@/features/dashboard/org/components/org-properties/CopyPropertySettingsHistory';
 import { OrgPropertiesSummaryCards } from '@/features/dashboard/org/components/org-properties/OrgPropertiesSummaryCards';
 import {
   OrgPropertiesResultsMeta,
@@ -33,19 +38,26 @@ import { hasOrgPermission } from '@/features/dashboard/team/lib/orgPermissions';
 
 import { FloatingToolbar } from '@/components/mobile/FloatingPanel';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
-import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
+import {
+  MobileHeroActionMenu,
+  type MobileHeroActionMenuItem,
+} from '@/components/mobile/MobileHeroActionButton';
 import { ListingCardGridSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 
 export function OrgPropertiesPage() {
   const navigate = useNavigate();
   const { orgSlug } = useParams<{ orgSlug: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: orgsData, isLoading: orgsLoading } = useOrganizations();
   const { data: propsData, isLoading: propsLoading } = useProperties(orgSlug);
   const { data: orgAccess } = useOrgPermissions();
   const canCreateProperties = hasOrgPermission(orgAccess?.permissions, 'org:properties:create');
 
   const [addOpen, setAddOpen] = useState(false);
+  const [copyOpen, setCopyOpen] = useState(false);
+  const [copySourcePropertyId, setCopySourcePropertyId] = useState<string | null>(null);
+  const [copyLockedTargetId, setCopyLockedTargetId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<OrgPropertiesViewMode>('grid');
   const [filters, setFilters] = useState<OrgPropertiesFilters>({
     search: '',
@@ -63,19 +75,93 @@ export function OrgPropertiesPage() {
 
   const hasActiveFilters = orgPropertiesHasActiveFilters(filters);
   const isLoading = orgsLoading || propsLoading;
+  const canCopySettings = properties.length >= 2;
 
-  const heroAddAction = canCreateProperties ? (
-    <MobileHeroActionButton aria-label="Add property" onClick={() => setAddOpen(true)}>
-      <Plus className="size-5" aria-hidden />
-    </MobileHeroActionButton>
-  ) : undefined;
+  const copyDialogProperties = useMemo<CopyPropertySettingsDialogProperty[]>(
+    () =>
+      properties.map((property) => ({
+        id: property.id,
+        name: property.name,
+        tower: property.tower,
+        unitNumber: property.unitNumber,
+        status: property.status,
+      })),
+    [properties]
+  );
 
-  const desktopAddAction = canCreateProperties ? (
-    <Button type="button" onClick={() => setAddOpen(true)} className="min-h-[44px] gap-1.5">
-      <Plus className="size-4" aria-hidden />
-      Add property
-    </Button>
-  ) : undefined;
+  const propertyNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const property of properties) {
+      map.set(property.id, property.name);
+    }
+    return map;
+  }, [properties]);
+
+  const openCopySettings = (sourcePropertyId?: string | null, lockedTargetId?: string | null) => {
+    setCopySourcePropertyId(sourcePropertyId ?? null);
+    setCopyLockedTargetId(lockedTargetId ?? null);
+    setCopyOpen(true);
+  };
+
+  useEffect(() => {
+    const copyTarget = searchParams.get('copyTarget')?.trim();
+    if (!copyTarget || properties.length < 2) return;
+    if (!properties.some((p) => p.id === copyTarget)) return;
+    openCopySettings(null, copyTarget);
+    const next = new URLSearchParams(searchParams);
+    next.delete('copyTarget');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- open once from query
+  }, [properties, searchParams]);
+
+  const heroMenuItems = useMemo(() => {
+    const items: MobileHeroActionMenuItem[] = [];
+    if (canCopySettings) {
+      items.push({
+        key: 'copy-settings',
+        label: 'Copy settings',
+        Icon: CopyPlus,
+        onSelect: () => openCopySettings(properties[0]?.id ?? null),
+      });
+    }
+    if (canCreateProperties) {
+      items.push({
+        key: 'add-property',
+        label: 'Add property',
+        Icon: Plus,
+        onSelect: () => setAddOpen(true),
+      });
+    }
+    return items;
+  }, [canCopySettings, canCreateProperties, properties]);
+
+  const heroTrailing =
+    heroMenuItems.length > 0 ? (
+      <MobileHeroActionMenu items={heroMenuItems} label="Property actions" />
+    ) : undefined;
+
+  const desktopActions =
+    canCreateProperties || canCopySettings ? (
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+        {canCopySettings ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => openCopySettings(properties[0]?.id ?? null)}
+            className="min-h-[44px] gap-1.5"
+          >
+            <CopyPlus className="size-4" aria-hidden />
+            Copy settings
+          </Button>
+        ) : null}
+        {canCreateProperties ? (
+          <Button type="button" onClick={() => setAddOpen(true)} className="min-h-[44px] gap-1.5">
+            <Plus className="size-4" aria-hidden />
+            Add property
+          </Button>
+        ) : null}
+      </div>
+    ) : undefined;
 
   return (
     <RequireAdmin>
@@ -83,8 +169,8 @@ export function OrgPropertiesPage() {
         title="Properties"
         subtitle="All properties in your organization."
         titleId="org-properties-heading"
-        heroTrailing={heroAddAction}
-        desktopActions={desktopAddAction}
+        heroTrailing={heroTrailing}
+        desktopActions={desktopActions}
       >
         {isLoading ? (
           <div className="space-y-3 sm:space-y-4">
@@ -116,13 +202,23 @@ export function OrgPropertiesPage() {
               viewMode === 'grid' ? (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
                   {filteredProperties.map((property) => (
-                    <OrgPropertyCard key={property.id} property={property} orgSlug={org.slug} />
+                    <OrgPropertyCard
+                      key={property.id}
+                      property={property}
+                      orgSlug={org.slug}
+                      onCopySettings={canCopySettings ? openCopySettings : undefined}
+                    />
                   ))}
                 </div>
               ) : (
                 <div className="space-y-4">
                   {filteredProperties.map((property) => (
-                    <OrgPropertyListRow key={property.id} property={property} orgSlug={org.slug} />
+                    <OrgPropertyListRow
+                      key={property.id}
+                      property={property}
+                      orgSlug={org.slug}
+                      onCopySettings={canCopySettings ? openCopySettings : undefined}
+                    />
                   ))}
                 </div>
               )
@@ -138,6 +234,8 @@ export function OrgPropertiesPage() {
               visibleCount={filteredProperties.length}
               totalCount={properties.length}
             />
+
+            <CopyPropertySettingsHistory orgSlug={org.slug} propertyNameById={propertyNameById} />
           </>
         )}
       </AdminMobilePage>
@@ -153,6 +251,20 @@ export function OrgPropertiesPage() {
             setLastTenantContext(org.slug, property.slug);
             navigate(propertySectionPath(org.slug, property.slug, 'settings'));
           }}
+        />
+      ) : null}
+
+      {org && canCopySettings ? (
+        <CopyPropertySettingsDialog
+          open={copyOpen}
+          onOpenChange={(open) => {
+            setCopyOpen(open);
+            if (!open) setCopyLockedTargetId(null);
+          }}
+          orgSlug={org.slug}
+          properties={copyDialogProperties}
+          initialSourcePropertyId={copySourcePropertyId}
+          lockedTargetPropertyId={copyLockedTargetId}
         />
       ) : null}
     </RequireAdmin>

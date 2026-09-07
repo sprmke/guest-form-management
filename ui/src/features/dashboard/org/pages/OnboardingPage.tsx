@@ -536,10 +536,10 @@ export function OnboardingPage() {
 
       if (propertySlug) {
         setLastTenantContext(orgSlug, propertySlug);
-        navigate(propertySectionPath(orgSlug, propertySlug, 'settings'), { replace: true });
+        navigate(propertySectionPath(orgSlug, propertySlug, 'dashboard'), { replace: true });
       } else if (parkingSlug) {
         setLastParkingContext(orgSlug, parkingSlug);
-        navigate(parkingSectionPath(orgSlug, parkingSlug, 'settings'), { replace: true });
+        navigate(parkingSectionPath(orgSlug, parkingSlug, 'dashboard'), { replace: true });
       } else {
         navigate(orgDashboardPath(orgSlug), { replace: true });
       }

@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
 import type { PlanFeatures } from '@/features/dashboard/plans/lib/planFeatures';
@@ -137,5 +138,61 @@ export function useAssignOrgPlan() {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ORG_SUBSCRIPTIONS_QUERY_KEY });
     },
+  });
+}
+
+export type HostVerificationRewardGrant = {
+  orgSubscriptionId: string;
+  organizationId: string;
+  organizationName: string;
+  organizationSlug: string | null;
+  status: string;
+  planCode: string | null;
+  planName: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
+  createdAt: string;
+};
+
+export const HOST_VERIFICATION_REWARD_GRANTS_QUERY_KEY = [
+  'super-admin',
+  'host-verification-reward-grants',
+] as const;
+
+export function useHostVerificationRewardGrants() {
+  const query = useQuery({
+    queryKey: HOST_VERIFICATION_REWARD_GRANTS_QUERY_KEY,
+    queryFn: () =>
+      callEdgeFunction<{ grants: HostVerificationRewardGrant[] }>(
+        'org-subscriptions-admin?rewards=true'
+      ).then((data) => data.grants),
+  });
+
+  return {
+    ...query,
+    grants: query.data ?? [],
+  };
+}
+
+export function useRevokeHostVerificationReward() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { organizationId: string; orgSubscriptionId: string }) =>
+      callEdgeFunction('org-subscriptions-admin', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          action: 'revoke_reward',
+          organizationId: input.organizationId,
+          orgSubscriptionId: input.orgSubscriptionId,
+        }),
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: HOST_VERIFICATION_REWARD_GRANTS_QUERY_KEY }),
+        qc.invalidateQueries({ queryKey: ORG_SUBSCRIPTIONS_QUERY_KEY }),
+      ]);
+      toast.success('Reward revoked');
+    },
+    onError: (error: Error) => toast.error(error.message || 'Could not revoke reward'),
   });
 }

@@ -12,6 +12,16 @@ export type PlatformSettings = {
   legalTermsUrl: string | null;
   legalPrivacyUrl: string | null;
   publicRateLimitPerMin: number;
+  hostRewardEnabled: boolean;
+  hostRewardPlanCode: string | null;
+  hostRewardDurationDays: number;
+  hostRewardTrigger:
+    | 'recommended_verification_submitted'
+    | 'recommended_verification_approved';
+  hostRewardCampaignStart: string | null;
+  hostRewardCampaignEnd: string | null;
+  hostRewardMaxPerOrg: number;
+  hostRewardApplyToPaidOrg: 'skip' | 'extend';
   updatedAt: string;
 };
 

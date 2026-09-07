@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 
 import { Route } from 'react-router-dom';
 
+import { ActivityLogPage } from '@/features/dashboard/activity/pages/ActivityLogPage';
 import { HelpSupportLayout } from '@/features/dashboard/help-support/components/HelpSupportLayout';
 import { helpSupportOrgNestedRoutes } from '@/features/dashboard/help-support/routes';
 import { OrgInboxRedirect } from '@/features/dashboard/inbox/routes';
@@ -39,6 +40,7 @@ export function orgAdminRoutes(orgRoute: OrgRouteFn): ReactNode {
       <Route path="parkings" element={orgRoute('parkings', <OrgParkingsPage />)} />
       <Route path="team" element={orgRoute('team', <OrgTeamPage />)} />
       <Route path="plans" element={orgRoute('plans', <OrgPlansPage />)} />
+      <Route path="activity" element={orgRoute('activity', <ActivityLogPage scope="org" />)} />
       <Route path="inbox" element={<OrgInboxRedirect />} />
       <Route path="help-support" element={orgRoute('help-support', <HelpSupportLayout />)}>
         {helpSupportOrgNestedRoutes()}
