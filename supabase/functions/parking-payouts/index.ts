@@ -13,6 +13,7 @@ import {
 } from '../_shared/httpResponse.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
 import { logSuperAdminAction } from '../_shared/superAdminAudit.ts';
+import { requireSuperAdminStepUp } from '../_shared/superAdminVerification.ts';
 
 const LEDGER_LIMIT = 200;
 
@@ -62,6 +63,9 @@ const SELECT_WITH_JOINS = `
 `;
 
 serveSuperAdmin('parking-payouts', async (req, admin) => {
+  const stepUp = await requireSuperAdminStepUp(req, admin, 'parking_payout');
+  if (stepUp) return stepUp;
+
   const supabase = createServiceClient();
 
   if (req.method === 'GET') {

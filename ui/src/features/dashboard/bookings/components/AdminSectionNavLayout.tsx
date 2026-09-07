@@ -547,6 +547,8 @@ type AdminSectionProps = {
   headerAction?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  /** Tighter padding/gaps for embedded surfaces (e.g. Setup Guide). */
+  dense?: boolean;
 };
 
 export const AdminSection = React.memo(function AdminSection({
@@ -558,11 +560,15 @@ export const AdminSection = React.memo(function AdminSection({
   headerAction,
   children,
   className,
+  dense = false,
 }: AdminSectionProps) {
   return (
     <Card id={`section-${id}`} className={cn('scroll-mt-2', className)}>
       <CardHeader
-        className={cn(headerAction && 'flex flex-row items-center justify-between gap-3 space-y-0')}
+        className={cn(
+          dense && 'space-y-1 p-3 sm:space-y-1 sm:p-4',
+          headerAction && 'flex flex-row items-center justify-between gap-3 space-y-0'
+        )}
       >
         <div className={cn(headerAction && 'min-w-0 space-y-1.5')}>
           <CardTitle className="flex items-center gap-2">
@@ -574,7 +580,13 @@ export const AdminSection = React.memo(function AdminSection({
         </div>
         {headerAction ? <div className="shrink-0">{headerAction}</div> : null}
       </CardHeader>
-      <CardContent className="space-y-3 sm:space-y-6">{children}</CardContent>
+      <CardContent
+        className={cn(
+          dense ? 'space-y-3 p-3 pt-0 sm:space-y-4 sm:p-4 sm:pt-0' : 'space-y-3 sm:space-y-6'
+        )}
+      >
+        {children}
+      </CardContent>
     </Card>
   );
 });

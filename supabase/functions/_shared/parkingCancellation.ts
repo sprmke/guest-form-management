@@ -5,6 +5,8 @@
  */
 
 import { createServiceClient } from './orgAuth.ts';
+import { buildActorContext } from './activityLog.ts';
+import { logParkingStatusChange } from './parkingActivity.ts';
 import {
   assertParkingGuestOwnership,
   ParkingGuestOwnershipError,
@@ -28,7 +30,11 @@ export async function cancelParkingBooking(
 
   const { data: booking } = await supabase
     .from('guest_submissions')
-    .select('id, status, guest_auth_user_id, parking_broadcast_batch_number, guest_email')
+    .select(
+      'id, status, guest_auth_user_id, parking_broadcast_batch_number, guest_email, ' +
+        'parking_id, parking_request_organization_id, primary_guest_name, guest_facebook_name, ' +
+        'parking_check_in_date'
+    )
     .eq('id', bookingId)
     .maybeSingle();
 
@@ -62,6 +68,16 @@ export async function cancelParkingBooking(
       .eq('batch_number', Number(booking.parking_broadcast_batch_number ?? 1))
       .eq('response', 'pending');
 
+    await logParkingStatusChange({
+      booking,
+      fromStatus: 'PENDING_HOST_ACCEPTANCE',
+      toStatus: 'CANCELLED',
+      actor: buildActorContext('public_form', {
+        guest: { email: userEmail ?? (booking.guest_email as string | null) },
+      }),
+      metadata: { initiated_by: 'guest' },
+    });
+
     return { cancelled: true };
   }
 
@@ -76,6 +92,16 @@ export async function cancelParkingBooking(
       .eq('id', bookingId)
       .eq('status', 'PENDING_HOST_ACCEPTANCE');
     if (error) throw new ParkingCancellationError('Failed to cancel booking', 500);
+
+    await logParkingStatusChange({
+      booking,
+      fromStatus: 'PENDING_PAYMENT',
+      toStatus: 'CANCELLED',
+      actor: buildActorContext('public_form', {
+        guest: { email: userEmail ?? (booking.guest_email as string | null) },
+      }),
+      metadata: { initiated_by: 'guest' },
+    });
 
     return { cancelled: true };
   }

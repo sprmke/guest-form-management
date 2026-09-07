@@ -25,6 +25,8 @@ import { isSameOrgOwnerOwnedPin, readComplimentaryOwnerParking } from './ownerDe
 import { isBookingStatus, type BookingStatus } from './statusMachine.ts';
 import { extractWebhookInner, readMetadataString } from './paymongoWebhookMetadata.ts';
 import { WorkflowOrchestrator } from './workflowOrchestrator.ts';
+import { buildActorContext } from './activityLog.ts';
+import { logParkingStatusChange } from './parkingActivity.ts';
 
 export class ParkingPaymentError extends Error {
   status: number;
@@ -455,6 +457,16 @@ export async function fulfillParkingPayment(input: {
       .maybeSingle();
     if (confirmError) throw new Error(confirmError.message);
 
+    if (confirmed) {
+      await logParkingStatusChange({
+        booking: confirmed,
+        fromStatus: 'PENDING_PAYMENT',
+        toStatus: 'PENDING_REVIEW',
+        actor: buildActorContext('webhook', { webhook: 'parking_payment' }),
+        metadata: { paid_at: paidAt },
+      });
+    }
+
     if (!confirmed) {
       // Booking already moved on (payment-TTL release raced ahead of this webhook, or it was
       // already confirmed by an earlier duplicate delivery) — payment still succeeded
@@ -598,7 +610,8 @@ async function autoCompletePendingParkingRequest(propertyBookingId: string): Pro
     currentStatus as BookingStatus,
     { document_completion_target: 'PENDING_PARKING_REQUEST' },
     {},
-    true
+    true,
+    buildActorContext('webhook', { webhook: 'parking_payment' })
   );
 
   if (propertyBooking.property_id) {

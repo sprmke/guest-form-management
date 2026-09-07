@@ -98,6 +98,8 @@ import {
   subscribeParkingSettingsIssues,
 } from '@/features/dashboard/parking/lib/parkingSettingsIssuesStore';
 import { UpgradeModalProvider } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { SetupGuideProvider } from '@/features/dashboard/setup-guide/components/SetupGuideProvider';
+import { SetupGuideSidebarEntry } from '@/features/dashboard/setup-guide/components/SetupGuideSidebarEntry';
 import { SuperAdminSidebarScope } from '@/features/dashboard/super-admin/components/SuperAdminSidebarScope';
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 import { useParkingPermissions } from '@/features/dashboard/team/hooks/useParkingPermissions';
@@ -231,7 +233,9 @@ export function AdminLayout({ children, fillMain: fillMainProp = false }: Props)
         <AdminBrandTheme>
           <UpgradeModalProvider>
             <ListingContractRenewalProvider>
-              <AdminLayoutShell fillMain={fillMain}>{children}</AdminLayoutShell>
+              <SetupGuideProvider>
+                <AdminLayoutShell fillMain={fillMain}>{children}</AdminLayoutShell>
+              </SetupGuideProvider>
             </ListingContractRenewalProvider>
           </UpgradeModalProvider>
         </AdminBrandTheme>
@@ -910,6 +914,7 @@ function AdminSidebarContent({
         </div>
       </nav>
 
+      {!superAdmin ? <SetupGuideSidebarEntry collapsed={collapsed} /> : null}
       {!superAdmin ? (
         isPropertyAdminPath(pathname) || isParkingAdminPath(pathname) ? (
           <ListingVerificationSidebarCta collapsed={collapsed} />

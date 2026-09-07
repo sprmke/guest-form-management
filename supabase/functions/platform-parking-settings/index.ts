@@ -13,6 +13,7 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { serveSuperAdmin } from '../_shared/serveEdge.ts';
+import { requireSuperAdminStepUp } from '../_shared/superAdminVerification.ts';
 
 function serialize(row: Record<string, unknown>) {
   return {
@@ -26,6 +27,9 @@ function serialize(row: Record<string, unknown>) {
 }
 
 serveSuperAdmin('platform-parking-settings', async (req, user) => {
+  const stepUp = await requireSuperAdminStepUp(req, user, 'platform_parking_settings');
+  if (stepUp) return stepUp;
+
   const supabase = createServiceClient();
 
   if (req.method === 'GET') {
