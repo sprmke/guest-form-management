@@ -10,6 +10,7 @@ import {
   serializeProperty,
   verifyPropertyAccess,
 } from '../_shared/orgAuth.ts';
+import { buildActorContext, diffRecord, logActivity } from '../_shared/activityLog.ts';
 import {
   DUPLICATE_PROPERTY_NAME_MESSAGE,
   findPropertyNameConflict,
@@ -45,7 +46,8 @@ serveAuthenticated('update-property', async (req) => {
     return jsonError(req, 'No valid fields to update');
   }
 
-  const { property } = await verifyPropertyAccess(req, propertyId, needed[0]!);
+  const propertyAccess = await verifyPropertyAccess(req, propertyId, needed[0]!);
+  const { property } = propertyAccess;
   for (const perm of needed.slice(1)) {
     await verifyPropertyAccess(req, propertyId, perm);
   }
@@ -212,6 +214,22 @@ serveAuthenticated('update-property', async (req) => {
     console.error('[update-property]', error.message);
     return jsonError(req, 'Failed to update property', 500);
   }
+
+  await logActivity({
+    action: 'property.updated',
+    organizationId: property.organization_id,
+    propertyId: property.id,
+    scope: 'property',
+    actor: buildActorContext('dashboard', { propertyAccess }, req),
+    targetType: 'property',
+    targetId: property.id,
+    targetLabel: (data.name as string | undefined) ?? property.name,
+    changes: diffRecord(
+      property as unknown as Record<string, unknown>,
+      data as Record<string, unknown>,
+      { include: Object.keys(patch), exclude: ['slug', 'updated_at'] }
+    ),
+  });
 
   return jsonSuccess(req, { property: serializeProperty(data) });
 });
