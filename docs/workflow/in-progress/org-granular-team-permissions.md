@@ -3,12 +3,12 @@ stage: in-progress
 title: 'Org Granular Team Permissions — Org Catalog + Listing Assignment'
 status: in-progress
 tags: [planning, planned, team, rbac, permissions, org]
-updated: 2026-08-31
+updated: 2026-09-08
 ---
 
 # Org Granular Team Permissions — Org Catalog + Listing Assignment
 
-**Status:** In progress — Phases 1–3 largely implemented; Phase 4 route/assistant enforcement + QA remain.
+**Status:** In progress — Phases 1–4 enforcement (incl. AI assistant org-tool leaf audit) closed 2026-09-04; Phase 5 QA remains.
 
 ## Goal
 
@@ -190,10 +190,14 @@ Existing active org ADMINS must keep today's behavior:
 
 ### Phase 4 — Route/UI enforcement + assistant
 
-- [ ] Wire org pages to new leaves (`RequireOrgPermission`, in-page gates for create/manage/settings sections)
-- [ ] Plans view leaf; checkout remains owner-only
-- [ ] AI Dashboard Assistant org-scoped tools: update permission checks (D14 pattern)
-- [ ] Docs: `org/team.md`, `org/properties.md`, `org/parkings.md`, `org/settings.md`, `org/plans.md`, `org/bookings.md`, `PROJECT.md`, data-model
+- [x] Wire org pages to new leaves (`RequireOrgPermission`, in-page gates for create/manage/settings sections)
+- [x] Plans view leaf; checkout remains owner-only
+- [x] Scoped org admin list filtering — `list-bookings`, `list-parkings`, `dashboard-stats` honor `all_listings` / assigned memberships (2026-09-04)
+- [x] Add listing (dashboard + tenant switcher) uses `org.properties:create` / `org.parkings:create` (2026-09-04)
+- [x] Org Settings section edit gates + server PATCH leaves (`org.settings.*:edit`) (2026-09-04)
+- [x] AI Dashboard Assistant org-scoped tools: update permission checks (D14 pattern) — granular leaves (2026-09-04); legacy coarse ids no longer used in tool RBAC re-checks
+- [x] Docs: `org/team.md`, `org/properties.md`, `org/parkings.md`, `org/settings.md`, `org/plans.md`, `org/bookings.md`, `org/dashboard.md` (permission tables refreshed 2026-09-04); `docs/architecture/ai-dashboard-assistant.md` org RBAC columns synced
+- [ ] `PROJECT.md` / data-model cross-link polish if needed
 
 ### Phase 5 — QA
 
