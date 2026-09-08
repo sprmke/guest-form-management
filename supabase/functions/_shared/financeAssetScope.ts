@@ -8,7 +8,14 @@ import { readParkingIdFromUrl } from './parkingScope.ts';
 import { readPropertyIdFromUrl, resolveScopedPropertyAccess } from './propertyScope.ts';
 import type { TeamPermissionId } from './propertyTeamPermissions.ts';
 
-export type FinanceAssetScope = { kind: 'property'; id: string } | { kind: 'parking'; id: string };
+export type FinanceAssetScope = (
+  { kind: 'property'; id: string } | { kind: 'parking'; id: string }
+) & {
+  /** Org root + actor snapshot for activity-log emission. */
+  orgId: string;
+  accessKind: string;
+  memberId?: string;
+};
 
 export type FinanceDbScope = {
   propertyId?: string;
@@ -36,13 +43,29 @@ export async function resolveFinanceAssetAccess(
   }
 
   if (parkingId) {
-    await verifyParkingTeamAccess(req, parkingId, requiredPermission as ParkingTeamPermissionId);
-    return { kind: 'parking', id: parkingId };
+    const parkingAccess = await verifyParkingTeamAccess(
+      req,
+      parkingId,
+      requiredPermission as ParkingTeamPermissionId
+    );
+    return {
+      kind: 'parking',
+      id: parkingId,
+      orgId: parkingAccess.org.id,
+      accessKind: parkingAccess.accessKind,
+      memberId: parkingAccess.memberId,
+    };
   }
 
-  const { property } = await resolveScopedPropertyAccess(
+  const propertyAccess = await resolveScopedPropertyAccess(
     req,
     requiredPermission as TeamPermissionId
   );
-  return { kind: 'property', id: property.id };
+  return {
+    kind: 'property',
+    id: propertyAccess.property.id,
+    orgId: propertyAccess.org.id,
+    accessKind: propertyAccess.accessKind,
+    memberId: propertyAccess.memberId,
+  };
 }

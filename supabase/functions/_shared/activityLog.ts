@@ -405,6 +405,372 @@ export const ACTIVITY_ACTION_CATALOG = {
     summary: (c) => `${c.actorName} deleted the parking listing ${label(c, 'a parking listing')}`,
   },
 
+  // ── Settings ─────────────────────────────────────────────────────────────
+  'settings.updated': {
+    category: 'settings',
+    severity: 'info',
+    targetType: 'settings',
+    summary: (c) => {
+      const area = str(c.metadata, 'area');
+      const where = label(c, 'settings');
+      return (
+        `${c.actorName} updated ${area ? `${area} settings` : 'settings'} for ${where}` +
+        (c.changeCount ? ` (${c.changeCount} field${c.changeCount === 1 ? '' : 's'})` : '')
+      );
+    },
+  },
+  'settings.asset_uploaded': {
+    category: 'settings',
+    severity: 'notice',
+    targetType: 'settings',
+    summary: (c) =>
+      `${c.actorName} uploaded ${str(c.metadata, 'asset_kind') ?? 'an asset'} for ${label(
+        c,
+        'settings'
+      )}`,
+  },
+  'settings.template_saved': {
+    category: 'settings',
+    severity: 'info',
+    targetType: 'template',
+    summary: (c) => `${c.actorName} saved the template ${label(c, 'a template')}`,
+  },
+  'settings.template_deleted': {
+    category: 'settings',
+    severity: 'destructive',
+    targetType: 'template',
+    summary: (c) => `${c.actorName} deleted the template ${label(c, 'a template')}`,
+  },
+  'public_pages.config_saved': {
+    category: 'public_pages',
+    severity: 'info',
+    targetType: 'page_config',
+    summary: (c) =>
+      `${c.actorName} saved the ${str(c.metadata, 'page') ?? 'public'} page for ${label(
+        c,
+        'a listing'
+      )}`,
+  },
+  'public_pages.published': {
+    category: 'public_pages',
+    severity: 'notice',
+    targetType: 'page_config',
+    summary: (c) =>
+      `${c.actorName} published the ${str(c.metadata, 'page') ?? 'public'} page for ${label(
+        c,
+        'a listing'
+      )}`,
+  },
+
+  // ── Pricing ──────────────────────────────────────────────────────────────
+  'pricing.rates_updated': {
+    category: 'pricing',
+    severity: 'info',
+    targetType: 'pricing_range',
+    summary: (c) => {
+      const count = num(c.metadata, 'count');
+      const scope = str(c.metadata, 'scope') ?? 'nightly rates';
+      return (
+        `${c.actorName} updated ${scope} for ${label(c, 'a listing')}` +
+        (count ? ` (${count} date${count === 1 ? '' : 's'})` : '')
+      );
+    },
+  },
+  'pricing.dates_blocked': {
+    category: 'pricing',
+    severity: 'notice',
+    targetType: 'pricing_range',
+    summary: (c) =>
+      `${c.actorName} blocked ${num(c.metadata, 'count')} date${
+        num(c.metadata, 'count') === 1 ? '' : 's'
+      } for ${label(c, 'a listing')}`,
+  },
+  'pricing.dates_unblocked': {
+    category: 'pricing',
+    severity: 'info',
+    targetType: 'pricing_range',
+    summary: (c) =>
+      `${c.actorName} unblocked ${num(c.metadata, 'count')} date${
+        num(c.metadata, 'count') === 1 ? '' : 's'
+      } for ${label(c, 'a listing')}`,
+  },
+  'pricing.smart_config_changed': {
+    category: 'pricing',
+    severity: 'notice',
+    targetType: 'pricing_range',
+    summary: (c) =>
+      `${c.actorName} changed smart pricing settings for ${label(c, 'a property')}` +
+      (c.changeCount ? ` (${c.changeCount} field${c.changeCount === 1 ? '' : 's'})` : ''),
+  },
+  'pricing.smart_applied': {
+    category: 'pricing',
+    severity: 'notice',
+    targetType: 'pricing_range',
+    summary: (c) =>
+      `${c.actorName} applied smart pricing to ${num(c.metadata, 'count')} date${
+        num(c.metadata, 'count') === 1 ? '' : 's'
+      } for ${label(c, 'a property')}`,
+  },
+
+  // ── Finance ──────────────────────────────────────────────────────────────
+  'finance.entry_created': {
+    category: 'finance',
+    severity: 'info',
+    targetType: 'finance_entry',
+    summary: (c) =>
+      `${c.actorName} added ${str(c.metadata, 'kind') ?? 'an entry'} "${label(
+        c,
+        'a finance entry'
+      )}"`,
+  },
+  'finance.entry_updated': {
+    category: 'finance',
+    severity: 'info',
+    targetType: 'finance_entry',
+    summary: (c) =>
+      `${c.actorName} edited the finance entry ${label(c, 'a finance entry')}` +
+      (c.changeCount ? ` (${c.changeCount} field${c.changeCount === 1 ? '' : 's'})` : ''),
+  },
+  'finance.entry_deleted': {
+    category: 'finance',
+    severity: 'destructive',
+    targetType: 'finance_entry',
+    summary: (c) => `${c.actorName} deleted the finance entry ${label(c, 'a finance entry')}`,
+  },
+  'finance.report_exported': {
+    category: 'finance',
+    severity: 'notice',
+    targetType: 'finance_entry',
+    summary: (c) => `${c.actorName} exported a finance report for ${label(c, 'a listing')}`,
+  },
+
+  // ── Maintenance ──────────────────────────────────────────────────────────
+  'maintenance.task_created': {
+    category: 'maintenance',
+    severity: 'info',
+    targetType: 'maintenance_item',
+    summary: (c) => `${c.actorName} added the maintenance task ${label(c, 'a task')}`,
+  },
+  'maintenance.task_updated': {
+    category: 'maintenance',
+    severity: 'info',
+    targetType: 'maintenance_item',
+    summary: (c) =>
+      `${c.actorName} edited the maintenance task ${label(c, 'a task')}` +
+      (c.changeCount ? ` (${c.changeCount} field${c.changeCount === 1 ? '' : 's'})` : ''),
+  },
+  'maintenance.task_deleted': {
+    category: 'maintenance',
+    severity: 'destructive',
+    targetType: 'maintenance_item',
+    summary: (c) => `${c.actorName} deleted the maintenance task ${label(c, 'a task')}`,
+  },
+
+  // ── Plans & billing ─────────────────────────────────────────────────────
+  'billing.checkout_started': {
+    category: 'plans_billing',
+    severity: 'info',
+    targetType: 'subscription',
+    summary: (c) =>
+      `${c.actorName} started checkout for the ${str(c.metadata, 'plan') ?? 'a'} plan`,
+  },
+  'billing.plan_downgraded': {
+    category: 'plans_billing',
+    severity: 'destructive',
+    targetType: 'subscription',
+    summary: (c) =>
+      `${c.actorName} downgraded the plan to ${str(c.metadata, 'to_plan') ?? 'a lower tier'}`,
+  },
+  'billing.plan_overridden_by_platform': {
+    category: 'plans_billing',
+    severity: 'warning',
+    targetType: 'subscription',
+    summary: (c) =>
+      `${c.actorName} changed the plan to ${str(c.metadata, 'to_plan') ?? 'another tier'} (platform)`,
+  },
+  'billing.subscription_activated': {
+    category: 'plans_billing',
+    severity: 'notice',
+    targetType: 'subscription',
+    summary: (c) => `Subscription activated on the ${str(c.metadata, 'plan') ?? 'paid'} plan`,
+  },
+  'billing.payment_succeeded': {
+    category: 'plans_billing',
+    severity: 'info',
+    targetType: 'subscription',
+    summary: (c) =>
+      `A subscription payment succeeded${
+        num(c.metadata, 'amount') ? ` (${num(c.metadata, 'amount')})` : ''
+      }`,
+  },
+  'billing.payment_failed': {
+    category: 'plans_billing',
+    severity: 'warning',
+    targetType: 'subscription',
+    summary: (c) => str(c.metadata, 'message') ?? `A subscription payment failed`,
+  },
+
+  // ── Verification & trust ────────────────────────────────────────────────
+  'verification.submitted': {
+    category: 'verification',
+    severity: 'info',
+    targetType: 'verification',
+    summary: (c) =>
+      `${c.actorName} submitted ${str(c.metadata, 'kind') ?? 'a verification request'}`,
+  },
+  'verification.approved': {
+    category: 'verification',
+    severity: 'notice',
+    targetType: 'verification',
+    summary: (c) =>
+      `${c.actorName} approved ${str(c.metadata, 'kind') ?? 'a verification request'}`,
+  },
+  'verification.rejected': {
+    category: 'verification',
+    severity: 'destructive',
+    targetType: 'verification',
+    summary: (c) =>
+      `${c.actorName} rejected ${str(c.metadata, 'kind') ?? 'a verification request'}`,
+  },
+  'verification.superhost_reassessed': {
+    category: 'verification',
+    severity: 'info',
+    targetType: 'verification',
+    summary: (c) =>
+      `${c.actorName} reassessed Superhost status for ${label(c, 'the organization')}`,
+  },
+
+  // ── Integrations ────────────────────────────────────────────────────────
+  'integrations.connected': {
+    category: 'integrations',
+    severity: 'notice',
+    targetType: 'integration',
+    summary: (c) =>
+      `${c.actorName} connected ${str(c.metadata, 'provider') ?? 'an integration'} for ${label(
+        c,
+        'a listing'
+      )}`,
+  },
+  'integrations.disconnected': {
+    category: 'integrations',
+    severity: 'destructive',
+    targetType: 'integration',
+    summary: (c) =>
+      `${c.actorName} disconnected ${str(c.metadata, 'provider') ?? 'an integration'} for ${label(
+        c,
+        'a listing'
+      )}`,
+  },
+  'integrations.config_changed': {
+    category: 'integrations',
+    severity: 'info',
+    targetType: 'integration',
+    summary: (c) =>
+      `${c.actorName} changed ${str(c.metadata, 'provider') ?? 'integration'} settings for ${label(
+        c,
+        'a listing'
+      )}` + (c.changeCount ? ` (${c.changeCount} field${c.changeCount === 1 ? '' : 's'})` : ''),
+  },
+
+  // ── Marketing & inbox ──────────────────────────────────────────────────
+  'marketing.template_saved': {
+    category: 'marketing',
+    severity: 'info',
+    targetType: 'template',
+    summary: (c) => `${c.actorName} saved the marketing template ${label(c, 'a template')}`,
+  },
+  'marketing.template_deleted': {
+    category: 'marketing',
+    severity: 'destructive',
+    targetType: 'template',
+    summary: (c) => `${c.actorName} deleted the marketing template ${label(c, 'a template')}`,
+  },
+  'marketing.published_to_meta': {
+    category: 'marketing',
+    severity: 'warning',
+    targetType: 'marketing_post',
+    summary: (c) =>
+      `${c.actorName} published ${str(c.metadata, 'target') ?? 'a post'} to Meta for ${label(
+        c,
+        'a listing'
+      )}`,
+  },
+  'marketing.external_review_moderated': {
+    category: 'marketing',
+    severity: 'notice',
+    targetType: 'external_review',
+    summary: (c) =>
+      `${c.actorName} ${str(c.metadata, 'decision') ?? 'moderated'} a guest-submitted review`,
+  },
+  'inbox.settings_changed': {
+    category: 'inbox',
+    severity: 'info',
+    targetType: 'settings',
+    summary: (c) =>
+      `${c.actorName} changed inbox settings for ${label(c, 'a listing')}` +
+      (c.changeCount ? ` (${c.changeCount} field${c.changeCount === 1 ? '' : 's'})` : ''),
+  },
+
+  // ── AI controls ────────────────────────────────────────────────────────
+  'ai.assistant_toggled': {
+    category: 'settings',
+    severity: 'notice',
+    targetType: 'settings',
+    summary: (c) =>
+      `${c.actorName} ${str(c.metadata, 'state') ?? 'changed'} the AI assistant for ${label(
+        c,
+        'a listing'
+      )}`,
+  },
+  'ai.config_changed': {
+    category: 'settings',
+    severity: 'info',
+    targetType: 'settings',
+    summary: (c) =>
+      `${c.actorName} changed AI assistant settings for ${label(c, 'a listing')}` +
+      (c.changeCount ? ` (${c.changeCount} field${c.changeCount === 1 ? '' : 's'})` : ''),
+  },
+
+  // ── Guest / public ─────────────────────────────────────────────────────
+  'guest.sd_form_submitted': {
+    category: 'guest',
+    severity: 'info',
+    targetType: 'booking',
+    summary: (c) =>
+      `${c.actorName} submitted the security deposit refund form for ${label(c, 'a booking')}`,
+  },
+  'guest.review_submitted': {
+    category: 'guest',
+    severity: 'info',
+    targetType: 'booking',
+    summary: (c) => `${c.actorName} submitted a stay review for ${label(c, 'a booking')}`,
+  },
+  'guest.voucher_claimed': {
+    category: 'guest',
+    severity: 'info',
+    targetType: 'voucher',
+    summary: (c) => `${c.actorName} claimed a voucher`,
+  },
+  'guest.pay_parking_submitted': {
+    category: 'guest',
+    severity: 'info',
+    targetType: 'parking_booking',
+    summary: (c) =>
+      `${c.actorName} submitted a parking payment for ${label(c, 'a parking booking')}`,
+  },
+  'guest.support_ticket_filed': {
+    category: 'guest',
+    severity: 'notice',
+    targetType: 'support_ticket',
+    summary: (c) => `${c.actorName} filed a support ticket`,
+  },
+  'guest.profile_updated': {
+    category: 'guest',
+    severity: 'info',
+    targetType: 'guest_profile',
+    summary: (c) => `${c.actorName} updated their guest profile`,
+  },
+
   // ── Security ─────────────────────────────────────────────────────────────
   'security.denied_destructive_action': {
     category: 'security',
