@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { useQueries } from '@tanstack/react-query';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
 
 import {
   appSettingsToFormValues,
@@ -78,19 +78,33 @@ async function fetchParkingSettings(parkingId: string): Promise<ParkingSettingsP
   return callEdgeFunction<ParkingSettingsPayload>(`parking-settings?${params.toString()}`);
 }
 
-/** Live per-listing issue maps for Setup Guide progress (org dashboard scope). */
+/**
+ * Live per-listing issue maps for Setup Guide progress.
+ *
+ * Only network-fetches the focused listing(s) while the guide is open. Other listings
+ * reuse React Query cache when present; otherwise they stay pending so we never fan out
+ * N app-settings / parking-settings calls for every listing on org mount.
+ */
 export function useSetupGuideListingCompletions({
   org,
   properties,
   parkings,
+  enabled,
+  focusPropertyIds,
+  focusParkingIds,
 }: {
   org: Organization | null | undefined;
   properties: Property[];
   parkings: Parking[];
+  /** When false, no listing settings are fetched (cache still read). */
+  enabled: boolean;
+  focusPropertyIds: readonly string[];
+  focusParkingIds: readonly string[];
 }): Pick<
   SetupGuideCompletionSnapshot,
   'propertyIssueSectionIdsById' | 'parkingIssueSectionIdsById'
 > {
+  const queryClient = useQueryClient();
   const { data: orgSettings } = useOrgSettings();
   const inheritedBrandColor = useOrgBrandColor();
 
@@ -107,26 +121,61 @@ export function useSetupGuideListingCompletions({
     [orgSettings]
   );
 
+  const focusPropertySet = useMemo(() => new Set(focusPropertyIds), [focusPropertyIds]);
+  const focusParkingSet = useMemo(() => new Set(focusParkingIds), [focusParkingIds]);
+
+  const propertiesToFetch = useMemo(
+    () => (enabled ? properties.filter((property) => focusPropertySet.has(property.id)) : []),
+    [enabled, focusPropertySet, properties]
+  );
+  const parkingsToFetch = useMemo(
+    () => (enabled ? parkings.filter((parking) => focusParkingSet.has(parking.id)) : []),
+    [enabled, focusParkingSet, parkings]
+  );
+
   const propertyQueries = useQueries({
-    queries: properties.map((property) => ({
+    queries: propertiesToFetch.map((property) => ({
       queryKey: ['app-settings', property.id],
       queryFn: () => fetchAppSettings(property.id),
       enabled: Boolean(org?.id && property.id),
+      staleTime: 60_000,
     })),
   });
 
   const parkingQueries = useQueries({
-    queries: parkings.map((parking) => ({
+    queries: parkingsToFetch.map((parking) => ({
       queryKey: [...PARKING_SETTINGS_QUERY_KEY, parking.id],
       queryFn: () => fetchParkingSettings(parking.id),
       enabled: Boolean(org?.id && parking.id),
+      staleTime: 60_000,
     })),
   });
 
+  const propertyDataById = useMemo(() => {
+    const map = new Map<string, AppSettingsDto>();
+    for (const [index, property] of propertiesToFetch.entries()) {
+      const data = propertyQueries[index]?.data;
+      if (data) map.set(property.id, data);
+    }
+    return map;
+  }, [propertiesToFetch, propertyQueries]);
+
+  const parkingDataById = useMemo(() => {
+    const map = new Map<string, ParkingSettingsPayload>();
+    for (const [index, parking] of parkingsToFetch.entries()) {
+      const data = parkingQueries[index]?.data;
+      if (data) map.set(parking.id, data);
+    }
+    return map;
+  }, [parkingsToFetch, parkingQueries]);
+
   return useMemo(() => {
     const propertyIssueSectionIdsById: Record<string, readonly PropertySettingsSectionId[]> = {};
-    for (const [index, property] of properties.entries()) {
-      const appSettings = propertyQueries[index]?.data ?? null;
+    for (const property of properties) {
+      const appSettings =
+        propertyDataById.get(property.id) ??
+        queryClient.getQueryData<AppSettingsDto>(['app-settings', property.id]) ??
+        null;
       if (!appSettings) {
         propertyIssueSectionIdsById[property.id] = PROPERTY_PENDING_SECTIONS;
         continue;
@@ -140,8 +189,14 @@ export function useSetupGuideListingCompletions({
     }
 
     const parkingIssueSectionIdsById: Record<string, readonly ParkingSettingsSectionId[]> = {};
-    for (const [index, parking] of parkings.entries()) {
-      const settings = parkingQueries[index]?.data ?? null;
+    for (const parking of parkings) {
+      const settings =
+        parkingDataById.get(parking.id) ??
+        queryClient.getQueryData<ParkingSettingsPayload>([
+          ...PARKING_SETTINGS_QUERY_KEY,
+          parking.id,
+        ]) ??
+        null;
       if (!settings) {
         parkingIssueSectionIdsById[parking.id] = PARKING_PENDING_SECTIONS;
         continue;
@@ -164,5 +219,13 @@ export function useSetupGuideListingCompletions({
       SetupGuideCompletionSnapshot,
       'propertyIssueSectionIdsById' | 'parkingIssueSectionIdsById'
     >;
-  }, [inheritedBrandColor, orgSocialLinks, parkingQueries, parkings, properties, propertyQueries]);
+  }, [
+    inheritedBrandColor,
+    orgSocialLinks,
+    parkingDataById,
+    parkings,
+    properties,
+    propertyDataById,
+    queryClient,
+  ]);
 }

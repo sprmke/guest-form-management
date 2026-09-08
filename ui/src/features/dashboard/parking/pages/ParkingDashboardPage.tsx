@@ -22,8 +22,6 @@ import {
   resolveDashboardPeriod,
   writeDashboardPeriodParams,
 } from '@/features/dashboard/property/lib/dashboardPeriod';
-import { SetupGuideLauncher } from '@/features/dashboard/setup-guide/components/SetupGuideLauncher';
-
 import { FloatingToolbar } from '@/components/mobile/FloatingPanel';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { mobileHeroActionClassName } from '@/components/mobile/MobileHeroActionButton';
@@ -135,7 +133,6 @@ export function ParkingDashboardPage() {
       dense
       className="min-w-0 max-w-full"
     >
-      <SetupGuideLauncher />
       <DashboardAttentionStrip items={stats.attention} />
 
       <ParkingDashboardStatCards stats={stats} reservationsHref={reservationsHref} />

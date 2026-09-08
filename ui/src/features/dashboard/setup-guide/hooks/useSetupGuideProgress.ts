@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 
-
 import { useOrganizations, useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
 import { useSavedOrgSettingsCompletion } from '@/features/dashboard/org/hooks/useOrgSettingsCompletion';
 import { useParkings } from '@/features/dashboard/org/hooks/useParkings';
@@ -159,7 +158,15 @@ export function useSetupGuideProgress({
 }
 
 /** Convenience: resolve org + listings from slug and run progress. */
-export function useSetupGuideProgressForOrgSlug(orgSlug: string | undefined) {
+export function useSetupGuideProgressForOrgSlug(
+  orgSlug: string | undefined,
+  opts?: {
+    /** Guide overlay open — listing settings fetch only while open. */
+    guideOpen?: boolean;
+    /** Active step id — only that listing's settings are fetched. */
+    focusStepId?: string | null;
+  }
+) {
   const { data: orgsData } = useOrganizations();
   const { data: propertiesData } = useProperties(orgSlug);
   const { data: parkingsData } = useParkings(orgSlug);
@@ -171,11 +178,29 @@ export function useSetupGuideProgressForOrgSlug(orgSlug: string | undefined) {
 
   const properties = propertiesData?.properties ?? [];
   const parkings = parkingsData?.parkings ?? [];
+
+  const focusPropertyIds = useMemo(() => {
+    const stepId = opts?.focusStepId;
+    if (!stepId?.startsWith('property.')) return [] as string[];
+    const propertyId = stepId.split('.')[1];
+    return propertyId ? [propertyId] : [];
+  }, [opts?.focusStepId]);
+
+  const focusParkingIds = useMemo(() => {
+    const stepId = opts?.focusStepId;
+    if (!stepId?.startsWith('parking.')) return [] as string[];
+    const parkingId = stepId.split('.')[1];
+    return parkingId ? [parkingId] : [];
+  }, [opts?.focusStepId]);
+
   const { propertyIssueSectionIdsById, parkingIssueSectionIdsById } =
     useSetupGuideListingCompletions({
       org,
       properties,
       parkings,
+      enabled: Boolean(opts?.guideOpen),
+      focusPropertyIds,
+      focusParkingIds,
     });
 
   const guide = useSetupGuideProgress({

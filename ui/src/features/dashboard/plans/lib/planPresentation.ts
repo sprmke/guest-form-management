@@ -192,6 +192,7 @@ export const PLAN_TIER_CARD_GAINS: Record<string, string[]> = {
     'Property showcase & stay guide access',
     'Airbnb calendar sync',
     'Smart AI Pricing',
+    'Copy property settings',
     '1,000 AI credits per month',
   ],
   pro: [
@@ -276,6 +277,7 @@ export const PLAN_FEATURE_ROWS: PlanFeatureRow[] = [
   boolRow('automatedBookingFlow', 'Automated booking emails', 'bookings'),
   boolRow('bookingImport', 'AI booking import', 'bookings'),
   boolRow('aiValidations', 'AI receipt and ID validation', 'bookings'),
+  boolRow('copyPropertySettings', 'Copy property settings', 'dashboard'),
 
   boolRow('financeReporting', 'Finance reporting & export', 'finance'),
   boolRow('maintenanceReporting', 'Maintenance reporting & export', 'maintenance'),

@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { useSetupGuide } from '@/features/dashboard/setup-guide/components/SetupGuideProvider';
 import {
@@ -28,6 +28,8 @@ function groupLabel(step: SetupGuideStep): string {
   switch (step.group.type) {
     case 'org-start':
       return 'Organization';
+    case 'org-trust':
+      return 'Verification';
     case 'org-finish':
       return 'Finish';
     case 'property':
@@ -50,10 +52,15 @@ function groupKey(step: SetupGuideStep): string {
   }
 }
 
+function isListingGroup(key: string): boolean {
+  return key.startsWith('property:') || key.startsWith('parking:');
+}
+
 type StepperGroup = {
   key: string;
   label: string;
   entries: SetupGuideStepProgress[];
+  listing: boolean;
 };
 
 function buildStepperGroups(entries: SetupGuideStepProgress[]): StepperGroup[] {
@@ -64,10 +71,24 @@ function buildStepperGroups(entries: SetupGuideStepProgress[]): StepperGroup[] {
     if (last?.key === key) {
       last.entries.push(entry);
     } else {
-      groups.push({ key, label: groupLabel(entry.step), entries: [entry] });
+      groups.push({
+        key,
+        label: groupLabel(entry.step),
+        entries: [entry],
+        listing: isListingGroup(key),
+      });
     }
   }
   return groups;
+}
+
+function firstIncompleteStepId(entries: SetupGuideStepProgress[]): string {
+  const incomplete = entries.find(
+    (entry) => entry.status !== 'complete' && entry.step.requirement === 'required'
+  );
+  if (incomplete) return incomplete.step.id;
+  const anyOpen = entries.find((entry) => entry.status !== 'complete');
+  return anyOpen?.step.id ?? entries[0]?.step.id ?? '';
 }
 
 export function SetupGuideOverlay() {
@@ -218,13 +239,89 @@ function SetupGuideStepper({
   progressLine: string;
 }) {
   const groups = useMemo(() => buildStepperGroups(entries), [entries]);
+  const listingGroups = useMemo(() => groups.filter((group) => group.listing), [groups]);
+  const listingSignature = useMemo(
+    () => listingGroups.map((group) => group.key).join('|'),
+    [listingGroups]
+  );
+  const activeGroupKey = useMemo(() => {
+    const active = entries.find((entry) => entry.step.id === activeStepId);
+    return active ? groupKey(active.step) : null;
+  }, [activeStepId, entries]);
+
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set());
+  /** Lets the host collapse the active listing without the auto-open effect reopening it. */
+  const [pinnedClosedKey, setPinnedClosedKey] = useState<string | null>(null);
+  const seededSignatureRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!listingSignature) {
+      seededSignatureRef.current = null;
+      return;
+    }
+    if (seededSignatureRef.current === listingSignature) return;
+    seededSignatureRef.current = listingSignature;
+
+    if (listingGroups.length < 5) {
+      setExpandedKeys(new Set(listingGroups.map((group) => group.key)));
+    } else if (activeGroupKey && isListingGroup(activeGroupKey)) {
+      setExpandedKeys(new Set([activeGroupKey]));
+    } else {
+      setExpandedKeys(new Set());
+    }
+    setPinnedClosedKey(null);
+  }, [activeGroupKey, listingGroups, listingSignature]);
+
+  useEffect(() => {
+    if (pinnedClosedKey && pinnedClosedKey !== activeGroupKey) {
+      setPinnedClosedKey(null);
+    }
+  }, [activeGroupKey, pinnedClosedKey]);
+
+  useEffect(() => {
+    if (!activeGroupKey || !isListingGroup(activeGroupKey)) return;
+    if (pinnedClosedKey === activeGroupKey) return;
+    setExpandedKeys((prev) => {
+      if (prev.has(activeGroupKey)) return prev;
+      const next = new Set(prev);
+      next.add(activeGroupKey);
+      return next;
+    });
+  }, [activeGroupKey, pinnedClosedKey]);
+
+  const toggleListing = (key: string) => {
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+        if (key === activeGroupKey) setPinnedClosedKey(key);
+      } else {
+        next.add(key);
+        if (pinnedClosedKey === key) setPinnedClosedKey(null);
+      }
+      return next;
+    });
+  };
+
+  const openListing = (key: string) => {
+    const group = groups.find((entry) => entry.key === key);
+    if (!group) return;
+    setPinnedClosedKey((prev) => (prev === key ? null : prev));
+    setExpandedKeys((prev) => new Set(prev).add(key));
+    const alreadyInGroup = group.entries.some((entry) => entry.step.id === activeStepId);
+    if (alreadyInGroup) return;
+    const target = firstIncompleteStepId(group.entries);
+    if (target) onSelect(target);
+  };
+
+  const firstListingKey = listingGroups[0]?.key ?? null;
 
   return (
     <nav
       aria-label="Setup steps"
       className={cn(
         'border-border bg-muted/35 shrink-0 border-b',
-        'max-h-36 overflow-x-auto overflow-y-hidden px-2 py-2',
+        'max-h-44 overflow-x-auto overflow-y-hidden px-2 py-2',
         'lg:max-h-none lg:w-[15.5rem] lg:shrink-0 lg:overflow-y-auto lg:overflow-x-hidden lg:border-b-0 lg:border-r lg:px-0 lg:py-0'
       )}
     >
@@ -237,76 +334,142 @@ function SetupGuideStepper({
         {groups.map((group, groupIndex) => {
           const doneCount = group.entries.filter((entry) => entry.status === 'complete').length;
           const allDone = doneCount === group.entries.length;
+          const expanded = !group.listing || expandedKeys.has(group.key);
+          const showListingsLabel =
+            group.listing && group.key === firstListingKey && listingGroups.length > 0;
 
           return (
             <li key={group.key} className="contents">
-              <div
-                className={cn(
-                  'hidden min-w-0 lg:block',
-                  groupIndex > 0 && 'border-border mt-2 border-t pt-2'
-                )}
-              >
-                <div className="flex items-center gap-1.5 px-2 pb-1">
-                  <p
-                    className="text-muted-foreground min-w-0 flex-1 truncate text-[10px] font-semibold uppercase tracking-wider"
-                    title={group.label}
-                  >
-                    {group.label}
-                  </p>
-                  <span
-                    className={cn(
-                      'shrink-0 text-[10px] tabular-nums',
-                      allDone ? 'text-primary' : 'text-muted-foreground/80'
-                    )}
-                    aria-label={`${doneCount} of ${group.entries.length} complete`}
-                  >
-                    {doneCount}/{group.entries.length}
+              {showListingsLabel ? (
+                <div className="border-border text-muted-foreground mt-2 hidden border-t px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider lg:block">
+                  Listings
+                  <span className="text-muted-foreground/80 ml-1 font-normal normal-case tracking-normal">
+                    {listingGroups.length}
                   </span>
                 </div>
-              </div>
+              ) : null}
 
-              {group.entries.map((entry) => {
-                const active = entry.step.id === activeStepId;
-                const done = entry.status === 'complete';
-
-                return (
+              {group.listing ? (
+                <div
+                  className={cn(
+                    'hidden min-w-0 lg:block',
+                    groupIndex > 0 && !showListingsLabel && 'mt-0.5'
+                  )}
+                >
                   <button
-                    key={entry.step.id}
                     type="button"
-                    onClick={() => onSelect(entry.step.id)}
+                    onClick={() => {
+                      if (expanded) {
+                        toggleListing(group.key);
+                        return;
+                      }
+                      openListing(group.key);
+                    }}
                     className={cn(
-                      'focus-visible:ring-ring relative flex min-h-10 min-w-[9rem] items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors',
+                      'focus-visible:ring-ring flex min-h-9 w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left transition-colors',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
-                      'lg:w-full lg:min-w-0',
-                      active
+                      group.key === activeGroupKey
                         ? 'bg-background text-foreground ring-border/70 shadow-sm ring-1'
                         : 'text-muted-foreground hover:bg-background/70 hover:text-foreground'
                     )}
-                    aria-current={active ? 'step' : undefined}
+                    aria-expanded={expanded}
                   >
-                    {active ? (
-                      <span
-                        className="bg-primary absolute inset-y-1.5 left-0 hidden w-0.5 rounded-full lg:block"
-                        aria-hidden
-                      />
-                    ) : null}
-                    <span
+                    <ChevronDown
                       className={cn(
-                        'flex size-[1.125rem] shrink-0 items-center justify-center rounded-full border text-[9px]',
-                        done
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : active
-                            ? 'border-primary text-primary'
-                            : 'border-border/80'
+                        'size-3.5 shrink-0 transition-transform',
+                        expanded ? 'rotate-0' : '-rotate-90'
                       )}
                       aria-hidden
+                    />
+                    <span
+                      className="min-w-0 flex-1 truncate text-xs font-medium"
+                      title={group.label}
                     >
-                      {done ? <Check className="size-2.5" strokeWidth={3} /> : null}
+                      {group.label}
                     </span>
-                    <span className="min-w-0 flex-1 truncate">{entry.step.title}</span>
+                    <span
+                      className={cn(
+                        'shrink-0 text-[10px] tabular-nums',
+                        allDone ? 'text-primary' : 'text-muted-foreground/80'
+                      )}
+                      aria-label={`${doneCount} of ${group.entries.length} complete`}
+                    >
+                      {doneCount}/{group.entries.length}
+                    </span>
                   </button>
-                );
-              })}
+                </div>
+              ) : (
+                <div
+                  className={cn(
+                    'hidden min-w-0 lg:block',
+                    groupIndex > 0 && 'border-border mt-2 border-t pt-2'
+                  )}
+                >
+                  <div className="flex items-center gap-1.5 px-2 pb-1">
+                    <p
+                      className="text-muted-foreground min-w-0 flex-1 truncate text-[10px] font-semibold uppercase tracking-wider"
+                      title={group.label}
+                    >
+                      {group.label}
+                    </p>
+                    <span
+                      className={cn(
+                        'shrink-0 text-[10px] tabular-nums',
+                        allDone ? 'text-primary' : 'text-muted-foreground/80'
+                      )}
+                      aria-label={`${doneCount} of ${group.entries.length} complete`}
+                    >
+                      {doneCount}/{group.entries.length}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {expanded
+                ? group.entries.map((entry) => {
+                    const active = entry.step.id === activeStepId;
+                    const done = entry.status === 'complete';
+
+                    return (
+                      <button
+                        key={entry.step.id}
+                        type="button"
+                        onClick={() => onSelect(entry.step.id)}
+                        className={cn(
+                          'focus-visible:ring-ring relative flex min-h-10 min-w-[9rem] items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
+                          'lg:w-full lg:min-w-0',
+                          group.listing && 'lg:pl-5',
+                          active
+                            ? 'bg-background text-foreground ring-border/70 shadow-sm ring-1'
+                            : 'text-muted-foreground hover:bg-background/70 hover:text-foreground'
+                        )}
+                        aria-current={active ? 'step' : undefined}
+                      >
+                        {active ? (
+                          <span
+                            className="bg-primary absolute inset-y-1.5 left-0 hidden w-0.5 rounded-full lg:block"
+                            aria-hidden
+                          />
+                        ) : null}
+                        <span
+                          className={cn(
+                            'flex size-[1.125rem] shrink-0 items-center justify-center rounded-full border text-[9px]',
+                            done
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : active
+                                ? 'border-primary text-primary'
+                                : 'border-border/80'
+                          )}
+                          aria-hidden
+                        >
+                          {done ? <Check className="size-2.5" strokeWidth={3} /> : null}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate">{entry.step.title}</span>
+                      </button>
+                    );
+                  })
+                : null}
             </li>
           );
         })}

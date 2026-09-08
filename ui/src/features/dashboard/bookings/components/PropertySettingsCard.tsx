@@ -100,6 +100,7 @@ import { normalizePropertySocialLinksForSave } from '@/features/dashboard/org/li
 import { computePaymentSettingsFingerprint } from '@/features/dashboard/org/lib/settingsVerificationFingerprint';
 import { orgPropertiesPath, propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
 import { usePropertyTeam } from '@/features/dashboard/team/hooks/usePropertyTeam';
@@ -791,7 +792,7 @@ export function usePropertySettingsController() {
     });
   }, [operationalBaseline]);
 
-    const handlePaymentOtpOpenChange = (open: boolean) => {
+  const handlePaymentOtpOpenChange = (open: boolean) => {
     if (!open && !paymentOtpSucceededRef.current) {
       revertPaymentDraft();
       const deferred = pendingSaveDeferredRef.current;
@@ -802,7 +803,7 @@ export function usePropertySettingsController() {
     setPaymentOtpOpen(open);
   };
 
-    const handlePaymentOtpVerified = (verificationToken: string) => {
+  const handlePaymentOtpVerified = (verificationToken: string) => {
     paymentOtpSucceededRef.current = true;
     const deferred = pendingSaveDeferredRef.current;
     pendingSaveDeferredRef.current = null;
@@ -1086,15 +1087,17 @@ export function PropertySettingsCard() {
         copyFromHref || isDirty ? (
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
             {copyFromHref ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={goCopyFrom}
-                className="min-h-[44px] gap-1.5"
-              >
-                <CopyPlus className="size-4" aria-hidden />
-                Copy from…
-              </Button>
+              <TierBadgeAnchor feature="copyPropertySettings">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={goCopyFrom}
+                  className="min-h-[44px] gap-1.5"
+                >
+                  <CopyPlus className="size-4" aria-hidden />
+                  Copy from…
+                </Button>
+              </TierBadgeAnchor>
             ) : null}
             {isDirty ? (
               <Button

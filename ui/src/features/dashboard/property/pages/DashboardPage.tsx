@@ -19,7 +19,6 @@ import {
   writeDashboardPeriodParams,
 } from '@/features/dashboard/property/lib/dashboardPeriod';
 import type { DashboardAttentionItem } from '@/features/dashboard/property/lib/types';
-import { SetupGuideLauncher } from '@/features/dashboard/setup-guide/components/SetupGuideLauncher';
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
 import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
@@ -121,7 +120,6 @@ export function DashboardPage() {
       dense
       className="min-w-0 max-w-full"
     >
-      <SetupGuideLauncher />
       {isLoading && !data ? (
         <DashboardSkeleton />
       ) : error ? (

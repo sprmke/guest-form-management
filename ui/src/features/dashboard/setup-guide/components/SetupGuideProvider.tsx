@@ -69,13 +69,16 @@ export function SetupGuideProvider({ children }: { children: ReactNode }) {
   const { orgSlug: routeOrgSlug } = useParams<{ orgSlug?: string }>();
   const orgSlug = tenant?.orgSlug ?? parkingTenant?.orgSlug ?? routeOrgSlug;
 
-  const { org, steps, progress, persisted } = useSetupGuideProgressForOrgSlug(orgSlug);
-  const write = useSetupGuideStateWrite(org?.id);
-
   const [open, setOpen] = useState(false);
   const [activeStepId, setActiveStepId] = useState<string | null>(null);
   const didAutoOpenRef = useRef(false);
   const didStampCompleteRef = useRef(false);
+
+  const { org, steps, progress, persisted } = useSetupGuideProgressForOrgSlug(orgSlug, {
+    guideOpen: open,
+    focusStepId: activeStepId,
+  });
+  const write = useSetupGuideStateWrite(org?.id);
 
   const requiredRemaining = progress.requiredRemaining;
   const superAdmin = isSuperAdminPath(location.pathname);

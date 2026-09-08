@@ -109,9 +109,8 @@ export function useSetupGuideStateWrite(orgId: string | null | undefined) {
         )
       );
     },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ORGANIZATIONS_QUERY_KEY });
-    },
+    // No invalidateQueries — optimistic + onSuccess keep the cache coherent without
+    // refetch storms while hosts move between Setup Guide steps.
   });
 
   const writeNow = useCallback(
