@@ -19,6 +19,7 @@ import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
 import type { TeamPermissionId } from '../_shared/propertyTeamPermissions.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { logAssetActivity } from '../_shared/assetActivity.ts';
 
 function templateEditPermission(pageType: CustomPageType): TeamPermissionId {
   return pageType === 'stay_guide' ? 'publicPages.stayGuide:edit' : 'publicPages.showcase:edit';
@@ -28,7 +29,7 @@ function templatePlanFeature(): 'publicPagesAutosave' {
   return 'publicPagesAutosave';
 }
 
-serveAuthenticated('custom-pages-settings', async (req) => {
+serveAuthenticated('custom-pages-settings', async (req, user) => {
   if (req.method === 'GET') {
     const { property } = await resolveScopedPropertyAccess(req, 'publicPages:view');
 
@@ -72,7 +73,8 @@ serveAuthenticated('custom-pages-settings', async (req) => {
       );
     }
 
-    const { property } = await resolveScopedPropertyAccess(req, templateEditPermission(pageType));
+    const access = await resolveScopedPropertyAccess(req, templateEditPermission(pageType));
+    const { property } = access;
     try {
       await requirePropertyFeature(property.id, templatePlanFeature());
     } catch (err) {
@@ -82,6 +84,19 @@ serveAuthenticated('custom-pages-settings', async (req) => {
     }
 
     const row = await updateCustomPageTemplate(property.id, pageType, templateKey);
+    await logAssetActivity({
+      req,
+      user,
+      action: 'settings.template_saved',
+      propertyId: property.id,
+      organizationId: access.org.id,
+      accessKind: access.accessKind,
+      memberId: access.memberId,
+      targetType: 'template',
+      targetId: `${property.id}:${pageType}`,
+      targetLabel: pageType === 'stay_guide' ? 'Stay Guide' : 'Property Showcase',
+      metadata: { page_type: pageType, template_key: templateKey },
+    });
     return jsonSuccess(req, {
       pageType: row.pageType,
       templateKey: row.templateKey,

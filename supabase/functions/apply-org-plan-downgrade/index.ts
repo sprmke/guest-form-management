@@ -13,6 +13,7 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
 
 serveAuthenticated('apply-org-plan-downgrade', async (req, user) => {
   requireHttpMethod(req, 'POST');
@@ -28,10 +29,24 @@ serveAuthenticated('apply-org-plan-downgrade', async (req, user) => {
     return jsonError(req, 'planId is required');
   }
 
-  await verifyOrgOwner(req, organizationId);
+  const { org } = await verifyOrgOwner(req, organizationId);
 
   try {
     const result = await applyOrgPlanDowngrade(organizationId, planId, user.id);
+    await logActivity({
+      action: 'billing.plan_downgraded',
+      organizationId,
+      scope: 'org',
+      actor: buildActorContext(
+        'dashboard',
+        { authUser: user, actorType: 'org_owner', role: 'owner' },
+        req
+      ),
+      targetType: 'subscription',
+      targetId: organizationId,
+      targetLabel: org.name ?? 'the organization',
+      metadata: { to_plan: planId, related_event_ref: { table: 'org_subscription_events' } },
+    });
     return jsonSuccess(req, result);
   } catch (err) {
     const message = (err as Error).message;

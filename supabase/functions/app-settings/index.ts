@@ -61,6 +61,28 @@ import {
   requireSettingsVerificationToken,
 } from '../_shared/settingsVerification.ts';
 import { notifyPropertyPaymentSettingsChanged } from '../_shared/settingsChangeNotifyEmail.ts';
+import { logAssetActivity } from '../_shared/assetActivity.ts';
+
+function appSettingsArea(fields: string[]): string {
+  if (fields.some((f) => f.startsWith('payment_') || f.startsWith('gcash_'))) return 'payment';
+  if (fields.some((f) => f.startsWith('gaf_'))) return 'guest_form';
+  if (fields.includes('automation_toggles')) return 'automation_toggles';
+  if (fields.some((f) => f.startsWith('voucher') || f === 'vouchers_enabled')) return 'vouchers';
+  if (fields.includes('external_reviews')) return 'external_reviews';
+  if (
+    fields.some(
+      (f) =>
+        f === 'brand_color' ||
+        f === 'facebook_reviews_url' ||
+        f === 'airbnb_url' ||
+        f === 'instagram_url' ||
+        f === 'tiktok_url'
+    )
+  ) {
+    return 'branding';
+  }
+  return 'general';
+}
 
 serveAuthenticated('app-settings', async (req, user) => {
   if (req.method === 'GET') {
@@ -90,7 +112,8 @@ serveAuthenticated('app-settings', async (req, user) => {
     if (needed.length === 0) {
       return jsonError(req, 'No valid fields to update');
     }
-    const { property, org } = await resolveScopedPropertyAccess(req, needed[0]!);
+    const access = await resolveScopedPropertyAccess(req, needed[0]!);
+    const { property, org } = access;
     for (const perm of needed.slice(1)) {
       await verifyPropertyAccess(req, property.id, perm);
     }
@@ -381,6 +404,25 @@ serveAuthenticated('app-settings', async (req, user) => {
     await DatabaseService.updateAppSettings(patch, propertyId);
     invalidateAppSettingsCache(propertyId);
     const data = await serializeAppSettingsForAdmin(propertyId);
+
+    const changedFields = Object.keys(patch);
+    await logAssetActivity({
+      req,
+      user,
+      action: 'settings.updated',
+      propertyId,
+      organizationId: org.id,
+      accessKind: access.accessKind,
+      memberId: access.memberId,
+      targetType: 'settings',
+      targetId: propertyId,
+      targetLabel: property.name,
+      metadata: {
+        area: appSettingsArea(changedFields),
+        fields: changedFields,
+        payment_otp_verified: paymentSettingsChanged,
+      },
+    });
 
     if (paymentSettingsChanged) {
       const supabase = createServiceClient();

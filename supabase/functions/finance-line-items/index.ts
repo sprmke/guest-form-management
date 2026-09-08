@@ -16,6 +16,7 @@ import { isRecurrenceEditScope, isRecurrenceInterval } from '../_shared/financeR
 import { parseFinanceTelegramReminderInput } from '../_shared/telegramFinance.ts';
 import { jsonError, jsonResponse, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { logAssetActivity } from '../_shared/assetActivity.ts';
 
 function isKind(v: unknown): v is FinanceLineItemKind {
   return v === 'expense' || v === 'income';
@@ -36,6 +37,13 @@ serveAuthenticated('finance-line-items', async (req, user) => {
   const asset = await resolveFinanceAssetAccess(req, permission);
   const scope = financeDbScope(asset);
   const email = user.email;
+  const activityScope = {
+    propertyId: asset.kind === 'property' ? asset.id : null,
+    parkingId: asset.kind === 'parking' ? asset.id : null,
+    organizationId: asset.orgId,
+    accessKind: asset.accessKind,
+    memberId: asset.memberId,
+  };
 
   if (req.method === 'GET') {
     const seriesId = url.searchParams.get('recurrence_series_id');
@@ -118,6 +126,22 @@ serveAuthenticated('finance-line-items', async (req, user) => {
       },
       email
     );
+    await logAssetActivity({
+      req,
+      user,
+      action: 'finance.entry_created',
+      ...activityScope,
+      targetId: (result.row as { id?: string })?.id ?? null,
+      targetLabel: label,
+      metadata: {
+        kind: body.kind,
+        category,
+        amount,
+        occurred_on,
+        recurring: Boolean(recurrence_interval),
+        created_count: result.created_count,
+      },
+    });
     return jsonSuccess(req, result.row, {
       created_count: result.created_count,
     });
@@ -160,6 +184,15 @@ serveAuthenticated('finance-line-items', async (req, user) => {
       patch.recurrence_until = body.recurrence_until.slice(0, 10);
     }
     const result = await updateFinanceLineItem(id, patch, scopeParam);
+    await logAssetActivity({
+      req,
+      user,
+      action: 'finance.entry_updated',
+      ...activityScope,
+      targetId: id,
+      targetLabel: label,
+      metadata: { category, amount, edit_scope: scopeParam, updated_count: result.updated_count },
+    });
     return jsonSuccess(req, result.row, {
       updated_count: result.updated_count,
     });
@@ -173,6 +206,14 @@ serveAuthenticated('finance-line-items', async (req, user) => {
     const scopeParam = url.searchParams.get('scope');
     const deleteScope = isRecurrenceEditScope(scopeParam) ? scopeParam : 'this';
     const result = await deleteFinanceLineItem(id, deleteScope);
+    await logAssetActivity({
+      req,
+      user,
+      action: 'finance.entry_deleted',
+      ...activityScope,
+      targetId: id,
+      metadata: { delete_scope: deleteScope, deleted_count: result.deleted_count },
+    });
     return jsonResponse(req, {
       success: true,
       deleted_count: result.deleted_count,

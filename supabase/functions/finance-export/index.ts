@@ -17,8 +17,9 @@ import {
 import { readParkingIdFromUrl } from '../_shared/parkingScope.ts';
 import { readPropertyIdFromUrl } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { logAssetActivity } from '../_shared/assetActivity.ts';
 
-serveAuthenticated('finance-export', async (req) => {
+serveAuthenticated('finance-export', async (req, user) => {
   if (req.method !== 'GET') {
     return jsonError(req, 'Method not allowed', 405);
   }
@@ -27,7 +28,9 @@ serveAuthenticated('finance-export', async (req) => {
   const parkingId = readParkingIdFromUrl(url);
   const propertyId = readPropertyIdFromUrl(url);
 
-  let asset: { kind: 'property'; id: string } | { kind: 'parking'; id: string };
+  let asset:
+    | { kind: 'property'; id: string; orgId?: string; accessKind?: string; memberId?: string }
+    | { kind: 'parking'; id: string; orgId?: string; accessKind?: string; memberId?: string };
 
   if (parkingId) {
     // Parking team stays on coarse finance:view until Phase 9.
@@ -70,6 +73,23 @@ serveAuthenticated('finance-export', async (req) => {
     includeCancelled: query.includeCancelled,
     completedOnly: query.completedOnly,
     q: query.q,
+  });
+
+  await logAssetActivity({
+    req,
+    user,
+    action: 'finance.report_exported',
+    propertyId: asset.kind === 'property' ? asset.id : null,
+    parkingId: asset.kind === 'parking' ? asset.id : null,
+    organizationId: asset.orgId ?? null,
+    accessKind: asset.accessKind ?? null,
+    memberId: asset.memberId,
+    metadata: {
+      report_type: parseFinanceExportType(p.get('type')),
+      from: query.from ?? null,
+      to: query.to ?? null,
+      basis: query.basis ?? null,
+    },
   });
 
   return new Response(body, {

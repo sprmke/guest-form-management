@@ -15,6 +15,7 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
 
 serveAuthenticated('create-org-subscription-checkout', async (req, user) => {
   requireHttpMethod(req, 'POST');
@@ -30,13 +31,27 @@ serveAuthenticated('create-org-subscription-checkout', async (req, user) => {
     return jsonError(req, 'planId is required');
   }
 
-  await verifyOrgOwner(req, organizationId);
+  const { org } = await verifyOrgOwner(req, organizationId);
 
   try {
     const result = await createOrgSubscriptionCheckoutLink({
       organizationId,
       planId,
       initiatedBy: user.id,
+    });
+    await logActivity({
+      action: 'billing.checkout_started',
+      organizationId,
+      scope: 'org',
+      actor: buildActorContext(
+        'dashboard',
+        { authUser: user, actorType: 'org_owner', role: 'owner' },
+        req
+      ),
+      targetType: 'subscription',
+      targetId: organizationId,
+      targetLabel: org.name ?? 'the organization',
+      metadata: { plan: planId },
     });
     return jsonSuccess(req, result);
   } catch (err) {

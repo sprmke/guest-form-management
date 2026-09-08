@@ -18,6 +18,7 @@ import {
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { logSuperAdminAction } from '../_shared/superAdminAudit.ts';
 import { verifySuperAdminJwt } from '../_shared/superAdminAuth.ts';
+import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
 import { maybeGrantHostVerificationReward } from '../_shared/hostVerificationReward.ts';
 
 serveAuthenticated('approve-org-verification', async (req) => {
@@ -96,6 +97,21 @@ serveAuthenticated('approve-org-verification', async (req) => {
     targetId: orgId,
     summary: `Approved ${tier} verification for ${(data as OrgRow).name ?? orgId}`,
     metadata: { tier },
+  });
+
+  await logActivity({
+    action: 'verification.approved',
+    organizationId: orgId,
+    scope: 'org',
+    actor: buildActorContext(
+      'dashboard',
+      { superAdmin: { id: admin.id, email: admin.email } },
+      req
+    ),
+    targetType: 'verification',
+    targetId: orgId,
+    targetLabel: (data as OrgRow).name ?? 'the organization',
+    metadata: { kind: `${tier} host verification`, via: 'platform_review' },
   });
 
   let rewardGrant: Awaited<ReturnType<typeof maybeGrantHostVerificationReward>> | null = null;

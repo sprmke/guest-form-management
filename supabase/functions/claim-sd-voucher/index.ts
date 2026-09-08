@@ -24,6 +24,7 @@ import {
 } from '../_shared/httpResponse.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
 import { antiSpamGate } from '../_shared/antiSpam.ts';
+import { logGuestActivity } from '../_shared/guestActivity.ts';
 
 servePublic('claim-sd-voucher', async (req) => {
   requireHttpMethod(req, 'POST');
@@ -146,6 +147,15 @@ servePublic('claim-sd-voucher', async (req) => {
     code = String(claimed.next_stay_voucher_code);
     amount =
       claimed.next_stay_voucher_amount != null ? Number(claimed.next_stay_voucher_amount) : amount;
+    await logGuestActivity({
+      req,
+      action: 'guest.voucher_claimed',
+      propertyId: (row.property_id as string | null) ?? null,
+      guest: { name: (row.primary_guest_name as string | null) ?? null },
+      targetId: bookingId,
+      targetLabel: (row.primary_guest_name as string | null) ?? null,
+      metadata: { amount },
+    });
     return jsonSuccess(req, { code, amount, alreadyAwarded: false });
   }
 

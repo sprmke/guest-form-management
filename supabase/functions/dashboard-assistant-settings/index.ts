@@ -16,6 +16,7 @@ import {
   resolveOrgAccessContext,
 } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
 
 function isPositiveInt(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0;
@@ -89,6 +90,21 @@ serveAuthenticated('dashboard-assistant-settings', async (req, user) => {
         ? body.dailyWriteActionLimit
         : undefined,
       updatedBy: user.id,
+    });
+
+    const toggled = typeof body.enabled === 'boolean';
+    await logActivity({
+      action: toggled ? 'ai.assistant_toggled' : 'ai.config_changed',
+      organizationId: ctx.org.id,
+      scope: 'org',
+      actor: buildActorContext('dashboard', { orgAccess: ctx }, req),
+      targetType: 'settings',
+      targetId: ctx.org.id,
+      targetLabel: ctx.org.name ?? 'the organization',
+      metadata: {
+        state: toggled ? (body.enabled ? 'enabled' : 'disabled') : undefined,
+        fields: Object.keys(body).filter((k) => k !== 'settingsVerificationToken'),
+      },
     });
     return jsonSuccess(req, settings);
   }

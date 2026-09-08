@@ -24,6 +24,7 @@ import { createServiceClient } from '../_shared/orgAuth.ts';
 import { decryptIntegrationSecret, encryptIntegrationSecret } from '../_shared/secretsCrypto.ts';
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { logAssetActivity } from '../_shared/assetActivity.ts';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -161,9 +162,28 @@ serveAuthenticated('calendar-sync-settings', async (req) => {
   if (req.method !== 'PATCH') return jsonError(req, 'Method not allowed', 405);
 
   // ── PATCH ───────────────────────────────────────────────────────────────
-  const { property, user } = await resolveScopedPropertyAccess(req, 'pricing.channels:edit');
+  const access = await resolveScopedPropertyAccess(req, 'pricing.channels:edit');
+  const { property, user } = access;
   const body = await readJsonBody(req);
   const action = String(body.action ?? '');
+  const emitCalendarActivity = (
+    calAction:
+      'integrations.connected' | 'integrations.disconnected' | 'integrations.config_changed',
+    metadata: Record<string, unknown>
+  ) =>
+    logAssetActivity({
+      req,
+      user,
+      action: calAction,
+      propertyId: property.id,
+      organizationId: access.org.id,
+      accessKind: access.accessKind,
+      memberId: access.memberId,
+      targetType: 'integration',
+      targetId: property.id,
+      targetLabel: property.name,
+      metadata: { provider: 'calendar_sync', ...metadata },
+    });
 
   // Opt-out: turning Share with Airbnb off must work without the Pro plan (hosts who
   // landed on an auto-enabled row need to disable it without hitting the upgrade modal).
@@ -174,6 +194,10 @@ serveAuthenticated('calendar-sync-settings', async (req) => {
       .update({ is_enabled: false })
       .eq('property_id', property.id);
     if (error) throw new Error(error.message);
+    await emitCalendarActivity('integrations.config_changed', {
+      setting: 'export_enabled',
+      enabled: false,
+    });
     return jsonSuccess(req, { enabled: false });
   }
 
@@ -244,6 +268,11 @@ serveAuthenticated('calendar-sync-settings', async (req) => {
           }
         }
 
+        await emitCalendarActivity('integrations.connected', {
+          feed_provider: provider,
+          feed_id: data.id,
+          label,
+        });
         return jsonSuccess(req, { feed: data, initialSync });
       }
 
@@ -274,6 +303,10 @@ serveAuthenticated('calendar-sync-settings', async (req) => {
           .select(FEED_COLUMNS)
           .single();
         if (error) throw new Error(error.message);
+        await emitCalendarActivity('integrations.config_changed', {
+          feed_id: feedId,
+          fields: Object.keys(patch).filter((k) => k !== 'updated_at'),
+        });
         return jsonSuccess(req, { feed: data });
       }
 
@@ -295,6 +328,11 @@ serveAuthenticated('calendar-sync-settings', async (req) => {
         // ON DELETE CASCADE removes calendar_sync_events + any remaining ical_import blocks.
         const { error } = await supabase.from('property_calendar_feeds').delete().eq('id', feedId);
         if (error) throw new Error(error.message);
+        await emitCalendarActivity('integrations.disconnected', {
+          feed_id: feedId,
+          feed_provider: existing.provider,
+          deleted_imported_blocks: deleteData,
+        });
         return jsonSuccess(req, { removed: feedId, keptImportedBlocks: !deleteData });
       }
 
@@ -307,6 +345,10 @@ serveAuthenticated('calendar-sync-settings', async (req) => {
           .update({ is_enabled: body.enabled })
           .eq('property_id', property.id);
         if (error) throw new Error(error.message);
+        await emitCalendarActivity('integrations.config_changed', {
+          setting: 'export_enabled',
+          enabled: body.enabled,
+        });
         return jsonSuccess(req, { enabled: body.enabled });
       }
 
