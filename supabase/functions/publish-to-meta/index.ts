@@ -24,6 +24,7 @@ import {
   resolveScopedPropertyAccess,
 } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { logAssetActivity } from '../_shared/assetActivity.ts';
 import type { SocialChannelConnectionRow } from '../_shared/socialInboxTypes.ts';
 
 type PublicationRow = {
@@ -86,7 +87,7 @@ function isFutureSchedule(scheduledAt: string | null | undefined): boolean {
   return !Number.isNaN(ms) && ms > Date.now();
 }
 
-serveAuthenticated('publish-to-meta', async (req) => {
+serveAuthenticated('publish-to-meta', async (req, user) => {
   const sb = createServiceClient();
   const url = new URL(req.url);
   let propertyId: string;
@@ -289,6 +290,22 @@ serveAuthenticated('publish-to-meta', async (req) => {
         error_message: null,
       })
       .eq('id', publicationId);
+
+    await logAssetActivity({
+      req,
+      user,
+      action: 'marketing.published_to_meta',
+      propertyId,
+      organizationId,
+      targetType: 'marketing_post',
+      targetId: publicationId,
+      metadata: {
+        target: publishType,
+        status,
+        scheduled: isScheduled,
+        meta_post_id: metaPostId,
+      },
+    });
 
     return jsonSuccess(req, {
       publicationId,

@@ -20,6 +20,32 @@ import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEn
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
 import type { TeamPermissionId } from '../_shared/propertyTeamPermissions.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { logAssetActivity } from '../_shared/assetActivity.ts';
+import type { AuthenticatedUser } from '../_shared/orgAuth.ts';
+import type { PropertyAccessContext } from '../_shared/orgAuth.ts';
+
+function emitTemplateActivity(
+  req: Request,
+  user: Pick<AuthenticatedUser, 'id' | 'email'>,
+  access: PropertyAccessContext,
+  action: 'settings.template_saved' | 'settings.template_deleted',
+  templateKey: string,
+  metadata: Record<string, unknown>
+): Promise<void> {
+  return logAssetActivity({
+    req,
+    user,
+    action,
+    propertyId: access.property.id,
+    organizationId: access.org.id,
+    accessKind: access.accessKind,
+    memberId: access.memberId,
+    targetType: 'template',
+    targetId: `${access.property.id}:${templateKey}`,
+    targetLabel: templateKey,
+    metadata,
+  });
+}
 
 async function maybeGatePublicPagesAutosave(
   req: Request,
@@ -35,7 +61,7 @@ async function maybeGatePublicPagesAutosave(
   }
 }
 
-serveAuthenticated('property-templates-settings', async (req) => {
+serveAuthenticated('property-templates-settings', async (req, user) => {
   if (req.method === 'GET') {
     const { property } = await resolveScopedPropertyAccess(req, 'templates:view');
     const data = await serializePropertyTemplatesForAdmin(property.id);
@@ -49,7 +75,8 @@ serveAuthenticated('property-templates-settings', async (req) => {
   const body = await readJsonBody(req);
 
   if (body.action === 'delete') {
-    const { property } = await resolveScopedPropertyAccess(req, 'templates.custom:delete');
+    const access = await resolveScopedPropertyAccess(req, 'templates.custom:delete');
+    const { property } = access;
     const gate = await maybeGatePublicPagesAutosave(req, property.id, body);
     if (gate) return gate;
     const templateKey = typeof body.templateKey === 'string' ? body.templateKey.trim() : '';
@@ -57,6 +84,9 @@ serveAuthenticated('property-templates-settings', async (req) => {
       return jsonError(req, 'Only custom templates can be deleted', 400);
     }
     await deletePropertyTemplateRow(property.id, templateKey);
+    await emitTemplateActivity(req, user, access, 'settings.template_deleted', templateKey, {
+      category: 'custom',
+    });
     const data = await serializePropertyTemplatesForAdmin(property.id);
     return jsonSuccess(req, data);
   }
@@ -69,7 +99,8 @@ serveAuthenticated('property-templates-settings', async (req) => {
     const builtin = getBuiltinPropertyTemplate(templateKey)!;
     const resetPerm: TeamPermissionId =
       builtin.category === 'email' ? 'templates.email:edit' : 'templates.standard:edit';
-    const { property } = await resolveScopedPropertyAccess(req, resetPerm);
+    const access = await resolveScopedPropertyAccess(req, resetPerm);
+    const { property } = access;
     const gate = await maybeGatePublicPagesAutosave(req, property.id, body);
     if (gate) return gate;
     await upsertPropertyTemplateRow({
@@ -79,12 +110,17 @@ serveAuthenticated('property-templates-settings', async (req) => {
       content: builtin.defaultContent,
       ...(builtin.category === 'standard' ? { sectionImageUrl: null } : {}),
     });
+    await emitTemplateActivity(req, user, access, 'settings.template_saved', templateKey, {
+      category: builtin.category,
+      operation: 'reset',
+    });
     const data = await serializePropertyTemplatesForAdmin(property.id);
     return jsonSuccess(req, data);
   }
 
   if (body.action === 'create') {
-    const { property } = await resolveScopedPropertyAccess(req, 'templates.custom:add');
+    const access = await resolveScopedPropertyAccess(req, 'templates.custom:add');
+    const { property } = access;
     try {
       await requirePropertyFeature(property.id, 'customTemplates');
     } catch (err) {
@@ -113,6 +149,11 @@ serveAuthenticated('property-templates-settings', async (req) => {
       name: name.trim(),
       content,
     });
+    await emitTemplateActivity(req, user, access, 'settings.template_saved', templateKey, {
+      category: 'custom',
+      operation: 'create',
+      name: name.trim(),
+    });
     const data = await serializePropertyTemplatesForAdmin(property.id);
     return jsonSuccess(req, data);
   }
@@ -135,7 +176,8 @@ serveAuthenticated('property-templates-settings', async (req) => {
   if (contentErr) return jsonError(req, contentErr, 400);
 
   if (isCustomTemplateKey(templateKey)) {
-    const { property } = await resolveScopedPropertyAccess(req, 'templates.custom:edit');
+    const access = await resolveScopedPropertyAccess(req, 'templates.custom:edit');
+    const { property } = access;
     const gate = await maybeGatePublicPagesAutosave(req, property.id, body);
     if (gate) return gate;
     try {
@@ -157,6 +199,10 @@ serveAuthenticated('property-templates-settings', async (req) => {
       name: name || undefined,
       content,
     });
+    await emitTemplateActivity(req, user, access, 'settings.template_saved', templateKey, {
+      category: 'custom',
+      operation: 'edit',
+    });
     const data = await serializePropertyTemplatesForAdmin(property.id);
     return jsonSuccess(req, data);
   }
@@ -165,7 +211,8 @@ serveAuthenticated('property-templates-settings', async (req) => {
     const builtin = getBuiltinPropertyTemplate(templateKey)!;
     const editPerm: TeamPermissionId =
       builtin.category === 'email' ? 'templates.email:edit' : 'templates.standard:edit';
-    const { property } = await resolveScopedPropertyAccess(req, editPerm);
+    const access = await resolveScopedPropertyAccess(req, editPerm);
+    const { property } = access;
     const gate = await maybeGatePublicPagesAutosave(req, property.id, body);
     if (gate) return gate;
     if (builtin.category === 'email') {
@@ -185,6 +232,10 @@ serveAuthenticated('property-templates-settings', async (req) => {
       ...(builtin.category === 'standard' && sectionImageUrl !== undefined
         ? { sectionImageUrl }
         : {}),
+    });
+    await emitTemplateActivity(req, user, access, 'settings.template_saved', templateKey, {
+      category: builtin.category,
+      operation: 'edit',
     });
     const data = await serializePropertyTemplatesForAdmin(property.id);
     return jsonSuccess(req, data);

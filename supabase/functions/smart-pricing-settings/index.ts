@@ -22,6 +22,7 @@ import {
   type SmartPricingSettingsPatch,
 } from '../_shared/smartPricing.ts';
 import { countAppliedSmartRecommendations } from '../_shared/smartPricingRead.ts';
+import { logAssetActivity } from '../_shared/assetActivity.ts';
 
 serveAuthenticated('smart-pricing-settings', async (req) => {
   // ── GET ──────────────────────────────────────────────────────────────────
@@ -60,7 +61,8 @@ serveAuthenticated('smart-pricing-settings', async (req) => {
   if (req.method !== 'PATCH') return jsonError(req, 'Method not allowed', 405);
 
   // ── PATCH ────────────────────────────────────────────────────────────────
-  const { property, user } = await resolveScopedPropertyAccess(req, 'pricing.rates:edit');
+  const access = await resolveScopedPropertyAccess(req, 'pricing.rates:edit');
+  const { property, user } = access;
 
   try {
     await requirePropertyFeature(property.id, 'smartPricing');
@@ -114,6 +116,27 @@ serveAuthenticated('smart-pricing-settings', async (req) => {
 
   try {
     const settings = await saveSmartPricingSettings(property.id, patch, { userId: user.id });
+    await logAssetActivity({
+      req,
+      user,
+      action: 'pricing.smart_config_changed',
+      propertyId: property.id,
+      organizationId: access.org.id,
+      accessKind: access.accessKind,
+      memberId: access.memberId,
+      targetId: property.id,
+      targetLabel: property.name ?? null,
+      changes: Object.keys(patch).map((field) => ({
+        field,
+        from: null,
+        to: (patch as Record<string, unknown>)[field] ?? null,
+      })),
+      metadata: {
+        fields: Object.keys(patch),
+        enabled: patch.enabled,
+        mode: patch.mode,
+      },
+    });
     return jsonSuccess(req, { settings });
   } catch (err) {
     return jsonError(req, (err as Error).message, 400);

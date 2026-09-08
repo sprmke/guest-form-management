@@ -26,6 +26,7 @@ import {
   maybeGrantHostVerificationReward,
 } from '../_shared/hostVerificationReward.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
 
 serveAuthenticated('submit-org-verification', async (req) => {
   requireHttpMethod(req, 'POST');
@@ -137,6 +138,23 @@ serveAuthenticated('submit-org-verification', async (req) => {
       console.error('[submit-org-verification] reward grant', err);
     }
   }
+
+  await logActivity({
+    action: 'verification.submitted',
+    organizationId: orgId,
+    scope: 'org',
+    actor: buildActorContext(
+      'dashboard',
+      { authUser: user, actorType: 'org_owner', role: 'owner' },
+      req
+    ),
+    targetType: 'verification',
+    targetId: orgId,
+    targetLabel: org.name ?? 'the organization',
+    metadata: {
+      kind: tier === 'enhanced' ? 'enhanced host verification' : 'base host verification',
+    },
+  });
 
   return jsonSuccess(req, {
     organization: serializeOrganization(data),

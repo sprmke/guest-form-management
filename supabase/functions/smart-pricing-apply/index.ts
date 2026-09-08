@@ -12,6 +12,7 @@ import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEn
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { applyRun, clearRecommendations } from '../_shared/smartPricingRun.ts';
+import { logAssetActivity } from '../_shared/assetActivity.ts';
 
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -19,7 +20,8 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 serveAuthenticated('smart-pricing-apply', async (req) => {
   if (req.method !== 'POST') return jsonError(req, 'Method not allowed', 405);
 
-  const { property, user } = await resolveScopedPropertyAccess(req, 'pricing.rates:edit');
+  const access = await resolveScopedPropertyAccess(req, 'pricing.rates:edit');
+  const { property, user } = access;
 
   try {
     await requirePropertyFeature(property.id, 'smartPricing');
@@ -34,6 +36,18 @@ serveAuthenticated('smart-pricing-apply', async (req) => {
   if (body.clear === true) {
     try {
       await clearRecommendations(property.id);
+      await logAssetActivity({
+        req,
+        user,
+        action: 'pricing.smart_config_changed',
+        propertyId: property.id,
+        organizationId: access.org.id,
+        accessKind: access.accessKind,
+        memberId: access.memberId,
+        targetId: property.id,
+        targetLabel: property.name ?? null,
+        metadata: { operation: 'cleared_recommendations' },
+      });
       return jsonSuccess(req, { cleared: true });
     } catch (err) {
       return jsonError(req, (err as Error).message, 400);
@@ -61,6 +75,24 @@ serveAuthenticated('smart-pricing-apply', async (req) => {
 
   try {
     const result = await applyRun(property.id, runId, { ranges, createdBy: user.id });
+    await logAssetActivity({
+      req,
+      user,
+      action: 'pricing.smart_applied',
+      propertyId: property.id,
+      organizationId: access.org.id,
+      accessKind: access.accessKind,
+      memberId: access.memberId,
+      targetId: property.id,
+      targetLabel: property.name ?? null,
+      metadata: {
+        run_id: runId,
+        count: result.applied,
+        skipped_unavailable: result.skippedUnavailable,
+        partial: Boolean(ranges),
+        related_event_ref: { table: 'property_smart_pricing_runs', id: runId },
+      },
+    });
     return jsonSuccess(req, result);
   } catch (err) {
     return jsonError(req, (err as Error).message, 400);

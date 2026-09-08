@@ -17,6 +17,7 @@ import {
 } from '../_shared/guestReviewFeedbackTags.ts';
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
+import { logGuestActivity } from '../_shared/guestActivity.ts';
 import { antiSpamGate } from '../_shared/antiSpam.ts';
 
 function parseStarRating(raw: FormDataEntryValue | null): number | null {
@@ -93,6 +94,16 @@ servePublic('submit-guest-review', async (req) => {
     feedbackTags,
     mediaUrls,
     guestDisplayName,
+  });
+
+  await logGuestActivity({
+    req,
+    action: 'guest.review_submitted',
+    propertyId,
+    guest: { name: guestDisplayName },
+    targetId: bookingId,
+    targetLabel: guestDisplayName,
+    metadata: { star_rating: starRating, has_media: mediaUrls.length > 0 },
   });
 
   return jsonSuccess(req, { submitted: true });

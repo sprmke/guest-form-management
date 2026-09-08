@@ -15,6 +15,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
 import { isBookingStatus, isPostPendingDocumentsStatus } from '../_shared/statusMachine.ts';
 import { antiSpamGate } from '../_shared/antiSpam.ts';
+import { logGuestActivity } from '../_shared/guestActivity.ts';
 
 type SubmitBody = {
   bookingId?: string;
@@ -93,6 +94,16 @@ serve(async (req) => {
     }
 
     await DatabaseService.setWorkflowFields(bookingId, patch);
+
+    await logGuestActivity({
+      req,
+      action: 'guest.pay_parking_submitted',
+      propertyId: (existing.property_id as string | null) ?? null,
+      guest: { name: (existing.primary_guest_name as string | null) ?? null },
+      targetId: bookingId,
+      targetLabel: (existing.primary_guest_name as string | null) ?? null,
+      metadata: { car_plate: patch.car_plate_number },
+    });
 
     return new Response(
       JSON.stringify({

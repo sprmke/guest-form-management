@@ -12,6 +12,7 @@ import { DatabaseService } from '../_shared/databaseService.ts';
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
 import type { TransitionPayload } from '../_shared/workflowOrchestrator.ts';
 import { buildActorContext } from '../_shared/activityLog.ts';
+import { logGuestActivity } from '../_shared/guestActivity.ts';
 import { notifyTelegramAdminSdFormSubmitted } from '../_shared/telegramAdmin.ts';
 import { isSdRefundBank, type SdRefundBank } from '../_shared/sdRefundBank.ts';
 import { antiSpamGate } from '../_shared/antiSpam.ts';
@@ -125,6 +126,16 @@ serve(async (req) => {
       false,
       buildActorContext('public_form', { guest: {} }, req)
     );
+
+    await logGuestActivity({
+      req,
+      action: 'guest.sd_form_submitted',
+      propertyId: (row.property_id as string | null) ?? null,
+      guest: { name: (row.primary_guest_name as string | null) ?? null },
+      targetId: bookingId,
+      targetLabel: (row.primary_guest_name as string | null) ?? null,
+      metadata: { refund_method: refund!.method },
+    });
 
     try {
       const updated = await DatabaseService.getBookingById(bookingId);

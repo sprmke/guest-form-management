@@ -21,6 +21,7 @@ import {
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { logSuperAdminAction } from '../_shared/superAdminAudit.ts';
 import { verifySuperAdminJwt } from '../_shared/superAdminAuth.ts';
+import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
 
 serveAuthenticated('reject-org-verification', async (req) => {
   requireHttpMethod(req, 'POST');
@@ -131,6 +132,25 @@ serveAuthenticated('reject-org-verification', async (req) => {
     targetId: orgId,
     summary: `${kind === 'changes' ? 'Requested changes on' : 'Rejected'} ${tier} verification for ${updated.name ?? orgId}`,
     metadata: { tier, kind, reason },
+  });
+
+  await logActivity({
+    action: 'verification.rejected',
+    organizationId: orgId,
+    scope: 'org',
+    actor: buildActorContext(
+      'dashboard',
+      { superAdmin: { id: admin.id, email: admin.email } },
+      req
+    ),
+    targetType: 'verification',
+    targetId: orgId,
+    targetLabel: updated.name ?? 'the organization',
+    metadata: {
+      kind: `${tier} host verification`,
+      decision: kind === 'changes' ? 'changes_requested' : 'rejected',
+      via: 'platform_review',
+    },
   });
 
   return jsonSuccess(req, { organization: serializeOrganization(updated) });

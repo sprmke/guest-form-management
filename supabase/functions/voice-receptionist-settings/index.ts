@@ -12,10 +12,12 @@ import {
   updateVoiceReceptionistSettings,
   validateVoiceReceptionistPatch,
 } from '../_shared/voiceReceptionistService.ts';
+import { logAssetActivity } from '../_shared/assetActivity.ts';
 
-serveAuthenticated('voice-receptionist-settings', async (req) => {
+serveAuthenticated('voice-receptionist-settings', async (req, user) => {
   const permission = req.method === 'GET' ? 'settings:view' : 'settings.voiceReceptionist:edit';
-  const { property } = await resolveScopedPropertyAccess(req, permission);
+  const access = await resolveScopedPropertyAccess(req, permission);
+  const { property } = access;
 
   if (req.method === 'GET') {
     const data = await getVoiceReceptionistSettings(property.id);
@@ -36,6 +38,24 @@ serveAuthenticated('voice-receptionist-settings', async (req) => {
       }
     }
     const data = await updateVoiceReceptionistSettings(property.id, patch);
+    await logAssetActivity({
+      req,
+      user,
+      action: 'integrations.config_changed',
+      propertyId: property.id,
+      organizationId: access.org.id,
+      accessKind: access.accessKind,
+      memberId: access.memberId,
+      targetType: 'integration',
+      targetId: property.id,
+      targetLabel: property.name,
+      changes: Object.keys(patch).map((field) => ({
+        field,
+        from: null,
+        to: (patch as Record<string, unknown>)[field] ?? null,
+      })),
+      metadata: { provider: 'voice_receptionist', fields: Object.keys(patch) },
+    });
     return jsonSuccess(req, data);
   }
 

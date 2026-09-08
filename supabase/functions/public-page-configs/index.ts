@@ -18,6 +18,7 @@ import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
 import type { TeamPermissionId } from '../_shared/propertyTeamPermissions.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { logAssetActivity } from '../_shared/assetActivity.ts';
 
 function editPermissionForPageType(pageType: PublicPageType): TeamPermissionId {
   if (pageType === 'stay_guide') return 'publicPages.stayGuide:edit';
@@ -31,7 +32,7 @@ function isPublishingShowcase(pageType: PublicPageType, config: unknown): boolea
   return normalized.published === true;
 }
 
-serveAuthenticated('public-page-configs', async (req) => {
+serveAuthenticated('public-page-configs', async (req, user) => {
   if (req.method === 'GET') {
     const { property } = await resolveScopedPropertyAccess(req, 'publicPages:view');
     const url = new URL(req.url);
@@ -66,10 +67,8 @@ serveAuthenticated('public-page-configs', async (req) => {
       return jsonError(req, 'config is required', 400);
     }
 
-    const { property } = await resolveScopedPropertyAccess(
-      req,
-      editPermissionForPageType(pageType)
-    );
+    const access = await resolveScopedPropertyAccess(req, editPermissionForPageType(pageType));
+    const { property } = access;
     try {
       await requirePropertyFeature(property.id, 'publicPagesAutosave');
       if (isPublishingShowcase(pageType, body.config)) {
@@ -82,6 +81,20 @@ serveAuthenticated('public-page-configs', async (req) => {
     }
 
     const row = await upsertPublicPageConfig(property.id, pageType, body.config);
+    const publishing = isPublishingShowcase(pageType, body.config);
+    await logAssetActivity({
+      req,
+      user,
+      action: publishing ? 'public_pages.published' : 'public_pages.config_saved',
+      propertyId: property.id,
+      organizationId: access.org.id,
+      accessKind: access.accessKind,
+      memberId: access.memberId,
+      targetType: 'page_config',
+      targetId: `${property.id}:${pageType}`,
+      targetLabel: property.name,
+      metadata: { page: pageType },
+    });
     return jsonSuccess(req, {
       pageType: row.pageType,
       config: row.config as PropertyShowcaseConfig | typeof row.config,

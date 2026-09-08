@@ -13,8 +13,9 @@ import {
   requirePropertyFeature,
 } from '../_shared/planEntitlements.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { logAssetActivity } from '../_shared/assetActivity.ts';
 
-serveAuthenticated('social-inbox-settings', async (req) => {
+serveAuthenticated('social-inbox-settings', async (req, user) => {
   const body = req.method === 'GET' ? null : ((await readJsonBody(req)) as Record<string, unknown>);
   const ctx = await resolveInboxAccess(req, 'automation', body);
   await ensureSocialInboxSettings(ctx.orgId, ctx.parkingId);
@@ -91,6 +92,21 @@ serveAuthenticated('social-inbox-settings', async (req) => {
       .select('*')
       .single();
     if (error) return jsonError(req, error.message, 500);
+    await logAssetActivity({
+      req,
+      user,
+      action: 'inbox.settings_changed',
+      organizationId: ctx.orgId,
+      propertyId: ctx.propertyId ?? null,
+      parkingId: ctx.parkingId ?? null,
+      targetType: 'settings',
+      targetId: ctx.parkingId ?? ctx.propertyId ?? ctx.orgId,
+      metadata: {
+        fields: Object.keys(patch).filter((k) => k !== 'updated_at'),
+        auto_reply_enabled: patch.auto_reply_enabled,
+        auto_reply_mode: patch.auto_reply_mode,
+      },
+    });
     const aiStatus = await checkInboxAiProviders();
     return jsonSuccess(req, {
       autoReplyEnabled: data.auto_reply_enabled,
