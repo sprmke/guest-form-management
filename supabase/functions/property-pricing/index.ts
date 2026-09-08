@@ -14,6 +14,7 @@ import {
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
 import type { TeamPermissionId } from '../_shared/propertyTeamPermissions.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { logAssetActivity } from '../_shared/assetActivity.ts';
 
 function pricingPatchPermissions(patch: PropertyPricingPatch): TeamPermissionId[] {
   const needed: TeamPermissionId[] = [];
@@ -132,13 +133,61 @@ serveAuthenticated('property-pricing', async (req) => {
     return jsonError(req, 'No valid fields to update', 400);
   }
 
-  const { property, user } = await resolveScopedPropertyAccess(req, needed[0]!);
+  const access = await resolveScopedPropertyAccess(req, needed[0]!);
+  const { property, user } = access;
   for (const perm of needed.slice(1)) {
     await verifyPropertyAccess(req, property.id, perm);
   }
 
   try {
     const data = await savePropertyPricing(property.id, patch, { userId: user.id });
+
+    const emit = (
+      action: Parameters<typeof logAssetActivity>[0]['action'],
+      metadata: Record<string, unknown>
+    ) =>
+      logAssetActivity({
+        req,
+        user,
+        action,
+        propertyId: property.id,
+        organizationId: access.org.id,
+        accessKind: access.accessKind,
+        memberId: access.memberId,
+        targetId: property.id,
+        targetLabel: property.name ?? null,
+        metadata,
+      });
+
+    const rateFields = [
+      'weekdayNightlyRate',
+      'weekendNightlyRate',
+      'downPayment',
+      'securityDeposit',
+      'petFee',
+      'parkingRateGuest',
+      'guestAdditionalFee',
+      'holidayRules',
+    ].filter((f) => (patch as Record<string, unknown>)[f] !== undefined);
+    const overrideCount = patch.dateOverrides ? Object.keys(patch.dateOverrides).length : 0;
+    if (rateFields.length > 0 || overrideCount > 0) {
+      await emit('pricing.rates_updated', {
+        scope: rateFields.length > 0 ? 'nightly rates' : 'calendar overrides',
+        fields: rateFields,
+        count: overrideCount,
+      });
+    }
+    if (patch.blockRange) {
+      await emit('pricing.dates_blocked', {
+        start_date: patch.blockRange.startDate,
+        end_date: patch.blockRange.endDate,
+        count: 1,
+      });
+    }
+    if (patch.unblockDateKeys && patch.unblockDateKeys.length > 0) {
+      await emit('pricing.dates_unblocked', { count: patch.unblockDateKeys.length });
+    }
+
     return jsonSuccess(req, data);
   } catch (e) {
     return jsonError(req, (e as Error).message, 400);

@@ -12,6 +12,7 @@ import { invalidateAppSettingsCache, validateOptionalUrl } from '../_shared/appS
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import { resolveOrgAccessContext } from '../_shared/propertyScope.ts';
 import { serveAdmin } from '../_shared/serveEdge.ts';
+import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
 
 serveAdmin('org-settings', async (req) => {
   if (req.method === 'GET') {
@@ -96,6 +97,17 @@ serveAdmin('org-settings', async (req) => {
     await DatabaseService.updateOrgSettings(patch, organizationId);
     invalidateOrgSettingsCache(organizationId);
     invalidateAppSettingsCache();
+    await logActivity({
+      action: 'settings.updated',
+      organizationId,
+      scope: 'org',
+      actor: buildActorContext('dashboard', { orgAccess: ctx }, req),
+      targetType: 'settings',
+      targetId: organizationId,
+      targetLabel: ctx.org.name ?? 'the organization',
+      changes: Object.keys(patch).map((field) => ({ field, from: null, to: patch[field] ?? null })),
+      metadata: { area: 'socials', fields: Object.keys(patch) },
+    });
     const data = await serializeOrgSettingsForAdmin(organizationId);
     return jsonSuccess(req, data);
   }

@@ -27,6 +27,7 @@ import {
   requireSettingsVerificationToken,
 } from '../_shared/settingsVerification.ts';
 import { notifyParkingPaymentSettingsChanged } from '../_shared/settingsChangeNotifyEmail.ts';
+import { logAssetActivity } from '../_shared/assetActivity.ts';
 
 function serializeParkingSettingsRow(
   row: Record<string, unknown>,
@@ -52,7 +53,8 @@ function serializeParkingSettingsRow(
 
 serveAuthenticated('parking-settings', async (req, user) => {
   const permission = req.method === 'GET' ? 'org:parkings:view' : 'org:parkings:manage';
-  const { parkingRow, org } = await resolveScopedParkingAccess(req, permission);
+  const access = await resolveScopedParkingAccess(req, permission);
+  const { parkingRow, org } = access;
   const parkingId = parkingRow.id;
   const supabase = createServiceClient();
 
@@ -187,6 +189,31 @@ serveAuthenticated('parking-settings', async (req, user) => {
         console.error('[parking-settings] settings change notify failed', err);
       });
     }
+
+    const changedFields = Object.keys(patch).filter((k) => k !== 'updated_at');
+    await logAssetActivity({
+      req,
+      user,
+      action: 'settings.updated',
+      parkingId,
+      organizationId: org.id,
+      accessKind: access.accessKind,
+      memberId: access.memberId,
+      targetType: 'settings',
+      targetId: parkingId,
+      targetLabel: parkingRow.name as string,
+      metadata: {
+        area: paymentSettingsChanged
+          ? 'payment'
+          : patch.automation_toggles !== undefined
+            ? 'automation_toggles'
+            : patch.parking_notification_templates !== undefined
+              ? 'notification_templates'
+              : 'general',
+        fields: changedFields,
+        payment_otp_verified: paymentSettingsChanged,
+      },
+    });
 
     return jsonSuccess(req, serializeParkingSettingsRow(data as Record<string, unknown>));
   }

@@ -15,6 +15,7 @@ import { parseMaintenanceTelegramReminderInput } from '../_shared/telegramMainte
 import { jsonError, jsonResponse, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { logAssetActivity } from '../_shared/assetActivity.ts';
 
 serveAuthenticated('maintenance-items', async (req, user) => {
   const permission =
@@ -27,7 +28,8 @@ serveAuthenticated('maintenance-items', async (req, user) => {
           : req.method === 'DELETE'
             ? ('maintenance.reminders:delete' as const)
             : ('maintenance:view' as const);
-  const { property } = await resolveScopedPropertyAccess(req, permission);
+  const access = await resolveScopedPropertyAccess(req, permission);
+  const { property } = access;
   const propertyId = property.id;
   const email = user.email;
   const url = new URL(req.url);
@@ -102,6 +104,23 @@ serveAuthenticated('maintenance-items', async (req, user) => {
       },
       email
     );
+    await logAssetActivity({
+      req,
+      user,
+      action: 'maintenance.task_created',
+      propertyId,
+      organizationId: access.org.id,
+      accessKind: access.accessKind,
+      memberId: access.memberId,
+      targetId: (result.row as { id?: string })?.id ?? null,
+      targetLabel: label,
+      metadata: {
+        category,
+        scheduled_on,
+        recurring: Boolean(recurrence_interval),
+        created_count: result.created_count,
+      },
+    });
     return jsonSuccess(req, result.row, {
       created_count: result.created_count,
     });
@@ -144,6 +163,18 @@ serveAuthenticated('maintenance-items', async (req, user) => {
       patch.recurrence_until = body.recurrence_until.slice(0, 10);
     }
     const result = await updateMaintenanceItem(id, patch, scope);
+    await logAssetActivity({
+      req,
+      user,
+      action: 'maintenance.task_updated',
+      propertyId,
+      organizationId: access.org.id,
+      accessKind: access.accessKind,
+      memberId: access.memberId,
+      targetId: id,
+      targetLabel: label,
+      metadata: { category, edit_scope: scope, updated_count: result.updated_count },
+    });
     return jsonSuccess(req, result.row, {
       updated_count: result.updated_count,
     });
@@ -157,6 +188,17 @@ serveAuthenticated('maintenance-items', async (req, user) => {
     const scopeParam = url.searchParams.get('scope');
     const scope = isRecurrenceEditScope(scopeParam) ? scopeParam : 'this';
     const result = await deleteMaintenanceItem(id, scope);
+    await logAssetActivity({
+      req,
+      user,
+      action: 'maintenance.task_deleted',
+      propertyId,
+      organizationId: access.org.id,
+      accessKind: access.accessKind,
+      memberId: access.memberId,
+      targetId: id,
+      metadata: { delete_scope: scope, deleted_count: result.deleted_count },
+    });
     return jsonResponse(req, {
       success: true,
       deleted_count: result.deleted_count,

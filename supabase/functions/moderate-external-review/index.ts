@@ -18,10 +18,11 @@ import {
 } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { verifySuperAdminJwt } from '../_shared/superAdminAuth.ts';
+import { logAssetActivity } from '../_shared/assetActivity.ts';
 
 serveAuthenticated('moderate-external-review', async (req) => {
   requireHttpMethod(req, 'POST');
-  await verifySuperAdminJwt(req);
+  const admin = await verifySuperAdminJwt(req);
 
   const body = await readJsonBody(req);
   const propertyId = typeof body.propertyId === 'string' ? body.propertyId.trim() : '';
@@ -60,5 +61,17 @@ serveAuthenticated('moderate-external-review', async (req) => {
   invalidateAppSettingsCache(propertyId);
 
   const review = updated.find((item) => item.id === reviewId) ?? null;
+
+  await logAssetActivity({
+    req,
+    user: { id: admin.id, email: admin.email },
+    action: 'marketing.external_review_moderated',
+    propertyId,
+    accessKind: 'platform_admin',
+    targetType: 'external_review',
+    targetId: reviewId,
+    metadata: { decision, via: 'platform_moderation' },
+  });
+
   return jsonSuccess(req, { propertyId, review, decision });
 });

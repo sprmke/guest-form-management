@@ -11,6 +11,7 @@ import {
 } from '../_shared/propertyScope.ts';
 import type { TeamPermissionId } from '../_shared/propertyTeamPermissions.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { logAssetActivity } from '../_shared/assetActivity.ts';
 
 const CONTENT_TYPES = new Set(['calendar', 'design', 'video']);
 
@@ -63,7 +64,7 @@ async function resolveMarketingPropertyId(
   }
 }
 
-serveAuthenticated('marketing-templates', async (req) => {
+serveAuthenticated('marketing-templates', async (req, user) => {
   const url = new URL(req.url);
   let propertyId: string;
   let actorUserId: string | null = null;
@@ -178,6 +179,17 @@ serveAuthenticated('marketing-templates', async (req) => {
       .single();
 
     if (error) return jsonError(req, error.message, 500);
+    await logAssetActivity({
+      req,
+      user,
+      action: 'marketing.template_saved',
+      propertyId,
+      organizationId,
+      targetType: 'template',
+      targetId: (data as MarketingTemplateRow).id,
+      targetLabel: name,
+      metadata: { content_type: contentType, operation: 'create' },
+    });
     return jsonSuccess(req, serializeTemplate(data as MarketingTemplateRow));
   }
 
@@ -230,6 +242,17 @@ serveAuthenticated('marketing-templates', async (req) => {
 
     if (error) return jsonError(req, error.message, 500);
     if (!data) return jsonError(req, 'Template not found', 404);
+    await logAssetActivity({
+      req,
+      user,
+      action: 'marketing.template_saved',
+      propertyId,
+      organizationId,
+      targetType: 'template',
+      targetId: templateId,
+      targetLabel: (data as MarketingTemplateRow).name,
+      metadata: { operation: 'edit', fields: Object.keys(patch) },
+    });
     return jsonSuccess(req, serializeTemplate(data as MarketingTemplateRow));
   }
 
@@ -251,6 +274,15 @@ serveAuthenticated('marketing-templates', async (req) => {
 
     if (error) return jsonError(req, error.message, 500);
     if (!data) return jsonError(req, 'Template not found', 404);
+    await logAssetActivity({
+      req,
+      user,
+      action: 'marketing.template_deleted',
+      propertyId,
+      organizationId,
+      targetType: 'template',
+      targetId: templateId,
+    });
     return jsonSuccess(req, { deleted: true, id: templateId });
   }
 

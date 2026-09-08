@@ -17,10 +17,12 @@ import {
 import { isValidCalendarDateKey } from '../_shared/parkingBlockedDates.ts';
 import { resolveScopedParkingAccess } from '../_shared/parkingScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { logAssetActivity } from '../_shared/assetActivity.ts';
 
 serveAuthenticated('parking-pricing', async (req) => {
   const permission = req.method === 'GET' ? 'org:parkings:view' : 'org:parkings:manage';
-  const { parkingRow, user } = await resolveScopedParkingAccess(req, permission);
+  const access = await resolveScopedParkingAccess(req, permission);
+  const { parkingRow, user } = access;
   const parkingId = parkingRow.id;
   const url = new URL(req.url);
 
@@ -102,6 +104,46 @@ serveAuthenticated('parking-pricing', async (req) => {
 
     try {
       const data = await saveParkingPricing(parkingId, patch, { userId: user.id });
+
+      const emit = (
+        action: Parameters<typeof logAssetActivity>[0]['action'],
+        metadata: Record<string, unknown>
+      ) =>
+        logAssetActivity({
+          req,
+          user,
+          action,
+          parkingId,
+          organizationId: access.org.id,
+          accessKind: access.accessKind,
+          memberId: access.memberId,
+          targetId: parkingId,
+          targetLabel: parkingRow.name ?? null,
+          metadata,
+        });
+
+      const rateFields = ['weekdayNightlyRate', 'weekendNightlyRate'].filter(
+        (f) => (patch as Record<string, unknown>)[f] !== undefined
+      );
+      const overrideCount = patch.dateOverrides ? Object.keys(patch.dateOverrides).length : 0;
+      if (rateFields.length > 0 || overrideCount > 0) {
+        await emit('pricing.rates_updated', {
+          scope: rateFields.length > 0 ? 'nightly rates' : 'calendar overrides',
+          fields: rateFields,
+          count: overrideCount,
+        });
+      }
+      if (patch.blockRange) {
+        await emit('pricing.dates_blocked', {
+          start_date: patch.blockRange.startDate,
+          end_date: patch.blockRange.endDate,
+          count: 1,
+        });
+      }
+      if (patch.unblockDateKeys && patch.unblockDateKeys.length > 0) {
+        await emit('pricing.dates_unblocked', { count: patch.unblockDateKeys.length });
+      }
+
       return jsonSuccess(req, data);
     } catch (e) {
       return jsonError(req, (e as Error).message, 400);

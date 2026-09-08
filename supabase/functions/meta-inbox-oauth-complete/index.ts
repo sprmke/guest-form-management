@@ -12,6 +12,7 @@ import { resolveInboxAccess } from '../_shared/inboxAccess.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { logAssetActivity } from '../_shared/assetActivity.ts';
 
 serveAuthenticated('meta-inbox-oauth-complete', async (req, user) => {
   if (req.method !== 'POST') {
@@ -69,6 +70,19 @@ serveAuthenticated('meta-inbox-oauth-complete', async (req, user) => {
       parkingId: ctx.parkingId,
     });
     await sb.from('meta_inbox_oauth_state').delete().eq('state', pickerState);
+
+    await logAssetActivity({
+      req,
+      user,
+      action: 'integrations.connected',
+      organizationId: ctx.orgId,
+      propertyId: ctx.propertyId ?? null,
+      parkingId: ctx.parkingId ?? null,
+      targetType: 'integration',
+      targetId: ctx.parkingId ?? ctx.propertyId ?? ctx.orgId,
+      targetLabel: page.name,
+      metadata: { provider: 'meta_inbox', page_name: page.name },
+    });
 
     return jsonSuccess(req, { connected: true, pageName: page.name });
   } catch (e) {

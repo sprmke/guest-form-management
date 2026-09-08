@@ -330,6 +330,19 @@ serveSuperAdmin('org-subscriptions-admin', async (req, admin) => {
         overridePricePhp,
         note: typeof body.note === 'string' ? body.note : undefined,
       },
+      mirrorToOrgActivity: {
+        organizationId,
+        action: 'billing.plan_overridden_by_platform',
+        targetType: 'subscription',
+        targetId: organizationId,
+        targetLabel: orgRow?.name ?? 'the organization',
+        metadata: {
+          to_plan: planId,
+          property_count: propertyIds.length,
+          override_price_php: overridePricePhp,
+        },
+        req,
+      },
     });
 
     return jsonSuccess(req, {
