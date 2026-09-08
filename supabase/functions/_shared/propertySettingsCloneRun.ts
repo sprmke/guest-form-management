@@ -83,6 +83,7 @@ export async function runCopyPropertySettings(
   );
   const organizationId = sourceProperty.organization_id as string;
   const ownerId = (org as { owner_id?: string }).owner_id ?? '';
+  const writeOptions: CloneOptions = { ...options, actorUserId };
 
   const uniqueTargets = [...new Set(targetPropertyIds.map((id) => id.trim()).filter(Boolean))];
   if (uniqueTargets.includes(sourcePropertyId)) {
@@ -196,7 +197,7 @@ export async function runCopyPropertySettings(
         group,
         payload,
         targetCtx: { propertyId: targetId, organizationId },
-        options,
+        options: writeOptions,
         dryRun,
       });
 

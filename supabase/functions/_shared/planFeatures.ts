@@ -40,6 +40,8 @@ export type PlanFeatures = {
   /** AI-assisted dynamic nightly rates (Smart Pricing) on the Pricing page. */
   smartPricing: boolean;
   customRoles: boolean;
+  /** Bulk-copy property settings groups to other properties in the same org. */
+  copyPropertySettings: boolean;
 };
 
 export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
@@ -70,6 +72,7 @@ export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
   calendarSync: false,
   smartPricing: false,
   customRoles: false,
+  copyPropertySettings: false,
 };
 
 function asBool(value: unknown, fallback: boolean): boolean {
@@ -139,6 +142,7 @@ export function parsePlanFeatures(raw: unknown): PlanFeatures {
     calendarSync: asBool(obj.calendarSync, base.calendarSync),
     smartPricing: asBool(obj.smartPricing, base.smartPricing),
     customRoles: asBool(obj.customRoles, base.customRoles),
+    copyPropertySettings: asBool(obj.copyPropertySettings, base.copyPropertySettings),
   };
 }
 

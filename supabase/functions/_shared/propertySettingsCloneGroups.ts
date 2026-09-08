@@ -683,7 +683,9 @@ const aiOverridesGroup: CloneGroup = {
       settings.dailyCostUsdLimit != null
     );
   },
-  async write(payload, targetCtx) {
+  async write(payload, targetCtx, options) {
+    const actorUserId = options.actorUserId;
+    if (!actorUserId) throw new Error('Missing actor for AI overrides copy');
     await upsertAiPlatformPropertySettings({
       propertyId: targetCtx.propertyId,
       organizationId: targetCtx.organizationId,
@@ -693,7 +695,7 @@ const aiOverridesGroup: CloneGroup = {
       dailyCostUsdLimit: payload.dailyCostUsdLimit as number | null | undefined,
       dailyCreditLimit: payload.dailyCreditLimit as number | null | undefined,
       monthlyCreditLimit: payload.monthlyCreditLimit as number | null | undefined,
-      updatedBy: 'copy-property-settings',
+      updatedBy: actorUserId,
     });
   },
 };

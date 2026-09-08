@@ -7,6 +7,7 @@
  */
 
 import { createServiceClient, verifyOrgAccess } from '../_shared/orgAuth.ts';
+import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
 import { listPropertySettingsCopyLogs } from '../_shared/propertySettingsCopyLogList.ts';
 import { CLONE_GROUP_IDS, type CloneGroupId } from '../_shared/propertySettingsCloneTypes.ts';
 import { runCopyPropertySettings } from '../_shared/propertySettingsCloneRun.ts';
@@ -78,6 +79,11 @@ serveAuthenticated('copy-property-settings', async (req, user) => {
   const dryRun = body.dryRun === true;
 
   try {
+    // Preview stays open below Pro; the real copy requires `copyPropertySettings`.
+    if (!dryRun) {
+      await requirePropertyFeature(sourcePropertyId, 'copyPropertySettings');
+    }
+
     const result = await runCopyPropertySettings({
       req,
       actorUserId: user.id,
@@ -94,6 +100,8 @@ serveAuthenticated('copy-property-settings', async (req, user) => {
     });
     return jsonSuccess(req, result);
   } catch (err) {
+    const planResponse = catchPlanFeatureError(req, err);
+    if (planResponse) return planResponse;
     if (err instanceof Response) return err;
     throw err;
   }

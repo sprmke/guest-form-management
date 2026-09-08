@@ -71,6 +71,11 @@ export type CloneOptions = {
   copyTelegramCredentials?: boolean;
   /** When true, skip groups where hasNonDefault(target) is true. */
   skipAlreadyCustomized?: boolean;
+  /**
+   * Actor user id for `updated_by` / `created_by` columns (UUID).
+   * Injected by the orchestrator — never accept from the client body.
+   */
+  actorUserId?: string;
 };
 
 /** Opaque per-group payload after read(); shape is group-specific. */

@@ -324,7 +324,9 @@ export const financeRecurringGroup: CloneGroup = {
       .not('recurrence_series_id', 'is', null);
     return (count ?? 0) > 0;
   },
-  async write(payload, targetCtx) {
+  async write(payload, targetCtx, options) {
+    const actorUserId = options.actorUserId;
+    if (!actorUserId) throw new Error('Missing actor for finance recurring copy');
     const series = Array.isArray(payload.series) ? (payload.series as SeriesCanon[]) : [];
     const supabase = createServiceClient();
     const { data: existing } = await supabase
@@ -356,7 +358,7 @@ export const financeRecurringGroup: CloneGroup = {
           notes: item.notes,
           recurrence_interval: item.interval,
         },
-        'copy-property-settings'
+        actorUserId
       );
       dedupe.add(key);
     }
@@ -408,7 +410,9 @@ export const maintenanceRecurringGroup: CloneGroup = {
       .not('recurrence_series_id', 'is', null);
     return (count ?? 0) > 0;
   },
-  async write(payload, targetCtx) {
+  async write(payload, targetCtx, options) {
+    const actorUserId = options.actorUserId;
+    if (!actorUserId) throw new Error('Missing actor for maintenance recurring copy');
     const series = Array.isArray(payload.series)
       ? (payload.series as Array<{
           label: string;
@@ -444,7 +448,7 @@ export const maintenanceRecurringGroup: CloneGroup = {
           notes: item.notes,
           recurrence_interval: item.interval,
         },
-        'copy-property-settings'
+        actorUserId
       );
       dedupe.add(key);
     }
