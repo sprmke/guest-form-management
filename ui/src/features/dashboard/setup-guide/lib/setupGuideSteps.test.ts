@@ -15,8 +15,8 @@ describe('assembleSetupGuideSteps', () => {
       'welcome',
       'org.brand',
       'org.verification',
-      'org.team',
       'org.recommended',
+      'org.team',
       'org.done',
     ]);
   });
@@ -46,12 +46,17 @@ describe('assembleSetupGuideSteps', () => {
       'parking.park-1.email',
     ]);
 
+    const brand = steps.findIndex((s) => s.id === 'org.brand');
+    const verification = steps.findIndex((s) => s.id === 'org.verification');
+    const recommended = steps.findIndex((s) => s.id === 'org.recommended');
     const propBasics = steps.findIndex((s) => s.id === 'property.prop-1.basics');
     const parkBasics = steps.findIndex((s) => s.id === 'parking.park-1.basics');
-    const verification = steps.findIndex((s) => s.id === 'org.verification');
-    expect(propBasics).toBeGreaterThan(-1);
+    const team = steps.findIndex((s) => s.id === 'org.team');
+    expect(verification).toBeGreaterThan(brand);
+    expect(recommended).toBeGreaterThan(verification);
+    expect(propBasics).toBeGreaterThan(recommended);
     expect(parkBasics).toBeGreaterThan(propBasics);
-    expect(verification).toBeGreaterThan(parkBasics);
+    expect(team).toBeGreaterThan(parkBasics);
   });
 
   it('repeats property blocks for two properties', () => {

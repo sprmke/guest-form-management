@@ -44,7 +44,7 @@ describe('isSurfaceOptimizationEnabled (env unset → "default")', () => {
     expect(isSurfaceOptimizationEnabled('guest-review-media')).toBe(false);
   });
 
-  it('fails open for an unknown surface (optimization only — the ceiling still applies)', () => {
+  it('fails open for an unknown surface (optimization only; the ceiling still applies)', () => {
     expect(isSurfaceOptimizationEnabled('brand-new-unmapped-surface')).toBe(true);
   });
 });

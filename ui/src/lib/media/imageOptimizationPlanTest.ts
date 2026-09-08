@@ -60,7 +60,7 @@ describe('planOptimization', () => {
     });
   });
 
-  it('never upscales — target is clamped to the source long edge', () => {
+  it('never upscales: target is clamped to the source long edge', () => {
     const plan = planOptimization({ ...base, sourceLongEdge: 1200, sizeBytes: 2 * 1024 * 1024 });
     // 1200 < maxLongEdge, still re-encoded (2MB > alreadyGoodBytes) but not upscaled
     expect(plan).toMatchObject({ action: 'reencode', targetLongEdge: 1200 });

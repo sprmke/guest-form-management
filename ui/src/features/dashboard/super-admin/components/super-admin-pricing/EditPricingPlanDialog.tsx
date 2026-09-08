@@ -69,6 +69,7 @@ const BOOLEAN_FEATURE_KEYS = [
   'bookingImport',
   'calendarSync',
   'smartPricing',
+  'copyPropertySettings',
 ] as const satisfies ReadonlyArray<keyof PlanFeatures>;
 
 export function EditPricingPlanDialog({

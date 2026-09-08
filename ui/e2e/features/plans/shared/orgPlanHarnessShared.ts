@@ -44,6 +44,7 @@ export function emptyPlanFeatures() {
     bookingImport: false,
     calendarSync: false,
     customRoles: false,
+    copyPropertySettings: false,
   };
 }
 
@@ -94,6 +95,7 @@ function growthFeatures() {
     aiValidations: true,
     propertyShowcase: true,
     calendarSync: true,
+    copyPropertySettings: true,
     searchVisibilityTier: 'top30' as const,
     recommendedBadgeEligible: true,
     teamManagement: { enabled: true, maxMembers: 5 },

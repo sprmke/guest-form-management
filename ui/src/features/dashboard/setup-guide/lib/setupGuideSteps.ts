@@ -197,6 +197,7 @@ export function assembleSetupGuideSteps(input: AssembleSetupGuideStepsInput): Se
   const parkings = input.parkings.filter((p) => p.id.trim().length > 0);
 
   const orgStart: SetupGuideStepGroup = { type: 'org-start' };
+  const orgTrust: SetupGuideStepGroup = { type: 'org-trust' };
   const orgFinish: SetupGuideStepGroup = { type: 'org-finish' };
 
   const steps: SetupGuideStep[] = [
@@ -221,6 +222,25 @@ export function assembleSetupGuideSteps(input: AssembleSetupGuideStepsInput): Se
         { scope: 'org', sectionId: 'branding' },
       ],
     }),
+    step({
+      id: 'org.verification',
+      kind: 'org.verification',
+      title: 'Verification & go-live',
+      requirement: 'required',
+      group: orgTrust,
+      estimatedMinutes: 5,
+      // Completion is custom (host Tier 1 + per-listing proof) — see deriveSetupGuideProgress.
+      completionSections: [],
+    }),
+    step({
+      id: 'org.recommended',
+      kind: 'org.recommended',
+      title: 'Get Recommended',
+      requirement: 'optional',
+      group: orgTrust,
+      estimatedMinutes: 5,
+      completionSections: [],
+    }),
   ];
 
   for (const property of properties) {
@@ -232,31 +252,12 @@ export function assembleSetupGuideSteps(input: AssembleSetupGuideStepsInput): Se
 
   steps.push(
     step({
-      id: 'org.verification',
-      kind: 'org.verification',
-      title: 'Verification & go-live',
-      requirement: 'required',
-      group: orgFinish,
-      estimatedMinutes: 5,
-      // Completion is custom (host Tier 1 + per-listing proof) — see deriveSetupGuideProgress.
-      completionSections: [],
-    }),
-    step({
       id: 'org.team',
       kind: 'org.team',
       title: 'Invite your team',
       requirement: 'optional',
       group: orgFinish,
       estimatedMinutes: 2,
-      completionSections: [],
-    }),
-    step({
-      id: 'org.recommended',
-      kind: 'org.recommended',
-      title: 'Get Recommended',
-      requirement: 'optional',
-      group: orgFinish,
-      estimatedMinutes: 5,
       completionSections: [],
     }),
     step({
