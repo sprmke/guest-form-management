@@ -34,7 +34,6 @@ import {
   resolveDashboardPeriod,
   writeDashboardPeriodParams,
 } from '@/features/dashboard/property/lib/dashboardPeriod';
-import { SetupGuideLauncher } from '@/features/dashboard/setup-guide/components/SetupGuideLauncher';
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 
 import { FloatingPanel, FloatingToolbar } from '@/components/mobile/FloatingPanel';
@@ -158,7 +157,6 @@ export function OrgDashboardPage() {
         dense
         className="min-w-0 max-w-full"
       >
-      <SetupGuideLauncher />
         {isLoading && !data ? (
           <OrgDashboardSkeleton />
         ) : error ? (

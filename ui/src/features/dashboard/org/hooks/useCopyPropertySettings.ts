@@ -6,10 +6,16 @@ import { ORGANIZATIONS_QUERY_KEY } from '@/features/dashboard/org/hooks/useOrgan
 import { copyPropertySettingsLogsQueryKey } from '@/features/dashboard/org/hooks/usePropertySettingsCopyLogs';
 import {
   copyPropertySettings,
+  copyPropertySettingsUpgradeFeature,
+  isCopyPropertySettingsUpgradeError,
   type CopyPropertySettingsRequest,
   type CopyPropertySettingsResponse,
 } from '@/features/dashboard/org/lib/copyPropertySettingsApi';
 import { SMART_PRICING_QUERY_KEY } from '@/features/dashboard/pricing/lib/smartPricingApi';
+import {
+  hasUpgradeModalOpener,
+  openUpgradeModalFromBridge,
+} from '@/features/dashboard/plans/lib/upgradeModalBridge';
 
 function invalidateTargetCaches(
   queryClient: ReturnType<typeof useQueryClient>,
@@ -46,23 +52,23 @@ function invalidateTargetCaches(
 }
 
 function successToast(data: CopyPropertySettingsResponse) {
-  const okCount = data.results.filter((r) => r.applied.length > 0 && r.failed.length === 0).length;
-  const partial = data.results.filter((r) => r.failed.length > 0);
+  const withFailures = data.results.filter((r) => r.failed.length > 0);
   const allFailed = data.results.every((r) => r.applied.length === 0 && r.failed.length > 0);
 
   if (allFailed) {
-    const first = partial[0]?.failed[0];
+    const first = withFailures[0]?.failed[0];
     toast.error(first?.error ?? 'Copy failed');
     return;
   }
 
-  if (partial.length > 0) {
-    const sample = partial
+  if (withFailures.length > 0) {
+    const sample = withFailures
       .slice(0, 2)
       .map((r) => r.failed[0]?.error ?? 'Error')
       .join('; ');
+    const copiedCount = data.results.filter((r) => r.applied.length > 0).length;
     toast.warning(
-      `Copied to ${okCount} of ${data.results.length}. ${sample}${partial.length > 2 ? '…' : ''}`
+      `Copied to ${copiedCount} of ${data.results.length} (some groups failed). ${sample}${withFailures.length > 2 ? '…' : ''}`
     );
     return;
   }
@@ -86,6 +92,12 @@ export function useCopyPropertySettings(orgSlug: string) {
     },
     onError: (error: Error, variables) => {
       if (variables.dryRun) return;
+      if (isCopyPropertySettingsUpgradeError(error)) {
+        const feature = copyPropertySettingsUpgradeFeature(error);
+        if (hasUpgradeModalOpener()) openUpgradeModalFromBridge(feature);
+        toast.error(error.message || 'Upgrade required');
+        return;
+      }
       toast.error(error.message || 'Copy failed');
     },
   });

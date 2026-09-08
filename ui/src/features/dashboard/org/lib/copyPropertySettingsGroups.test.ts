@@ -4,6 +4,7 @@ import {
   COPY_PROPERTY_SETTINGS_GROUP_IDS,
   COPY_PROPERTY_SETTINGS_GROUPS,
   copyPropertySettingsGroupIds,
+  copyPropertySettingsGroupsByCategory,
   copyPropertySettingsGroupsForPhase,
 } from '@/features/dashboard/org/lib/copyPropertySettingsGroups';
 
@@ -65,5 +66,26 @@ describe('copyPropertySettingsGroups', () => {
     const contact = COPY_PROPERTY_SETTINGS_GROUPS.find((g) => g.id === 'contact');
     expect(contact?.defaultOn).toBe(false);
     expect(contact?.optIn).toBe(true);
+  });
+
+  it('groups by sidebar category labels', () => {
+    const sections = copyPropertySettingsGroupsByCategory(COPY_PROPERTY_SETTINGS_GROUPS);
+    expect(sections.map((s) => s.label)).toEqual([
+      'Settings',
+      'Pricing',
+      'Team',
+      'Marketing',
+      'Inbox',
+      'Notifications',
+      'Templates',
+      'Public Pages',
+      'Finance',
+      'Maintenance',
+    ]);
+    const settings = sections.find((s) => s.category === 'settings');
+    expect(settings?.groups.some((g) => g.id === 'emailAutomations')).toBe(true);
+    expect(settings?.groups.some((g) => g.id === 'telegramNotifications')).toBe(false);
+    const notifications = sections.find((s) => s.category === 'notifications');
+    expect(notifications?.groups.map((g) => g.id)).toEqual(['telegramNotifications']);
   });
 });

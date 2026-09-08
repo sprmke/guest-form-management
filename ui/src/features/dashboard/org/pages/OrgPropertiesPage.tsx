@@ -35,6 +35,7 @@ import {
 } from '@/features/dashboard/org/lib/tenantPaths';
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 import { hasOrgPermission } from '@/features/dashboard/team/lib/orgPermissions';
+import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 
 import { FloatingToolbar } from '@/components/mobile/FloatingPanel';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
@@ -144,15 +145,17 @@ export function OrgPropertiesPage() {
     canCreateProperties || canCopySettings ? (
       <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
         {canCopySettings ? (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => openCopySettings(properties[0]?.id ?? null)}
-            className="min-h-[44px] gap-1.5"
-          >
-            <CopyPlus className="size-4" aria-hidden />
-            Copy settings
-          </Button>
+          <TierBadgeAnchor feature="copyPropertySettings">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => openCopySettings(properties[0]?.id ?? null)}
+              className="min-h-[44px] gap-1.5"
+            >
+              <CopyPlus className="size-4" aria-hidden />
+              Copy settings
+            </Button>
+          </TierBadgeAnchor>
         ) : null}
         {canCreateProperties ? (
           <Button type="button" onClick={() => setAddOpen(true)} className="min-h-[44px] gap-1.5">

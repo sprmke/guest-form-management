@@ -1,5 +1,47 @@
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
+/** Refresh only when the access token is this close to expiring (or already expired). */
+const ACCESS_TOKEN_REFRESH_MARGIN_SECONDS = 60;
+
+type AuthRefreshError = { status?: number; code?: string } | null;
+
+type RefreshResult = {
+  token: string | null;
+  transientFailure: boolean;
+};
+
+let refreshInFlight: Promise<RefreshResult> | null = null;
+
+function accessTokenExpiresSoon(expiresAt: number | undefined, nowSeconds: number): boolean {
+  if (typeof expiresAt !== 'number') return true;
+  return expiresAt <= nowSeconds + ACCESS_TOKEN_REFRESH_MARGIN_SECONDS;
+}
+
+function isTransientAuthRefreshError(error: AuthRefreshError): boolean {
+  if (!error) return false;
+  const status = error.status ?? 0;
+  const code = (error.code ?? '').toLowerCase();
+  return status === 429 || status === 408 || status >= 500 || code === 'over_request_rate_limit';
+}
+
+async function refreshAccessTokenSingleFlight(): Promise<RefreshResult> {
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    const { supabase } = await import('@/lib/supabase/client');
+    const { data, error } = await supabase.auth.refreshSession();
+    if (!error && data.session?.access_token) {
+      return { token: data.session.access_token, transientFailure: false };
+    }
+    return { token: null, transientFailure: isTransientAuthRefreshError(error) };
+  })().finally(() => {
+    refreshInFlight = null;
+  });
+
+  return refreshInFlight;
+}
+
+/** Cached JWT for edge calls. Refresh only near expiry so parallel org fetches cannot 429 Auth. */
 export async function getSessionJwt(): Promise<string> {
   const { readE2EAdminAccessToken } = await import('@/lib/e2e/adminSession');
   const mockedJwt = readE2EAdminAccessToken();
@@ -8,25 +50,25 @@ export async function getSessionJwt(): Promise<string> {
   }
 
   const { supabase } = await import('@/lib/supabase/client');
+  const { data: sessionData } = await supabase.auth.getSession();
+  const session = sessionData.session;
+  const existingToken = session?.access_token ?? null;
+  const nowSeconds = Math.floor(Date.now() / 1000);
 
-  const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-  if (!refreshError && refreshed.session?.access_token) {
-    return refreshed.session.access_token;
+  if (existingToken && !accessTokenExpiresSoon(session?.expires_at, nowSeconds)) {
+    return existingToken;
   }
 
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData.user) {
-    await supabase.auth.signOut();
-    throw new Error('Your session expired. Please sign in again.');
+  if (session) {
+    const refreshed = await refreshAccessTokenSingleFlight();
+    if (refreshed.token) return refreshed.token;
+    if (existingToken && refreshed.transientFailure) {
+      return existingToken;
+    }
   }
 
-  const { data } = await supabase.auth.getSession();
-  const jwt = data.session?.access_token;
-  if (!jwt) {
-    await supabase.auth.signOut();
-    throw new Error('Not signed in');
-  }
-  return jwt;
+  await supabase.auth.signOut();
+  throw new Error(existingToken ? 'Your session expired. Please sign in again.' : 'Not signed in');
 }
 
 /* ---------------------- Super Admin step-up (sudo) token --------------------- */

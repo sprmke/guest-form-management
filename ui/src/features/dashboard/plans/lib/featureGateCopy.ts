@@ -153,6 +153,12 @@ export const FEATURE_GATE_COPY: Record<PlanFeatureKey, FeatureGateCopy> = {
       'Creating and editing custom roles is available on Starter and above. Default roles stay available on every plan.',
     ctaLabel: 'View plans',
   },
+  copyPropertySettings: {
+    title: 'Copy property settings',
+    description:
+      'Copying settings from one property to others in your org is available on Pro and above.',
+    ctaLabel: 'View plans',
+  },
 };
 
 export function featureGateCopy(feature: PlanFeatureKey): FeatureGateCopy {

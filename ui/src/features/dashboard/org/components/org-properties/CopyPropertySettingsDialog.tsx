@@ -8,15 +8,18 @@ import {
   type CopyPropertySettingsResponse,
 } from '@/features/dashboard/org/lib/copyPropertySettingsApi';
 import {
-  COPY_PROPERTY_SETTINGS_CATEGORY_LABELS,
+  copyPropertySettingsGroupsByCategory,
   copyPropertySettingsGroupsForPhase,
-  type CopyPropertySettingsCategory,
   type CopyPropertySettingsGroupId,
+  type CopyPropertySettingsGroupMeta,
 } from '@/features/dashboard/org/lib/copyPropertySettingsGroups';
-import { TierBadge } from '@/features/dashboard/plans/components/TierBadge';
+import { TierBadge, TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   ResponsiveModal,
@@ -40,6 +43,18 @@ const STEP_LABELS = ['Source', 'Groups', 'Targets', 'Confirm'] as const;
 type StepIndex = 0 | 1 | 2 | 3;
 
 const PHASE_GROUPS = copyPropertySettingsGroupsForPhase(3);
+const CATEGORY_SECTIONS = copyPropertySettingsGroupsByCategory(PHASE_GROUPS);
+
+function categoryTriState(
+  categoryGroups: CopyPropertySettingsGroupMeta[],
+  selected: Set<CopyPropertySettingsGroupId>
+): boolean | 'indeterminate' {
+  const ids = categoryGroups.map((g) => g.id);
+  const onCount = ids.filter((id) => selected.has(id)).length;
+  if (onCount === 0) return false;
+  if (onCount === ids.length) return true;
+  return 'indeterminate';
+}
 
 export type CopyPropertySettingsDialogProperty = {
   id: string;
@@ -73,40 +88,6 @@ function defaultSelectedGroups(): Set<CopyPropertySettingsGroupId> {
   return new Set(PHASE_GROUPS.filter((g) => g.defaultOn).map((g) => g.id));
 }
 
-function groupsByCategory(): Array<{
-  category: CopyPropertySettingsCategory;
-  label: string;
-  groups: typeof PHASE_GROUPS;
-}> {
-  const order: CopyPropertySettingsCategory[] = [];
-  const map = new Map<CopyPropertySettingsCategory, typeof PHASE_GROUPS>();
-  for (const group of PHASE_GROUPS) {
-    if (!map.has(group.category)) {
-      order.push(group.category);
-      map.set(group.category, []);
-    }
-    map.get(group.category)!.push(group);
-  }
-  return order.map((category) => ({
-    category,
-    label: COPY_PROPERTY_SETTINGS_CATEGORY_LABELS[category],
-    groups: map.get(category) ?? [],
-  }));
-}
-
-const CATEGORY_SECTIONS = groupsByCategory();
-
-function categoryTriState(
-  categoryGroups: typeof PHASE_GROUPS,
-  selected: Set<CopyPropertySettingsGroupId>
-): boolean | 'indeterminate' {
-  const ids = categoryGroups.map((g) => g.id);
-  const onCount = ids.filter((id) => selected.has(id)).length;
-  if (onCount === 0) return false;
-  if (onCount === ids.length) return true;
-  return 'indeterminate';
-}
-
 function CopySettingsStepper({ activeStep }: { activeStep: StepIndex }) {
   return (
     <nav aria-label="Copy settings steps">
@@ -131,7 +112,7 @@ function ReviewTargetRow({
         {result.skipped.length > 0 ? ` · ${result.skipped.length} skipped` : ''}
         {result.failed.length > 0 ? ` · ${result.failed.length} failed` : ''}
         {result.alreadyCustomized.length > 0
-          ? ` · ${result.alreadyCustomized.length} already set`
+          ? ` · ${result.alreadyCustomized.length} unchanged`
           : ''}
       </p>
     </div>
@@ -148,17 +129,21 @@ export function CopyPropertySettingsDialog({
   canEditProperty,
 }: CopyPropertySettingsDialogProps) {
   const copyMutation = useCopyPropertySettings(orgSlug);
+  const { open: openUpgradeModal } = useUpgradeModal();
   const stepHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const [step, setStep] = useState<StepIndex>(0);
   const [sourcePropertyId, setSourcePropertyId] = useState<string>('');
+  const copyPlanGate = useFeatureGate('copyPropertySettings', sourcePropertyId || null);
   const [selectedGroups, setSelectedGroups] =
     useState<Set<CopyPropertySettingsGroupId>>(defaultSelectedGroups);
   const [copyEmailRecipients, setCopyEmailRecipients] = useState(false);
   const [copyTelegramCredentials, setCopyTelegramCredentials] = useState(false);
-  const [skipAlreadyCustomized, setSkipAlreadyCustomized] = useState(false);
+  /** When false, skip groups that already have values on the target. */
+  const [overrideExisting, setOverrideExisting] = useState(true);
   const [confirmLargeBatch, setConfirmLargeBatch] = useState(false);
   const [targetIds, setTargetIds] = useState<Set<string>>(new Set());
+  const [targetSearch, setTargetSearch] = useState('');
   const [dryRunResult, setDryRunResult] = useState<CopyPropertySettingsResponse | null>(null);
   const [dryRunError, setDryRunError] = useState<string | null>(null);
   const [dryRunLoading, setDryRunLoading] = useState(false);
@@ -179,6 +164,28 @@ export function CopyPropertySettingsDialog({
     [targetCandidates, canEditProperty]
   );
 
+  const filteredTargetCandidates = useMemo(() => {
+    const q = targetSearch.trim().toLowerCase();
+    if (!q) return targetCandidates;
+    return targetCandidates.filter((property) => {
+      const haystack = [
+        property.name,
+        property.tower,
+        property.unitNumber,
+        property.planName,
+        property.status,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [targetCandidates, targetSearch]);
+
+  const allSelectableSelected =
+    selectableTargets.length > 0 &&
+    selectableTargets.every((property) => targetIds.has(property.id));
+
   const buildRequest = (dryRun: boolean) => {
     const groups = Array.from(selectedGroups);
     return {
@@ -189,7 +196,7 @@ export function CopyPropertySettingsDialog({
         copyContact: selectedGroups.has('contact'),
         copyEmailRecipients,
         copyTelegramCredentials,
-        skipAlreadyCustomized,
+        skipAlreadyCustomized: !overrideExisting,
       },
       dryRun,
     };
@@ -209,13 +216,14 @@ export function CopyPropertySettingsDialog({
     setSelectedGroups(defaultSelectedGroups());
     setCopyEmailRecipients(false);
     setCopyTelegramCredentials(false);
-    setSkipAlreadyCustomized(false);
+    setOverrideExisting(true);
     setConfirmLargeBatch(false);
     setTargetIds(
       lockedTargetPropertyId && lockedTargetPropertyId !== preferred
         ? new Set([lockedTargetPropertyId])
         : new Set()
     );
+    setTargetSearch('');
     setDryRunResult(null);
     setDryRunError(null);
     setDryRunLoading(false);
@@ -314,9 +322,11 @@ export function CopyPropertySettingsDialog({
       else next.delete(id);
       return next;
     });
+    if (id === 'emailAutomations' && !checked) setCopyEmailRecipients(false);
+    if (id === 'telegramNotifications' && !checked) setCopyTelegramCredentials(false);
   };
 
-  const toggleCategory = (categoryGroups: typeof PHASE_GROUPS, checked: boolean) => {
+  const toggleCategory = (categoryGroups: CopyPropertySettingsGroupMeta[], checked: boolean) => {
     setSelectedGroups((prev) => {
       const next = new Set(prev);
       for (const group of categoryGroups) {
@@ -325,6 +335,12 @@ export function CopyPropertySettingsDialog({
       }
       return next;
     });
+    if (!checked) {
+      if (categoryGroups.some((g) => g.id === 'emailAutomations')) setCopyEmailRecipients(false);
+      if (categoryGroups.some((g) => g.id === 'telegramNotifications')) {
+        setCopyTelegramCredentials(false);
+      }
+    }
   };
 
   const toggleTarget = (id: string, checked: boolean) => {
@@ -340,7 +356,15 @@ export function CopyPropertySettingsDialog({
     setTargetIds(new Set(selectableTargets.map((p) => p.id)));
   };
 
+  const clearTargetSelection = () => {
+    setTargetIds(new Set());
+  };
+
   const handleCopy = async () => {
+    if (!copyPlanGate.canUse) {
+      openUpgradeModal('copyPropertySettings');
+      return;
+    }
     try {
       await copyMutation.mutateAsync(buildRequest(false));
       onOpenChange(false);
@@ -434,21 +458,62 @@ export function CopyPropertySettingsDialog({
                     <div className="border-border/50 ml-2 space-y-0.5 border-l pl-3">
                       {section.groups.map((group) => {
                         const inputId = `copy-group-${group.id}`;
+                        const groupOn = selectedGroups.has(group.id);
                         return (
-                          <div key={group.id} className="flex min-h-[44px] items-center gap-3">
-                            <Checkbox
-                              id={inputId}
-                              checked={selectedGroups.has(group.id)}
-                              onCheckedChange={(value) => toggleGroup(group.id, value === true)}
-                              className="size-5"
-                            />
-                            <Label
-                              htmlFor={inputId}
-                              className="text-foreground flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-sm font-normal"
-                            >
-                              <span className="truncate">{group.label}</span>
-                              {group.planFeature ? <TierBadge feature={group.planFeature} /> : null}
-                            </Label>
+                          <div key={group.id} className="space-y-0.5">
+                            <div className="flex min-h-[44px] items-center gap-3">
+                              <Checkbox
+                                id={inputId}
+                                checked={groupOn}
+                                onCheckedChange={(value) => toggleGroup(group.id, value === true)}
+                                className="size-5"
+                              />
+                              <Label
+                                htmlFor={inputId}
+                                className="text-foreground flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-sm font-normal"
+                              >
+                                <span className="truncate">{group.label}</span>
+                                {group.planFeature ? (
+                                  <TierBadge feature={group.planFeature} />
+                                ) : null}
+                              </Label>
+                            </div>
+                            {group.id === 'emailAutomations' && groupOn ? (
+                              <div className="ml-8 flex min-h-[44px] items-center gap-3">
+                                <Checkbox
+                                  id="copy-email-recipients"
+                                  checked={copyEmailRecipients}
+                                  onCheckedChange={(value) =>
+                                    setCopyEmailRecipients(value === true)
+                                  }
+                                  className="size-5"
+                                />
+                                <Label
+                                  htmlFor="copy-email-recipients"
+                                  className="text-muted-foreground cursor-pointer text-sm font-normal"
+                                >
+                                  Include email recipients
+                                </Label>
+                              </div>
+                            ) : null}
+                            {group.id === 'telegramNotifications' && groupOn ? (
+                              <div className="ml-8 flex min-h-[44px] items-center gap-3">
+                                <Checkbox
+                                  id="copy-telegram-credentials"
+                                  checked={copyTelegramCredentials}
+                                  onCheckedChange={(value) =>
+                                    setCopyTelegramCredentials(value === true)
+                                  }
+                                  className="size-5"
+                                />
+                                <Label
+                                  htmlFor="copy-telegram-credentials"
+                                  className="text-muted-foreground cursor-pointer text-sm font-normal"
+                                >
+                                  Include Telegram credentials
+                                </Label>
+                              </div>
+                            ) : null}
                           </div>
                         );
                       })}
@@ -457,47 +522,20 @@ export function CopyPropertySettingsDialog({
                 );
               })}
 
-              <div className="border-border/60 space-y-0.5 border-t pt-3">
+              <div className="border-border/60 space-y-1.5 border-t pt-3">
+                <p className="text-foreground text-sm font-semibold">Options</p>
                 <div className="flex min-h-[44px] items-center gap-3">
                   <Checkbox
-                    id="copy-email-recipients"
-                    checked={copyEmailRecipients}
-                    onCheckedChange={(value) => setCopyEmailRecipients(value === true)}
+                    id="override-existing-settings"
+                    checked={overrideExisting}
+                    onCheckedChange={(value) => setOverrideExisting(value === true)}
                     className="size-5"
                   />
                   <Label
-                    htmlFor="copy-email-recipients"
+                    htmlFor="override-existing-settings"
                     className="text-foreground cursor-pointer text-sm font-normal"
                   >
-                    Email recipients
-                  </Label>
-                </div>
-                <div className="flex min-h-[44px] items-center gap-3">
-                  <Checkbox
-                    id="copy-telegram-credentials"
-                    checked={copyTelegramCredentials}
-                    onCheckedChange={(value) => setCopyTelegramCredentials(value === true)}
-                    className="size-5"
-                  />
-                  <Label
-                    htmlFor="copy-telegram-credentials"
-                    className="text-foreground cursor-pointer text-sm font-normal"
-                  >
-                    Telegram credentials
-                  </Label>
-                </div>
-                <div className="flex min-h-[44px] items-center gap-3">
-                  <Checkbox
-                    id="skip-already-customized"
-                    checked={skipAlreadyCustomized}
-                    onCheckedChange={(value) => setSkipAlreadyCustomized(value === true)}
-                    className="size-5"
-                  />
-                  <Label
-                    htmlFor="skip-already-customized"
-                    className="text-foreground cursor-pointer text-sm font-normal"
-                  >
-                    Skip already customized
+                    Override existing settings
                   </Label>
                 </div>
               </div>
@@ -507,56 +545,76 @@ export function CopyPropertySettingsDialog({
           {step === 2 ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-muted-foreground text-xs tabular-nums">
-                  {targetIds.size} selected
+                <p className="text-muted-foreground text-sm tabular-nums">
+                  {targetIds.size} of {selectableTargets.length}
                 </p>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="min-h-[44px]"
+                  className="min-h-[44px] shrink-0"
                   disabled={selectableTargets.length === 0}
-                  onClick={selectAllTargets}
+                  onClick={() => {
+                    if (allSelectableSelected) clearTargetSelection();
+                    else selectAllTargets();
+                  }}
                 >
-                  Select all
+                  {allSelectableSelected ? 'Clear' : 'Select all'}
                 </Button>
               </div>
-              <div className="space-y-0.5" role="group" aria-label="Target properties">
-                {targetCandidates.map((property) => {
-                  const canEdit = canEditProperty ? canEditProperty(property.id) : true;
-                  const inputId = `copy-target-${property.id}`;
-                  return (
-                    <div
-                      key={property.id}
-                      className={cn(
-                        'flex min-h-[44px] items-center gap-3 rounded-md px-1',
-                        !canEdit && 'opacity-50'
-                      )}
-                    >
-                      <Checkbox
-                        id={inputId}
-                        checked={targetIds.has(property.id)}
-                        disabled={!canEdit}
-                        onCheckedChange={(value) => toggleTarget(property.id, value === true)}
-                        className="size-5"
-                      />
-                      <Label
-                        htmlFor={inputId}
+              {targetCandidates.length > 8 ? (
+                <Input
+                  value={targetSearch}
+                  onChange={(event) => setTargetSearch(event.target.value)}
+                  placeholder="Search"
+                  aria-label="Search targets"
+                  className="min-h-[44px]"
+                />
+              ) : null}
+              <div
+                className="border-border/60 max-h-[min(40dvh,18rem)] space-y-0.5 overflow-y-auto overscroll-contain rounded-lg border p-1.5"
+                role="group"
+                aria-label="Target properties"
+              >
+                {filteredTargetCandidates.length === 0 ? (
+                  <p className="text-muted-foreground px-2 py-3 text-sm">No matches</p>
+                ) : (
+                  filteredTargetCandidates.map((property) => {
+                    const canEdit = canEditProperty ? canEditProperty(property.id) : true;
+                    const inputId = `copy-target-${property.id}`;
+                    return (
+                      <div
+                        key={property.id}
                         className={cn(
-                          'text-foreground min-w-0 flex-1 text-sm font-normal',
-                          canEdit ? 'cursor-pointer' : 'cursor-not-allowed'
+                          'flex min-h-[44px] items-center gap-3 rounded-md px-2',
+                          !canEdit && 'opacity-50'
                         )}
                       >
-                        <span className="block truncate">{propertyLabel(property)}</span>
-                        {property.planName || property.status ? (
-                          <span className="text-muted-foreground block truncate text-xs">
-                            {[property.planName, property.status].filter(Boolean).join(' · ')}
-                          </span>
-                        ) : null}
-                      </Label>
-                    </div>
-                  );
-                })}
+                        <Checkbox
+                          id={inputId}
+                          checked={targetIds.has(property.id)}
+                          disabled={!canEdit}
+                          onCheckedChange={(value) => toggleTarget(property.id, value === true)}
+                          className="size-5"
+                        />
+                        <Label
+                          htmlFor={inputId}
+                          className={cn(
+                            'text-foreground min-w-0 flex-1 text-sm font-normal',
+                            canEdit ? 'cursor-pointer' : 'cursor-not-allowed'
+                          )}
+                        >
+                          <span className="block truncate">{propertyLabel(property)}</span>
+                          {property.planName || property.status ? (
+                            <span className="text-muted-foreground block truncate text-xs">
+                              {[property.planName, property.status].filter(Boolean).join(' · ')}
+                            </span>
+                          ) : null}
+                        </Label>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           ) : null}
@@ -586,7 +644,7 @@ export function CopyPropertySettingsDialog({
               {dryRunResult ? (
                 <>
                   <p className="text-muted-foreground text-sm">
-                    Per target: what will copy, skip, or fail.
+                    Per target: what will copy, stay unchanged, or fail.
                   </p>
                   {dryRunResult.results.map((result) => (
                     <ReviewTargetRow
@@ -666,29 +724,34 @@ export function CopyPropertySettingsDialog({
               Next
             </Button>
           ) : (
-            <Button
-              type="button"
+            <TierBadgeAnchor
+              feature="copyPropertySettings"
               className="min-h-[44px] flex-1 sm:flex-none"
-              disabled={
-                isCopying ||
-                dryRunLoading ||
-                Boolean(dryRunError) ||
-                !dryRunResult ||
-                (targetIds.size > 10 && !confirmLargeBatch)
-              }
-              onClick={() => void handleCopy()}
             >
-              {isCopying ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" aria-hidden />
-                  Copying…
-                </>
-              ) : dryRunLoading ? (
-                'Preview…'
-              ) : (
-                'Copy settings'
-              )}
-            </Button>
+              <Button
+                type="button"
+                className="min-h-[44px] w-full"
+                disabled={
+                  isCopying ||
+                  dryRunLoading ||
+                  Boolean(dryRunError) ||
+                  !dryRunResult ||
+                  (targetIds.size > 10 && !confirmLargeBatch)
+                }
+                onClick={() => void handleCopy()}
+              >
+                {isCopying ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                    Copying…
+                  </>
+                ) : dryRunLoading ? (
+                  'Preview…'
+                ) : (
+                  'Copy settings'
+                )}
+              </Button>
+            </TierBadgeAnchor>
           )}
         </ResponsiveModalFooter>
       </ResponsiveModalContent>

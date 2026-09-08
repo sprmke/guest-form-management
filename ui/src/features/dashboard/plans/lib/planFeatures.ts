@@ -37,6 +37,8 @@ export type PlanFeatures = {
   /** AI-assisted dynamic nightly rates (Smart Pricing) on the Pricing page. */
   smartPricing: boolean;
   customRoles: boolean;
+  /** Bulk-copy property settings groups to other properties in the same org. */
+  copyPropertySettings: boolean;
 };
 
 export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
@@ -67,6 +69,7 @@ export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
   calendarSync: false,
   smartPricing: false,
   customRoles: false,
+  copyPropertySettings: false,
 };
 
 export type PlanFeatureKey = keyof PlanFeatures;
@@ -160,4 +163,5 @@ export const PLAN_FEATURE_LABELS: Record<keyof PlanFeatures, string> = {
   calendarSync: 'Airbnb calendar sync',
   smartPricing: 'Smart Pricing',
   customRoles: 'Custom team roles',
+  copyPropertySettings: 'Copy property settings',
 };
