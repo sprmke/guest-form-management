@@ -237,7 +237,7 @@ Legend: **COPY** (config, in a group) · **SKIP** (operational data, never copie
 - [x] `.cursor/rules/admin-auth.mdc` — new endpoint + the per-target leaf-check pattern.
 - [x] `docs/archive/operations/migration-runbook.md` — `property_settings_copy_log` + `property_settings_copied` notification type.
 - [x] `docs/architecture/edge-functions.md` + `docs/architecture/data-model.md` — API row + shipped table note.
-- [x] `plans-and-permissions` skill checklist — record the per-group plan features + reused `settings.*` / module edit leaves (no new plan feature, no new permission id). Documented N/A in properties route guide.
+- [x] `plans-and-permissions` skill checklist — plan feature **`copyPropertySettings`** (Pro / `growth`+); Team RBAC N/A new leaf (reuses per-group edit leaves). Documented in properties route guide + plans-feature-matrix.
 - [x] `docs/workflow/planned/README.md` — index row (added with this plan).
 
 ## Open questions

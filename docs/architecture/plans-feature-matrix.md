@@ -108,6 +108,14 @@ Client gate: Pricing → **Channel sync** is **preview-open** — modal UI alway
 
 Client gate: Pricing → **Smart Pricing** modal (`SmartPricingDialog`) is **preview-open**; **Enable** and any settings write open the upgrade modal below Pro (`useFeatureGate('smartPricing')` → `openUpgradeModalFromBridge`). Server gate: `requirePropertyFeature(propertyId, 'smartPricing')` + `catchPlanFeatureError` on `smart-pricing-settings` PATCH (GET ungated for preview), on `smart-pricing-preview` and `smart-pricing-apply`, and per-property (`resolvePropertyEntitlements`) in the `smart-pricing-cron` sweep. Read-side: `_shared/smartPricingRead.ts#loadAppliedSmartRecommendations` re-checks the entitlement so a downgrade instantly stops smart rates reaching guest quotes / the calendar (applied recs ignored, **not deleted**; host date overrides untouched). Team RBAC reuses `pricing.rates:edit` — no new permission leaf. Compare-matrix row + tier-card bullet: `PLAN_FEATURE_ROWS` (`pricing` group) + `PLAN_TIER_CARD_GAINS.growth` in `planPresentation.ts`; copy in `featureGateCopy.ts`; super-admin toggle in `EditPricingPlanDialog.tsx`. Plan: [`../workflow/in-progress/smart-pricing-ai.md`](../workflow/in-progress/smart-pricing-ai.md) · architecture: [`smart-pricing.md`](./smart-pricing.md).
 
+### `copyPropertySettings` (Copy property settings — `20261307120000_copy_property_settings_plan_feature.sql`)
+
+| New key                | Decision                                                                                                                                                                 | free | starter | growth | pro | managed | commission |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---- | ------- | ------ | --- | ------- | ---------- |
+| `copyPropertySettings` | **Pro (`growth`) +** — bulk-copy selected settings groups from one property to others in the same org (org Properties → Copy settings / property Settings → Copy from…). | —    | —       | ✅     | ✅  | ✅      | —          |
+
+Client gate: wizard is **preview-open**; Confirm **Copy settings** opens the upgrade modal below Pro (`useFeatureGate('copyPropertySettings')` + `TierBadgeAnchor`). Entry buttons on org Properties and Settings → Copy from… also show the Pro pill. Server gate: `requirePropertyFeature(sourcePropertyId, 'copyPropertySettings')` + `catchPlanFeatureError` on real copy only (`dryRun` and `listLogs` stay ungated). Team RBAC: N/A new leaf — per-group edit leaves still apply. Compare-matrix row (`dashboard` group) + Pro tier-card bullet: `PLAN_FEATURE_ROWS` + `PLAN_TIER_CARD_GAINS.growth`; copy in `featureGateCopy.ts`. Guide: [`../guides/routes/org/properties.md`](../guides/routes/org/properties.md).
+
 ---
 
 ## Client-side gate inventory (every call site, as of 2026-08-24)

@@ -133,9 +133,9 @@ On phone/tablet (`max-lg`) Status + Type collapse into a single **refine sheet**
 **Wizard (`CopyPropertySettingsDialog`)** — four steps:
 
 1. **Source** — pre-filled from the card menu; otherwise pick from ACTIVE/INACTIVE org properties. Skipped when launched via **Copy from…** (targets step is locked instead).
-2. **Groups** — checkbox tree by category (Listing, Pricing, Guest form, Notifications, Templates, Public pages, Marketing, AI & voice, Team roles, Recurring finance, Recurring maintenance). Opt-in extras (default off): contact details, email recipients, Telegram credentials, skip already customized.
-3. **Targets** — multi-select of other org properties; **Select all**. Locked to one property when opened via **Copy from…**.
-4. **Confirm** — loads a dry-run preview per target (will copy / skipped / failed / already set). Primary **Copy settings** runs the real copy. Preview uses a separate request from the copy mutation so the footer does not show “Copying…” during preview. Batches over 10 targets require an extra confirm checkbox. **Back** stays available while the preview loads.
+2. **Groups** — checkbox tree by property sidebar module (**Settings** first, then Pricing, Team, Marketing, Inbox, Notifications, Templates, Public Pages, Finance, Maintenance). Child labels match Settings sections / page headings (e.g. Email Automations, Telegram notifications, Pinned snippets). Nested opt-ins appear under their parent when checked: **Include email recipients** (under Email Automations), **Include Telegram credentials** (under Telegram notifications). Separate **Options**: **Override existing settings** (on by default; turn off to leave target groups that already have values unchanged). Contact details stay off by default under Settings.
+3. **Targets** — multi-select of other org properties; **Select all** / **Clear** toggle; search when the list is long; scrollable list. Locked to one property when opened via **Copy from…**.
+4. **Confirm** — loads a dry-run preview per target (will copy / skipped / failed / unchanged). Primary **Copy settings** runs the real copy. Preview uses a separate request from the copy mutation so the footer does not show “Copying…” during preview. Batches over 10 targets require an extra confirm checkbox. **Back** stays available while the preview loads.
 
 **What is copied (when selected):** listing details and content, amenities, house rules, cancellation, brand/socials, photos/videos, guest-form toggles, building-form fields (+ signature assets), email automation timing/toggles (+ recipients if opted in), pricing rates/fees/holiday rules, Smart Pricing settings, voucher config, Telegram notification config (+ shared bot token; per-module credentials if opted in), inbox snippets, templates (incl. section images), public-page template/config (showcase stays unpublished), marketing designs, voice receptionist + AI overrides, custom team **role definitions**, recurring finance/maintenance **series definitions** (new series on the target from the next due date).
 
@@ -143,7 +143,7 @@ On phone/tablet (`max-lg`) Status + Type collapse into a single **refine sheet**
 
 **Per-target skips:** For each selected group, the edge function checks that target’s edit permission leaf(s) and plan feature (when gated). Failures are skip+report; the rest of the batch continues. Same-org only.
 
-**Plans / Team RBAC:** No new plan feature or permission id. Reuses existing per-group edit leaves and plan keys from the clone registry. Entry is not gated by a dedicated org leaf.
+**Plans / Team RBAC:** Plan feature **`copyPropertySettings`** (Pro / `growth` and above). Wizard is browseable below Pro; Confirm **Copy settings** and the real edge write require the feature (`TierBadge` / upgrade modal). Team RBAC: N/A new leaf — reuses existing per-group edit leaves. Entry is not gated by a dedicated org leaf.
 
 **After a real run:** `property_settings_copy_log` row; in-app `property_settings_copied` per target with applied groups; settings-change notice email to org owner / target notify recipients. Recent runs appear under **Copy history** on the org Properties page (`POST copy-property-settings` with `{ action: 'listLogs', orgSlug }`).
 

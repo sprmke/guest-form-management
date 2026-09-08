@@ -2,7 +2,7 @@
 title: 'Guest & host auth — operator guide'
 status: active
 tags: [guides, routes, auth]
-updated: 2026-08-30
+updated: 2026-09-07
 ---
 
 # Guest & host auth — operator guide
@@ -120,6 +120,9 @@ Hosts and guests can both sign in with a one-time code sent to their email, or w
 | Marketing nav sign-in CTA          | `ui/src/features/guest/marketing/shared/components/MarketingNav.tsx`                                                                                                                                     |
 | Dashboard account menu + profile   | `ui/src/features/dashboard/bookings/components/AdminLayout.tsx` (`AdminProfileFooter`), `ui/src/features/guest/account/components/GuestProfileModal.tsx`, `useAccountIdentity.ts`                        |
 | Auth routes                        | `ui/src/features/guest/auth/routes/index.tsx`                                                                                                                                                            |
+| Dashboard edge JWT                 | `ui/src/features/dashboard/org/lib/edgeClient.ts` (`getSessionJwt`)                                                                                                                                      |
+
+`getSessionJwt` reuses the cached access token and refreshes only when it is near expiry (single-flight). Do not call `refreshSession()` on every edge request: hosted Auth rate-limits `/token` (`over_request_rate_limit`) and a 429 can sign the user out.
 
 ---
 
