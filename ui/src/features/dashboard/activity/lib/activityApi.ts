@@ -1,4 +1,5 @@
 import type {
+  ActivityCategory,
   ActivityCursor,
   ActivityLogResponse,
   ActivitySeverity,
@@ -11,7 +12,7 @@ export type ActivityLogFilters = {
   scope?: ActivityScopeParam;
   propertyId?: string | null;
   parkingId?: string | null;
-  category?: string[];
+  category?: ActivityCategory[];
   actorUserId?: string | null;
   action?: string | null;
   severity?: ActivitySeverity | null;
