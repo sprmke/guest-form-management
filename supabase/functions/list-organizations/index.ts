@@ -1,5 +1,6 @@
 /**
- * list-organizations — GET returns orgs the user owns or has property membership in.
+ * list-organizations — GET returns orgs the user owns, is an org-hub member of,
+ * or has property membership in.
  * Auth: verifyAuthenticatedUser.
  */
 
@@ -11,6 +12,7 @@ import {
   type OrgAccessKind,
   type OrgRow,
 } from '../_shared/orgAuth.ts';
+import { isOrgHubMemberRoleId } from '../_shared/orgTeamPermissions.ts';
 import { jsonSuccess, requireHttpMethod } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
@@ -121,36 +123,29 @@ serveAuthenticated('list-organizations', async (req, user) => {
     }
   }
 
-  const { data: orgAdminRows, error: orgAdminError } = await supabase
+  const { data: orgMemberRows, error: orgMemberError } = await supabase
     .from('organization_members')
-    .select('organization_id')
-    .eq('user_id', user.id)
-    .eq('status', 'active')
-    .eq('role_id', 'ADMIN');
+    .select('organization_id, role_id, status, plan_limited')
+    .eq('user_id', user.id);
 
-  if (orgAdminError) {
-    console.error('[list-organizations]', orgAdminError.message);
+  if (orgMemberError) {
+    console.error('[list-organizations]', orgMemberError.message);
     throw new Error('Failed to list organizations');
   }
 
-  const orgAdminIds = new Set((orgAdminRows ?? []).map((row) => row.organization_id as string));
-
-  const { data: planLimitedOrgAdminRows, error: planLimitedOrgAdminError } = await supabase
-    .from('organization_members')
-    .select('organization_id')
-    .eq('user_id', user.id)
-    .eq('status', 'inactive')
-    .eq('plan_limited', true)
-    .eq('role_id', 'ADMIN');
-
-  if (planLimitedOrgAdminError) {
-    console.error('[list-organizations]', planLimitedOrgAdminError.message);
-    throw new Error('Failed to list organizations');
-  }
-
-  const planLimitedOrgAdminIds = new Set(
-    (planLimitedOrgAdminRows ?? []).map((row) => row.organization_id as string)
+  const hubMembers = (orgMemberRows ?? []).filter((row) =>
+    isOrgHubMemberRoleId(row.role_id as string)
   );
+  const orgAdminIds = new Set<string>();
+  const planLimitedOrgAdminIds = new Set<string>();
+  for (const row of hubMembers) {
+    const orgId = row.organization_id as string;
+    if (row.status === 'active') {
+      orgAdminIds.add(orgId);
+    } else if (row.status === 'inactive' && row.plan_limited === true) {
+      planLimitedOrgAdminIds.add(orgId);
+    }
+  }
 
   let memberOrgs: OrgRow[] = [];
   const propertyScopedOrgIds = [...new Set([...memberOrgIds, ...planLimitedPropertyOrgIds])];
@@ -172,7 +167,9 @@ serveAuthenticated('list-organizations', async (req, user) => {
     byId.set(org.id, org);
   }
 
-  const extraOrgIds = [...planLimitedOrgAdminIds].filter((id) => !byId.has(id));
+  const extraOrgIds = [...new Set([...orgAdminIds, ...planLimitedOrgAdminIds])].filter(
+    (id) => !byId.has(id)
+  );
   if (extraOrgIds.length > 0) {
     const { data, error } = await supabase.from('organizations').select('*').in('id', extraOrgIds);
     if (error) {

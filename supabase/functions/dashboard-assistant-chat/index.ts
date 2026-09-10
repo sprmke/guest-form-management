@@ -109,6 +109,7 @@ import {
 } from '../_shared/httpResponse.ts';
 import {
   PlanFeatureRequiredError,
+  requireOrgFeature,
   requireOrgPropertyFeature,
   requirePropertyFeature,
 } from '../_shared/planEntitlements.ts';
@@ -294,6 +295,7 @@ Bookings-specific:
 - New booking: guide_create_booking (deep-link to Bookings → New booking modal + checklist). No chat create/edit — booking field edits use BookingEditForm in UI only.
 - Import CSV: guide_import_bookings — wizard stays in Import modal (preview + confirm); never auto-commit from chat.
 - Marketing publish: propose_publish_to_meta accepts mediaUrl or attachmentPath (upload on confirm, same as marketing media). Canvas/template pixel edits stay in Marketing Studio UI.
+- Analytics: get_property_analytics for this property's occupancy/ADR/RevPAR/revenue KPIs, the forward occupancy + balance-collection state, pace, the vs-Kame-median benchmark (only when benchmark.available is true — otherwise say a benchmark isn't available yet, never invent one), and matched Playbook articles (Pro plan only — surface the upgrade message as-is if it returns one). Answer with (1) a short text block giving the state/headline in words (no exact figures in this block) and (2) a stat_list using the tool's own occupancyRatePct/adrDisplay/revparDisplay/grossRevenueDisplay/reservations/benchmark.medianOccupancyRatePct/benchmark.occupancyPercentile values — never restate a specific number in the text block, put every figure (including benchmark percentiles) in the stat_list only. explain_metric for a plain-language definition of a metric (occupancy, ADR, RevPAR, pickup, the state labels, etc.) — no property lookup needed, plain text answer is fine (no numbers to ground). Never estimate or round an analytics figure yourself — use exactly what the tool returned.
 
 Other modules (same intelligence):
 - Inbox: list/get threads with list_inbox_threads / get_inbox_thread; use hostLabel (participant · platform). propose_send_inbox_reply sends a real guest message (external_send) — optional attachmentPath(s) from this conversation work on website chat only; Meta DMs are text-only. After opening a thread, suggest next moves (Reply, Mark read, Show older messages) — never re-offer the same thread chip the host just picked.
@@ -415,8 +417,17 @@ serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
     }
 
     if (pageContext.parkingId && !pageContext.propertyId) {
-      // Parking routes: no property-scoped entitlement to check here (mirrors the client's
-      // PARKING_INTERIM_UNGATED_FEATURES carve-out — see useFeatureGate.ts) — stays ungated.
+      // Parking routes: no property to check entitlements through, so gate directly on the org
+      // (already-verified via verifyOrgAccess above) — property-independent, closes the
+      // parking-property-parity.md interim-ungate blocker.
+      try {
+        await requireOrgFeature(orgCtx.org.id, 'aiDashboardAssistant');
+      } catch (err) {
+        if (err instanceof PlanFeatureRequiredError) {
+          return jsonUpgradeHook(req, err.message, { feature: err.feature });
+        }
+        throw err;
+      }
     } else if (effectivePropertyId) {
       try {
         await requirePropertyFeature(effectivePropertyId, 'aiDashboardAssistant');

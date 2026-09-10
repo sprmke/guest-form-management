@@ -8,6 +8,7 @@
  */
 
 import { createServiceClient, verifyOrgAccess } from '../_shared/orgAuth.ts';
+import { catchPlanFeatureError, requireOrgFeature } from '../_shared/planEntitlements.ts';
 import { jsonError, requireHttpMethod } from '../_shared/httpResponse.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
@@ -60,6 +61,18 @@ serveAuthenticated('activity-log-export', async (req) => {
 
   if (accessKind !== 'owner' && accessKind !== 'platform_admin' && accessKind !== 'org_admin') {
     return jsonError(req, 'Export is limited to org owners and admins', 403);
+  }
+
+  // Plan gate — CSV export is Starter+; in-app viewing (list-activity-log) stays free.
+  // Platform admins bypass (they act cross-org, not on a plan).
+  if (accessKind !== 'platform_admin') {
+    try {
+      await requireOrgFeature(org.id, 'activityLogExport');
+    } catch (err) {
+      const planErr = catchPlanFeatureError(req, err);
+      if (planErr) return planErr;
+      throw err;
+    }
   }
 
   const supabase = createServiceClient();
