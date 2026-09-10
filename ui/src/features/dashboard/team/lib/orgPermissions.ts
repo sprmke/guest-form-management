@@ -49,7 +49,9 @@ export const ORG_NAV_VIEW_PERMISSION: Record<string, string> = {
   Parkings: 'org.parkings:view',
   Team: 'org.team:view',
   Settings: 'org.settings:view',
-  Plans: 'org.plans:view',
+  'Plans & Billing': 'org.plans:view',
+  Announcements: 'org.dashboard:view',
+  Analytics: 'org.analytics:view',
   Activity: 'org.dashboard:view',
 };
 
@@ -62,6 +64,8 @@ export const ORG_SECTION_VIEW_PERMISSION = {
   team: 'org.team:view',
   settings: 'org.settings:view',
   plans: 'org.plans:view',
+  announcements: 'org.dashboard:view',
+  analytics: 'org.analytics:view',
   // Activity is a transparency / accountability surface — any org-hub member may view it.
   activity: 'org.dashboard:view',
   'help-support': 'org.dashboard:view',
@@ -85,8 +89,12 @@ export function orgSectionPath(orgSlug: string, section: OrgSection): string {
       return `/org/${orgSlug}/settings`;
     case 'plans':
       return `/org/${orgSlug}/plans`;
+    case 'announcements':
+      return `/org/${orgSlug}/announcements`;
+    case 'analytics':
+      return `/org/${orgSlug}/analytics`;
     case 'activity':
-      return `/org/${orgSlug}/activity`;
+      return `/org/${orgSlug}/settings?open=activity`;
     case 'help-support':
       return `/org/${orgSlug}/help-support`;
   }

@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   BookOpen,
   Building2,
   CreditCard,
@@ -130,6 +131,20 @@ export const ORG_TEAM_PERMISSIONS: TeamPermission[] = [
     icon: CreditCard,
   },
   {
+    id: 'org.analytics:view',
+    name: 'View Portfolio Analytics',
+    description: 'View the org-wide analytics rollup across properties',
+    category: 'Analytics',
+    icon: BarChart3,
+  },
+  {
+    id: 'org.analytics:export',
+    name: 'Export Portfolio Analytics',
+    description: 'Download the property comparison table as CSV',
+    category: 'Analytics',
+    icon: BarChart3,
+  },
+  {
     id: 'org.team:view',
     name: 'View Team',
     description: 'View organization team',
@@ -204,6 +219,8 @@ export const ORG_ROLE_PERMISSIONS: Record<BuiltinOrgRole, string[]> = {
     'org.properties:manage',
     'org.parkings:view',
     'org.parkings:manage',
+    'org.analytics:view',
+    'org.analytics:export',
     'org.team:view',
     'org.team.invitations:add',
     'org.team.invitations:edit',

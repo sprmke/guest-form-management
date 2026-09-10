@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { EntityActivityHistory } from '@/features/dashboard/activity/components/EntityActivityHistory';
 import {
   emptyOrgListingAssignments,
   type OrgListingAssignments,
@@ -192,6 +193,13 @@ export function OrgManageMemberDialog({
                 />
               </>
             )}
+
+            <EntityActivityHistory
+              targetType="member"
+              targetId={member.id}
+              className="border-border/60 border-t pt-4"
+              initialLimit={5}
+            />
           </div>
         </div>
 

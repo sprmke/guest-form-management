@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   Bell,
   BookOpen,
   DollarSign,
@@ -606,6 +607,20 @@ export const TEAM_PERMISSIONS: TeamPermission[] = [
     category: 'Inbox',
     icon: Inbox,
   },
+  {
+    id: 'analytics:view',
+    name: 'View Analytics',
+    description: 'View performance KPIs, forward view, and the AI review',
+    category: 'Analytics',
+    icon: BarChart3,
+  },
+  {
+    id: 'analytics:export',
+    name: 'Export Analytics',
+    description: 'Download the property Analytics PDF report',
+    category: 'Analytics',
+    icon: BarChart3,
+  },
 ];
 
 /** Seeded template grants (Phase 3–6 leaves). */
@@ -641,6 +656,7 @@ export const SEEDED_TEMPLATE_PERMISSIONS: Record<string, string[]> = {
     'marketing.templates:delete',
     'marketing.generate:add',
     'marketing.publish:add',
+    'analytics:view',
   ],
   'Read Only': [
     'bookings:view',
@@ -652,6 +668,7 @@ export const SEEDED_TEMPLATE_PERMISSIONS: Record<string, string[]> = {
     'pricing.channels:view',
     'team:view',
     'inbox:view',
+    'analytics:view',
   ],
 };
 

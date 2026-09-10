@@ -43,22 +43,16 @@ export function OrgTeamStatsCards({ members, invitations, customRoles }: Props) 
       title: 'Total Members',
       value: String(members.length),
       icon: Users,
-      iconClassName: 'text-sky-600 dark:text-sky-400',
-      iconBgClassName: 'bg-sky-100 dark:bg-sky-900/30',
     },
     ...seededRoles.map((role) => ({
       title: role.name,
       value: String(countByTemplateRole(role.id, members, invitations, customRoles)),
       icon: Shield,
-      iconClassName: 'text-violet-600 dark:text-violet-400',
-      iconBgClassName: 'bg-violet-100 dark:bg-violet-900/30',
     })),
     {
       title: 'Pending Invites',
       value: String(pendingInvites),
       icon: Mail,
-      iconClassName: 'text-emerald-600 dark:text-emerald-400',
-      iconBgClassName: 'bg-emerald-100 dark:bg-emerald-900/30',
       valueClassName: pendingInvites > 0 ? 'text-amber-600 dark:text-amber-400' : undefined,
     },
   ];
@@ -76,8 +70,6 @@ export function OrgTeamStatsCards({ members, invitations, customRoles }: Props) 
           title={card.title}
           value={card.value}
           icon={card.icon}
-          iconClassName={card.iconClassName}
-          iconBgClassName={card.iconBgClassName}
           valueClassName={'valueClassName' in card ? card.valueClassName : undefined}
         />
       ))}

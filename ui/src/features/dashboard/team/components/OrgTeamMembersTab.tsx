@@ -121,39 +121,41 @@ export function OrgTeamMembersTab({
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative min-w-0 flex-1 sm:max-w-sm">
-          <Search
-            className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
-            aria-hidden
-          />
-          <Input
-            placeholder="Search members..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="h-10 pl-10"
-            aria-label="Search team members"
-          />
-        </div>
-        <Select value={filterRole} onValueChange={onFilterRoleChange}>
-          <SelectTrigger className="h-10 min-h-[44px] w-full sm:w-[180px]">
-            <Filter className="mr-2 size-4 shrink-0" aria-hidden />
-            <SelectValue placeholder="Filter by role" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Roles</SelectItem>
-            {roleFilterOptions.map((role) => (
-              <SelectItem key={role.id} value={role.id}>
-                {role.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle>Team Members ({filteredMembers.length})</CardTitle>
+        <CardHeader className="space-y-0 pb-2">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+            <CardTitle className="shrink-0">Team Members ({filteredMembers.length})</CardTitle>
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+              <div className="relative w-full sm:w-[260px]">
+                <Search
+                  className="text-muted-foreground pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2"
+                  aria-hidden
+                />
+                <Input
+                  inputSize="sm"
+                  placeholder="Search members..."
+                  value={searchQuery}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                  className="pl-8 text-[13px]"
+                  aria-label="Search team members"
+                />
+              </div>
+              <Select value={filterRole} onValueChange={onFilterRoleChange}>
+                <SelectTrigger className="h-8 w-full shrink-0 px-2.5 text-xs sm:w-[136px]">
+                  <Filter className="mr-1.5 size-3.5 shrink-0" aria-hidden />
+                  <SelectValue placeholder="Filter by role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  {roleFilterOptions.map((role) => (
+                    <SelectItem key={role.id} value={role.id}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-1.5 sm:space-y-2">
           {filteredMembers.map((member) => {
