@@ -23,7 +23,11 @@ import {
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
-import { PlanFeatureRequiredError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
+import {
+  PlanFeatureRequiredError,
+  requireOrgFeature,
+  requirePropertyFeature,
+} from '../_shared/planEntitlements.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 function updateActionBlockStatus(
@@ -112,14 +116,18 @@ serveAuthenticated('dashboard-assistant-confirm', async (req, user) => {
 
     // A downgrade can happen between the assistant proposing this action and the user confirming
     // it — re-check entitlement here, not just at proposal time in dashboard-assistant-chat, or a
-    // property that dropped below the required tier could still execute a queued Tier-2 action.
-    // Property-scoped only, mirroring dashboard-assistant-chat's own gate exactly: a conversation
-    // with no property_id is org/parking-scoped and stays interim-ungated there too (see
-    // PARKING_INTERIM_UNGATED_FEATURES) — checking org-level here would diverge from what chat
-    // already allowed for the same conversation.
-    if (confirm && conversation.property_id) {
+    // property/org that dropped below the required tier could still execute a queued Tier-2
+    // action. Mirrors dashboard-assistant-chat's own gate exactly: property-scoped when the
+    // conversation has a property_id, property-independent org gate otherwise (org/parking-scoped
+    // conversation) — same requireOrgFeature closing the parking-property-parity.md interim-ungate
+    // blocker.
+    if (confirm) {
       try {
-        await requirePropertyFeature(conversation.property_id as string, 'aiDashboardAssistant');
+        if (conversation.property_id) {
+          await requirePropertyFeature(conversation.property_id as string, 'aiDashboardAssistant');
+        } else {
+          await requireOrgFeature(conversation.organization_id as string, 'aiDashboardAssistant');
+        }
       } catch (err) {
         if (err instanceof PlanFeatureRequiredError) {
           return jsonUpgradeHook(req, err.message, { feature: err.feature });
