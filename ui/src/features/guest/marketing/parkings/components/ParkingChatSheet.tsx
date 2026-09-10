@@ -14,12 +14,12 @@ import {
 } from '@/features/guest/chat/hooks/useGuestChat';
 
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalClose,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useChatThreadSearch } from '@/lib/chat/useChatThreadSearch';
 
@@ -96,13 +96,16 @@ export function ParkingChatSheet({
   const threadSearch = useChatThreadSearch(messages);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent
+        sheetLayout="split"
         showCloseButton={false}
         className="flex h-[min(90dvh,720px)] max-h-[min(92dvh,720px)] w-full max-w-[min(calc(100vw-1.5rem),32rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg sm:p-0"
       >
-        <DialogHeader className="border-border shrink-0 gap-0 space-y-0 border-b px-5 py-4 text-left">
-          <DialogTitle className="sr-only">{hostName || 'Parking host'}</DialogTitle>
+        <ResponsiveModalHeader className="border-border shrink-0 gap-0 space-y-0 border-b px-5 py-4 text-left">
+          <ResponsiveModalTitle className="sr-only">
+            {hostName || 'Parking host'}
+          </ResponsiveModalTitle>
           <GuestChatHeaderBar
             avatar={
               <div className="from-primary to-primary/80 ring-background flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-sm font-bold text-white ring-2">
@@ -114,14 +117,14 @@ export function ParkingChatSheet({
             threadSearch={threadSearch}
             searchEnabled={!messagesLoading && messages.length > 0}
             trailing={
-              <DialogClose asChild>
+              <ResponsiveModalClose asChild>
                 <button type="button" className={headerIconButtonClass} aria-label="Close">
                   <X className="size-5" aria-hidden />
                 </button>
-              </DialogClose>
+              </ResponsiveModalClose>
             }
           />
-        </DialogHeader>
+        </ResponsiveModalHeader>
 
         <div className="bg-muted/20 flex min-h-0 flex-1 flex-col">
           {!isAuthenticated ? (
@@ -167,7 +170,7 @@ export function ParkingChatSheet({
             />
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

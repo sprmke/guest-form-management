@@ -24,10 +24,14 @@ import { ListingGallery } from '@/features/guest/marketing/shared/components/Lis
 import type { ListingHostInfo } from '@/features/guest/marketing/shared/components/ListingHostCard';
 import { useMarketingBrandColor } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
 
+import { bottomTabBarOffsetClassName } from '@/components/mobile/BottomTabBar';
+import { ContextualActionBar } from '@/components/mobile/ContextualActionBar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 import { parkingFlowTransition } from '@/lib/parking/parkingFlowMotion';
+import { cn } from '@/lib/utils';
 import { formatDateToYYYYMMDD } from '@/utils/format/dates';
 
 function formatRate(amount: number): string {
@@ -46,6 +50,7 @@ function buildGalleryImages(coverImage: string | null, images: string[]): string
 export function ParkingDetailPage() {
   useCaptureParkingLinkStay();
   const reduceMotion = useReducedMotion();
+  const isBelowLg = useIsBelowLg();
   const { parkingSlug = '' } = useParams<{ parkingSlug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data, isLoading, isError } = usePublicParkingDetail(parkingSlug);
@@ -245,7 +250,12 @@ export function ParkingDetailPage() {
 
   return (
     <ParkingPublicBrandShell brandColor={data.brandColor}>
-      <div className="@container bg-background min-h-screen w-full min-w-0 pb-20 pt-24">
+      <div
+        className={cn(
+          '@container bg-background min-h-screen w-full min-w-0 pt-24',
+          bottomTabBarOffsetClassName()
+        )}
+      >
         <div className="@xl:px-6 @5xl:px-8 container mx-auto px-4">
           <ListingGallery images={galleryImages} listingName={data.name} />
         </div>
@@ -333,31 +343,33 @@ export function ParkingDetailPage() {
           onProceed={handleCalendarProceed}
         />
 
-        <motion.div
-          initial={{ y: 24, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="border-border bg-background/95 @5xl:hidden fixed inset-x-0 bottom-0 z-40 border-t p-4 backdrop-blur-md"
-        >
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-baseline gap-1">
-                <span className="text-foreground text-lg font-bold">
-                  {formatRate(pricing.weekdayNightlyRate)}
-                </span>
-                <span className="text-muted-foreground text-sm">/ night</span>
-              </div>
-            </div>
-            <Button
-              size="lg"
-              className="min-h-[44px] shrink-0 rounded-full px-8"
-              type="button"
-              onClick={reserve}
+        {isBelowLg ? (
+          <ContextualActionBar>
+            <motion.div
+              initial={reduceMotion ? false : { y: 24, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="flex w-full items-center justify-between gap-4"
             >
-              Reserve
-            </Button>
-          </div>
-        </motion.div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-baseline gap-1">
+                  <span className="text-foreground text-lg font-bold">
+                    {formatRate(pricing.weekdayNightlyRate)}
+                  </span>
+                  <span className="text-muted-foreground text-sm">/ night</span>
+                </div>
+              </div>
+              <Button
+                size="lg"
+                className="min-h-[44px] shrink-0 rounded-full px-8"
+                type="button"
+                onClick={reserve}
+              >
+                Reserve
+              </Button>
+            </motion.div>
+          </ContextualActionBar>
+        ) : null}
 
         <ParkingBookingFormModal
           open={formModalOpen}

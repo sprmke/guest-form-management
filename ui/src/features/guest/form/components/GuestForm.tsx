@@ -102,6 +102,7 @@ import {
 } from '@/features/dashboard/pricing/lib/pricingCompute';
 
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
+import { bottomTabBarOffsetClassName } from '@/components/mobile/BottomTabBar';
 import { useAntiSpamSubmit } from '@/components/security/useAntiSpamSubmit';
 import { GuestFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { Button } from '@/components/ui/button';
@@ -1462,7 +1463,9 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
         className={cn(
           'guest-inner-enter relative',
           embed?.compactChrome ? 'space-y-4' : 'space-y-6',
-          embed?.compactChrome ? 'p-0 sm:p-1' : 'p-4 sm:p-6 lg:p-8'
+          embed?.compactChrome ? 'p-0 sm:p-1' : 'p-4 sm:p-6 lg:p-8',
+          /* Standalone page: clears the floating ContextualActionBar on phone/tablet. */
+          !embed ? bottomTabBarOffsetClassName() : null
         )}
       >
         {isLoading ? (
@@ -2678,6 +2681,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
             {(!bookingId || guestCanUpdate) && !embed?.onNavChange ? (
               <GuestFormStepNavigation
                 bare
+                mobileVariant="floating"
                 currentStep={currentStep}
                 stepCount={guestFormStepCount}
                 isSubmitting={isSubmitting}

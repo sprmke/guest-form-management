@@ -3,6 +3,7 @@ import type { ComponentType } from 'react';
 import {
   Activity,
   BadgeCheck,
+  BookOpen,
   Building,
   Building2,
   CreditCard,
@@ -67,6 +68,7 @@ export const SUPER_ADMIN_NAV_GROUPS: SuperAdminPlatformNavGroup[] = [
     items: [
       { label: 'Announcements', href: superAdminPaths.announcements, Icon: Megaphone },
       { label: 'FAQs', href: superAdminPaths.supportFaqs, Icon: HelpCircle },
+      { label: 'Playbook articles', href: superAdminPaths.playbookArticles, Icon: BookOpen },
     ],
   },
   {

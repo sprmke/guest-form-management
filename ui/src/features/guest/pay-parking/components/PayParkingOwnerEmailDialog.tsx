@@ -4,15 +4,15 @@ import { ArrowLeft, Loader2, Mail } from 'lucide-react';
 import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 
 const ownerEmailSchema = z.string().email('Enter a valid email address');
 
@@ -55,17 +55,17 @@ export function PayParkingOwnerEmailDialog({
   }
 
   return (
-    <Dialog
+    <ResponsiveModal
       open={open}
       onOpenChange={(next) => {
         if (pending) return;
         onOpenChange(next);
       }}
     >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Send to parking owner</DialogTitle>
-        </DialogHeader>
+      <ResponsiveModalContent className="sm:max-w-md">
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>Send to parking owner</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
 
         <div className="space-y-1.5 py-1">
           <Label htmlFor="pay-parking-owner-email" className="text-sm">
@@ -97,7 +97,7 @@ export function PayParkingOwnerEmailDialog({
           ) : null}
         </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-col">
+        <ResponsiveModalFooter className="flex-col gap-2 sm:flex-col">
           <Button
             type="button"
             className="min-h-[44px] w-full gap-2"
@@ -121,8 +121,8 @@ export function PayParkingOwnerEmailDialog({
             <ArrowLeft className="size-4 shrink-0" aria-hidden />
             Go back
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

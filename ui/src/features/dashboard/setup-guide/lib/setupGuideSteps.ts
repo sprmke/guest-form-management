@@ -72,7 +72,7 @@ function propertySteps(property: SetupGuideListingRef): SetupGuideStep[] {
       id: id('pricing'),
       kind: 'property.pricing',
       title: 'Pricing & fees',
-      requirement: 'recommended',
+      requirement: 'required',
       estimatedMinutes: 3,
       completionSections: [],
     }),
@@ -162,7 +162,7 @@ function parkingSteps(parking: SetupGuideListingRef): SetupGuideStep[] {
       id: id('pricing'),
       kind: 'parking.pricing',
       title: 'Pricing',
-      requirement: 'recommended',
+      requirement: 'required',
       estimatedMinutes: 2,
       completionSections: [],
     }),
@@ -180,7 +180,7 @@ function parkingSteps(parking: SetupGuideListingRef): SetupGuideStep[] {
       id: id('email'),
       kind: 'parking.email',
       title: 'Email & automation',
-      requirement: 'optional',
+      requirement: 'required',
       estimatedMinutes: 2,
       completionSections: [],
     }),
@@ -222,11 +222,21 @@ export function assembleSetupGuideSteps(input: AssembleSetupGuideStepsInput): Se
         { scope: 'org', sectionId: 'branding' },
       ],
     }),
+  ];
+
+  for (const property of properties) {
+    steps.push(...propertySteps(property));
+  }
+  for (const parking of parkings) {
+    steps.push(...parkingSteps(parking));
+  }
+
+  steps.push(
     step({
       id: 'org.verification',
       kind: 'org.verification',
       title: 'Verification & go-live',
-      requirement: 'required',
+      requirement: 'optional',
       group: orgTrust,
       estimatedMinutes: 5,
       // Completion is custom (host Tier 1 + per-listing proof) — see deriveSetupGuideProgress.
@@ -241,16 +251,6 @@ export function assembleSetupGuideSteps(input: AssembleSetupGuideStepsInput): Se
       estimatedMinutes: 5,
       completionSections: [],
     }),
-  ];
-
-  for (const property of properties) {
-    steps.push(...propertySteps(property));
-  }
-  for (const parking of parkings) {
-    steps.push(...parkingSteps(parking));
-  }
-
-  steps.push(
     step({
       id: 'org.team',
       kind: 'org.team',
@@ -301,4 +301,24 @@ export function setupGuideStepKindLabel(kind: SetupGuideStepKind): string {
 
 export function isSetupGuideRequiredStep(requirement: SetupGuideStepRequirement): boolean {
   return requirement === 'required';
+}
+
+/** Compact label for the in-pane listing stepper. */
+export function setupGuideStepShortTitle(kind: SetupGuideStepKind): string {
+  const labels: Partial<Record<SetupGuideStepKind, string>> = {
+    'property.basics': 'Basics',
+    'property.location': 'Location',
+    'property.content': 'Photos',
+    'property.pricing': 'Pricing',
+    'property.payments': 'Payments',
+    'property.guestform': 'Guest form',
+    'property.email': 'Email',
+    'parking.basics': 'Basics',
+    'parking.location': 'Location',
+    'parking.photo': 'Photo',
+    'parking.pricing': 'Pricing',
+    'parking.payments': 'Payments',
+    'parking.email': 'Email',
+  };
+  return labels[kind] ?? setupGuideStepKindLabel(kind);
 }

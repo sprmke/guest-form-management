@@ -2,8 +2,6 @@ import type { AuthAudience } from '@/features/guest/auth/config/auth-page-config
 import { GUEST_LOGIN_PATH } from '@/features/guest/auth/lib/guestAuthPaths';
 import { HOST_LOGIN_PATH } from '@/features/guest/auth/lib/hostAuthPaths';
 
-import { getLastOrgSlug, orgDashboardPath } from '@/features/dashboard/org/lib/tenantPaths';
-
 /** Derive host vs guest (Explore) mode from the current pathname. */
 export function getAuthAudienceFromPath(pathname: string): AuthAudience {
   return pathname.startsWith('/for-hosts') ? 'host' : 'guest';
@@ -12,10 +10,9 @@ export function getAuthAudienceFromPath(pathname: string): AuthAudience {
 /** Host dashboard href when signed in; Sign In when signed out. */
 export function getHostMarketingNavCta(isSignedIn: boolean): { label: string; href: string } {
   if (isSignedIn) {
-    const orgSlug = getLastOrgSlug();
     return {
       label: 'Dashboard',
-      href: orgSlug ? orgDashboardPath(orgSlug) : '/dashboard',
+      href: '/org',
     };
   }
 

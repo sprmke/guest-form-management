@@ -21,6 +21,7 @@ import { SuperAdminParkingPayoutsPage } from '@/features/dashboard/super-admin/p
 import { SuperAdminPaymentSettingsPage } from '@/features/dashboard/super-admin/pages/SuperAdminPaymentSettingsPage';
 import { SuperAdminPlatformPropertiesPage } from '@/features/dashboard/super-admin/pages/SuperAdminPlatformPropertiesPage';
 import { SuperAdminPlatformSettingsPage } from '@/features/dashboard/super-admin/pages/SuperAdminPlatformSettingsPage';
+import { SuperAdminPlaybookArticlesPage } from '@/features/dashboard/super-admin/pages/SuperAdminPlaybookArticlesPage';
 import { SuperAdminPricingPlansPage } from '@/features/dashboard/super-admin/pages/SuperAdminPricingPlansPage';
 import { SuperAdminSettingsPage } from '@/features/dashboard/super-admin/pages/SuperAdminSettingsPage';
 import { SuperAdminSupportPage } from '@/features/dashboard/super-admin/pages/SuperAdminSupportPage';
@@ -47,6 +48,7 @@ export const superAdminRoutes: ReactNode = (
     <Route path="approvals" element={<SuperAdminApprovalsPage />} />
     <Route path="support" element={<SuperAdminSupportPage />} />
     <Route path="support/faqs" element={<SuperAdminHelpFaqsPage />} />
+    <Route path="playbook" element={<SuperAdminPlaybookArticlesPage />} />
     <Route path="announcements" element={<SuperAdminAnnouncementsPage />} />
     <Route path="hosts" element={<SuperAdminHostsPage />} />
     <Route path="settings" element={<SuperAdminSettingsPage />} />

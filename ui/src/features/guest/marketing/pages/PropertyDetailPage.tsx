@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 
 import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 
 import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
 import { ContactHostSheet } from '@/features/guest/chat/components/ContactHostSheet';
@@ -27,6 +27,7 @@ import {
 } from '@/features/guest/marketing/properties/components/property-detail';
 import { mockProperties } from '@/features/guest/marketing/properties/data/mockProperties';
 import { usePropertyContactHost } from '@/features/guest/marketing/properties/hooks/usePropertyContactHost';
+import { usePropertyPageViewTracking } from '@/features/guest/marketing/properties/hooks/usePropertyPageViewTracking';
 import { usePropertyReserve } from '@/features/guest/marketing/properties/hooks/usePropertyReserve';
 import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/hooks/usePublicPropertyDetail';
 import { resolvePropertyLandingSections } from '@/features/guest/marketing/properties/lib/propertyLandingSections';
@@ -35,8 +36,11 @@ import { GuestPublicBrandShell } from '@/features/guest/marketing/shared/compone
 import type { ListingHostInfo } from '@/features/guest/marketing/shared/components/ListingHostCard';
 import { useMarketingBrandColor } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
 
+import { bottomTabBarOffsetClassName } from '@/components/mobile/BottomTabBar';
+import { ContextualActionBar } from '@/components/mobile/ContextualActionBar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 import { cn } from '@/lib/utils';
 import { parseGuestInquiryDateRange, formatDateToYYYYMMDD } from '@/utils/format/dates';
@@ -49,9 +53,11 @@ export function PropertyDetailPage() {
   const isEditorPreview = previewOverride?.kind === 'property-landing';
   const forceDesktopChrome = previewViewport === 'desktop';
   const forceMobileChrome = previewViewport === 'mobile';
+  const isBelowLg = useIsBelowLg();
   const propertySlugForActions = propertySlug || (isEditorPreview ? previewOverride.data.slug : '');
   const { data: propertyData, isLoading, isError } = usePublicPropertyDetail(propertySlug);
   usePageTitle(publicPageTitle(propertyData?.name ? `${propertyData.name}` : 'Property'));
+  usePropertyPageViewTracking(propertyData?.id, !isEditorPreview && propertyData?.source === 'api');
   const { setBrandColor } = useMarketingBrandColor();
   const { status, requireGuestAuth } = useGuestAuth();
 
@@ -418,8 +424,9 @@ export function PropertyDetailPage() {
         className={cn(
           '@container bg-background min-h-screen w-full min-w-0',
           isEditorPreview ? 'pt-4' : 'pt-24',
-          forceMobileChrome || !isEditorPreview ? 'pb-20' : 'pb-4',
-          forceMobileChrome && 'pb-24'
+          !isEditorPreview && bottomTabBarOffsetClassName(),
+          forceMobileChrome && 'pb-24',
+          isEditorPreview && !forceMobileChrome && 'pb-4'
         )}
       >
         {showGallery ? (
@@ -489,39 +496,14 @@ export function PropertyDetailPage() {
           </div>
         </div>
 
-        {!forceDesktopChrome ? (
-          <motion.div
-            initial={{ y: 100 }}
-            animate={{ y: 0 }}
-            className={cn(
-              'border-border bg-background/95 z-40 border-t p-4 backdrop-blur-lg',
-              forceMobileChrome ? 'sticky bottom-0' : '@5xl:hidden fixed inset-x-0 bottom-0'
-            )}
-          >
-            <div className="flex items-center justify-between gap-4">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-baseline gap-1">
-                  <span className="text-foreground text-lg font-bold">
-                    ₱{propertyData.pricing.baseRate.toLocaleString()}
-                  </span>
-                  <span className="text-muted-foreground text-sm">/ night</span>
-                </div>
-                {showRatingInBooking ? (
-                  <p className="text-muted-foreground truncate text-sm">
-                    {propertyData.rating} ★ · {propertyData.reviews} reviews
-                  </p>
-                ) : null}
-              </div>
-              <Button
-                size="lg"
-                className="min-h-[44px] shrink-0 rounded-full px-8"
-                type="button"
-                onClick={reserve}
-              >
-                Reserve
-              </Button>
-            </div>
-          </motion.div>
+        {!forceDesktopChrome && (forceMobileChrome || isBelowLg) ? (
+          <PropertyReserveCta
+            editorPreview={forceMobileChrome}
+            baseRate={propertyData.pricing.baseRate}
+            rating={showRatingInBooking ? (propertyData.rating ?? null) : null}
+            reviews={propertyData.reviews ?? 0}
+            onReserve={reserve}
+          />
         ) : null}
 
         <BookingCalendarModal
@@ -558,5 +540,70 @@ export function PropertyDetailPage() {
         />
       </div>
     </GuestPublicBrandShell>
+  );
+}
+
+/**
+ * Reserve CTA — phone/tablet only. Real usage claims the shared bottom band via
+ * `ContextualActionBar` (hides the marketing tab bar while visible). The Page
+ * Editor's simulated mobile-frame preview stays `sticky` (a real `fixed` bar
+ * would escape the preview frame and dock to the actual browser viewport).
+ */
+function PropertyReserveCta({
+  editorPreview,
+  baseRate,
+  rating,
+  reviews,
+  onReserve,
+}: {
+  editorPreview: boolean;
+  baseRate: number;
+  rating: number | null;
+  reviews: number;
+  onReserve: () => void;
+}) {
+  const reduceMotion = useReducedMotion();
+  const content = (
+    <div className="flex items-center justify-between gap-4">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-baseline gap-1">
+          <span className="text-foreground text-lg font-bold">₱{baseRate.toLocaleString()}</span>
+          <span className="text-muted-foreground text-sm">/ night</span>
+        </div>
+        {rating != null ? (
+          <p className="text-muted-foreground truncate text-sm">
+            {rating} ★ · {reviews} reviews
+          </p>
+        ) : null}
+      </div>
+      <Button
+        size="lg"
+        className="min-h-[44px] shrink-0 rounded-full px-8"
+        type="button"
+        onClick={onReserve}
+      >
+        Reserve
+      </Button>
+    </div>
+  );
+
+  if (editorPreview) {
+    return (
+      <motion.div
+        initial={reduceMotion ? false : { y: 100 }}
+        animate={{ y: 0 }}
+        className="border-border bg-background/95 sticky bottom-0 z-40 border-t p-4 backdrop-blur-lg"
+      >
+        {content}
+      </motion.div>
+    );
+  }
+
+  return (
+    <ContextualActionBar>
+      <motion.div initial={reduceMotion ? false : { y: 100 }} animate={{ y: 0 }} className="w-full">
+        {content}
+      </motion.div>
+    </ContextualActionBar>
   );
 }

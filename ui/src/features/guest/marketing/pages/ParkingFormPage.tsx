@@ -155,6 +155,7 @@ export function ParkingFormPage() {
         ) : null}
 
         <ParkingRegistrationForm
+          mobileVariant="page"
           defaultValues={{ checkInDate, checkOutDate }}
           towerLabel={data.tower}
           linkableBookings={linkableBookingsQuery.data ?? []}

@@ -28,12 +28,12 @@ import { MarketingImage as Image } from '@/features/guest/marketing/shared/compo
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalClose,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useChatThreadSearch } from '@/lib/chat/useChatThreadSearch';
@@ -344,17 +344,18 @@ export function ContactHostSheet({
       !composeDraft);
 
   const headerCloseButton = (
-    <DialogClose asChild>
+    <ResponsiveModalClose asChild>
       <button type="button" className={headerIconButtonClass} aria-label="Close">
         <X className="size-5" aria-hidden />
       </button>
-    </DialogClose>
+    </ResponsiveModalClose>
   );
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
+      <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+        <ResponsiveModalContent
+          sheetLayout="split"
           showCloseButton={false}
           className="flex h-[min(90dvh,720px)] max-h-[min(92dvh,720px)] w-full max-w-[min(calc(100vw-1.5rem),32rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg sm:p-0"
           onEscapeKeyDown={(event) => {
@@ -367,8 +368,8 @@ export function ContactHostSheet({
             if (voiceSessionOpen) event.preventDefault();
           }}
         >
-          <DialogHeader className="border-border shrink-0 gap-0 space-y-0 border-b px-5 py-4 text-left">
-            <DialogTitle className="sr-only">{hostLabel}</DialogTitle>
+          <ResponsiveModalHeader className="border-border shrink-0 gap-0 space-y-0 border-b px-5 py-4 text-left">
+            <ResponsiveModalTitle className="sr-only">{hostLabel}</ResponsiveModalTitle>
             <GuestChatHeaderBar
               avatar={hostAvatarNode}
               title={hostLabel}
@@ -381,7 +382,7 @@ export function ContactHostSheet({
               }
               trailing={headerCloseButton}
             />
-          </DialogHeader>
+          </ResponsiveModalHeader>
           {showThread && !voiceSessionOpen ? (
             <GuestChatSearchPanelRow threadSearch={threadSearch} className="px-5" />
           ) : null}
@@ -491,8 +492,8 @@ export function ContactHostSheet({
               </div>
             )}
           </div>
-        </DialogContent>
-      </Dialog>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
 
       <BookingCalendarModal
         open={datesModalOpen}

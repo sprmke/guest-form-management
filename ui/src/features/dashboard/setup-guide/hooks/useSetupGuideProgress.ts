@@ -139,6 +139,7 @@ export function useSetupGuideProgress({
       persisted: {
         skippedSteps: persisted.skippedSteps,
         reviewedSteps: persisted.reviewedSteps,
+        lastStepId: persisted.lastStepId,
       },
     });
   }, [

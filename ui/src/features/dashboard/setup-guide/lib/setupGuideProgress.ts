@@ -26,7 +26,7 @@ export type SetupGuideCompletionSnapshot = {
 export type DeriveSetupGuideProgressInput = {
   steps: SetupGuideStep[];
   completion: SetupGuideCompletionSnapshot;
-  persisted: Pick<SetupGuidePersistedState, 'skippedSteps' | 'reviewedSteps'>;
+  persisted: Pick<SetupGuidePersistedState, 'skippedSteps' | 'reviewedSteps' | 'lastStepId'>;
 };
 
 function sectionClear(
@@ -56,10 +56,17 @@ function sectionsComplete(
 function deriveStepStatus(
   step: SetupGuideStep,
   completion: SetupGuideCompletionSnapshot,
-  persisted: Pick<SetupGuidePersistedState, 'skippedSteps' | 'reviewedSteps'>
+  persisted: Pick<SetupGuidePersistedState, 'skippedSteps' | 'reviewedSteps' | 'lastStepId'>
 ): SetupGuideStepStatus {
-  if (step.kind === 'welcome' || step.kind === 'org.done') {
-    return 'complete';
+  if (step.kind === 'welcome') {
+    const movedPast =
+      (persisted.lastStepId != null && persisted.lastStepId !== 'welcome') ||
+      persisted.reviewedSteps.includes(step.id);
+    return movedPast ? 'complete' : 'incomplete';
+  }
+
+  if (step.kind === 'org.done') {
+    return 'incomplete';
   }
 
   if (step.kind === 'org.verification') {
@@ -115,6 +122,11 @@ export function deriveSetupGuideProgress(
   const required = steps.filter((entry) => isSetupGuideRequiredStep(entry.step.requirement));
   const requiredComplete = required.filter((entry) => entry.status === 'complete').length;
   const requiredRemaining = required.length - requiredComplete;
+
+  const doneEntry = steps.find((entry) => entry.step.kind === 'org.done');
+  if (doneEntry) {
+    doneEntry.status = requiredRemaining === 0 ? 'complete' : 'incomplete';
+  }
 
   const firstIncompleteRequired = steps.find(
     (entry) => isSetupGuideRequiredStep(entry.step.requirement) && entry.status !== 'complete'

@@ -34,7 +34,7 @@ export type SetupGuideStepRequirement = 'required' | 'recommended' | 'optional' 
 
 export type SetupGuideStepGroup =
   | { type: 'org-start' }
-  /** Host Tier 1 + Recommended — after org brand, before listing blocks. */
+  /** Host Tier 1 + Recommended — after listing blocks, before finish. */
   | { type: 'org-trust' }
   | { type: 'property'; propertyId: string; propertyName: string }
   | { type: 'parking'; parkingId: string; parkingName: string }

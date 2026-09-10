@@ -9,10 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { Link } from 'react-router-dom';
-
 import type { AppSettingsDto } from '@/features/dashboard/bookings/hooks/useAppSettings';
-import { OrgListingVerificationRollup } from '@/features/dashboard/org/components/listing-authorization/OrgListingVerificationRollup';
 import {
   OrgBasicInformationSection,
   OrgSocialsBrandingSection,
@@ -26,11 +23,9 @@ import { useOptionalOrgContext } from '@/features/dashboard/org/components/Requi
 import { BrandColorField } from '@/features/dashboard/org/components/settings/BrandColorField';
 import { GetVerifiedModal } from '@/features/dashboard/org/components/verification/GetVerifiedModal';
 import { useOrgSettingsController } from '@/features/dashboard/org/hooks/useOrgSettingsController';
-import { useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
 import { useParkingSettingsController } from '@/features/dashboard/org/hooks/useParkingSettingsController';
 import { usePropertySettingsController } from '@/features/dashboard/org/hooks/usePropertySettingsController';
 import type { PropertySettingsSectionId } from '@/features/dashboard/org/lib/propertySettingsCompletion';
-import { orgTeamPath, propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { ParkingBookingAutomationSection } from '@/features/dashboard/parking/components/ParkingBookingAutomationSection';
 import { ParkingDetailsSection } from '@/features/dashboard/parking/components/ParkingDetailsSection';
 import { ParkingEmailAutomationSection } from '@/features/dashboard/parking/components/ParkingEmailAutomationSection';
@@ -38,17 +33,23 @@ import { ParkingFeaturesSection } from '@/features/dashboard/parking/components/
 import { ParkingMediaUpload } from '@/features/dashboard/parking/components/ParkingMediaUpload';
 import { PARKING_DESCRIPTION_MAX } from '@/features/dashboard/parking/lib/parkingSettingsForm';
 import { SETUP_GUIDE_PARKING_SAVE_SCOPE } from '@/features/dashboard/parking/lib/parkingSettingsSavePlan';
-import { useSetupGuide } from '@/features/dashboard/setup-guide/components/SetupGuideProvider';
+import {
+  DoneStep,
+  WelcomeStep,
+} from '@/features/dashboard/setup-guide/components/SetupGuideMoments';
+import {
+  SetupGuideParkingPricingEmbed,
+  SetupGuidePropertyPricingEmbed,
+} from '@/features/dashboard/setup-guide/components/SetupGuidePricingEmbed';
 import {
   SetupGuideParkingHost,
   SetupGuidePropertyHost,
 } from '@/features/dashboard/setup-guide/components/SetupGuideSettingsHost';
+import { SetupGuideTeamEmbed } from '@/features/dashboard/setup-guide/components/SetupGuideTeamEmbed';
 import { useHostRewardOffer } from '@/features/dashboard/setup-guide/hooks/useHostRewardOffer';
-import { useSetupGuideStateWrite } from '@/features/dashboard/setup-guide/hooks/useSetupGuideStateWrite';
 import type { SetupGuideStep } from '@/features/dashboard/setup-guide/lib/setupGuideTypes';
 
 import { AppSettingsCardSkeleton } from '@/components/skeletons/AdminSkeletons';
-import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 
 export type SetupGuideSaveHandler = (() => Promise<boolean>) | null;
@@ -68,7 +69,7 @@ export function SetupGuideSaveProvider({
   return <SetupGuideSaveContext.Provider value={value}>{children}</SetupGuideSaveContext.Provider>;
 }
 
-function useRegisterStepSave(handler: SetupGuideSaveHandler) {
+export function useRegisterStepSave(handler: SetupGuideSaveHandler) {
   const ctx = useContext(SetupGuideSaveContext);
   useEffect(() => {
     ctx?.registerSave(handler);
@@ -93,14 +94,9 @@ export function useSetupGuideSaveBridge() {
   return { registerSave, runSave, hasSave };
 }
 
-function WelcomeStep() {
+function WelcomeStepBody() {
   useRegisterStepSave(null);
-  return (
-    <p className="text-muted-foreground text-sm">
-      We&apos;ll walk through the settings that get your listings ready for guests. You can leave
-      anytime and continue later from Finish setup.
-    </p>
-  );
+  return <WelcomeStep />;
 }
 
 function OrgBrandStep() {
@@ -336,37 +332,11 @@ function PropertySectionsStep({
 }
 
 function PropertyPricingStep({ propertyId }: { propertyId: string }) {
-  const { org, persisted } = useSetupGuide();
-  const write = useSetupGuideStateWrite(org?.id);
-  const { data: propsData } = usePropertiesForOrg(org?.slug);
-  const property = propsData?.properties.find((entry) => entry.id === propertyId);
-
-  const save = useCallback(async () => {
-    const reviewed = new Set(persisted.reviewedSteps);
-    reviewed.add(`property.${propertyId}.pricing`);
-    await write.setReviewedSteps([...reviewed]);
-    return true;
-  }, [persisted.reviewedSteps, propertyId, write]);
-  useRegisterStepSave(save);
-
-  if (!org || !property) {
-    return <AppSettingsCardSkeleton />;
-  }
-
   return (
-    <div className="flex flex-col gap-3">
-      <p className="text-muted-foreground text-sm">
-        Review nightly rates and fees when you&apos;re ready. Defaults already work for go-live.
-      </p>
-      <Button type="button" variant="outline" className="min-h-11 w-full sm:w-auto" asChild>
-        <Link to={propertySectionPath(org.slug, property.slug, 'pricing')}>Open pricing</Link>
-      </Button>
-    </div>
+    <SetupGuidePropertyHost propertyId={propertyId}>
+      <SetupGuidePropertyPricingEmbed propertyId={propertyId} />
+    </SetupGuidePropertyHost>
   );
-}
-
-function usePropertiesForOrg(orgSlug: string | undefined) {
-  return useProperties(orgSlug);
 }
 
 function parkingPaymentSettingsDto(settings: { gcashQrImageUrl?: string | null }): AppSettingsDto {
@@ -386,8 +356,6 @@ function ParkingSectionsInner({
   parkingId: string;
   mode: 'basics' | 'location' | 'photo' | 'payments' | 'email' | 'pricing';
 }) {
-  const { org, persisted } = useSetupGuide();
-  const write = useSetupGuideStateWrite(org?.id);
   const {
     settings,
     settingsLoading,
@@ -424,31 +392,20 @@ function ParkingSectionsInner({
   } = useParkingSettingsController();
 
   const save = useCallback(async () => {
-    if (mode === 'pricing') {
-      const reviewed = new Set(persisted.reviewedSteps);
-      reviewed.add(`parking.${parkingId}.pricing`);
-      await write.setReviewedSteps([...reviewed]);
-      return true;
-    }
     if (!isDirty) return true;
     if (mode === 'email') {
       return handleSave({ scopeSectionIds: SETUP_GUIDE_PARKING_SAVE_SCOPE.email });
     }
     return handleSave({ scopeSectionIds: [...SETUP_GUIDE_PARKING_SAVE_SCOPE[mode]] });
-  }, [handleSave, isDirty, mode, parkingId, persisted.reviewedSteps, write]);
-  useRegisterStepSave(save);
+  }, [handleSave, isDirty, mode]);
+  useRegisterStepSave(mode === 'pricing' ? null : save);
 
   if (settingsLoading || !operationalDraft || !settings) {
     return <AppSettingsCardSkeleton />;
   }
 
   if (mode === 'pricing') {
-    return (
-      <p className="text-muted-foreground text-sm">
-        Confirm your parking base rate on Pricing when you&apos;re ready. Defaults already work for
-        go-live.
-      </p>
-    );
+    return <SetupGuideParkingPricingEmbed parkingId={parkingId} />;
   }
 
   return (
@@ -590,40 +547,15 @@ function ParkingSectionsStep(props: {
 }
 
 function VerificationStep() {
-  const [hostOpen, setHostOpen] = useState(false);
-  const { org } = useSetupGuide();
   useRegisterStepSave(null);
-  if (!org) return null;
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="text-muted-foreground text-sm">
-        Upload host verification and listing ownership proof so listings can go live after review.
-      </p>
-      <Button type="button" className="min-h-11 w-full sm:w-auto" onClick={() => setHostOpen(true)}>
-        Host verification
-      </Button>
-      <GetVerifiedModal open={hostOpen} onOpenChange={setHostOpen} />
-      <OrgListingVerificationRollup orgId={org.id} orgSlug={org.slug} allowUpload />
-    </div>
-  );
+  return <GetVerifiedModal open onOpenChange={() => {}} embedded lockedStep={0} hideListingOpen />;
 }
 
 function TeamStep() {
-  const { org } = useSetupGuide();
-  useRegisterStepSave(null);
-  if (!org) return null;
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="text-muted-foreground text-sm">Invite teammates when you&apos;re ready.</p>
-      <Button type="button" variant="outline" className="min-h-11 w-full sm:w-auto" asChild>
-        <Link to={orgTeamPath(org.slug)}>Open team</Link>
-      </Button>
-    </div>
-  );
+  return <SetupGuideTeamEmbed />;
 }
 
 function RecommendedStep() {
-  const [open, setOpen] = useState(false);
   const org = useOptionalOrgContext();
   const { data: offer } = useHostRewardOffer(org?.org?.id);
   useRegisterStepSave(null);
@@ -633,36 +565,19 @@ function RecommendedStep() {
       ? `Eligible for ${offer.durationDays} days of ${offer.planCode ?? 'Pro'} after ${
           offer.trigger === 'recommended_verification_submitted' ? 'submit' : 'approval'
         }.`
-      : offer?.enabled
-        ? 'Recommended verification is optional.'
-        : null;
+      : null;
 
   return (
     <div className="flex flex-col gap-3">
       {rewardLine ? <p className="text-muted-foreground text-sm">{rewardLine}</p> : null}
-      <Button type="button" className="min-h-11 w-full sm:w-auto" onClick={() => setOpen(true)}>
-        Get Recommended
-      </Button>
-      <GetVerifiedModal open={open} onOpenChange={setOpen} />
+      <GetVerifiedModal open onOpenChange={() => {}} embedded lockedStep={1} hideListingOpen />
     </div>
   );
 }
 
-function DoneStep() {
-  const { closeGuide, requiredRemaining } = useSetupGuide();
+function DoneStepBody() {
   useRegisterStepSave(null);
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="text-muted-foreground text-sm">
-        {requiredRemaining > 0
-          ? `${requiredRemaining} required item${requiredRemaining === 1 ? '' : 's'} still open. Finish anytime from Finish setup.`
-          : 'Required setup looks complete. Keep polishing from Settings anytime.'}
-      </p>
-      <Button type="button" className="min-h-11 w-full sm:w-auto" onClick={() => closeGuide()}>
-        Done
-      </Button>
-    </div>
-  );
+  return <DoneStep />;
 }
 
 export function SetupGuideStepBody({ step }: { step: SetupGuideStep | undefined }) {
@@ -670,7 +585,7 @@ export function SetupGuideStepBody({ step }: { step: SetupGuideStep | undefined 
 
   switch (step.kind) {
     case 'welcome':
-      return <WelcomeStep />;
+      return <WelcomeStepBody />;
     case 'org.brand':
       return <OrgBrandStep />;
     case 'property.basics':
@@ -732,7 +647,7 @@ export function SetupGuideStepBody({ step }: { step: SetupGuideStep | undefined 
     case 'org.recommended':
       return <RecommendedStep />;
     case 'org.done':
-      return <DoneStep />;
+      return <DoneStepBody />;
     default:
       return <p className="text-muted-foreground text-sm">This step is not available yet.</p>;
   }

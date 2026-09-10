@@ -15,13 +15,13 @@ function isDocKind(value: string): value is 'gaf' | 'pet' {
 
 function BookingDocumentUnavailable({ message }: { message: string }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#FFFFFF] px-4 dark:bg-[#0A0A0A]">
+    <div className="bg-background flex min-h-screen items-center justify-center px-4">
       <div
         className={cn(
-          'max-w-md rounded-2xl border border-[#171717]/10 bg-[#F5F5F5] p-8 text-center shadow-sm dark:border-[#FAFAFA]/10 dark:bg-[#171717]'
+          'border-border bg-muted max-w-md rounded-2xl border p-8 text-center shadow-sm'
         )}
       >
-        <p className="text-base font-medium text-[#171717] dark:text-[#FAFAFA]">{message}</p>
+        <p className="text-foreground text-base font-medium">{message}</p>
       </div>
     </div>
   );
@@ -56,7 +56,7 @@ export function GuestBookingDocumentPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#FFFFFF] px-4 dark:bg-[#0A0A0A]">
+    <div className="bg-background flex min-h-screen items-center justify-center px-4">
       <Skeleton className="h-24 w-full max-w-sm rounded-2xl" />
     </div>
   );

@@ -1,11 +1,19 @@
+import { useMemo, useState } from 'react';
+
 import { ScrollText } from 'lucide-react';
 
+import { ActivityDetailSheet } from '@/features/dashboard/activity/components/ActivityDetailSheet';
+import { ActivityFeedList } from '@/features/dashboard/activity/components/ActivityFeedList';
+import type { ActivityEvent } from '@/features/dashboard/activity/lib/activityCatalog';
 import { SuperAdminEmptyState } from '@/features/dashboard/super-admin/components/shared/SuperAdminEmptyState';
 import { SuperAdminPageLoading } from '@/features/dashboard/super-admin/components/shared/SuperAdminPageLoading';
 import { useSuperAdminOrgContext } from '@/features/dashboard/super-admin/components/super-admin-orgs/superAdminOrgContext';
 import { useSuperAdminAudit } from '@/features/dashboard/super-admin/hooks/useSuperAdminAudit';
+import { useSuperAdminOrgActivity } from '@/features/dashboard/super-admin/hooks/useSuperAdminOrgActivity';
 
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 function relativeTime(iso: string): string {
   const then = new Date(iso).getTime();
@@ -19,13 +27,13 @@ function relativeTime(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-export function SuperAdminOrgActivitySection() {
-  const { org } = useSuperAdminOrgContext();
+/** Platform actions taken on this org — the existing super_admin_audit_events view. */
+function PlatformActionsView({ orgId }: { orgId: string }) {
   const { data, isLoading, error } = useSuperAdminAudit({
     page: 1,
     limit: 50,
     targetType: 'organization',
-    targetId: org.id,
+    targetId: orgId,
   });
   const events = data?.events ?? [];
 
@@ -52,5 +60,58 @@ export function SuperAdminOrgActivitySection() {
         </li>
       ))}
     </ol>
+  );
+}
+
+/** Everything the org's own team / guests / crons did — the org `activity_log`. */
+function OrgActivityView({ orgId }: { orgId: string }) {
+  const query = useSuperAdminOrgActivity(orgId);
+  const [selected, setSelected] = useState<ActivityEvent | null>(null);
+  const events = useMemo(() => query.data?.pages.flatMap((p) => p.events) ?? [], [query.data]);
+
+  if (query.isLoading) return <SuperAdminPageLoading />;
+  if (query.isError) return <p className="text-destructive text-sm">Could not load activity.</p>;
+
+  return events.length === 0 ? (
+    <SuperAdminEmptyState icon={ScrollText} title="No recorded org activity yet" />
+  ) : (
+    <div className="space-y-2">
+      <ActivityFeedList events={events} onSelect={setSelected} />
+      {query.hasNextPage ? (
+        <div className="pt-1 text-center">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={query.isFetchingNextPage}
+            onClick={() => void query.fetchNextPage()}
+          >
+            {query.isFetchingNextPage ? 'Loading…' : 'Load more'}
+          </Button>
+        </div>
+      ) : null}
+      <ActivityDetailSheet event={selected} onOpenChange={(open) => !open && setSelected(null)} />
+    </div>
+  );
+}
+
+export function SuperAdminOrgActivitySection() {
+  const { org } = useSuperAdminOrgContext();
+  const [view, setView] = useState<'platform' | 'org'>('platform');
+
+  return (
+    <div className="space-y-3">
+      <Tabs value={view} onValueChange={(v) => setView(v as 'platform' | 'org')}>
+        <TabsList>
+          <TabsTrigger value="platform">Platform actions</TabsTrigger>
+          <TabsTrigger value="org">Org activity</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {view === 'platform' ? (
+        <PlatformActionsView orgId={org.id} />
+      ) : (
+        <OrgActivityView orgId={org.id} />
+      )}
+    </div>
   );
 }

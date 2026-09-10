@@ -17,6 +17,7 @@ export const superAdminPaths = {
   approvals: '/admin/approvals',
   support: '/admin/support',
   supportFaqs: '/admin/support/faqs',
+  playbookArticles: '/admin/playbook',
   announcements: '/admin/announcements',
   hosts: '/admin/hosts',
   settings: '/admin/settings',

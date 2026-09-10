@@ -20,6 +20,7 @@ import {
   PARKING_REGISTRATION_STEP_COUNT,
 } from '@/features/guest/marketing/parkings/lib/parkingRegistrationSteps';
 
+import { bottomTabBarOffsetClassName } from '@/components/mobile/BottomTabBar';
 import {
   PARKING_REQUEST_FORM_STEPS,
   ParkingFlowStepper,
@@ -46,6 +47,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
 import { parkingFlowStep, parkingFlowTransition } from '@/lib/parking/parkingFlowMotion';
+import { cn } from '@/lib/utils';
 import {
   DATE_PICKER_DISPLAY_FORMAT,
   dateToString,
@@ -72,6 +74,13 @@ interface ParkingRegistrationFormProps {
     linkedPropertyBookingId: string | null,
     antiSpam?: { contact_time: string; formLoadedAt: string }
   ) => Promise<void>;
+  /**
+   * `'modal'` (default): rendered inside `ParkingBookingFormModal`'s own sheet
+   * — the step nav stays a plain inline row. `'page'`: rendered as a standalone
+   * route (`ParkingFormPage`) — the step nav floats via `ContextualActionBar`
+   * on phone/tablet, same as the property booking form.
+   */
+  mobileVariant?: 'modal' | 'page';
 }
 
 function clearLinkedFields(form: ReturnType<typeof useForm<ParkingRegistrationValues>>) {
@@ -111,6 +120,7 @@ export function ParkingRegistrationForm({
   isLinkableLoading = false,
   preferredLinkStayId = null,
   onSubmit,
+  mobileVariant = 'modal',
 }: ParkingRegistrationFormProps) {
   const reduceMotion = useReducedMotion();
   const antiSpamFields = useAntiSpamFields();
@@ -267,7 +277,14 @@ export function ParkingRegistrationForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={(e) => e.preventDefault()} className="space-y-6" noValidate>
+      <form
+        onSubmit={(e) => e.preventDefault()}
+        className={cn(
+          'space-y-6',
+          mobileVariant === 'page' && phase === 'manual' && bottomTabBarOffsetClassName()
+        )}
+        noValidate
+      >
         {antiSpamFields.field}
         <AnimatePresence mode="wait" initial={false}>
           {phase === 'choose' ? (
@@ -645,6 +662,7 @@ export function ParkingRegistrationForm({
 
               <GuestFormStepNavigation
                 bare
+                mobileVariant={mobileVariant === 'page' ? 'floating' : 'inline'}
                 currentStep={currentStep}
                 stepCount={PARKING_REGISTRATION_STEP_COUNT}
                 isSubmitting={isSubmitting}

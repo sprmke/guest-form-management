@@ -1303,6 +1303,71 @@
     animation: fade-in-up 0.6s ease-out forwards;
   }
 
+  @keyframes setup-guide-check-in {
+    0% {
+      transform: scale(0.55);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes setup-guide-hero-in {
+    0% {
+      transform: scale(0.9);
+      opacity: 0;
+      filter: blur(8px);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+      filter: blur(0);
+    }
+  }
+
+  @keyframes setup-guide-ring {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 hsl(var(--primary) / 0.28);
+    }
+    50% {
+      box-shadow: 0 0 0 10px hsl(var(--primary) / 0);
+    }
+  }
+
+  @keyframes setup-guide-stagger {
+    0% {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-setup-guide-check-in {
+    animation: setup-guide-check-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-setup-guide-hero-in {
+    animation: setup-guide-hero-in 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-setup-guide-ring {
+    animation: setup-guide-ring 2.4s ease-out 2;
+  }
+
+  .animate-setup-guide-pane {
+    animation: fadeIn 0.2s ease-out both;
+  }
+
+  .animate-setup-guide-stagger {
+    animation: setup-guide-stagger 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
   .animation-delay-200 {
     animation-delay: 0.2s;
     opacity: 0;
@@ -1319,6 +1384,11 @@
     .animate-float,
     .animate-notification-bell-nudge,
     .animate-notification-badge-pulse,
+    .animate-setup-guide-check-in,
+    .animate-setup-guide-hero-in,
+    .animate-setup-guide-ring,
+    .animate-setup-guide-pane,
+    .animate-setup-guide-stagger,
     .guest-enter,
     .guest-enter-forward,
     .guest-enter-back,

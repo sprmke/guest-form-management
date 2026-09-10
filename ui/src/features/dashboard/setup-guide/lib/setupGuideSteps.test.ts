@@ -52,11 +52,11 @@ describe('assembleSetupGuideSteps', () => {
     const propBasics = steps.findIndex((s) => s.id === 'property.prop-1.basics');
     const parkBasics = steps.findIndex((s) => s.id === 'parking.park-1.basics');
     const team = steps.findIndex((s) => s.id === 'org.team');
-    expect(verification).toBeGreaterThan(brand);
-    expect(recommended).toBeGreaterThan(verification);
-    expect(propBasics).toBeGreaterThan(recommended);
+    expect(propBasics).toBeGreaterThan(brand);
     expect(parkBasics).toBeGreaterThan(propBasics);
-    expect(team).toBeGreaterThan(parkBasics);
+    expect(verification).toBeGreaterThan(parkBasics);
+    expect(recommended).toBeGreaterThan(verification);
+    expect(team).toBeGreaterThan(recommended);
   });
 
   it('repeats property blocks for two properties', () => {
@@ -109,7 +109,7 @@ describe('deriveSetupGuideProgress', () => {
         listingIdsMissingTier1Proof: ['prop-1', 'park-1'],
         recommendedSubmitted: false,
       },
-      persisted: { skippedSteps: [], reviewedSteps: [] },
+      persisted: { skippedSteps: [], reviewedSteps: [], lastStepId: null },
     });
 
     expect(progress.requiredRemaining).toBe(progress.requiredTotal);
@@ -117,11 +117,13 @@ describe('deriveSetupGuideProgress', () => {
     const requiredKinds = progress.steps
       .filter((s) => s.step.requirement === 'required')
       .map((s) => s.step.kind);
-    expect(requiredKinds).not.toContain('property.pricing');
-    expect(requiredKinds).not.toContain('parking.pricing');
+    expect(requiredKinds).toContain('property.pricing');
+    expect(requiredKinds).toContain('parking.pricing');
+    expect(requiredKinds).toContain('parking.email');
+    expect(requiredKinds).not.toContain('org.verification');
     expect(requiredKinds).not.toContain('org.team');
     expect(requiredKinds).not.toContain('org.recommended');
-    expect(requiredKinds).not.toContain('parking.email');
+    expect(progress.steps.find((s) => s.step.kind === 'org.done')?.status).toBe('incomplete');
   });
 
   it('completing only the property block does not clear the launcher', () => {
@@ -145,6 +147,7 @@ describe('deriveSetupGuideProgress', () => {
           'parking.park-1.email',
           'org.team',
         ],
+        lastStepId: 'parking.park-1.basics',
       },
     });
 
@@ -159,7 +162,7 @@ describe('deriveSetupGuideProgress', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('ignores optional/recommended incompleteness for requiredRemaining', () => {
+  it('requires pricing and parking email review before requiredRemaining clears', () => {
     const progress = deriveSetupGuideProgress({
       steps: bothListingSteps,
       completion: {
@@ -170,13 +173,42 @@ describe('deriveSetupGuideProgress', () => {
         listingIdsMissingTier1Proof: [],
         recommendedSubmitted: false,
       },
-      persisted: { skippedSteps: [], reviewedSteps: [] },
+      persisted: { skippedSteps: [], reviewedSteps: [], lastStepId: 'org.brand' },
     });
 
-    expect(progress.requiredRemaining).toBe(0);
+    expect(progress.requiredRemaining).toBeGreaterThan(0);
     expect(progress.steps.find((s) => s.step.id === 'property.prop-1.pricing')?.status).toBe(
       'incomplete'
     );
+    expect(progress.steps.find((s) => s.step.id === 'org.recommended')?.status).toBe('incomplete');
+    expect(progress.steps.find((s) => s.step.kind === 'org.done')?.status).toBe('incomplete');
+  });
+
+  it('clears requiredRemaining when required steps are complete, ignoring optional gaps', () => {
+    const progress = deriveSetupGuideProgress({
+      steps: bothListingSteps,
+      completion: {
+        orgIssueSectionIds: [],
+        propertyIssueSectionIdsById: { 'prop-1': [] },
+        parkingIssueSectionIdsById: { 'park-1': [] },
+        hostTier1Submitted: false,
+        listingIdsMissingTier1Proof: ['prop-1', 'park-1'],
+        recommendedSubmitted: false,
+      },
+      persisted: {
+        skippedSteps: [],
+        reviewedSteps: [
+          'property.prop-1.pricing',
+          'parking.park-1.pricing',
+          'parking.park-1.email',
+        ],
+        lastStepId: 'org.team',
+      },
+    });
+
+    expect(progress.requiredRemaining).toBe(0);
+    expect(progress.steps.find((s) => s.step.kind === 'org.done')?.status).toBe('complete');
+    expect(progress.steps.find((s) => s.step.id === 'org.verification')?.status).toBe('incomplete');
     expect(progress.steps.find((s) => s.step.id === 'org.recommended')?.status).toBe('incomplete');
   });
 
@@ -191,7 +223,11 @@ describe('deriveSetupGuideProgress', () => {
         listingIdsMissingTier1Proof: [],
         recommendedSubmitted: false,
       },
-      persisted: { skippedSteps: [], reviewedSteps: ['property.prop-1.pricing'] },
+      persisted: {
+        skippedSteps: [],
+        reviewedSteps: ['property.prop-1.pricing'],
+        lastStepId: 'property.prop-1.pricing',
+      },
     });
     expect(progress.steps.find((s) => s.step.id === 'property.prop-1.pricing')?.status).toBe(
       'complete'
@@ -215,7 +251,8 @@ describe('deriveSetupGuideProgress', () => {
       },
       persisted: {
         skippedSteps: EMPTY_SETUP_GUIDE_STATE.skippedSteps,
-        reviewedSteps: EMPTY_SETUP_GUIDE_STATE.reviewedSteps,
+        reviewedSteps: [...EMPTY_SETUP_GUIDE_STATE.reviewedSteps, 'property.p1.pricing'],
+        lastStepId: 'property.p1.email',
       },
     });
     expect(progress.resumeStepId).toBeTruthy();

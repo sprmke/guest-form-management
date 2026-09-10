@@ -2,13 +2,13 @@ import { Loader2, Mail, Save, UserRound } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 
 type PayParkingEmailChoiceVariant = 'submit' | 'update';
 
@@ -60,20 +60,20 @@ export function PayParkingUpdateBroadcastDialog({
   const copy = COPY[variant];
 
   return (
-    <Dialog
+    <ResponsiveModal
       open={open}
       onOpenChange={(next) => {
         if (pending) return;
         onOpenChange(next);
       }}
     >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{copy.title}</DialogTitle>
-          <DialogDescription>{copy.description}</DialogDescription>
-        </DialogHeader>
+      <ResponsiveModalContent className="sm:max-w-md">
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>{copy.title}</ResponsiveModalTitle>
+          <ResponsiveModalDescription>{copy.description}</ResponsiveModalDescription>
+        </ResponsiveModalHeader>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-col">
+        <ResponsiveModalFooter className="flex-col gap-2 sm:flex-col">
           <Button
             type="button"
             variant="outline"
@@ -115,8 +115,8 @@ export function PayParkingUpdateBroadcastDialog({
             )}
             {copy.only}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

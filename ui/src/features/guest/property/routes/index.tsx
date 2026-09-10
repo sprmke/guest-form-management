@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Navigate, Route, useLocation, useParams, useSearchParams } from 'react-router-dom';
+
+import { CalendarDays, Home, MessageCircle } from 'lucide-react';
 
 import { GuestBookingDocumentPage } from '@/features/guest/booking-documents/pages/GuestBookingDocumentPage';
 import { CalendarPage } from '@/features/guest/calendar/pages/CalendarPage';
@@ -19,6 +21,8 @@ import {
   guestCalendarPath,
   guestFormPath,
   guestPayParkingPath,
+  guestPropertyPath,
+  guestPropertyPickDatesPath,
   guestSdFormPath,
   guestReviewPath,
   guestSuccessPath,
@@ -30,6 +34,7 @@ import { GuestReviewPage } from '@/features/guest/sd-form/pages/GuestReviewPage'
 import { SdFormPage } from '@/features/guest/sd-form/pages/SdFormPage';
 import { StayGuidePage } from '@/features/guest/stay-guide/pages/StayGuidePage';
 
+import type { BottomTabItem } from '@/components/mobile/BottomTabBar';
 import { MainLayout } from '@/layouts/MainLayout';
 import { useFavicon } from '@/lib/favicon';
 import { propertyPublicPageTitle, usePageTitle } from '@/lib/pageTitle';
@@ -45,6 +50,13 @@ function resolvePropertyPublicPageName(pathname: string): string {
   return 'Guest';
 }
 
+/** Persistent phone/tablet nav for the property operational shell — a wizard step (form/sd-form) hides it via `ContextualActionBar`. */
+function resolvePropertyTabActiveKey(pathname: string): string {
+  if (pathname.endsWith('/calendar')) return 'calendar';
+  if (pathname.endsWith('/messages')) return 'messages';
+  return 'property';
+}
+
 function GuestPublicLayout() {
   const location = useLocation();
   const propertySlug = useGuestPropertySlug();
@@ -56,6 +68,25 @@ function GuestPublicLayout() {
     propertyPublicPageTitle(propertyName, resolvePropertyPublicPageName(location.pathname))
   );
   useFavicon(guestBrand?.emailLogoUrl);
+
+  const bottomTabs = useMemo<BottomTabItem[]>(
+    () => [
+      { key: 'property', label: 'Property', href: guestPropertyPath(propertySlug), Icon: Home },
+      {
+        key: 'calendar',
+        label: 'Calendar',
+        href: guestCalendarPath(propertySlug),
+        Icon: CalendarDays,
+      },
+      {
+        key: 'messages',
+        label: 'Messages',
+        href: guestPropertyPickDatesPath(propertySlug, 'contactHost'),
+        Icon: MessageCircle,
+      },
+    ],
+    [propertySlug]
+  );
 
   return (
     <MainLayout
@@ -70,6 +101,8 @@ function GuestPublicLayout() {
       propertySlug={propertySlug}
       propertyImageSrc={operationalHeader.propertyImageSrc}
       propertyName={operationalHeader.propertyName}
+      bottomTabs={bottomTabs}
+      bottomTabsActiveKey={resolvePropertyTabActiveKey(location.pathname)}
     />
   );
 }

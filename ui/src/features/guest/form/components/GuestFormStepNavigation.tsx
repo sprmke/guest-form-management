@@ -2,7 +2,9 @@ import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 
 import type { GuestFormStepId } from '@/features/guest/form/lib/guestFormSteps';
 
+import { ContextualActionBar } from '@/components/mobile/ContextualActionBar';
 import { Button } from '@/components/ui/button';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
 
 type GuestFormStepNavigationProps = {
@@ -19,6 +21,13 @@ type GuestFormStepNavigationProps = {
   bare?: boolean;
   /** Label for the final-step submit button. */
   submitLabel?: string;
+  /**
+   * `'floating'` (default): a full-page wizard — claims the shared bottom
+   * band via `ContextualActionBar` on phone/tablet (`<lg`), hiding the tab
+   * bar while this step is mounted. `'inline'`: stays a plain row wherever
+   * it's rendered (modal/sheet footers already own their own scroll + chrome).
+   */
+  mobileVariant?: 'floating' | 'inline';
 };
 
 export function GuestFormStepNavigation({
@@ -32,17 +41,20 @@ export function GuestFormStepNavigation({
   onSubmit,
   bare = false,
   submitLabel = 'Submit guest form',
+  mobileVariant = 'inline',
 }: GuestFormStepNavigationProps) {
   const isFirst = currentStep === 1;
   const isLast = currentStep === stepCount;
+  const isBelowLg = useIsBelowLg();
+  const floating = mobileVariant === 'floating' && isBelowLg;
 
-  return (
+  const actions = (
     <div
       className={cn(
         isFirst
           ? 'flex justify-end'
           : 'flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between',
-        bare ? null : 'border-separator border-t pt-5'
+        !floating && !bare ? 'border-separator border-t pt-5' : null
       )}
     >
       {!isFirst ? (
@@ -93,4 +105,10 @@ export function GuestFormStepNavigation({
       )}
     </div>
   );
+
+  if (floating) {
+    return <ContextualActionBar>{actions}</ContextualActionBar>;
+  }
+
+  return actions;
 }

@@ -44,6 +44,8 @@ import {
 import { normalizeVoucherRevealStyle } from '@/features/guest/sd-form/lib/voucherRevealStyle';
 
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
+import { bottomTabBarOffsetClassName } from '@/components/mobile/BottomTabBar';
+import { ContextualActionBar } from '@/components/mobile/ContextualActionBar';
 import { useAntiSpamSubmit } from '@/components/security/useAntiSpamSubmit';
 import { SdFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { Button } from '@/components/ui/button';
@@ -55,6 +57,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
 import { cn } from '@/lib/utils';
@@ -286,9 +289,16 @@ export function SdFormPage() {
   const showGreeting = step === 1;
 
   const stepperActive: 1 | 2 | 3 = step === 1 ? 1 : step === 2 ? 2 : 3;
+  /* Step 3's bank-details form floats its Back/Submit on phone/tablet — clear it here. */
+  const showsFloatingActions = step === 3 && !data.awaiting_balance_settlement;
 
   return (
-    <div className="relative space-y-6 p-4 sm:p-6 lg:p-8">
+    <div
+      className={cn(
+        'relative space-y-6 p-4 sm:p-6 lg:p-8',
+        showsFloatingActions && bottomTabBarOffsetClassName()
+      )}
+    >
       <GuestFormBrandHeader {...brandHeader} title={SD_FORM_BRAND_TITLE} />
       <GuestFormStepper activeStep={stepperActive} steps={SD_FORM_STEPS} />
 
@@ -670,32 +680,61 @@ function StepTwo({
         </div>
       )}
 
-      <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-between">
-        <Button
-          type="button"
-          variant="outline"
-          className="min-h-[44px] w-full sm:w-auto"
-          disabled={isSubmitting}
-          onClick={onBack}
-        >
-          Back
-        </Button>
-        <Button
-          type="button"
-          className="shadow-primary/15 min-h-[44px] w-full shadow-md sm:w-auto"
-          disabled={isSubmitting || !stepTwoValidation.canSubmit}
-          onClick={onSubmit}
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
-              Submitting…
-            </>
-          ) : (
-            'Submit security deposit refund'
-          )}
-        </Button>
-      </div>
+      <SdRefundStepTwoActions
+        isSubmitting={isSubmitting}
+        canSubmit={stepTwoValidation.canSubmit}
+        onBack={onBack}
+        onSubmit={onSubmit}
+      />
     </div>
   );
+}
+
+function SdRefundStepTwoActions({
+  isSubmitting,
+  canSubmit,
+  onBack,
+  onSubmit,
+}: {
+  isSubmitting: boolean;
+  canSubmit: boolean;
+  onBack: () => void;
+  onSubmit: () => void;
+}) {
+  const isBelowLg = useIsBelowLg();
+
+  const actions = (
+    <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-between">
+      <Button
+        type="button"
+        variant="outline"
+        className="min-h-[44px] w-full sm:w-auto"
+        disabled={isSubmitting}
+        onClick={onBack}
+      >
+        Back
+      </Button>
+      <Button
+        type="button"
+        className="shadow-primary/15 min-h-[44px] w-full shadow-md sm:w-auto"
+        disabled={isSubmitting || !canSubmit}
+        onClick={onSubmit}
+      >
+        {isSubmitting ? (
+          <>
+            <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+            Submitting…
+          </>
+        ) : (
+          'Submit security deposit refund'
+        )}
+      </Button>
+    </div>
+  );
+
+  if (isBelowLg) {
+    return <ContextualActionBar>{actions}</ContextualActionBar>;
+  }
+
+  return actions;
 }

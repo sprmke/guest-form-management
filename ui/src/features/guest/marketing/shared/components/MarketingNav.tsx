@@ -3,8 +3,7 @@ import { useState, useEffect, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
 
-import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 import { GuestAccountMenu } from '@/features/guest/account/components/GuestAccountMenu';
 import {
@@ -47,7 +46,6 @@ export function MarketingNav() {
   const { pathname } = useLocation();
   const prefersReducedMotion = usePrefersReducedMotion();
   const isExploreMode = getAuthAudienceFromPath(pathname) === 'guest';
-  const isAccountRoute = pathname.startsWith('/account');
   const { status: adminSessionStatus } = useAdminSession();
   const isHostSignedIn = adminSessionStatus === 'admin';
   const hostSignInCta = getHostMarketingNavCta(false);
@@ -56,7 +54,6 @@ export function MarketingNav() {
   const guestSignInCta = getGuestLoginCta();
   const modeSwitch = useModeSwitchTransition();
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { headerAnchorRef, morph, enabled: scrollSearchEnabled } = useListingScrollSearch();
   const navMorph = useListingNavMorph();
   const headerSolid = isScrolled || morph.progress > 0.08;
@@ -99,7 +96,6 @@ export function MarketingNav() {
 
   const handleHostNavClick = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
     event.preventDefault();
-    setIsMobileMenuOpen(false);
     scrollToSection(id, prefersReducedMotion);
   };
 
@@ -109,9 +105,6 @@ export function MarketingNav() {
       ? 'text-muted-foreground'
       : 'text-foreground/80 hover:text-foreground dark:text-white/80 dark:hover:text-white'
   );
-
-  const mobileNavLinkClassName =
-    'text-foreground hover:text-primary block min-h-[44px] py-3 text-lg font-medium transition-colors';
 
   const renderNavLink = (link: (typeof guestNavLinks)[number] | (typeof hostNavLinks)[number]) => {
     if ('kind' in link) {
@@ -145,60 +138,6 @@ export function MarketingNav() {
 
     return (
       <Link key={link.href} to={link.href} className={navLinkClassName}>
-        {link.label}
-      </Link>
-    );
-  };
-
-  const renderMobileNavLink = (
-    link: (typeof guestNavLinks)[number] | (typeof hostNavLinks)[number]
-  ) => {
-    if ('kind' in link) {
-      if (link.kind === 'route') {
-        return (
-          <Link
-            key={link.href}
-            to={link.href}
-            onClick={() => setIsMobileMenuOpen(false)}
-            className={mobileNavLinkClassName}
-          >
-            {link.label}
-          </Link>
-        );
-      }
-
-      if (pathname === '/for-hosts') {
-        return (
-          <a
-            key={link.id}
-            href={`#${link.id}`}
-            onClick={(event) => handleHostNavClick(event, link.id)}
-            className={mobileNavLinkClassName}
-          >
-            {link.label}
-          </a>
-        );
-      }
-
-      return (
-        <Link
-          key={link.id}
-          to={hostSectionTarget(pathname, link.id)}
-          onClick={() => setIsMobileMenuOpen(false)}
-          className={mobileNavLinkClassName}
-        >
-          {link.label}
-        </Link>
-      );
-    }
-
-    return (
-      <Link
-        key={link.href}
-        to={link.href}
-        onClick={() => setIsMobileMenuOpen(false)}
-        className={mobileNavLinkClassName}
-      >
         {link.label}
       </Link>
     );
@@ -241,132 +180,76 @@ export function MarketingNav() {
   );
 
   return (
-    <>
-      <motion.header
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        className={cn(
-          'fixed left-0 right-0 top-0 z-50 transition-all duration-300',
-          headerSolid ? 'bg-background/80 border-b shadow-sm backdrop-blur-xl' : 'bg-transparent'
-        )}
-      >
-        <nav className="container relative mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative flex h-16 items-center justify-between overflow-hidden lg:h-20">
-            {/* Logo */}
-            <Link
-              to="/"
-              onClick={handleExploreHome}
-              className="group relative z-20 flex shrink-0 items-center gap-2"
+    <motion.header
+      initial={{ y: -100 }}
+      animate={{ y: 0 }}
+      className={cn(
+        'fixed left-0 right-0 top-0 z-50 transition-all duration-300',
+        headerSolid ? 'bg-background/80 border-b shadow-sm backdrop-blur-xl' : 'bg-transparent'
+      )}
+    >
+      <nav className="container relative mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="relative flex h-16 items-center justify-between overflow-hidden lg:h-20">
+          {/* Logo */}
+          <Link
+            to="/"
+            onClick={handleExploreHome}
+            className="group relative z-20 flex shrink-0 items-center gap-2"
+          >
+            <MarketingBrandLogo
+              wordmarkClassName={cn(
+                headerSolid ? 'text-foreground' : 'text-foreground dark:text-white',
+                collapseBrandForSearch
+                  ? 'max-w-0 overflow-hidden opacity-0 lg:max-w-[12rem] lg:opacity-100'
+                  : 'max-w-[12rem] opacity-100',
+                'overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300 ease-out'
+              )}
+              markClassName="group-hover:shadow-primary/40 transition-shadow"
+            />
+          </Link>
+
+          {scrollSearchEnabled ? (
+            <div
+              className="pointer-events-none absolute inset-y-0 left-[52px] right-12 hidden items-center lg:left-1/2 lg:flex lg:w-full lg:max-w-[24rem] lg:-translate-x-1/2"
+              aria-hidden
             >
-              <MarketingBrandLogo
-                wordmarkClassName={cn(
-                  headerSolid ? 'text-foreground' : 'text-foreground dark:text-white',
-                  collapseBrandForSearch
-                    ? 'max-w-0 overflow-hidden opacity-0 lg:max-w-[12rem] lg:opacity-100'
-                    : 'max-w-[12rem] opacity-100',
-                  'overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300 ease-out'
-                )}
-                markClassName="group-hover:shadow-primary/40 transition-shadow"
-              />
-            </Link>
-
-            {scrollSearchEnabled ? (
-              <div
-                className="pointer-events-none absolute inset-y-0 left-[52px] right-12 hidden items-center lg:left-1/2 lg:flex lg:w-full lg:max-w-[24rem] lg:-translate-x-1/2"
-                aria-hidden
-              >
-                <div ref={headerAnchorRef} className="h-10 w-full" />
-              </div>
-            ) : null}
-
-            {/* Desktop Navigation */}
-            {scrollSearchEnabled ? (
-              <div
-                className="absolute left-1/2 top-1/2 hidden items-center gap-8 will-change-transform lg:flex"
-                style={{
-                  opacity: navMorph.opacity,
-                  transform: `translate(-50%, calc(-50% + ${navMorph.translateY}px))`,
-                  pointerEvents: navMorph.progress > 0.58 ? 'none' : 'auto',
-                }}
-              >
-                {navLinks.map((link) => renderNavLink(link))}
-              </div>
-            ) : (
-              <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 lg:flex">
-                {navLinks.map((link) => renderNavLink(link))}
-              </div>
-            )}
-
-            {/* Desktop CTA */}
-            <div className="relative z-10 hidden items-center gap-4 lg:flex">
-              <div
-                className={cn(
-                  'flex items-center justify-center',
-                  !headerSolid && '[&_button]:text-foreground dark:[&_button]:text-white'
-                )}
-              >
-                <ThemeToggle variant="ghost" size="icon" />
-              </div>
-              {modeCta}
-              {accountMenu}
+              <div ref={headerAnchorRef} className="h-10 w-full" />
             </div>
+          ) : null}
 
-            {/* Mobile Menu Button */}
-            <button
-              type="button"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-              aria-expanded={isMobileMenuOpen}
+          {/* Desktop Navigation */}
+          {scrollSearchEnabled ? (
+            <div
+              className="absolute left-1/2 top-1/2 hidden items-center gap-8 will-change-transform lg:flex"
+              style={{
+                opacity: navMorph.opacity,
+                transform: `translate(-50%, calc(-50% + ${navMorph.translateY}px))`,
+                pointerEvents: navMorph.progress > 0.58 ? 'none' : 'auto',
+              }}
+            >
+              {navLinks.map((link) => renderNavLink(link))}
+            </div>
+          ) : (
+            <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 lg:flex">
+              {navLinks.map((link) => renderNavLink(link))}
+            </div>
+          )}
+
+          {/* Desktop CTA */}
+          <div className="relative z-10 hidden items-center gap-4 lg:flex">
+            <div
               className={cn(
-                'relative z-20 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2 transition-colors lg:hidden',
-                headerSolid
-                  ? 'text-foreground hover:bg-muted'
-                  : 'text-foreground hover:bg-muted/80 dark:text-white dark:hover:bg-white/10'
+                'flex items-center justify-center',
+                !headerSolid && '[&_button]:text-foreground dark:[&_button]:text-white'
               )}
             >
-              {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
-          </div>
-        </nav>
-      </motion.header>
-
-      {/* Mobile Menu */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed inset-x-0 top-16 z-[60] lg:hidden"
-          >
-            <div className="bg-background/95 border-b shadow-lg backdrop-blur-xl">
-              <div className="container mx-auto space-y-4 px-4 py-6">
-                {navLinks.map((link) => renderMobileNavLink(link))}
-                <div className="space-y-3 border-t pt-4">
-                  <div className="flex items-center justify-between py-2">
-                    <span className="text-muted-foreground text-sm">Theme</span>
-                    <ThemeToggle variant="ghost" size="icon" />
-                  </div>
-                  {!isAccountRoute ? (
-                    <div className="flex justify-center py-1">{accountMenu}</div>
-                  ) : null}
-                  <Button
-                    className="w-full rounded-full"
-                    disabled={modeSwitch.isTransitioning}
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      if (isExploreMode) handleBecomeHost();
-                      else handleExploreMode();
-                    }}
-                  >
-                    {isExploreMode ? 'Become a host?' : 'Explore'}
-                  </Button>
-                </div>
-              </div>
+              <ThemeToggle variant="ghost" size="icon" />
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+            {modeCta}
+            {accountMenu}
+          </div>
+        </div>
+      </nav>
+    </motion.header>
   );
 }

@@ -5,6 +5,12 @@ import { Outlet, useLocation } from 'react-router-dom';
 
 import { GuestOperationalHeader } from '@/features/guest/property/components/GuestOperationalHeader';
 
+import { BottomBarSlotProvider } from '@/components/mobile/BottomBarSlot';
+import {
+  BottomTabBar,
+  bottomTabBarOffsetClassName,
+  type BottomTabItem,
+} from '@/components/mobile/BottomTabBar';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { guestEnterClass, type GuestNavState } from '@/layouts/guest/navState';
 import { platformCopyrightLine } from '@/lib/platformBranding';
@@ -30,6 +36,13 @@ interface MainLayoutProps {
   homeHref?: string;
   /** Max width utility for the content card wrapper (default guest form width). */
   contentMaxWidth?: string;
+  /**
+   * Persistent phone/tablet tab bar (`<lg`) for multi-screen operational flows
+   * (e.g. calendar/messages). Omit for single-purpose pages — a wizard step
+   * claims the same band via `ContextualActionBar` and auto-hides this.
+   */
+  bottomTabs?: BottomTabItem[];
+  bottomTabsActiveKey?: string | null;
 }
 
 export function MainLayout({
@@ -42,6 +55,8 @@ export function MainLayout({
   propertyName,
   homeHref,
   contentMaxWidth = 'max-w-3xl',
+  bottomTabs,
+  bottomTabsActiveKey = null,
 }: MainLayoutProps) {
   const location = useLocation();
   const { resolvedTheme } = useTheme();
@@ -52,12 +67,13 @@ export function MainLayout({
     [brandColor, resolvedTheme]
   );
   const footerText = footerLabel?.trim() || DEFAULT_FOOTER_LABEL;
+  const hasTabBar = Boolean(bottomTabs?.length);
 
   useEffect(() => {
     return applyBrandCssVariables(document.documentElement, brandStyle as Record<string, string>);
   }, [brandStyle]);
 
-  return (
+  const body = (
     <main
       className="app-shell !bg-muted sm:bg-background relative min-h-screen"
       style={brandStyle as CSSProperties}
@@ -98,9 +114,26 @@ export function MainLayout({
         </div>
       </div>
 
-      <footer className="text-muted-foreground px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-6 text-center text-xs sm:px-6">
+      <footer
+        className={cn(
+          'text-muted-foreground px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-6 text-center text-xs sm:px-6',
+          hasTabBar && bottomTabBarOffsetClassName()
+        )}
+      >
         <p>{footerText}</p>
       </footer>
     </main>
+  );
+
+  if (!hasTabBar) return body;
+
+  return (
+    <BottomBarSlotProvider
+      tabBar={
+        <BottomTabBar items={bottomTabs!} activeKey={bottomTabsActiveKey} aria-label="Property" />
+      }
+    >
+      {body}
+    </BottomBarSlotProvider>
   );
 }

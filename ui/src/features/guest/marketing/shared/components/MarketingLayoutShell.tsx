@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { scrollToSection } from '@/features/guest/marketing/for-hosts/lib/scrollToSection';
+import { MarketingBottomNav } from '@/features/guest/marketing/shared/components/MarketingBottomNav';
 import { MarketingFooter } from '@/features/guest/marketing/shared/components/MarketingFooter';
 import { MarketingNav } from '@/features/guest/marketing/shared/components/MarketingNav';
 import { ListingScrollSearchProvider } from '@/features/guest/marketing/shared/context/ListingScrollSearchContext';
@@ -13,8 +14,11 @@ import {
   getListingSearchWhereSegment,
 } from '@/features/guest/marketing/shared/lib/listingSearchFields';
 
+import { BottomBarSlotProvider } from '@/components/mobile/BottomBarSlot';
+import { bottomTabBarOffsetClassName } from '@/components/mobile/BottomTabBar';
 import { useFavicon } from '@/lib/favicon';
 import { APP_TITLE, usePageTitle } from '@/lib/pageTitle';
+import { cn } from '@/lib/utils';
 
 function isFocusedGuestFlowRoute(pathname: string) {
   if (/^\/parkings\/requests\/[^/]+\/?$/.test(pathname)) return true;
@@ -66,14 +70,25 @@ export function MarketingLayoutShell() {
   usePageTitle(APP_TITLE || undefined);
   useFavicon(undefined);
 
-  const shell = (
-    <div className="relative flex min-h-screen flex-col">
+  const page = (
+    <div
+      className={cn(
+        'relative flex min-h-screen flex-col',
+        !isFormPage && bottomTabBarOffsetClassName()
+      )}
+    >
       {!isFormPage && <MarketingNav />}
       <main className="flex-1">
         <Outlet />
       </main>
       {!isFormPage && <MarketingFooter />}
     </div>
+  );
+
+  const shell = isFormPage ? (
+    page
+  ) : (
+    <BottomBarSlotProvider tabBar={<MarketingBottomNav />}>{page}</BottomBarSlotProvider>
   );
 
   if (!scrollSearchConfig || isFormPage) {
