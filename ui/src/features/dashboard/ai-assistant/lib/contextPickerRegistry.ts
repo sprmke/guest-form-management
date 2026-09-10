@@ -229,6 +229,12 @@ export const CONTEXT_PICKER_REGISTRY: Record<ContextPickerModuleId, ContextPicke
     singular: 'booking',
     plural: 'bookings',
   },
+  analytics: {
+    picker: 'booking',
+    entityTypes: ['booking'],
+    singular: 'booking',
+    plural: 'bookings',
+  },
 };
 
 function firstSectionSegment(pathname: string, prefixRe: RegExp): string | undefined {
