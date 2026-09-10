@@ -1017,7 +1017,7 @@ export function MediaPreviewSkeleton({ className }: { className?: string } = {})
   );
 }
 
-/** Team page (org/parking/property) — stat card strip + search/filter row + member row list. */
+/** Team page (org/parking/property) — stat card strip + tab row + member list card. */
 export function TeamPageSkeleton() {
   return (
     <div className="space-y-3 sm:space-y-4" aria-busy="true" aria-label="Loading team">
@@ -1031,26 +1031,33 @@ export function TeamPageSkeleton() {
           <Skeleton key={i} className="h-7 flex-1 rounded-md sm:w-24 sm:flex-none" />
         ))}
       </div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Skeleton className="h-10 w-full rounded-lg sm:max-w-sm" />
-        <Skeleton className="h-10 w-full rounded-lg sm:w-[180px]" />
-      </div>
-      <div className="border-border/50 bg-card rounded-xl border p-4">
-        <Skeleton className="mb-3 h-4 w-32" />
-        <div className="space-y-2">
+      <div className="border-border/50 bg-card rounded-xl border">
+        <div className="space-y-0 p-4 pb-2 sm:p-6 sm:pb-2">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+            <Skeleton className="h-4 w-32 shrink-0" />
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+              <Skeleton className="h-8 w-full rounded-lg sm:w-[260px]" />
+              <Skeleton className="h-8 w-full rounded-lg sm:w-[136px]" />
+            </div>
+          </div>
+        </div>
+        <div className="space-y-1.5 px-4 pb-4 pt-0 sm:space-y-2 sm:px-6 sm:pb-6">
           {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
-              className="border-border/60 flex items-center gap-3 rounded-lg border p-3 sm:gap-4 sm:p-4"
+              className="border-border/60 flex items-center gap-2.5 rounded-lg border px-2.5 py-2 sm:gap-3 sm:p-3"
               style={{ opacity: 1 - i * 0.08 }}
             >
-              <Skeleton className="size-10 shrink-0 rounded-full" />
+              <Skeleton className="size-8 shrink-0 rounded-full sm:size-9" />
               <div className="min-w-0 flex-1 space-y-1.5">
                 <Skeleton className="h-3 w-1/3 max-w-full" />
                 <Skeleton className="h-2.5 w-1/2 max-w-full" />
+                <div className="flex flex-wrap gap-1">
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                  <Skeleton className="h-5 w-14 rounded-full" />
+                </div>
               </div>
-              <Skeleton className="hidden h-5 w-16 shrink-0 rounded-full sm:block" />
-              <Skeleton className="h-9 w-9 shrink-0 rounded-md sm:w-24" />
+              <Skeleton className="h-8 w-8 shrink-0 rounded-md sm:w-20" />
             </div>
           ))}
         </div>

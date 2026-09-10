@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { Loader2 } from 'lucide-react';
 
+import { EntityActivityHistory } from '@/features/dashboard/activity/components/EntityActivityHistory';
 import { useTelegramFinanceSettings } from '@/features/dashboard/bookings/hooks/useTelegramFinanceSettings';
 import {
   OperatingLineItemForm,
@@ -181,6 +182,14 @@ export function FinanceTransactionModals({
               seriesRecurrenceUntil={editingSeriesUntil}
               onSubmit={handleSubmit}
             />
+            {editingItem ? (
+              <EntityActivityHistory
+                targetType="finance_entry"
+                targetId={editingItem.id}
+                className="border-border/60 mt-5 border-t pt-4"
+                initialLimit={4}
+              />
+            ) : null}
           </div>
           <ResponsiveModalFooter className="border-border shrink-0 flex-row gap-2 border-t px-4 py-3.5 sm:px-5">
             <button

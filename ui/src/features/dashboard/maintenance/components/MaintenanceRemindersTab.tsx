@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { Loader2, Pencil, Plus, Repeat, Trash2, Wrench } from 'lucide-react';
 
+import { EntityActivityHistory } from '@/features/dashboard/activity/components/EntityActivityHistory';
 import {
   AdminDataTable,
   AdminTableHeadRow,
@@ -480,6 +481,14 @@ export function MaintenanceRemindersTab({
               seriesRecurrenceUntil={editingSeriesUntil}
               onSubmit={handleSubmit}
             />
+            {editing ? (
+              <EntityActivityHistory
+                targetType="maintenance_item"
+                targetId={editing.id}
+                className="border-border/60 mt-5 border-t pt-4"
+                initialLimit={4}
+              />
+            ) : null}
           </div>
           <ResponsiveModalFooter className="border-border shrink-0 flex-row gap-2 border-t px-4 py-3.5 sm:px-5">
             <button

@@ -116,17 +116,12 @@ export function planParkingSettingsSave(input: {
     firstBlockedSectionId,
     firstBlockedMessage,
     hasSavableWork:
-      saveProfile ||
-      saveDetails ||
-      saveFeatures ||
-      saveLocation ||
-      savePayment ||
-      saveAutomation,
+      saveProfile || saveDetails || saveFeatures || saveLocation || savePayment || saveAutomation,
   };
 }
 
 export const SETUP_GUIDE_PARKING_SAVE_SCOPE: Record<
-  'basics' | 'location' | 'photo' | 'payments' | 'email',
+  'basics' | 'location' | 'photo' | 'payments' | 'email' | 'pricing',
   readonly ParkingSettingsSectionId[]
 > = {
   basics: ['basic', 'details'],
@@ -134,4 +129,6 @@ export const SETUP_GUIDE_PARKING_SAVE_SCOPE: Record<
   photo: ['media', 'features'],
   payments: ['payment'],
   email: [],
+  // Pricing owns its own save flow via `SetupGuideParkingPricingEmbed` — never scope-saved here.
+  pricing: [],
 };

@@ -10,33 +10,79 @@ type Props = {
   /** 0-based active index. */
   activeIndex: number;
   className?: string;
+  /** When set, step labels jump to that index. */
+  onStepSelect?: (index: number) => void;
+  /** When false, only the active step label is shown (Setup Guide listing pane). */
+  showAllLabels?: boolean;
 };
 
 /**
  * Shared parking-flow stepper — all labels · trail + fraction + segmented bar.
- * Same chrome on registration form, guest status, and host booking detail.
+ * Same chrome on registration form, guest status, host booking detail, and the
+ * Setup Guide listing pane.
  */
-export function ParkingFlowStepper({ steps, activeIndex, className }: Props) {
+export function ParkingFlowStepper({
+  steps,
+  activeIndex,
+  className,
+  onStepSelect,
+  showAllLabels = true,
+}: Props) {
   const safeIndex = Math.min(Math.max(activeIndex, 0), Math.max(steps.length - 1, 0));
   const current = steps[safeIndex];
   const displayIndex = safeIndex + 1;
+  const interactive = typeof onStepSelect === 'function';
 
   return (
     <nav aria-label="Progress" className={cn('w-full', className)}>
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-muted-foreground min-w-0 text-xs font-medium uppercase tracking-wide">
-          {steps.map((step, index) => (
-            <span key={step.id}>
-              {index > 0 ? <span className="text-border mx-1.5">·</span> : null}
-              <span
-                className={cn(index === safeIndex && 'text-foreground font-semibold')}
-                aria-current={index === safeIndex ? 'step' : undefined}
-              >
-                {step.label}
-              </span>
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-muted-foreground min-w-0 text-xs font-medium uppercase tracking-wide">
+          {showAllLabels ? (
+            steps.map((step, index) => {
+              const currentStep = index === safeIndex;
+              const labelClass = cn(currentStep && 'text-foreground font-semibold');
+              return (
+                <span key={step.id}>
+                  {index > 0 ? <span className="text-border mx-1.5">·</span> : null}
+                  {interactive ? (
+                    <button
+                      type="button"
+                      onClick={() => onStepSelect?.(index)}
+                      aria-current={currentStep ? 'step' : undefined}
+                      className={cn(
+                        'hover:text-foreground inline-flex min-h-11 items-center rounded-sm sm:min-h-0',
+                        'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
+                        labelClass
+                      )}
+                    >
+                      {step.label}
+                    </button>
+                  ) : (
+                    <span className={labelClass} aria-current={currentStep ? 'step' : undefined}>
+                      {step.label}
+                    </span>
+                  )}
+                </span>
+              );
+            })
+          ) : interactive ? (
+            <button
+              type="button"
+              onClick={() => onStepSelect?.(safeIndex)}
+              aria-current="step"
+              className={cn(
+                'text-foreground inline-flex min-h-11 items-center rounded-sm font-semibold sm:min-h-0',
+                'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1'
+              )}
+            >
+              {current?.label ?? 'Step'}
+            </button>
+          ) : (
+            <span className="text-foreground font-semibold" aria-current="step">
+              {current?.label ?? 'Step'}
             </span>
-          ))}
-        </p>
+          )}
+        </div>
         <p className="text-muted-foreground shrink-0 text-xs tabular-nums">
           {displayIndex}/{steps.length}
         </p>

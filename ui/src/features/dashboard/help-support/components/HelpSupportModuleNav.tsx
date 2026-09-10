@@ -56,8 +56,6 @@ export function HelpSupportModuleNav() {
           valueClassName={VALUE_CLASS}
           className={CARD_CLASS}
           icon={HelpCircle}
-          iconClassName="text-violet-600 dark:text-violet-400"
-          iconBgClassName="bg-violet-100 dark:bg-violet-900/30"
           to={basePath}
           active={faqsSelected}
         />
@@ -67,8 +65,6 @@ export function HelpSupportModuleNav() {
           valueClassName={VALUE_CLASS}
           className={CARD_CLASS}
           icon={BookOpen}
-          iconClassName="text-blue-600 dark:text-blue-400"
-          iconBgClassName="bg-blue-100 dark:bg-blue-900/30"
           to={guidesSelected ? basePath : helpSupportDocsPath(basePath)}
           active={guidesSelected}
         />
@@ -78,8 +74,6 @@ export function HelpSupportModuleNav() {
           valueClassName={VALUE_CLASS}
           className={CARD_CLASS}
           icon={Ticket}
-          iconClassName="text-amber-600 dark:text-amber-400"
-          iconBgClassName="bg-amber-100 dark:bg-amber-900/30"
           to={ticketsSelected && ticketsAtRoot ? basePath : helpSupportTicketsPath(basePath)}
           active={ticketsSelected}
         />
@@ -89,8 +83,6 @@ export function HelpSupportModuleNav() {
           valueClassName={VALUE_CLASS}
           className={CARD_CLASS}
           icon={Sparkles}
-          iconClassName="text-emerald-600 dark:text-emerald-400"
-          iconBgClassName="bg-emerald-100 dark:bg-emerald-900/30"
           onClick={openAiAssistant}
         />
       </HelpSupportModuleNavGrid>

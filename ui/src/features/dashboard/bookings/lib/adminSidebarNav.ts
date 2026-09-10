@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 
 import {
+  BarChart3,
   Bell,
   BookOpen,
   Building2,
@@ -13,7 +14,6 @@ import {
   Inbox,
   LayoutDashboard,
   Megaphone,
-  ScrollText,
   Settings,
   Tags,
   Users,
@@ -101,19 +101,24 @@ export function buildOrgNavSections(
 
   items.push(
     {
+      label: 'Analytics',
+      href: orgSectionPath(orgSlug, 'analytics'),
+      Icon: BarChart3,
+    },
+    {
       label: 'Team',
       href: orgTeamPath(orgSlug),
       Icon: Users,
     },
     {
-      label: 'Activity',
-      href: orgSectionPath(orgSlug, 'activity'),
-      Icon: ScrollText,
-    },
-    {
       label: 'Plans & Billing',
       href: orgPlansPath(orgSlug),
       Icon: CreditCard,
+    },
+    {
+      label: 'Announcements',
+      href: orgSectionPath(orgSlug, 'announcements'),
+      Icon: Megaphone,
     },
     {
       label: 'Settings',
@@ -161,6 +166,11 @@ export function buildPropertyNavSections(
           Icon: Tags,
         },
         {
+          label: 'Analytics',
+          href: propertySectionPath(orgSlug, propertySlug, 'analytics'),
+          Icon: BarChart3,
+        },
+        {
           label: 'Team',
           href: propertySectionPath(orgSlug, propertySlug, 'team'),
           Icon: Users,
@@ -181,11 +191,6 @@ export function buildPropertyNavSections(
           Icon: Bell,
         },
         {
-          label: 'Activity',
-          href: propertySectionPath(orgSlug, propertySlug, 'activity'),
-          Icon: ScrollText,
-        },
-        {
           label: 'Templates',
           href: propertySectionPath(orgSlug, propertySlug, 'templates'),
           Icon: FileText,
@@ -196,19 +201,9 @@ export function buildPropertyNavSections(
           Icon: Globe,
         },
         {
-          label: 'Plans & Billing',
-          href: propertySectionPath(orgSlug, propertySlug, 'plans'),
-          Icon: CreditCard,
-        },
-        {
           label: 'Settings',
           href: propertySectionPath(orgSlug, propertySlug, 'settings'),
           Icon: Settings,
-        },
-        {
-          label: 'Announcements',
-          href: propertySectionPath(orgSlug, propertySlug, 'announcements'),
-          Icon: ScrollText,
         },
         {
           label: 'Help & Support',
@@ -262,19 +257,9 @@ export function buildParkingNavSections(orgSlug: string, parkingSlug: string): S
           Icon: Bell,
         },
         {
-          label: 'Activity',
-          href: parkingSectionPath(orgSlug, parkingSlug, 'activity'),
-          Icon: ScrollText,
-        },
-        {
           label: 'Settings',
           href: parkingSectionPath(orgSlug, parkingSlug, 'settings'),
           Icon: Settings,
-        },
-        {
-          label: 'Announcements',
-          href: parkingSectionPath(orgSlug, parkingSlug, 'announcements'),
-          Icon: ScrollText,
         },
         {
           label: 'Help & Support',

@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  BarChart3,
   CalendarCheck,
   CalendarPlus,
   CalendarX,
@@ -53,6 +54,7 @@ const NOTIFICATION_ICONS: Record<NotificationType, LucideIcon> = {
   booking_guest_form_completed: ClipboardCheck,
   smart_pricing_updated: Sparkles,
   property_settings_copied: Copy,
+  analytics_review_updated: BarChart3,
 };
 
 /** Category glyph shared by the bell list, Activity page, and realtime toast. */

@@ -23,23 +23,9 @@ export function ParkingPricingStatsRow({ weekdayRate, weekendRate, customDatesCo
         title="Base Rate"
         value={formatMoneyCompact(weekdayRate)}
         icon={DollarSign}
-        iconClassName="text-emerald-600 dark:text-emerald-400"
-        iconBgClassName="bg-emerald-100 dark:bg-emerald-900/30"
       />
-      <AdminMetricCard
-        title="Weekend Premium"
-        value={`+${weekendPremium}%`}
-        icon={TrendingUp}
-        iconClassName="text-sky-600 dark:text-sky-400"
-        iconBgClassName="bg-sky-100 dark:bg-sky-900/30"
-      />
-      <AdminMetricCard
-        title="Custom Dates"
-        value={String(customDatesCount)}
-        icon={Calendar}
-        iconClassName="text-violet-600 dark:text-violet-400"
-        iconBgClassName="bg-violet-100 dark:bg-violet-900/30"
-      />
+      <AdminMetricCard title="Weekend Premium" value={`+${weekendPremium}%`} icon={TrendingUp} />
+      <AdminMetricCard title="Custom Dates" value={String(customDatesCount)} icon={Calendar} />
     </section>
   );
 }

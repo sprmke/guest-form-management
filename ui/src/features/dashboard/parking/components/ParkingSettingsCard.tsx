@@ -11,12 +11,14 @@ import {
   Mail,
   MapPin,
   Save,
+  ScrollText,
   Sparkles,
   Wallet,
   Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { ActivitySettingsSection } from '@/features/dashboard/activity/components/ActivitySettingsSection';
 import { useAdminBrandColorPreview } from '@/features/dashboard/bookings/components/AdminBrandTheme';
 import {
   AdminSection,
@@ -101,9 +103,7 @@ import {
   type ParkingProfileDraft,
 } from '@/features/dashboard/parking/lib/parkingSettingsForm';
 import { setParkingSettingsIssueSections } from '@/features/dashboard/parking/lib/parkingSettingsIssuesStore';
-import {
-  planParkingSettingsSave,
-} from '@/features/dashboard/parking/lib/parkingSettingsSavePlan';
+import { planParkingSettingsSave } from '@/features/dashboard/parking/lib/parkingSettingsSavePlan';
 
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
@@ -133,6 +133,7 @@ const SECTIONS: AdminSectionNavItem[] = [
   { id: 'email', label: 'Email', icon: Mail },
   { id: 'booking-automation', label: 'Booking Automation', icon: Zap },
   { id: 'integrations', label: 'Integrations', icon: Globe },
+  { id: 'activity', label: 'Activity', icon: ScrollText },
   { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
 ];
 
@@ -1149,6 +1150,10 @@ export function ParkingSettingsCard() {
                 }
               />
             ) : null}
+          </AdminSection>
+
+          <AdminSection id="activity" title="Activity" icon={ScrollText}>
+            <ActivitySettingsSection scope="parking" />
           </AdminSection>
 
           <AdminSection

@@ -10,8 +10,16 @@ import { formatMoney } from '@/utils/format/currency';
 
 import type { LucideIcon } from 'lucide-react';
 
+/** Neutral KPI icon well. Default when callers omit color classes. */
+export const STAT_CARD_ICON_MUTED = {
+  iconClassName: 'text-muted-foreground',
+  iconBgClassName: 'bg-muted',
+} as const;
+
 export type StatCardProps = {
   title: string;
+  /** Optional control rendered right after the title (e.g. a metric info tooltip). */
+  titleAdornment?: ReactNode;
   value: string;
   icon?: LucideIcon;
   iconClassName?: string;
@@ -37,10 +45,11 @@ function formatChange(change: number, isPoints: boolean): string {
 
 export function StatCard({
   title,
+  titleAdornment,
   value,
   icon: Icon,
-  iconClassName = 'text-white',
-  iconBgClassName,
+  iconClassName = STAT_CARD_ICON_MUTED.iconClassName,
+  iconBgClassName = STAT_CARD_ICON_MUTED.iconBgClassName,
   valueClassName,
   className,
   change,
@@ -72,9 +81,12 @@ export function StatCard({
       <div className={cn('relative', footer && 'space-y-2 sm:space-y-2.5')}>
         <div className="flex items-start justify-between gap-2.5 sm:gap-3">
           <div className="min-w-0 flex-1 space-y-1 sm:space-y-1.5">
-            <p className="text-muted-foreground line-clamp-2 text-xs font-medium leading-snug sm:line-clamp-none sm:text-sm">
-              {title}
-            </p>
+            <div className="flex items-start gap-0.5">
+              <p className="text-muted-foreground line-clamp-2 text-xs font-medium leading-snug sm:line-clamp-none sm:text-sm">
+                {title}
+              </p>
+              {titleAdornment ? <span className="shrink-0">{titleAdornment}</span> : null}
+            </div>
             <p
               className={cn(
                 valueClassName?.includes('line-clamp')
@@ -111,7 +123,7 @@ export function StatCard({
               </div>
             ) : null}
           </div>
-          {Icon && iconBgClassName ? (
+          {Icon ? (
             <div
               className={cn(
                 'native-icon-tile hidden transition-transform sm:group-hover:scale-110 lg:flex',

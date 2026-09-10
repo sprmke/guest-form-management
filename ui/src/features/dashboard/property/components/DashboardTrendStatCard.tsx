@@ -15,7 +15,7 @@ type Props = {
   changeIsPoints?: boolean;
   icon: LucideIcon;
   iconClassName?: string;
-  iconBgClassName: string;
+  iconBgClassName?: string;
   valueClassName?: string;
   className?: string;
   footer?: ReactNode;

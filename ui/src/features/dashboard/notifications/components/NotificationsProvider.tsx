@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
+import { useActivityRealtime } from '@/features/dashboard/activity/hooks/useActivityRealtime';
 import { useNotificationsList } from '@/features/dashboard/notifications/hooks/useNotifications';
 import { useNotificationsRealtime } from '@/features/dashboard/notifications/hooks/useNotificationsRealtime';
 import { resolveNotificationPath } from '@/features/dashboard/notifications/lib/notificationsPaths';
@@ -55,6 +56,9 @@ export function NotificationsProvider() {
     const path = resolveNotificationPath(row, { orgSlug, propertySlugById, parkingSlugById });
     if (path) navigate(path);
   });
+
+  // Org-wide activity feed live-refresh — same "mount once" rule as above.
+  useActivityRealtime(orgId);
 
   // App icon unread badge (Chromium installed + iOS 16.4+ installed).
   const unreadCount = bellData?.pages[0]?.unreadCount ?? 0;

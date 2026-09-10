@@ -17,6 +17,7 @@ import {
   MapPin,
   Mic,
   Save,
+  ScrollText,
   Share2,
   Shield,
   Sparkles,
@@ -24,7 +25,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { ActivitySettingsSection } from '@/features/dashboard/activity/components/ActivitySettingsSection';
 import {
+  AdminSection,
   AdminSectionNavLayout,
   type AdminSectionNavItem,
 } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
@@ -99,8 +102,8 @@ import {
 import { normalizePropertySocialLinksForSave } from '@/features/dashboard/org/lib/propertySocialLinks';
 import { computePaymentSettingsFingerprint } from '@/features/dashboard/org/lib/settingsVerificationFingerprint';
 import { orgPropertiesPath, propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
-import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
+import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
 import { usePropertyTeam } from '@/features/dashboard/team/hooks/usePropertyTeam';
@@ -138,6 +141,7 @@ const SETTINGS_SECTIONS: AdminSectionNavItem[] = [
   { id: 'integrations', label: 'Integrations', icon: Globe },
   { id: 'voice-receptionist', label: 'Voice Receptionist', icon: Mic },
   { id: 'ai', label: 'AI Overrides', icon: Sparkles },
+  { id: 'activity', label: 'Activity', icon: ScrollText },
   { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
 ];
 
@@ -1250,6 +1254,10 @@ export function PropertySettingsCard() {
           />
 
           {canUseAiOverrides ? <PropertyAiPlatformSection /> : null}
+
+          <AdminSection id="activity" title="Activity" icon={ScrollText}>
+            <ActivitySettingsSection scope="property" />
+          </AdminSection>
 
           <PropertyDangerZoneSection
             propertyName={profileDraft.name.trim() || property.name}

@@ -21,6 +21,8 @@ type Props = {
   readOnly?: boolean;
   hasChanges?: boolean;
   saving?: boolean;
+  /** Hide the card footer save button (Setup Guide uses modal footer save). */
+  embedded?: boolean;
   onWeekdayChange: (value: number) => void;
   onWeekendChange: (value: number) => void;
   onSaveClick: () => void;
@@ -98,6 +100,7 @@ export function ParkingPricingRatesFormCard({
   readOnly = false,
   hasChanges = false,
   saving = false,
+  embedded = false,
   onWeekdayChange,
   onWeekendChange,
   onSaveClick,
@@ -131,7 +134,7 @@ export function ParkingPricingRatesFormCard({
           </div>
         </div>
 
-        {!readOnly && hasChanges ? (
+        {!embedded && !readOnly && hasChanges ? (
           <>
             <div className="border-border/60 border-t" role="separator" />
             <Button

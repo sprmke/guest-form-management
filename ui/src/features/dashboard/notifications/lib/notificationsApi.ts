@@ -15,7 +15,8 @@ export type NotificationType =
   | 'booking_external_imported'
   | 'booking_guest_form_completed'
   | 'smart_pricing_updated'
-  | 'property_settings_copied';
+  | 'property_settings_copied'
+  | 'analytics_review_updated';
 
 export type NotificationRecord = {
   id: string;

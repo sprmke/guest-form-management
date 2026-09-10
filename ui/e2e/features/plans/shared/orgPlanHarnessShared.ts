@@ -284,5 +284,6 @@ export const plansE2ePaths = {
     `/org/${PLANS_E2E_ORG_SLUG}/plans?tab=${tab}`,
   orgPlansCheckoutReturn: (result: 'success' | 'cancelled') =>
     `/org/${PLANS_E2E_ORG_SLUG}/plans?tab=billing&checkout=${result}`,
-  propertyPlans: `/org/${PLANS_E2E_ORG_SLUG}/property/${PLANS_E2E_PROPERTY_SLUG}/plans`,
+  /** Legacy property URL — redirects to `orgPlans`. */
+  propertyPlansRedirect: `/org/${PLANS_E2E_ORG_SLUG}/property/${PLANS_E2E_PROPERTY_SLUG}/plans`,
 } as const;

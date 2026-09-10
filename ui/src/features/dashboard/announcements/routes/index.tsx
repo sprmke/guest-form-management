@@ -9,7 +9,11 @@ import {
 import { HostAnnouncementDetailPage } from '@/features/dashboard/announcements/pages/HostAnnouncementDetailPage';
 import { HostAnnouncementsListPage } from '@/features/dashboard/announcements/pages/HostAnnouncementsListPage';
 import { useHelpSupportBasePath } from '@/features/dashboard/help-support/lib/helpSupportPaths';
-import type { ParkingRouteFn, PropertyRouteFn } from '@/features/dashboard/org/routes/guards';
+import type {
+  OrgRouteFn,
+  ParkingRouteFn,
+  PropertyRouteFn,
+} from '@/features/dashboard/org/routes/guards';
 
 function HelpSupportAnnouncementsRedirect() {
   const helpSupportPath = useHelpSupportBasePath();
@@ -35,6 +39,15 @@ function hostAnnouncementsNestedRoutes(): ReactNode {
   );
 }
 
+export function hostAnnouncementsOrgRoute(orgRoute: OrgRouteFn): ReactNode {
+  return (
+    <Route path="announcements" element={orgRoute('announcements', <Outlet />)}>
+      {hostAnnouncementsNestedRoutes()}
+    </Route>
+  );
+}
+
+/** Deep-link fallback for property-only members (no org-hub nav entry). */
 export function hostAnnouncementsPropertyRoute(propertyRoute: PropertyRouteFn): ReactNode {
   return (
     <Route path="announcements" element={propertyRoute('announcements', <Outlet />)}>
@@ -43,6 +56,7 @@ export function hostAnnouncementsPropertyRoute(propertyRoute: PropertyRouteFn): 
   );
 }
 
+/** Deep-link fallback for parking team members (no org-hub nav entry). */
 export function hostAnnouncementsParkingRoute(parkingRoute: ParkingRouteFn): ReactNode {
   return (
     <Route path="announcements" element={parkingRoute('announcements', <Outlet />)}>
