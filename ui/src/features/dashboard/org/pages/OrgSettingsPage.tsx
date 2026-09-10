@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { AlertTriangle, Info, Save, Share2, Shield, Sparkles } from 'lucide-react';
+import { AlertTriangle, Info, Save, ScrollText, Share2, Shield, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { ActivitySettingsSection } from '@/features/dashboard/activity/components/ActivitySettingsSection';
 import {
+  AdminSection,
   AdminSectionNavLayout,
   type AdminSectionNavItem,
 } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
@@ -63,6 +65,7 @@ const SETTINGS_SECTIONS: AdminSectionNavItem[] = [
   { id: 'trust', label: 'Trust', icon: Shield },
   { id: 'ai', label: 'AI usage', icon: Sparkles },
   { id: 'ai-assistant', label: 'AI assistant', icon: Sparkles },
+  { id: 'activity', label: 'Activity', icon: ScrollText },
   { id: 'danger', label: 'Danger zone', icon: AlertTriangle },
 ];
 
@@ -525,6 +528,10 @@ export function OrgSettingsPage() {
             <OrgAiPlatformSection />
 
             <OrgAiDashboardAssistantSection />
+
+            <AdminSection id="activity" title="Activity" icon={ScrollText}>
+              <ActivitySettingsSection scope="org" />
+            </AdminSection>
 
             {canDeleteOrganization ? (
               <OrgDangerZoneSection

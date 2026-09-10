@@ -11,11 +11,11 @@ import {
   type CopyPropertySettingsRequest,
   type CopyPropertySettingsResponse,
 } from '@/features/dashboard/org/lib/copyPropertySettingsApi';
-import { SMART_PRICING_QUERY_KEY } from '@/features/dashboard/pricing/lib/smartPricingApi';
 import {
   hasUpgradeModalOpener,
   openUpgradeModalFromBridge,
 } from '@/features/dashboard/plans/lib/upgradeModalBridge';
+import { SMART_PRICING_QUERY_KEY } from '@/features/dashboard/pricing/lib/smartPricingApi';
 
 function invalidateTargetCaches(
   queryClient: ReturnType<typeof useQueryClient>,

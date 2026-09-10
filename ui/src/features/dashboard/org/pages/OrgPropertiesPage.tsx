@@ -33,9 +33,9 @@ import {
   propertySectionPath,
   setLastTenantContext,
 } from '@/features/dashboard/org/lib/tenantPaths';
+import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 import { hasOrgPermission } from '@/features/dashboard/team/lib/orgPermissions';
-import { TierBadgeAnchor } from '@/features/dashboard/plans/components/TierBadge';
 
 import { FloatingToolbar } from '@/components/mobile/FloatingPanel';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';

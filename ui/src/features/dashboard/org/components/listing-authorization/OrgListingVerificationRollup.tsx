@@ -38,6 +38,8 @@ type Props = {
   readOnly?: boolean;
   /** Host Get Verified — upload missing listing proof inline. */
   allowUpload?: boolean;
+  /** Hide Open links that navigate away (setup guide already has listing steps). */
+  hideOpen?: boolean;
 };
 
 function listingOpenPath(orgSlug: string, row: OrgListingVerificationRollupRow): string {
@@ -107,6 +109,7 @@ export function OrgListingVerificationRollup({
   enabled = true,
   readOnly = false,
   allowUpload = false,
+  hideOpen = false,
 }: Props) {
   const navigate = useNavigate();
   const { data, isLoading } = useOrgListingVerifications(orgId, enabled);
@@ -126,7 +129,9 @@ export function OrgListingVerificationRollup({
         <p className="text-muted-foreground text-xs leading-relaxed">
           {readOnly
             ? 'Per-listing authorization is reviewed as separate queue rows.'
-            : 'Per-listing authorization status. Open a listing to submit or update its documents.'}
+            : hideOpen
+              ? 'Upload proof for each listing that still needs it.'
+              : 'Per-listing authorization status. Open a listing to submit or update its documents.'}
         </p>
       </div>
 
@@ -171,7 +176,7 @@ export function OrgListingVerificationRollup({
                       ) : null}
                     </div>
                   </div>
-                  {!readOnly ? (
+                  {!readOnly && !hideOpen ? (
                     <Button
                       type="button"
                       variant="outline"

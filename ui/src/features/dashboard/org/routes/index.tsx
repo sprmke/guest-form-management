@@ -2,7 +2,9 @@ import type { ReactNode } from 'react';
 
 import { Route } from 'react-router-dom';
 
-import { ActivityLogPage } from '@/features/dashboard/activity/pages/ActivityLogPage';
+import { ActivityLogRedirect } from '@/features/dashboard/activity/pages/ActivityLogRedirect';
+import { OrgAnalyticsPage } from '@/features/dashboard/analytics/pages/OrgAnalyticsPage';
+import { hostAnnouncementsOrgRoute } from '@/features/dashboard/announcements/routes';
 import { HelpSupportLayout } from '@/features/dashboard/help-support/components/HelpSupportLayout';
 import { helpSupportOrgNestedRoutes } from '@/features/dashboard/help-support/routes';
 import { OrgInboxRedirect } from '@/features/dashboard/inbox/routes';
@@ -19,6 +21,7 @@ import { OrgPropertiesPage } from '@/features/dashboard/org/pages/OrgPropertiesP
 import { OrgSelectorPage } from '@/features/dashboard/org/pages/OrgSelectorPage';
 import { OrgSettingsPage } from '@/features/dashboard/org/pages/OrgSettingsPage';
 import type { OrgRouteFn } from '@/features/dashboard/org/routes/guards';
+import { RequireOrgFeature } from '@/features/dashboard/plans/components/RequireOrgFeature';
 import { OrgPlansPage } from '@/features/dashboard/plans/pages/OrgPlansPage';
 import { OrgTeamPage } from '@/features/dashboard/team/pages/OrgTeamPage';
 
@@ -40,7 +43,17 @@ export function orgAdminRoutes(orgRoute: OrgRouteFn): ReactNode {
       <Route path="parkings" element={orgRoute('parkings', <OrgParkingsPage />)} />
       <Route path="team" element={orgRoute('team', <OrgTeamPage />)} />
       <Route path="plans" element={orgRoute('plans', <OrgPlansPage />)} />
-      <Route path="activity" element={orgRoute('activity', <ActivityLogPage scope="org" />)} />
+      {hostAnnouncementsOrgRoute(orgRoute)}
+      <Route
+        path="analytics"
+        element={orgRoute(
+          'analytics',
+          <RequireOrgFeature feature="analyticsInsights">
+            <OrgAnalyticsPage />
+          </RequireOrgFeature>
+        )}
+      />
+      <Route path="activity" element={orgRoute('activity', <ActivityLogRedirect scope="org" />)} />
       <Route path="inbox" element={<OrgInboxRedirect />} />
       <Route path="help-support" element={orgRoute('help-support', <HelpSupportLayout />)}>
         {helpSupportOrgNestedRoutes()}

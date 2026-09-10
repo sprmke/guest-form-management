@@ -1,8 +1,8 @@
-import type { CopyPropertySettingsGroupId } from '@/features/dashboard/org/lib/copyPropertySettingsGroups';
 import {
   AiQuotaExceededClientError,
   throwIfUpgradeHookFromJson,
 } from '@/features/dashboard/org/lib/aiQuotaToast';
+import type { CopyPropertySettingsGroupId } from '@/features/dashboard/org/lib/copyPropertySettingsGroups';
 import { getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
 import type { PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
 

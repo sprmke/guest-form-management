@@ -68,6 +68,7 @@ const PROPERTY_SECTION_ORDER: readonly PropertySection[] = [
   'bookings',
   'finance',
   'pricing',
+  'analytics',
   'maintenance',
   'marketing',
   'inbox',

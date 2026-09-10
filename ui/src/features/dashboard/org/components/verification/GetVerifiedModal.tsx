@@ -95,6 +95,12 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   /** When true, host cannot dismiss — must Resubmit (changes requested). */
   forced?: boolean;
+  /** Render the flow in-place (no nested dialog). */
+  embedded?: boolean;
+  /** Pin host (0) or Recommended (1). Hides the inner tier switcher. */
+  lockedStep?: 0 | 1;
+  /** Hide listing Open links that would leave this surface. */
+  hideListingOpen?: boolean;
 };
 
 async function uploadVerificationAsset(
@@ -195,11 +201,13 @@ function ListingVerificationRollupSection({
   orgSlug,
   modalOpen,
   allowUpload,
+  hideOpen,
 }: {
   orgId?: string;
   orgSlug?: string;
   modalOpen?: boolean;
   allowUpload?: boolean;
+  hideOpen?: boolean;
 }) {
   if (!orgId || !orgSlug) return null;
   return (
@@ -208,6 +216,7 @@ function ListingVerificationRollupSection({
       orgSlug={orgSlug}
       enabled={Boolean(modalOpen)}
       allowUpload={allowUpload}
+      hideOpen={hideOpen}
     />
   );
 }
@@ -223,6 +232,7 @@ function VerifiedTierStepPanel({
   orgSlug,
   modalOpen,
   allowListingUpload,
+  hideListingOpen,
   showSubmittedDocs,
   children,
 }: {
@@ -237,6 +247,7 @@ function VerifiedTierStepPanel({
   orgSlug?: string;
   modalOpen?: boolean;
   allowListingUpload?: boolean;
+  hideListingOpen?: boolean;
   showSubmittedDocs?: boolean;
   children?: ReactNode;
 }) {
@@ -283,6 +294,7 @@ function VerifiedTierStepPanel({
           orgSlug={orgSlug}
           modalOpen={modalOpen}
           allowUpload={allowListingUpload}
+          hideOpen={hideListingOpen}
         />
       </section>
     );
@@ -308,6 +320,7 @@ function VerifiedTierStepPanel({
           orgSlug={orgSlug}
           modalOpen={modalOpen}
           allowUpload={allowListingUpload}
+          hideOpen={hideListingOpen}
         />
       </section>
     );
@@ -361,6 +374,7 @@ function VerifiedTierStepPanel({
         orgSlug={orgSlug}
         modalOpen={modalOpen}
         allowUpload={allowListingUpload}
+        hideOpen={hideListingOpen}
       />
     </section>
   );
@@ -417,12 +431,14 @@ function RecommendedTierSubmittedDocs({
 }
 
 function RecommendedTierStepPanel({
+  hideTitle = false,
   tier,
   orgName,
   orgId,
   orgSlug,
   modalOpen,
   allowListingUpload,
+  hideListingOpen,
   checklist,
   showSubmittedDocs,
   verifiedApproved,
@@ -438,12 +454,14 @@ function RecommendedTierStepPanel({
   onPlatformAdminChange,
   onBusinessPermitChange,
 }: {
+  hideTitle?: boolean;
   tier: VerificationTierDefinition;
   orgName?: string | null;
   orgId?: string;
   orgSlug?: string;
   modalOpen: boolean;
   allowListingUpload?: boolean;
+  hideListingOpen?: boolean;
   checklist: ReturnType<typeof buildVerifiedTierChecklist>;
   showSubmittedDocs: boolean;
   verifiedApproved: boolean;
@@ -465,6 +483,7 @@ function RecommendedTierStepPanel({
       orgSlug={orgSlug}
       modalOpen={modalOpen}
       allowUpload={allowListingUpload}
+      hideOpen={hideListingOpen}
     />
   );
   const submittedDocsSection =
@@ -478,15 +497,19 @@ function RecommendedTierStepPanel({
       />
     ) : null;
 
+  const panelTitle = (
+    <h3
+      id="verification-tier-recommended-panel-title"
+      className={hideTitle ? 'sr-only' : 'text-foreground text-sm font-semibold leading-tight'}
+    >
+      Recommended
+    </h3>
+  );
+
   if (verifiedApproved) {
     return (
       <section aria-labelledby="verification-tier-recommended-panel-title" className="space-y-4">
-        <h3
-          id="verification-tier-recommended-panel-title"
-          className="text-foreground text-sm font-semibold leading-tight"
-        >
-          Recommended
-        </h3>
+        {panelTitle}
         {submittedDocsSection ? (
           <>
             {submittedDocsSection}
@@ -505,12 +528,7 @@ function RecommendedTierStepPanel({
   if (verifiedPending) {
     return (
       <section aria-labelledby="verification-tier-recommended-panel-title" className="space-y-4">
-        <h3
-          id="verification-tier-recommended-panel-title"
-          className="text-foreground text-sm font-semibold leading-tight"
-        >
-          Recommended
-        </h3>
+        {panelTitle}
         {submittedDocsSection ?? <VerificationPendingNote />}
         {listingRollup}
       </section>
@@ -520,12 +538,7 @@ function RecommendedTierStepPanel({
   return (
     <section aria-labelledby="verification-tier-recommended-panel-title" className="space-y-5">
       <div className="space-y-1">
-        <h3
-          id="verification-tier-recommended-panel-title"
-          className="text-foreground text-sm font-semibold leading-tight"
-        >
-          Recommended
-        </h3>
+        {panelTitle}
         <p className="text-muted-foreground text-xs leading-relaxed">{tier.benefit}</p>
       </div>
 
@@ -611,10 +624,12 @@ function RecommendedTierStepPanel({
 }
 
 export function GetVerifiedModal({
-  
   open,
   onOpenChange,
   forced = false,
+  embedded = false,
+  lockedStep,
+  hideListingOpen = false,
 }: Props) {
   const queryClient = useQueryClient();
   const org = useCurrentOrganization();
@@ -640,7 +655,10 @@ export function GetVerifiedModal({
   const showTier2SubmittedDocs = detail.enhancedStatus !== 'none';
   const allowListingUpload = org?.accessKind === 'owner' || org?.accessKind === 'platform_admin';
 
+  const resolvedOpen = embedded || open;
+
   const handleOpenChange = (next: boolean) => {
+    if (embedded) return;
     if (blockDismiss && !next) return;
     onOpenChange(next);
   };
@@ -658,7 +676,7 @@ export function GetVerifiedModal({
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open || !org) return;
+    if (!resolvedOpen || !org) return;
     const next = readOrgVerificationDetail(org.settings);
     const clearValidId = isHostVerificationChangesRequestedFromDetail(next);
 
@@ -689,8 +707,8 @@ export function GetVerifiedModal({
     setHostTouched(false);
     setVerifiedTouched(false);
     setUploadError(null);
-    setActiveStep(defaultVerificationStepIndex(buildVerificationTiers(next)));
-  }, [open, org]);
+    setActiveStep(lockedStep ?? defaultVerificationStepIndex(buildVerificationTiers(next)));
+  }, [lockedStep, org, resolvedOpen]);
 
   const hostTier = tiers[0]!;
   const verifiedTier = tiers[1]!;
@@ -747,8 +765,8 @@ export function GetVerifiedModal({
         }),
       });
       await queryClient.invalidateQueries({ queryKey: ORGANIZATIONS_QUERY_KEY });
-      toast.success('Verification resubmitted');
-      onOpenChange(false);
+      toast.success(hostChangesRequested ? 'Verification resubmitted' : 'Verification submitted');
+      if (!embedded) onOpenChange(false);
     } catch (err) {
       if (isAiQuotaError(err)) {
         handleAiMutationError(err as Error);
@@ -805,7 +823,7 @@ export function GetVerifiedModal({
           query.queryKey.some((part) => part === 'entitlements' || part === 'org-plan'),
       });
       toast.success('Recommended tier submitted');
-      handleOpenChange(false);
+      if (!embedded) handleOpenChange(false);
     } catch (err) {
       if (isAiQuotaError(err)) {
         handleAiMutationError(err as Error);
@@ -816,6 +834,163 @@ export function GetVerifiedModal({
       setSubmitting(null);
     }
   };
+
+  const stepIndex = lockedStep ?? activeStep;
+  const showHostPanel = hostChangesRequested || stepIndex === 0;
+  const hostFirstUpload = stepIndex === 0 && detail.baseStatus === 'none' && !hostHardRejected;
+  const showHostSubmit = hostChangesRequested || hostFirstUpload;
+
+  const hostUploadFields = (
+    <OnboardingHostVerificationSection
+      file={validId.file}
+      previewUrl={validId.previewUrl}
+      error={slotRequiredError(hostTouched, submitting !== null, validId)}
+      onFileChange={(file, preview) => {
+        setValidId({
+          file,
+          previewUrl: preview,
+          path: file ? null : validId.path,
+        });
+      }}
+      socialProofFile={socialProof.file}
+      socialProofPreviewUrl={socialProof.previewUrl}
+      socialProofError={slotRequiredError(hostTouched, submitting !== null, socialProof)}
+      onSocialProofChange={(file, preview) => {
+        setSocialProof({
+          file,
+          previewUrl: preview,
+          path: file ? null : socialProof.path,
+        });
+      }}
+      onUploadError={(message) => {
+        setUploadError(message);
+        if (message) toast.error(message);
+      }}
+    />
+  );
+
+  const flowBody = (
+    <>
+      {showHostPanel ? (
+        <VerifiedTierStepPanel
+          tier={hostTier}
+          checklist={hostChecklist}
+          pendingNote={detail.baseStatus === 'pending'}
+          rejectionReason={hostRejected ? detail.baseRejectionReason : null}
+          rejectionKind={hostRejected ? detail.baseRejectionKind : null}
+          changesResubmit={hostChangesRequested}
+          orgId={org?.id}
+          orgSlug={org?.slug}
+          modalOpen={resolvedOpen}
+          allowListingUpload={allowListingUpload}
+          hideListingOpen={hideListingOpen}
+          showSubmittedDocs={showTier1SubmittedDocs}
+        >
+          {hostChangesRequested ? (
+            <div className="space-y-4">
+              {fixValidId ? hostUploadFields : null}
+              {uploadError ? (
+                <p role="alert" className="text-destructive text-xs">
+                  {uploadError}
+                </p>
+              ) : null}
+            </div>
+          ) : hostFirstUpload ? (
+            <div className="space-y-4">
+              {hostUploadFields}
+              {uploadError ? (
+                <p role="alert" className="text-destructive text-xs">
+                  {uploadError}
+                </p>
+              ) : null}
+            </div>
+          ) : hostHardRejected ? (
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              This verification was declined. Start a new application to try again with updated
+              documents.
+            </p>
+          ) : null}
+        </VerifiedTierStepPanel>
+      ) : (
+        <RecommendedTierStepPanel
+          hideTitle={embedded}
+          tier={verifiedTier}
+          orgName={org?.name}
+          orgId={org?.id}
+          orgSlug={org?.slug}
+          modalOpen={resolvedOpen}
+          allowListingUpload={allowListingUpload}
+          hideListingOpen={hideListingOpen}
+          checklist={verifiedChecklist}
+          showSubmittedDocs={showTier2SubmittedDocs}
+          verifiedApproved={verifiedApproved}
+          verifiedPending={verifiedPending}
+          enhancedStatus={detail.enhancedStatus}
+          enhancedRejectionKind={detail.enhancedRejectionKind}
+          enhancedRejectionReason={detail.enhancedRejectionReason}
+          selfie={selfie}
+          platformAdmin={platformAdmin}
+          businessPermit={businessPermit}
+          verifiedTouched={verifiedTouched}
+          onSelfieChange={setSlot(setSelfie)}
+          onPlatformAdminChange={setSlot(setPlatformAdmin)}
+          onBusinessPermitChange={setSlot(setBusinessPermit)}
+        />
+      )}
+    </>
+  );
+
+  const submitActions = (
+    <>
+      {showHostSubmit ? (
+        <Button
+          type="button"
+          disabled={submitting !== null || !canSubmitHost}
+          onClick={() => void handleSubmitHost()}
+          className="min-h-[44px] min-w-[8.5rem]"
+        >
+          {submitting === 'base' ? (
+            <>
+              <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+              Submitting…
+            </>
+          ) : hostChangesRequested ? (
+            'Resubmit'
+          ) : (
+            'Submit for review'
+          )}
+        </Button>
+      ) : null}
+      {!hostChangesRequested && stepIndex === 1 && verifiedEditable ? (
+        <Button
+          type="button"
+          disabled={submitting !== null || !canSubmitVerified}
+          onClick={() => void handleSubmitVerified()}
+          className="min-h-[44px] min-w-[8.5rem]"
+        >
+          {submitting === 'enhanced' ? (
+            <>
+              <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+              Submitting…
+            </>
+          ) : (
+            'Submit for review'
+          )}
+        </Button>
+      ) : null}
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div className="flex flex-col gap-4">
+        {flowBody}
+        {showHostSubmit || (stepIndex === 1 && verifiedEditable) ? (
+          <div className="flex justify-end">{submitActions}</div>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <ResponsiveModal open={open} onOpenChange={handleOpenChange}>
@@ -859,11 +1034,11 @@ export function GetVerifiedModal({
             </span>
             {hostChangesRequested
               ? 'Changes requested'
-              : activeStep === 1
+              : stepIndex === 1
                 ? 'Get Recommended'
                 : 'Get Verified'}
           </ResponsiveModalTitle>
-          {!blockDismiss ? (
+          {!blockDismiss && lockedStep == null ? (
             <VerificationTierProgress
               tiers={tiers}
               activeStep={activeStep}
@@ -875,93 +1050,7 @@ export function GetVerifiedModal({
         </ResponsiveModalHeader>
 
         <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-5 py-4 [-webkit-overflow-scrolling:touch] sm:px-6">
-          <div className="pb-1">
-            {hostChangesRequested || activeStep === 0 ? (
-              <VerifiedTierStepPanel
-                tier={hostTier}
-                checklist={hostChecklist}
-                pendingNote={detail.baseStatus === 'pending'}
-                rejectionReason={hostRejected ? detail.baseRejectionReason : null}
-                rejectionKind={hostRejected ? detail.baseRejectionKind : null}
-                changesResubmit={hostChangesRequested}
-                orgId={org?.id}
-                orgSlug={org?.slug}
-                modalOpen={open}
-                allowListingUpload={allowListingUpload}
-                showSubmittedDocs={showTier1SubmittedDocs}
-              >
-                {hostChangesRequested ? (
-                  <div className="space-y-4">
-                    {fixValidId ? (
-                      <OnboardingHostVerificationSection
-                        file={validId.file}
-                        previewUrl={validId.previewUrl}
-                        error={slotRequiredError(hostTouched, submitting !== null, validId)}
-                        onFileChange={(file, preview) => {
-                          setValidId({
-                            file,
-                            previewUrl: preview,
-                            path: file ? null : validId.path,
-                          });
-                        }}
-                        socialProofFile={socialProof.file}
-                        socialProofPreviewUrl={socialProof.previewUrl}
-                        socialProofError={slotRequiredError(
-                          hostTouched,
-                          submitting !== null,
-                          socialProof
-                        )}
-                        onSocialProofChange={(file, preview) => {
-                          setSocialProof({
-                            file,
-                            previewUrl: preview,
-                            path: file ? null : socialProof.path,
-                          });
-                        }}
-                        onUploadError={(message) => {
-                          setUploadError(message);
-                          if (message) toast.error(message);
-                        }}
-                      />
-                    ) : null}
-                    {uploadError ? (
-                      <p role="alert" className="text-destructive text-xs">
-                        {uploadError}
-                      </p>
-                    ) : null}
-                  </div>
-                ) : hostHardRejected ? (
-                  <p className="text-muted-foreground text-sm leading-relaxed">
-                    This verification was declined. Start a new application to try again with
-                    updated documents.
-                  </p>
-                ) : null}
-              </VerifiedTierStepPanel>
-            ) : (
-              <RecommendedTierStepPanel
-                tier={verifiedTier}
-                orgName={org?.name}
-                orgId={org?.id}
-                orgSlug={org?.slug}
-                modalOpen={open}
-                allowListingUpload={allowListingUpload}
-                checklist={verifiedChecklist}
-                showSubmittedDocs={showTier2SubmittedDocs}
-                verifiedApproved={verifiedApproved}
-                verifiedPending={verifiedPending}
-                enhancedStatus={detail.enhancedStatus}
-                enhancedRejectionKind={detail.enhancedRejectionKind}
-                enhancedRejectionReason={detail.enhancedRejectionReason}
-                selfie={selfie}
-                platformAdmin={platformAdmin}
-                businessPermit={businessPermit}
-                verifiedTouched={verifiedTouched}
-                onSelfieChange={setSlot(setSelfie)}
-                onPlatformAdminChange={setSlot(setPlatformAdmin)}
-                onBusinessPermitChange={setSlot(setBusinessPermit)}
-              />
-            )}
-          </div>
+          <div className="pb-1">{flowBody}</div>
         </div>
 
         <ResponsiveModalFooter className="border-border shrink-0 gap-2 border-t px-5 py-3.5 sm:flex-row sm:justify-end sm:px-6 sm:py-4">
@@ -975,40 +1064,7 @@ export function GetVerifiedModal({
               Close
             </Button>
           ) : null}
-          {hostChangesRequested ? (
-            <Button
-              type="button"
-              disabled={submitting !== null || !canSubmitHost}
-              onClick={() => void handleSubmitHost()}
-              className="min-h-[44px] min-w-[8.5rem]"
-            >
-              {submitting === 'base' ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
-                  Submitting…
-                </>
-              ) : (
-                'Resubmit'
-              )}
-            </Button>
-          ) : null}
-          {!hostChangesRequested && activeStep === 1 && verifiedEditable ? (
-            <Button
-              type="button"
-              disabled={submitting !== null || !canSubmitVerified}
-              onClick={() => void handleSubmitVerified()}
-              className="min-h-[44px] min-w-[8.5rem]"
-            >
-              {submitting === 'enhanced' ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
-                  Submitting…
-                </>
-              ) : (
-                'Submit for review'
-              )}
-            </Button>
-          ) : null}
+          {submitActions}
         </ResponsiveModalFooter>
       </ResponsiveModalContent>
     </ResponsiveModal>
