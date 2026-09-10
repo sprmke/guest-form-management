@@ -350,6 +350,27 @@ export async function requirePropertyFeature(
   return entitlements;
 }
 
+/**
+ * Property-independent org feature gate — resolves straight from `organizationId` via
+ * `resolveOrgEntitlements` (org's live subscription, or Free default), never a property proxy.
+ * This is what closes the `parking-property-parity.md` interim-ungate blocker: a parking-only
+ * org with zero properties has no property to resolve through
+ * (`resolveTelegramEntitlementPropertyId`'s `firstActivePropertyIdForOrg` returns `null` for it),
+ * but this function needs nothing but the org id. Mirrors `requirePropertyFeature` exactly,
+ * just against `resolveOrgEntitlements` instead of `resolvePropertyEntitlements`.
+ */
+export async function requireOrgFeature(
+  organizationId: string,
+  feature: PlanFeatureKey
+): Promise<ResolvedOrgEntitlements> {
+  const entitlements = await resolveOrgEntitlements(organizationId);
+  assertSubscriptionAllowsPaidFeatures(entitlements, feature);
+  if (!isFeatureEnabled(entitlements, feature)) {
+    throw new PlanFeatureRequiredError(feature);
+  }
+  return entitlements;
+}
+
 /** Map PlanFeatureRequiredError to the shared upgradeHook JSON envelope. */
 export function catchPlanFeatureError(req: Request, err: unknown): Response | null {
   if (err instanceof PlanFeatureRequiredError) {
@@ -880,8 +901,10 @@ async function firstActivePropertyIdForOrg(orgId: string): Promise<string | null
 
   // Prefer a property already covered by a live org subscription — resolving entitlements from
   // it gives parking the org's real plan instead of falling through to whatever an unrelated
-  // property happens to have. Closes part of the PARKING_INTERIM_UNGATED_FEATURES carve-out (see
-  // plans-feature-matrix.md).
+  // property happens to have. This proxy is what `requireOrgFeature` (property-independent,
+  // used by the two callers below) superseded for telegramNotifications/aiDashboardAssistant —
+  // still used by resolveListingEntitlementPropertyId (recommendedBadgeEligible), out of scope
+  // for that feature's own parity work.
   const { data: bundled, error: bundledError } = await sb
     .from('org_subscription_properties')
     .select('property_id, org_subscriptions!inner (organization_id, status)')
@@ -904,8 +927,11 @@ async function firstActivePropertyIdForOrg(orgId: string): Promise<string | null
   return data?.id ? String(data.id) : null;
 }
 
-/** Property-scoped Telegram uses the property id; parking uses the org's first active property
- * (preferring one covered by a live org subscription, if any — see above). */
+/** Property-scoped Telegram uses the property id directly. The `asset.kind === 'parking'`
+ * branch below is superseded by `requireOrgFeature` (see `telegramSettingsHttp.ts`'s
+ * `gateTelegramEnabledPatch`, which now resolves parking's org id directly and never calls this
+ * function for a parking asset) — kept only so this function stays total over
+ * `TelegramAssetScope` for any other caller that might still pass a parking asset in. */
 export async function resolveTelegramEntitlementPropertyId(
   asset: TelegramAssetScope
 ): Promise<string> {

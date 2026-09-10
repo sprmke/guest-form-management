@@ -103,6 +103,8 @@ export const TEAM_PERMISSION_IDS = [
   'inbox.quickReplies:edit',
   'inbox.quickReplies:delete',
   'inbox.automation:edit',
+  'analytics:view',
+  'analytics:export',
 ] as const;
 
 export type TeamPermissionId = (typeof TEAM_PERMISSION_IDS)[number];

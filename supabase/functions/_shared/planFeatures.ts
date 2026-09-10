@@ -42,6 +42,10 @@ export type PlanFeatures = {
   customRoles: boolean;
   /** Bulk-copy property settings groups to other properties in the same org. */
   copyPropertySettings: boolean;
+  /** Property & org performance analytics — KPIs, forward-looking view, AI review, playbook. */
+  analyticsInsights: boolean;
+  /** CSV export of the org Activity & Audit Log. In-app viewing stays ungated. */
+  activityLogExport: boolean;
 };
 
 export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
@@ -73,6 +77,8 @@ export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
   smartPricing: false,
   customRoles: false,
   copyPropertySettings: false,
+  analyticsInsights: false,
+  activityLogExport: false,
 };
 
 function asBool(value: unknown, fallback: boolean): boolean {
@@ -143,6 +149,8 @@ export function parsePlanFeatures(raw: unknown): PlanFeatures {
     smartPricing: asBool(obj.smartPricing, base.smartPricing),
     customRoles: asBool(obj.customRoles, base.customRoles),
     copyPropertySettings: asBool(obj.copyPropertySettings, base.copyPropertySettings),
+    analyticsInsights: asBool(obj.analyticsInsights, base.analyticsInsights),
+    activityLogExport: asBool(obj.activityLogExport, base.activityLogExport),
   };
 }
 

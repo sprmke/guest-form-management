@@ -771,6 +771,15 @@ export const ACTIVITY_ACTION_CATALOG = {
     summary: (c) => `${c.actorName} updated their guest profile`,
   },
 
+  // ── Analytics ────────────────────────────────────────────────────────────
+  'analytics.review_regenerated': {
+    category: 'property',
+    severity: 'info',
+    targetType: 'property_analytics_review',
+    summary: (c) =>
+      `${c.actorName} regenerated the AI Performance Review for ${label(c, 'a listing')}`,
+  },
+
   // ── Security ─────────────────────────────────────────────────────────────
   'security.denied_destructive_action': {
     category: 'security',
