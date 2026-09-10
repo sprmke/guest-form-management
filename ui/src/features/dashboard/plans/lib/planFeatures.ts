@@ -39,6 +39,10 @@ export type PlanFeatures = {
   customRoles: boolean;
   /** Bulk-copy property settings groups to other properties in the same org. */
   copyPropertySettings: boolean;
+  /** Property & org performance analytics — KPIs, forward-looking view, AI review, playbook. */
+  analyticsInsights: boolean;
+  /** CSV export of the org Activity & Audit Log. In-app viewing stays ungated. */
+  activityLogExport: boolean;
 };
 
 export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
@@ -70,6 +74,8 @@ export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
   smartPricing: false,
   customRoles: false,
   copyPropertySettings: false,
+  analyticsInsights: false,
+  activityLogExport: false,
 };
 
 export type PlanFeatureKey = keyof PlanFeatures;
@@ -164,4 +170,6 @@ export const PLAN_FEATURE_LABELS: Record<keyof PlanFeatures, string> = {
   smartPricing: 'Smart Pricing',
   customRoles: 'Custom team roles',
   copyPropertySettings: 'Copy property settings',
+  analyticsInsights: 'Analytics & AI performance review',
+  activityLogExport: 'Activity log CSV export',
 };

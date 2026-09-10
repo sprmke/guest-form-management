@@ -159,6 +159,18 @@ export const FEATURE_GATE_COPY: Record<PlanFeatureKey, FeatureGateCopy> = {
       'Copying settings from one property to others in your org is available on Pro and above.',
     ctaLabel: 'View plans',
   },
+  analyticsInsights: {
+    title: 'Analytics',
+    description:
+      'Property and portfolio analytics — occupancy, revenue, guest insights, and the AI performance review are available on Pro and above.',
+    ctaLabel: 'View plans',
+  },
+  activityLogExport: {
+    title: 'Activity log export',
+    description:
+      'Downloading the Activity & Audit Log as CSV is available on Starter and above. Viewing the log in the dashboard stays free on every plan.',
+    ctaLabel: 'View plans',
+  },
 };
 
 export function featureGateCopy(feature: PlanFeatureKey): FeatureGateCopy {

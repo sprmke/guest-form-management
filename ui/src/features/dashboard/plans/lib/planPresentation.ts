@@ -35,6 +35,7 @@ export type PlanFeatureGroup =
   | 'finance'
   | 'maintenance'
   | 'pricing'
+  | 'analytics'
   | 'team'
   | 'marketing'
   | 'inbox'
@@ -51,6 +52,7 @@ export const PLAN_FEATURE_GROUP_LABELS: Record<PlanFeatureGroup, string> = {
   finance: 'Finance',
   maintenance: 'Maintenance',
   pricing: 'Pricing',
+  analytics: 'Analytics',
   team: 'Team',
   marketing: 'Marketing',
   inbox: 'Inbox',
@@ -193,6 +195,7 @@ export const PLAN_TIER_CARD_GAINS: Record<string, string[]> = {
     'Airbnb calendar sync',
     'Smart AI Pricing',
     'Copy property settings',
+    'Analytics & AI performance review',
     '1,000 AI credits per month',
   ],
   pro: [
@@ -284,6 +287,8 @@ export const PLAN_FEATURE_ROWS: PlanFeatureRow[] = [
 
   boolRow('calendarSync', 'Airbnb calendar sync', 'pricing'),
   boolRow('smartPricing', 'Smart AI Pricing', 'pricing'),
+
+  boolRow('analyticsInsights', 'Analytics & AI performance review', 'analytics'),
 
   {
     key: 'teamManagement',
@@ -383,6 +388,7 @@ export const PLAN_FEATURE_GROUP_ORDER: PlanFeatureGroup[] = [
   'finance',
   'maintenance',
   'pricing',
+  'analytics',
   'team',
   'marketing',
   'inbox',

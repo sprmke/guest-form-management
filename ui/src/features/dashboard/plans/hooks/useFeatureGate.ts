@@ -1,33 +1,20 @@
-import {
-  useParkingIdParam,
-  usePropertyIdParam,
-  useResolvedOrgId,
-} from '@/features/dashboard/org/lib/adminApiScope';
+import { usePropertyIdParam, useResolvedOrgId } from '@/features/dashboard/org/lib/adminApiScope';
 import { useOrgPlan } from '@/features/dashboard/plans/hooks/useOrgPlan';
 import { usePropertyEntitlements } from '@/features/dashboard/plans/hooks/usePropertyEntitlements';
 import { deriveOrgEntitlementsFromPlan } from '@/features/dashboard/plans/lib/orgEntitlements';
 import { isFeatureEnabled, type PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
 
-/** Safety-net fallback for parking when the org has no live portfolio bundle — org-level plans
- * shipped in Phase 8 and narrow this for orgs that do have a bundle (see
- * getActiveOrgSubscriptionForProperty / firstActivePropertyIdForOrg), but a parking-only org still
- * has no property-scoped entitlement to check for these two features. See
- * docs/architecture/plans-feature-matrix.md. */
-const PARKING_INTERIM_UNGATED_FEATURES = new Set<PlanFeatureKey>([
-  'telegramNotifications',
-  'aiDashboardAssistant',
-]);
-
-function isParkingInterimUngated(
-  feature: PlanFeatureKey,
-  parkingId: string | null,
-  propertyId: string | null
-): boolean {
-  return Boolean(parkingId && !propertyId && PARKING_INTERIM_UNGATED_FEATURES.has(feature));
-}
-
+/**
+ * Property-scoped routes check that property's own entitlement; every other route (org-only
+ * **and** parking, which has no property to check through) resolves the org's own live
+ * subscription (or Free default) via `useOrgPlan` + `deriveOrgEntitlementsFromPlan` — the same
+ * property-independent org gate the server now uses (`requireOrgFeature` in
+ * `_shared/planEntitlements.ts`). Closes the `parking-property-parity.md` interim-ungate blocker:
+ * parking routes used to unconditionally allow `telegramNotifications`/`aiDashboardAssistant`
+ * regardless of plan tier (`PARKING_INTERIM_UNGATED_FEATURES`) — removed, parking now gates on
+ * the org's real plan exactly like an org-only page already did.
+ */
 export function useFeatureGate(feature: PlanFeatureKey, propertyIdOverride?: string | null) {
-  const parkingId = useParkingIdParam();
   const routePropertyId = usePropertyIdParam();
   const propertyId = propertyIdOverride ?? routePropertyId;
   const orgId = useResolvedOrgId();
@@ -40,10 +27,8 @@ export function useFeatureGate(feature: PlanFeatureKey, propertyIdOverride?: str
 
   const isLoading = propertyId ? propertyQuery.isLoading : orgPlanQuery.isLoading;
 
-  const parkingInterimAllowed = isParkingInterimUngated(feature, parkingId, propertyId);
-  const allowed =
-    parkingInterimAllowed || (entitlements ? isFeatureEnabled(entitlements, feature) : false);
-  const canUse = !isLoading && allowed && (parkingInterimAllowed || Boolean(entitlements));
+  const allowed = entitlements ? isFeatureEnabled(entitlements, feature) : false;
+  const canUse = !isLoading && allowed && Boolean(entitlements);
 
   return {
     ...(propertyId ? propertyQuery : orgPlanQuery),

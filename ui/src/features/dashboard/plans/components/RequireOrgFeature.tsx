@@ -1,14 +1,13 @@
 import { useEffect, type ReactNode } from 'react';
 
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 
-import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
-import { orgPlansPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { PlanGatedText } from '@/features/dashboard/plans/components/PlanUpgradeLink';
 import { useUpgradeModal } from '@/features/dashboard/plans/components/UpgradeModalProvider';
 import { useFeatureGate } from '@/features/dashboard/plans/hooks/useFeatureGate';
 import { featureGateCopy } from '@/features/dashboard/plans/lib/featureGateCopy';
 import type { PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
+import { orgSectionPath } from '@/features/dashboard/team/lib/orgPermissions';
 
 import { FloatingPanel } from '@/components/mobile/FloatingPanel';
 import { RouteGuardSkeleton } from '@/components/skeletons/AdminSkeletons';
@@ -19,13 +18,17 @@ type Props = {
   children: ReactNode;
 };
 
-/** Route-level plan gate — blocked hosts see an upgrade prompt, not the gated surface. */
-export function RequirePropertyFeature({ feature, children }: Props) {
+/**
+ * Org-level analog of `RequirePropertyFeature` — this repo's first org-scoped paid feature
+ * (existing org pages like dashboard/bookings/properties are baseline-free). Same shape:
+ * skeleton while loading, upgrade panel when blocked, children when allowed.
+ */
+export function RequireOrgFeature({ feature, children }: Props) {
   const { allowed, isLoading } = useFeatureGate(feature);
   const { open } = useUpgradeModal();
-  const { orgSlug } = useOrgContext();
+  const { orgSlug = '' } = useParams<{ orgSlug: string }>();
   const copy = featureGateCopy(feature);
-  const plansPath = orgPlansPath(orgSlug);
+  const plansPath = orgSectionPath(orgSlug, 'plans');
 
   useEffect(() => {
     if (!isLoading && !allowed) {

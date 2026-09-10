@@ -8,10 +8,8 @@ import {
   helpSupportNewTicketPath,
   useHelpSupportBasePath,
 } from '@/features/dashboard/help-support/lib/helpSupportPaths';
-import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOrganizations } from '@/features/dashboard/org/hooks/useOrganizations';
 import { canManageOrgBilling } from '@/features/dashboard/org/lib/orgAccessKind';
-import { orgPlansPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { CurrentPlanSummary } from '@/features/dashboard/plans/components/CurrentPlanSummary';
 import { PlanBillingPanel } from '@/features/dashboard/plans/components/PlanBillingPanel';
 import { PlanCheckoutConfirmationBanner } from '@/features/dashboard/plans/components/PlanCheckoutConfirmationBanner';
@@ -50,45 +48,24 @@ import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { PlansPageSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { orgPageTitle, propertyDashboardPageTitle, usePageTitle } from '@/lib/pageTitle';
+import { orgPageTitle, usePageTitle } from '@/lib/pageTitle';
 import { cn } from '@/lib/utils';
 
 type PlansTab = 'plans' | 'billing' | 'compare';
-
-export type PlansBillingPaidCheckoutMode = 'checkout' | 'redirect-to-org';
-
-type OrgPlansPageProps = {
-  /**
-   * `checkout` — create PayMongo in place (org `/plans`).
-   * `redirect-to-org` — property mirror: hand off to org Plans on **Continue to payment**.
-   */
-  paidCheckoutMode?: PlansBillingPaidCheckoutMode;
-};
 
 /**
  * Org subscription hub — one plan covers every property in the org, priced per property with
  * volume discounts. Tier changes open PlanReviewDialog for a final review (with proration when
  * it's a genuine mid-cycle change) before charging anything.
- *
- * Also rendered at property `/plans` (`paidCheckoutMode="redirect-to-org"`) so hosts stay in
- * property context until they confirm payment.
  */
-export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProps) {
+export function OrgPlansPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { orgSlug } = useParams<{ orgSlug: string }>();
-  const propertyContext = useOptionalOrgContext();
-  const isPropertyMirror = paidCheckoutMode === 'redirect-to-org';
   const { data: orgsData, isLoading: orgsLoading } = useOrganizations();
   const org = orgsData?.organizations.find((entry) => entry.slug === orgSlug);
   const helpSupportBase = useHelpSupportBasePath();
-  const pageTitle =
-    isPropertyMirror && propertyContext?.property.name
-      ? propertyDashboardPageTitle(propertyContext.property.name, 'Plans & Billing')
-      : org?.name
-        ? orgPageTitle(org.name, 'Plans & Billing')
-        : undefined;
-  usePageTitle(pageTitle);
+  usePageTitle(org?.name ? orgPageTitle(org.name, 'Plans & Billing') : undefined);
 
   const checkoutReturn = parseOrgPlanCheckoutReturn(searchParams.get('checkout'));
 
@@ -111,8 +88,7 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
     onCheckoutReturnHandled: clearCheckoutReturnParam,
   });
 
-  /** Org billing hub defaults to Billing; property mirror only shows Plans + Compare. */
-  const [activeTab, setActiveTab] = useState<PlansTab>(isPropertyMirror ? 'plans' : 'billing');
+  const [activeTab, setActiveTab] = useState<PlansTab>('billing');
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [upgradeCelebrationOpen, setUpgradeCelebrationOpen] = useState(false);
@@ -219,13 +195,13 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
     if (!plans.length) return;
 
     const tab = searchParams.get('tab');
-    if (tab === 'billing' && !isPropertyMirror) {
+    if (tab === 'billing') {
       setActiveTab('billing');
     } else if (tab === 'plans' || tab === 'compare') {
       setActiveTab(tab);
     }
 
-    if (checkoutReturn === 'success' && !isPropertyMirror) {
+    if (checkoutReturn === 'success') {
       setActiveTab('billing');
       void refetch();
     }
@@ -239,13 +215,7 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
       targetPlanId = minimumPlan?.id ?? null;
     }
 
-    /** Property → org payment handoff uses `?tab=billing` only (no review modal). */
-    if (
-      !isPropertyMirror &&
-      canManageBilling &&
-      targetPlanId &&
-      plans.some((plan) => plan.id === targetPlanId)
-    ) {
+    if (canManageBilling && targetPlanId && plans.some((plan) => plan.id === targetPlanId)) {
       setActiveTab('plans');
       setPendingPlanId(targetPlanId);
       setReviewOpen(true);
@@ -254,15 +224,7 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
     if ((tab || reviewPlanId || featureParam) && !checkoutReturn) {
       setSearchParams({}, { replace: true });
     }
-  }, [
-    plans,
-    searchParams,
-    setSearchParams,
-    isPropertyMirror,
-    canManageBilling,
-    checkoutReturn,
-    refetch,
-  ]);
+  }, [plans, searchParams, setSearchParams, canManageBilling, checkoutReturn, refetch]);
 
   const isBootstrapping = orgsLoading || (Boolean(org?.id) && isLoading && !data);
 
@@ -322,14 +284,7 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
                   ? () => handleSelectPlan(currentPlan)
                   : undefined
               }
-              onManageBilling={
-                isPropertyMirror
-                  ? () => {
-                      if (!orgSlug) return;
-                      navigate(`${orgPlansPath(orgSlug)}?tab=billing`);
-                    }
-                  : () => setActiveTab('billing')
-              }
+              onManageBilling={() => setActiveTab('billing')}
             />
           ) : null}
 
@@ -339,15 +294,13 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
             className="min-w-0"
           >
             <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto p-1 max-lg:h-9 sm:w-auto">
-              {!isPropertyMirror ? (
-                <TabsTrigger
-                  value="billing"
-                  className="gap-2 px-3 py-2 max-lg:gap-1.5 max-lg:px-2.5 max-lg:py-0 max-lg:text-[13px]"
-                >
-                  <Receipt className="size-4 shrink-0" aria-hidden />
-                  <span>Billing</span>
-                </TabsTrigger>
-              ) : null}
+              <TabsTrigger
+                value="billing"
+                className="gap-2 px-3 py-2 max-lg:gap-1.5 max-lg:px-2.5 max-lg:py-0 max-lg:text-[13px]"
+              >
+                <Receipt className="size-4 shrink-0" aria-hidden />
+                <span>Billing</span>
+              </TabsTrigger>
               <TabsTrigger
                 value="plans"
                 className="gap-2 px-3 py-2 max-lg:gap-1.5 max-lg:px-2.5 max-lg:py-0 max-lg:text-[13px]"
@@ -364,28 +317,26 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
               </TabsTrigger>
             </TabsList>
 
-            {!isPropertyMirror ? (
-              <TabsContent value="billing" className="mt-5 sm:mt-6">
-                <section aria-labelledby="billing-tab-heading" className="min-w-0">
-                  <h2 id="billing-tab-heading" className={cn(planTabSectionTitleClass, 'mb-4')}>
-                    Billing
-                  </h2>
+            <TabsContent value="billing" className="mt-5 sm:mt-6">
+              <section aria-labelledby="billing-tab-heading" className="min-w-0">
+                <h2 id="billing-tab-heading" className={cn(planTabSectionTitleClass, 'mb-4')}>
+                  Billing
+                </h2>
 
-                  <PlanCheckoutConfirmationBanner
-                    state={checkoutConfirmation}
-                    pendingCheckoutUrl={data?.pendingCheckoutUrl}
-                    onResumePayment={canManageBilling ? resumePendingCheckout : undefined}
-                    className="mb-4"
-                  />
+                <PlanCheckoutConfirmationBanner
+                  state={checkoutConfirmation}
+                  pendingCheckoutUrl={data?.pendingCheckoutUrl}
+                  onResumePayment={canManageBilling ? resumePendingCheckout : undefined}
+                  className="mb-4"
+                />
 
-                  <PlanBillingPanel
-                    plan={currentPlan}
-                    subscription={subscription}
-                    transactions={data?.transactions ?? []}
-                  />
-                </section>
-              </TabsContent>
-            ) : null}
+                <PlanBillingPanel
+                  plan={currentPlan}
+                  subscription={subscription}
+                  transactions={data?.transactions ?? []}
+                />
+              </section>
+            </TabsContent>
 
             <TabsContent value="plans" className="mt-5 space-y-6 sm:mt-6">
               <section aria-labelledby="choose-plan-heading" className="min-w-0">
@@ -442,11 +393,6 @@ export function OrgPlansPage({ paidCheckoutMode = 'checkout' }: OrgPlansPageProp
             targetPlanId: planId,
           });
           setReviewOpen(false);
-          if (paidCheckoutMode === 'redirect-to-org') {
-            if (!orgSlug) return;
-            navigate(`${orgPlansPath(orgSlug)}?tab=billing`);
-            return;
-          }
           setActiveTab('billing');
         }}
         isSubmitting={createCheckout.isPending || applyDowngrade.isPending}

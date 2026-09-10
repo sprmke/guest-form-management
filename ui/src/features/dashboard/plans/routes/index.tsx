@@ -1,11 +1,19 @@
 import type { ReactNode } from 'react';
 
-import { Route } from 'react-router-dom';
+import { Navigate, Route, useLocation, useParams } from 'react-router-dom';
 
-import type { PropertyRouteFn } from '@/features/dashboard/org/routes/guards';
-import { PropertyPlansPage } from '@/features/dashboard/plans/pages/PropertyPlansPage';
+import { orgPlansPath } from '@/features/dashboard/org/lib/tenantPaths';
 
-/** Property `/plans` — same content as org Plans; payment handoff stays on org. */
-export function propertyPlansRoute(propertyRoute: PropertyRouteFn): ReactNode {
-  return <Route path="plans" element={propertyRoute('plans', <PropertyPlansPage />)} />;
+function PropertyPlansRedirect() {
+  const { orgSlug } = useParams<{ orgSlug: string }>();
+  const location = useLocation();
+  if (!orgSlug) {
+    return <Navigate to="/org" replace />;
+  }
+  return <Navigate to={`${orgPlansPath(orgSlug)}${location.search}`} replace />;
+}
+
+/** Legacy property `/plans` deep links redirect to the org billing hub. */
+export function propertyPlansRoute(): ReactNode {
+  return <Route path="plans" element={<PropertyPlansRedirect />} />;
 }
