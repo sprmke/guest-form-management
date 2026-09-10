@@ -812,7 +812,7 @@ export async function verifyOrgAccess(
     });
   }
 
-  if (isPlatformAdmin(user.email)) {
+  if (isPlatformAdmin(user.email) || isSuperAdminEmail(user.email)) {
     return enforce({
       user,
       org,

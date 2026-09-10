@@ -86,7 +86,7 @@ export async function sendSubscriptionReceiptEmail(opts: {
   propertySlug: string;
 }): Promise<void> {
   const appOrigin = resolvePublicGuestAppOrigin(null);
-  const plansUrl = `${appOrigin}/org/${opts.orgSlug}/property/${opts.propertySlug}/plans`;
+  const plansUrl = `${appOrigin}/org/${opts.orgSlug}/plans`;
   await sendOwnerBillingEmail({
     supabase: opts.supabase,
     ownerId: opts.ownerId,

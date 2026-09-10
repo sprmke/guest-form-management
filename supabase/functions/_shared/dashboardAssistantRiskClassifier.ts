@@ -126,6 +126,8 @@ export const READ_TOOL_NAMES = new Set([
   'guide_telegram_settings',
   'guide_create_booking',
   'guide_import_bookings',
+  'get_property_analytics',
+  'explain_metric',
 ]);
 
 /** Idempotent write tools with no status/financial change — tier1 by construction. */

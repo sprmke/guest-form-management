@@ -89,11 +89,13 @@ export async function handleEdgeError(
   logPrefix: string,
   unauthorizedFallback = 'Unauthorized'
 ): Promise<Response> {
-  console.error(logPrefix, error);
   const { status, message } = await errorMessageFromThrown(error, unauthorizedFallback);
-  // Response-instance throws are intentional control flow (401/403/expected 400s) —
-  // only report genuine unexpected exceptions or real server errors to PostHog.
-  if (!(error instanceof Response) || status >= 500) {
+  // Response-instance throws are intentional control flow (401/403/expected 400s).
+  // Logging the Response object as console.error looks like a crash in `functions serve`.
+  if (error instanceof Response && status < 500) {
+    console.warn(`${logPrefix} ${status} ${message}`);
+  } else {
+    console.error(logPrefix, error);
     await capturePostHogException(error, {
       logPrefix,
       request: req,

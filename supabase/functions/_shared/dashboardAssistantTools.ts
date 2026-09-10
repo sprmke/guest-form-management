@@ -224,6 +224,12 @@ import {
   toolProposeUpdatePublicPageTemplate,
 } from './dashboardAssistantOpsTools.ts';
 import {
+  EXPLAIN_ANALYTICS_METRIC_TOOL_DECLARATION,
+  GET_PROPERTY_ANALYTICS_TOOL_DECLARATION,
+  toolExplainAnalyticsMetric,
+  toolGetPropertyAnalytics,
+} from './dashboardAssistantAnalyticsTools.ts';
+import {
   DELETE_FINANCE_LINE_ITEM_TOOL_DECLARATION,
   DELETE_MAINTENANCE_ITEM_TOOL_DECLARATION,
   UPDATE_FINANCE_LINE_ITEM_TOOL_DECLARATION,
@@ -4482,6 +4488,10 @@ export async function executeTool(
         return await toolGetPublicPagesStatus(ctx, args);
       case 'propose_update_public_page_template':
         return await toolProposeUpdatePublicPageTemplate(ctx, args);
+      case 'get_property_analytics':
+        return await toolGetPropertyAnalytics(ctx, args);
+      case 'explain_metric':
+        return toolExplainAnalyticsMetric(args);
       case 'propose_update_finance_line_item':
         return await toolProposeUpdateFinanceLineItem(ctx, args);
       case 'propose_delete_finance_line_item':
@@ -5369,4 +5379,6 @@ export const TOOL_DECLARATIONS = [
   GUIDE_TELEGRAM_SETTINGS_TOOL_DECLARATION,
   GUIDE_CREATE_BOOKING_TOOL_DECLARATION,
   GUIDE_IMPORT_BOOKINGS_TOOL_DECLARATION,
+  GET_PROPERTY_ANALYTICS_TOOL_DECLARATION,
+  EXPLAIN_ANALYTICS_METRIC_TOOL_DECLARATION,
 ];

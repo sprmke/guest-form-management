@@ -403,6 +403,24 @@ static_files = [
 [functions.dashboard-stats]
 verify_jwt = false
 
+[functions.analytics-summary]
+verify_jwt = false
+
+[functions.analytics-org-summary]
+verify_jwt = false
+
+[functions.analytics-ai-review]
+verify_jwt = false
+
+[functions.analytics-ai-review-cron]
+verify_jwt = false
+
+[functions.property-page-view]
+verify_jwt = false
+
+[functions.property-page-views-prune-cron]
+verify_jwt = false
+
 [functions.finance-summary]
 verify_jwt = false
 
@@ -488,6 +506,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.activity-log-export]
+verify_jwt = false
+
+[functions.activity-log-retention-cron]
 verify_jwt = false
 
 [functions.platform-settings]
@@ -1127,6 +1148,18 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.delete-help-center-faq]
+verify_jwt = false
+
+[functions.list-host-playbook-articles-admin]
+verify_jwt = false
+
+[functions.create-host-playbook-article]
+verify_jwt = false
+
+[functions.update-host-playbook-article]
+verify_jwt = false
+
+[functions.delete-host-playbook-article]
 verify_jwt = false
 
 # ── kept for reference (cloud schedule lines, never uncomment locally) ─────────

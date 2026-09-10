@@ -7,9 +7,11 @@ import {
 } from './httpResponse.ts';
 import {
   catchPlanFeatureError,
+  requireOrgFeature,
   requireTelegramNotificationsEnabled,
   resolveTelegramEntitlementPropertyId,
 } from './planEntitlements.ts';
+import { resolveOrganizationIdForParking } from './parkingScope.ts';
 import type { TelegramAssetScope } from './telegramAssetScope.ts';
 import { ensurePropertySettings } from './propertySettingsSeed.ts';
 import { ensureTelegramParkingSettings } from './parkingTelegramSettingsSeed.ts';
@@ -53,11 +55,16 @@ export async function gateTelegramEnabledPatch(
   body: Record<string, unknown>
 ): Promise<Response | null> {
   if (body.enabled !== true) return null;
-  // Parking routes: temporarily ungated until org-level plan entitlements ship.
-  if (asset.kind === 'parking') return null;
   try {
-    const propertyId = await resolveTelegramEntitlementPropertyId(asset);
-    await requireTelegramNotificationsEnabled(propertyId);
+    if (asset.kind === 'parking') {
+      // Property-independent org gate — parking has no property to resolve entitlements
+      // through (see requireOrgFeature's doc comment / parking-property-parity.md).
+      const organizationId = await resolveOrganizationIdForParking(asset.id);
+      await requireOrgFeature(organizationId, 'telegramNotifications');
+    } else {
+      const propertyId = await resolveTelegramEntitlementPropertyId(asset);
+      await requireTelegramNotificationsEnabled(propertyId);
+    }
   } catch (err) {
     return catchPlanFeatureError(req, err);
   }

@@ -25,6 +25,7 @@ export const AI_FEATURES = [
   'voice_receptionist',
   'dashboard_assistant',
   'smart_pricing',
+  'host_analytics',
 ] as const;
 
 export type AiFeature = (typeof AI_FEATURES)[number];
@@ -156,6 +157,14 @@ const FEATURE_MODELS: Record<AiFeature, AiModelConfig> = {
     inputUsdPer1M: 0.3,
     outputUsdPer1M: 2.5,
     defaultMaxOutputTokens: 768,
+    thinkingBudget: 0,
+  },
+  host_analytics: {
+    model: 'gemini-2.5-flash',
+    tier: 'flash',
+    inputUsdPer1M: 0.3,
+    outputUsdPer1M: 2.5,
+    defaultMaxOutputTokens: 1024,
     thinkingBudget: 0,
   },
 };

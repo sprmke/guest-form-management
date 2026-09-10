@@ -497,6 +497,16 @@ const TOOL_LABELS: Record<string, { progress: string; done: string; failed: stri
     done: 'Loaded import guide',
     failed: 'Import guide failed',
   },
+  get_property_analytics: {
+    progress: 'Checking Analytics…',
+    done: 'Checked Analytics',
+    failed: 'Analytics check failed',
+  },
+  explain_metric: {
+    progress: 'Looking up metric…',
+    done: 'Explained metric',
+    failed: 'Metric lookup failed',
+  },
 };
 
 /** Short audit-card label (past tense, no ellipsis). */
