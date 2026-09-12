@@ -63,9 +63,8 @@ import { hasWorkflowSensitiveGuestFieldDiff } from '@/features/dashboard/booking
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
-import { isPostHogEnabled, posthog } from '@/lib/posthog/client';
+import { captureAppEvent } from '@/lib/posthog/capture';
 import { normalizeDateString, type BookedDateRange } from '@/utils/format/dates';
-
 
 export {
   bookingEditDatePickerClass,
@@ -483,14 +482,12 @@ export function BookingEditForm({
       ).document_requirement_completions,
     });
 
-    if (isPostHogEnabled) {
-      posthog.capture('booking_updated', {
-        reverted_to_pending_review: revertToPendingReview,
-        booking_source: payload.booking_source ?? 'unknown',
-        needs_parking: Boolean(payload.need_parking),
-        has_pets: Boolean(payload.has_pets),
-      });
-    }
+    captureAppEvent('booking_updated', {
+      reverted_to_pending_review: revertToPendingReview,
+      booking_source: payload.booking_source ?? 'unknown',
+      needs_parking: Boolean(payload.need_parking),
+      has_pets: Boolean(payload.has_pets),
+    });
 
     if (revertToPendingReview) {
       toast.success('Booking updated. Moved to Pending Review');

@@ -8,6 +8,7 @@ import { appendParkingId, useParkingIdParam } from '@/features/dashboard/org/lib
 import { resolveDashboardPeriod } from '@/features/dashboard/property/lib/dashboardPeriod';
 import type { DashboardStats } from '@/features/dashboard/property/lib/types';
 
+import { refetchIntervalWhenVisibleMs } from '@/lib/query/refetchWhenVisible';
 import { supabase } from '@/lib/supabase/client';
 
 const PARKING_DASHBOARD_STATS_KEY = ['parking-dashboard-stats'] as const;
@@ -46,7 +47,7 @@ export function useParkingDashboardStats() {
     queryFn: () => fetchParkingDashboardStats(period.from, period.to, parkingId!),
     enabled: Boolean(parkingId),
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval: refetchIntervalWhenVisibleMs(60_000),
   });
 
   return { ...query, period };

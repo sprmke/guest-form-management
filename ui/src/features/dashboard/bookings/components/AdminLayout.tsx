@@ -98,6 +98,7 @@ import {
   subscribeParkingSettingsIssues,
 } from '@/features/dashboard/parking/lib/parkingSettingsIssuesStore';
 import { UpgradeModalProvider } from '@/features/dashboard/plans/components/UpgradeModalProvider';
+import { PostHogAdminScopeSync } from '@/lib/posthog/PostHogAdminScopeSync';
 import { SetupGuideProvider } from '@/features/dashboard/setup-guide/components/SetupGuideProvider';
 import { SetupGuideSidebarEntry } from '@/features/dashboard/setup-guide/components/SetupGuideSidebarEntry';
 import { SuperAdminSidebarScope } from '@/features/dashboard/super-admin/components/SuperAdminSidebarScope';
@@ -567,6 +568,7 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
 
   return (
     <>
+      <PostHogAdminScopeSync />
       {isOrgAdminPath(location.pathname) ? <OrgSettingsIssuesSync /> : null}
       {!superAdmin ? <HostVerificationChangesGate /> : null}
       {!superAdmin ? <NotificationsProvider /> : null}

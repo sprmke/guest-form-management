@@ -1,6 +1,6 @@
 import { markOrgPlanCheckoutSession } from '@/features/dashboard/plans/lib/orgPlanCheckoutSession';
 
-import { isPostHogEnabled, posthog } from '@/lib/posthog/client';
+import { captureAppEvent } from '@/lib/posthog/capture';
 
 /**
  * Redirect to PayMongo Hosted Checkout (same tab). PayMongo returns the host to
@@ -21,11 +21,9 @@ export function openOrgPlanCheckout(params: {
     targetPlanId: params.targetPlanId,
   });
 
-  if (isPostHogEnabled) {
-    posthog.capture('org_plan_checkout_started', {
-      previous_plan_id: params.previousPlanId ?? 'none',
-      target_plan_id: params.targetPlanId,
-    });
-  }
+  captureAppEvent('org_plan_checkout_started', {
+    previous_plan_id: params.previousPlanId ?? 'none',
+    target_plan_id: params.targetPlanId,
+  });
   window.location.assign(params.checkoutUrl);
 }

@@ -8,6 +8,7 @@ import { appendPropertyId, usePropertyIdParam } from '@/features/dashboard/org/l
 import { resolveDashboardPeriod } from '@/features/dashboard/property/lib/dashboardPeriod';
 import type { DashboardStats } from '@/features/dashboard/property/lib/types';
 
+import { refetchIntervalWhenVisibleMs } from '@/lib/query/refetchWhenVisible';
 import { supabase } from '@/lib/supabase/client';
 
 const DASHBOARD_STATS_KEY = ['dashboard-stats'] as const;
@@ -44,7 +45,7 @@ export function useDashboardStats() {
     queryKey: [...DASHBOARD_STATS_KEY, propertyId, period] as const,
     queryFn: () => fetchDashboardStats(period.from, period.to, propertyId),
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval: refetchIntervalWhenVisibleMs(60_000),
   });
 
   return { ...query, period };

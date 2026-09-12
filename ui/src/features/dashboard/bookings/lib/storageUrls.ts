@@ -16,6 +16,11 @@ export const PRIVATE_STORAGE_BUCKETS = new Set([
   'approved-gafs',
   'approved-pet-forms',
   'sd-refund-receipts',
+  'payment-receipts',
+  'valid-ids',
+  'pet-vaccinations',
+  'pet-images',
+  'parking-endorsements',
 ]);
 
 export function normalizeStoragePublicUrl(

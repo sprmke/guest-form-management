@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { SubscriptionUpgradeModal } from '@/features/dashboard/plans/components/SubscriptionUpgradeModal';
 import type { PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
 import { registerUpgradeModalOpener } from '@/features/dashboard/plans/lib/upgradeModalBridge';
+import { captureAppEvent } from '@/lib/posthog/capture';
 
 type UpgradeModalContextValue = {
   open: (feature: PlanFeatureKey) => void;
@@ -31,6 +32,7 @@ export function UpgradeModalProvider({ children }: ProviderProps) {
   const openModal = useCallback((nextFeature: PlanFeatureKey) => {
     setFeature(nextFeature);
     setOpen(true);
+    captureAppEvent('upgrade_modal_shown', { feature_key: nextFeature });
   }, []);
 
   useEffect(() => {

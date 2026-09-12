@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
-import { isPostHogEnabled, posthog } from '@/lib/posthog/client';
+import { captureAppEvent } from '@/lib/posthog/capture';
 import { cn } from '@/lib/utils';
 
 const CATEGORY_ICONS: Record<SupportTicketCategory, typeof Bug> = {
@@ -177,13 +177,11 @@ export function TicketComposeForm({
         attachments: 'attachments' in parsed.data ? parsed.data.attachments : undefined,
         antiSpam: antiSpam.getFields(),
       });
-      if (isPostHogEnabled) {
-        posthog.capture('support_ticket_submitted', {
-          category: parsed.data.category,
-          severity: 'severity' in parsed.data ? parsed.data.severity : 'not_applicable',
-          attachment_count: 'attachments' in parsed.data ? parsed.data.attachments.length : 0,
-        });
-      }
+      captureAppEvent('support_ticket_submitted', {
+        category: parsed.data.category,
+        severity: 'severity' in parsed.data ? parsed.data.severity : 'not_applicable',
+        attachment_count: 'attachments' in parsed.data ? parsed.data.attachments.length : 0,
+      });
       toast.success('Submitted');
       onSubmitted(result.ticket.id);
     } catch (error) {

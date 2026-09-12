@@ -131,7 +131,7 @@ import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePrope
 import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
 import { friendlyToastError, sdRefundCronSuccessMessage } from '@/lib/feedback/toastMessages';
-import { isPostHogEnabled, posthog } from '@/lib/posthog/client';
+import { captureAppEvent } from '@/lib/posthog/capture';
 import { cn } from '@/lib/utils';
 
 // ─── Confirm dialog ───────────────────────────────────────────────────────────
@@ -644,12 +644,11 @@ function WorkflowPanelInner({
         ...(devControls ? { devControls } : {}),
         manual: true,
       });
-      if (isPostHogEnabled) {
-        posthog.capture('booking_workflow_transitioned', {
-          from_status: status,
-          to_status: toStatus,
-        });
-      }
+      captureAppEvent('booking_workflow_cta_clicked', {
+        from_status: status,
+        to_status: toStatus,
+        outcome: 'success',
+      });
       toast.success(`Moved to ${statusLabel(toStatus)}`);
       if (kanbanTargetStatus) dismissKanbanFlow();
     } catch (err: unknown) {
@@ -688,11 +687,10 @@ function WorkflowPanelInner({
         payload,
         manual: true,
       });
-      if (isPostHogEnabled) {
-        posthog.capture('booking_document_step_completed', {
-          document_step: subStatus,
-        });
-      }
+      captureAppEvent('booking_workflow_cta_clicked', {
+        document_step: subStatus,
+        outcome: 'document_step_success',
+      });
       toast.success(`Marked ${label} as complete`);
       if (kanbanTargetStatus) {
         dismissKanbanFlow();
@@ -719,9 +717,10 @@ function WorkflowPanelInner({
     setCancelConfirm(false);
     try {
       await cancelMut.mutateAsync({ bookingId: booking.id });
-      if (isPostHogEnabled) {
-        posthog.capture('booking_cancelled', { previous_status: status });
-      }
+      captureAppEvent('booking_workflow_cta_clicked', {
+        previous_status: status,
+        outcome: 'cancel_success',
+      });
       toast.success('Booking cancelled');
     } catch (err: any) {
       toast.error(friendlyToastError(err, 'Could not cancel booking'));

@@ -2,7 +2,7 @@
 title: 'Form validation and environment variables'
 status: active
 tags: [architecture]
-updated: 2026-09-06
+updated: 2026-09-11
 ---
 
 # Form validation and environment variables
@@ -21,6 +21,8 @@ Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split.
 - **Parking / pets**: conditional required fields.
 - **Same-day stay**: check-out time must be after check-in time when dates equal.
 - **Files**: `paymentReceipt` required for Facebook bookings; `validId` / `guest2ValidId` / `guest3ValidId` / `guest4ValidId` / `guest5ValidId` required when the matching guest is 18+; pet files required when `hasPets`.
+
+**Server mirror (edge):** format-only rules duplicated in `_shared/guestFormSubmitValidation.ts` for `submit-form` and `submit-form-completion` (name, email, PH phone, adults ≥ 1, check-out after check-in on `submit-form` only). Property-config-dependent rules stay client-side or in overlap/buffer checks.
 
 ---
 
@@ -68,7 +70,10 @@ Production hosted secrets: Supabase Dashboard → Edge Functions → Secrets. UI
 | `VITE_SUPER_ADMIN_EMAILS`         | No         | Comma-separated — `/admin/*` UX only; server uses `SUPER_ADMIN_EMAILS`                                                                                                                                                                                                                                                                                                                                        |
 | `VITE_GOOGLE_MAPS_API_KEY`        | No         | Property Settings location picker                                                                                                                                                                                                                                                                                                                                                                             |
 | `VITE_POSTHOG_KEY`                | No         | PostHog project API key — error tracking, product analytics, session replay, feature flags. Unset → `ui/src/lib/posthog/client.ts` no-ops (no `posthog.init`)                                                                                                                                                                                                                                                 |
-| `VITE_POSTHOG_HOST`               | No         | PostHog Cloud region host. Defaults to `https://us.i.posthog.com`; use `https://eu.i.posthog.com` for EU data residency                                                                                                                                                                                                                                                                                       |
+| `VITE_POSTHOG_HOST`               | No         | PostHog Cloud region host (dev/preview). Defaults to `https://us.i.posthog.com`; use `https://eu.i.posthog.com` for EU data residency                                                                                                                                                                                                                                                                         |
+| `VITE_POSTHOG_INGEST_PATH`        | No         | Production first-party ingest path (e.g. `/ingest`). When set in prod builds, `ui/src/lib/posthog/env.ts` uses this instead of `VITE_POSTHOG_HOST`. Pair with `ui/vercel.json` rewrites to `us.i.posthog.com`.                                                                                                                                                                                                |
+| `VITE_POSTHOG_SESSION_REPLAY`     | No         | Set to `true` to enable session replay in production builds. Default off; inputs masked when on (`ui/src/lib/posthog/client.ts`).                                                                                                                                                                                                                                                                             |
+| `VITE_APP_TRACK`                  | No         | Analytics track label: `mt` (default) or `legacy` for dual-track legacy prod. Attached as `app_track` on every event.                                                                                                                                                                                                                                                                                         |
 | `POSTHOG_PERSONAL_API_KEY`        | No         | **Build-time only** (Vercel/CI build env — no `VITE_` prefix, never bundled to the browser). PostHog **personal** API key (error tracking write scope) so `vite.config.ts` uploads readable production source maps via `@posthog/rollup-plugin`. Deliberately a different var from edge's `POSTHOG_API_KEY` (project key) — unset → plugin skipped, `build.sourcemap` stays `false`                           |
 | `POSTHOG_PROJECT_ID`              | No         | Pairs with `POSTHOG_PERSONAL_API_KEY` for source map upload — from PostHog project settings                                                                                                                                                                                                                                                                                                                   |
 | `VITE_INBOX_MOCK_DATA`            | No         | `true` → inbox mock mode                                                                                                                                                                                                                                                                                                                                                                                      |
@@ -135,7 +140,24 @@ When invoking `supabase functions serve` manually, `./dev.sh` / `bun run dev:api
 | `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile **secret** key. Used two ways: (1) Supabase Auth native captcha on `signInWithOtp` (`supabase/config.toml` `[auth.captcha]`, hosted: Dashboard → Authentication → Attack Protection); (2) `_shared/captcha.ts#verifyCaptchaToken` `siteverify` for the anon write endpoints. **Unset → CAPTCHA is disabled** (helper no-ops). Local/CI test secret: `1x0000000000000000000000000000000AA` (always passes) / `2x0000000000000000000000000000000AA` (always fails). |
 | `CAPTCHA_MODE`         | Optional override for `_shared/captcha.ts`: `enforce` (reject missing/invalid token), `monitor` (always allow, log outcome to PostHog for tuning), `disabled` (skip). Unset → derived: `enforce` when `TURNSTILE_SECRET_KEY` is set, else `disabled`. Use `monitor` for a zero-redeploy fallback during a provider incident. Fails **open** on `siteverify` 5xx / timeout / network error; fails **closed** on a definitive negative or a missing token in `enforce`.                  |
 
-**Durable rate limiter** (`_shared/rateLimit.ts` + `request_rate_limits` table + `bump_rate_limit()` RPC, migration `20261304120000`): no env — always on, fixed-window per `{scope, identity}` where identity is the auth user id else client IP. Fails **open** on any counter error. Replaces nothing — `_shared/publicRateLimit.ts` stays as an in-memory L1 burst dampener on `submit-form`.
+**Durable rate limiter** (`_shared/rateLimit.ts` + `request_rate_limits` table + `bump_rate_limit()` RPC, migration `20261304120000`): no env — always on, fixed-window per `{scope, identity}` where identity is the auth user id else client IP. Fails **open** on any counter error. Public GET ceiling from `platform_settings.public_rate_limit_per_min` via `_shared/publicEndpointRateLimit.ts`. `_shared/publicRateLimit.ts` stays as an in-memory L1 burst dampener on `submit-form`; client IP prefers `cf-connecting-ip` → `x-real-ip` → `x-forwarded-for`.
+
+#### Guest booking access tokens
+
+| Variable                                 | Notes                                                                                                                                                       |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GUEST_BOOKING_ACCESS_SECRET`            | HMAC secret for guest PII link tokens (`_shared/guestBookingAccessToken.ts`). Optional — falls back to `SUPABASE_SERVICE_ROLE_KEY`.                         |
+| `GUEST_BOOKING_ACCESS_ENFORCE`           | `true` → `get-form`, `get-sd-form`, `get-guest-review` require valid `?access=` token (or booking within legacy grace). Default off until dev verification. |
+| `GUEST_BOOKING_ACCESS_LEGACY_GRACE_DAYS` | When enforce is on, bare UUID still works for N days after `guest_submissions.created_at`. Default **30**. `0` = no grace.                                  |
+| `AI_PLATFORM_DAILY_COST_USD_CAP`         | Platform-wide daily AI USD ceiling in `assertOrgAndPropertyAiQuota`. Default **150**; `0` = disabled.                                                       |
+| `AI_ASSISTANT_ATTACHMENT_RETENTION_DAYS` | Purge `ai-assistant-attachments` objects older than N days (dashboard-assistant-expire cron). Default **90**.                                               |
+| `VITE_POSTHOG_SESSION_REPLAY`            | UI — set `true` to enable session replay in production builds (default off).                                                                                |
+
+#### Cron secret gate
+
+| Variable      | Notes                                                                                                                                                                         |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ENVIRONMENT` | When `production`, `_shared/cronSecretGate.ts` rejects cron POSTs if the job-specific `*_CRON_SECRET` is unset. Dev/local stay fail-open until Vault secrets are provisioned. |
 
 #### AI
 

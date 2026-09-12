@@ -1,3 +1,5 @@
+import { captureAppEvent } from '@/lib/posthog/capture';
+
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
 /** Refresh only when the access token is this close to expiring (or already expired). */
@@ -142,6 +144,13 @@ async function callEdgeFunctionInner<T>(
   const json = await res.json().catch(() => ({}) as Record<string, unknown>);
 
   if (!res.ok || !json.success) {
+    if (res.status >= 500) {
+      captureAppEvent('edge_request_failed', {
+        edge_path: path.split('?')[0] ?? path,
+        http_status: res.status,
+      });
+    }
+
     if (
       !isStepUpRetry &&
       res.status === 401 &&

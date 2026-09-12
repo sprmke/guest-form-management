@@ -52,7 +52,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { UPLOAD_MAX_BYTES, formatMaxBytesError } from '@/lib/media/uploadLimits';
-import { isPostHogEnabled, posthog } from '@/lib/posthog/client';
+import { captureAppEvent } from '@/lib/posthog/capture';
 import { formatMoneyCompact } from '@/utils/format/currency';
 
 export type PublishMedia = {
@@ -161,13 +161,11 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
       availabilityText: availabilityTextForMonth(bookedDates ?? [], new Date()),
     });
     setCaption(captionText);
-    if (isPostHogEnabled) {
-      posthog.capture('marketing_caption_generated', {
-        platform,
-        post_type: postType,
-        media_type: media?.mediaType ?? 'unknown',
-      });
-    }
+    captureAppEvent('marketing_caption_generated', {
+      platform,
+      post_type: postType,
+      media_type: media?.mediaType ?? 'unknown',
+    });
   };
 
   const handlePublish = async () => {
@@ -230,17 +228,15 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
         await publishToMetaRequest(propertyId, payloads[0]!);
         toast.success('Published');
       }
-      if (isPostHogEnabled) {
-        posthog.capture('marketing_post_published', {
-          platform,
-          post_type: postType,
-          media_type: media.mediaType,
-          channel_count: connectionIds.length,
-          batch_mode: batchMode,
-          published_count: publishedCount,
-          failed_count: failedCount,
-        });
-      }
+      captureAppEvent('marketing_post_published', {
+        platform,
+        post_type: postType,
+        media_type: media.mediaType,
+        channel_count: connectionIds.length,
+        batch_mode: batchMode,
+        published_count: publishedCount,
+        failed_count: failedCount,
+      });
 
       void queryClient.invalidateQueries({ queryKey: ['marketing-publications', propertyId] });
       onOpenChange(false);
@@ -249,6 +245,11 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
         openUpgradeModal(error.feature ?? 'marketingPublishLimitPerGroup');
         return;
       }
+      captureAppEvent('marketing_publish_failed', {
+        platform,
+        post_type: postType,
+        media_type: media.mediaType,
+      });
       toast.error((error as Error).message || 'Publish failed');
     } finally {
       setPublishing(false);

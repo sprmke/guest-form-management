@@ -12,7 +12,7 @@ import {
   writeOrgPlanUpgradeCelebration,
 } from '@/features/dashboard/plans/lib/orgPlanCheckoutSession';
 
-import { isPostHogEnabled, posthog } from '@/lib/posthog/client';
+import { captureAppEvent } from '@/lib/posthog/capture';
 
 const LIVE_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing']);
 
@@ -60,6 +60,11 @@ export function useOrgPlanCheckoutConfirmation({
 
     if (checkoutReturn === 'cancelled') {
       checkoutReturnHandledRef.current = true;
+      const checkoutSession = readOrgPlanCheckoutSession(orgId);
+      captureAppEvent('org_plan_checkout_cancelled', {
+        previous_plan_id: checkoutSession?.previousPlanId ?? 'none',
+        target_plan_id: checkoutSession?.targetPlanId ?? 'unknown',
+      });
       clearOrgPlanCheckoutSession(orgId);
       setState('cancelled');
       toast.message('Payment cancelled');
@@ -83,6 +88,11 @@ export function useOrgPlanCheckoutConfirmation({
 
     const sessionNow = readOrgPlanCheckoutSession(orgId);
     if (sessionNow && isOrgPlanCheckoutWatchExpired(sessionNow) && pendingCheckoutUrl) {
+      captureAppEvent('org_plan_checkout_failed', {
+        reason: 'timed_out',
+        previous_plan_id: sessionNow.previousPlanId ?? 'none',
+        target_plan_id: sessionNow.targetPlanId,
+      });
       setState('timed_out');
       return;
     }
@@ -102,12 +112,10 @@ export function useOrgPlanCheckoutConfirmation({
       successHandledRef.current = true;
       const checkoutSession = readOrgPlanCheckoutSession(orgId);
       if (checkoutSession) {
-        if (isPostHogEnabled) {
-          posthog.capture('org_plan_checkout_completed', {
-            previous_plan_id: checkoutSession.previousPlanId ?? 'none',
-            target_plan_id: checkoutSession.targetPlanId,
-          });
-        }
+        captureAppEvent('org_plan_checkout_completed', {
+          previous_plan_id: checkoutSession.previousPlanId ?? 'none',
+          target_plan_id: checkoutSession.targetPlanId,
+        });
         writeOrgPlanUpgradeCelebration({
           orgId,
           previousPlanId: checkoutSession.previousPlanId,

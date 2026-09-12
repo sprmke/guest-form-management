@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Car, Check, Home, Loader2 } from 'lucide-react';
 
 import { hostLoginPath } from '@/features/guest/auth/lib/hostAuthPaths';
+import { captureAppEvent } from '@/lib/posthog/capture';
 
 import { RequireAdmin } from '@/features/dashboard/bookings/components/RequireAdmin';
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
@@ -381,10 +382,21 @@ export function OnboardingPage() {
     if (step === 3) {
       setVerificationTouched(true);
       if (!verificationReady) return;
+      captureAppEvent('onboarding_step_completed', {
+        step_id: 3,
+        step_name: 'verification',
+        skipped: false,
+      });
       void submitOnboarding();
       return;
     }
     if (step < 3) {
+      const stepNames = ['org', 'listing', 'verification'] as const;
+      captureAppEvent('onboarding_step_completed', {
+        step_id: step,
+        step_name: stepNames[step - 1] ?? 'unknown',
+        skipped: false,
+      });
       setStep((s) => (s + 1) as OnboardingStep);
     }
   };

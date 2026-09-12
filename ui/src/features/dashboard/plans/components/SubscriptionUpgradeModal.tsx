@@ -7,6 +7,7 @@ import { PlanReviewDialog } from '@/features/dashboard/plans/components/PlanRevi
 import { useCreateOrgPlanCheckout, useOrgPlan } from '@/features/dashboard/plans/hooks/useOrgPlan';
 import { usePropertyEntitlements } from '@/features/dashboard/plans/hooks/usePropertyEntitlements';
 import { openOrgPlanCheckout } from '@/features/dashboard/plans/lib/openOrgPlanCheckout';
+import { captureAppEvent } from '@/lib/posthog/capture';
 import { isFeatureEnabled, type PlanFeatureKey } from '@/features/dashboard/plans/lib/planFeatures';
 import {
   resolveEffectiveCurrentPlan,
@@ -67,6 +68,12 @@ export function SubscriptionUpgradeModal({ open, onOpenChange, feature }: Props)
 
   const handleContinueToPayment = async (planId: string) => {
     if (!orgId) return;
+    if (feature) {
+      captureAppEvent('upgrade_modal_cta_clicked', {
+        feature_key: feature,
+        target_plan_id: planId,
+      });
+    }
     const checkout = await createCheckout.mutateAsync({ planId });
     onOpenChange(false);
     openOrgPlanCheckout({

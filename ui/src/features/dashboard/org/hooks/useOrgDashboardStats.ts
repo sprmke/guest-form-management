@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useOrgIdParam, useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { resolveDashboardPeriod } from '@/features/dashboard/property/lib/dashboardPeriod';
+import { refetchIntervalWhenVisibleMs } from '@/lib/query/refetchWhenVisible';
 import type { DashboardStats } from '@/features/dashboard/property/lib/types';
 
 import { supabase } from '@/lib/supabase/client';
@@ -71,7 +72,7 @@ export function useOrgDashboardStats() {
     queryFn: () => fetchOrgDashboardStats(period.from, period.to, orgSlug, orgId),
     enabled: Boolean(orgSlug || orgId),
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval: refetchIntervalWhenVisibleMs(60_000),
   });
 
   return { ...query, period };
