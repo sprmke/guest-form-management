@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
+import dayjs from 'dayjs';
 import { ArrowRight } from 'lucide-react';
 
 import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
@@ -26,6 +27,7 @@ import { PublicPropertyCalendar } from '@/features/guest/property/components/Pub
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
 import { CalendarPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { Button } from '@/components/ui/button';
+import { captureAppEvent } from '@/lib/posthog/capture';
 import { dateToString } from '@/utils/format/dates';
 
 export function CalendarPage() {
@@ -39,6 +41,16 @@ export function CalendarPage() {
   const [checkIn, setCheckIn] = useState<Date | null>(null);
   const [checkOut, setCheckOut] = useState<Date | null>(null);
   const { isLoading: calendarLoading } = useGuestBookedDates(propertySlug);
+  const calendarOpenedRef = useRef(false);
+
+  useEffect(() => {
+    if (calendarLoading || calendarOpenedRef.current) return;
+    calendarOpenedRef.current = true;
+    const source = scopedSearchParams.get('source')?.trim().toLowerCase();
+    captureAppEvent('calendar_opened', {
+      booking_source: source === 'facebook' || source === 'airbnb' ? source : 'unknown',
+    });
+  }, [calendarLoading, scopedSearchParams]);
 
   useEffect(() => {
     if (!propertySlug || !hasStrippedGuestQueryKeys(searchParams)) return;
@@ -65,6 +77,9 @@ export function CalendarPage() {
 
   const handleProceed = () => {
     if (!checkIn || !checkOut || !propertySlug) return;
+
+    const nights = Math.max(dayjs(checkOut).diff(dayjs(checkIn), 'day'), 0);
+    captureAppEvent('stay_dates_selected', { nights });
 
     const next = stripLegacyFromQueryParam(new URLSearchParams(scopedSearchParams));
     next.set('checkInDate', dateToString(checkIn));

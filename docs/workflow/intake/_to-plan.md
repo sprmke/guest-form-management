@@ -2,7 +2,7 @@
 title: 'Claude To Plan'
 status: archived
 tags: [planning]
-updated: 2026-09-02
+updated: 2026-09-12
 ---
 
 **Status legend:** ❌ cancelled / won't do · ✅ done · 📋 planned (plan doc written) · 🚧 in progress · 🔵 pending / open
@@ -548,7 +548,33 @@ Please also improve our upgrade plan modal text or content and UI so that user e
 
 # Make sure as well that we updated the necessary docs for all these changes please
 
-📋 Analyze entire app pages & features and brainstorm how AI can help us for each feature
+===
+
+✅ Sitewide automated testing (unit + Playwright + CI)
+
+Vitest + Deno + mocked Playwright across all modules/pages; CI gates on develop/prod; agents keep tests in sync with every change. Cursor / Claude Code / OpenCode tooling included.
+
+# → **Done:** [`../done/sitewide-automated-testing.md`](../done/sitewide-automated-testing.md)
+
+===
+
+🧪 Cost, abuse, and security production readiness
+
+Review the whole app for high usage / API cost, AI spend, brute force, missing rate limits, and security holes. Implement restrictions, validations, and optimizations so guests and hosts cannot run up Gemini, Resend, Maps, or Edge bills. Include a pentest / abuse-script plan.
+
+→ **For testing:** [`../for-testing/cost-abuse-security-production-readiness.md`](../for-testing/cost-abuse-security-production-readiness.md)
+
+===
+
+🧪 Production readiness audit and remediation
+
+Full develop-track audit: deduplicate existing cost/abuse/testing/parking work, close net-new Critical/High code gaps (guest write tokens, live developments/similar stays, workflow CAS, CI public RL check, voice preview quota, Meta webhook RL), publish go/no-go gates. Operator P0 keys stay on the pending-from-user doc.
+
+→ **For testing:** [`../for-testing/production-readiness-audit-and-remediation.md`](../for-testing/production-readiness-audit-and-remediation.md)
+
+===
+
+🧪 Analyze entire app pages & features and brainstorm how AI can help us for each feature
 
 Analyze the entire codebase, pages and features that we have, and see how AI can help hosts, guests, admin, and us developers on anything
 
@@ -687,9 +713,11 @@ Refine the full host onboarding flow end to end — not just the left showcase p
 
 # 🔵 Redesign our main landing page
 
-# 🚧 Implement Sentry & Posthog
+# 📋 Implement Sentry & Posthog
 
-PostHog implemented (UI: error tracking + analytics + session replay + feature flags via `posthog-js`/`@posthog/react`, source map upload via `@posthog/rollup-plugin`; edge: `posthog-node` wired into every function — `handleEdgeError` + `serveCronPost` choke points, plus the handful of pre-`serveEdge.ts` functions that call `serve()` directly). Sentry deferred — see `docs/architecture/integrations.md` §9.5. Still pending: user creates the PostHog project (US Cloud), sets `VITE_POSTHOG_KEY` / `POSTHOG_API_KEY` (edge) / `POSTHOG_PERSONAL_API_KEY`+`POSTHOG_PROJECT_ID` (UI build, source maps), turns on Session Recording, and deploys.
+PostHog implemented (UI: error tracking + analytics + session replay + feature flags via `posthog-js`/`@posthog/react`, source map upload via `@posthog/rollup-plugin`; edge: `posthog-node` wired into every function — `handleEdgeError` + `serveCronPost` choke points, plus the handful of pre-`serveEdge.ts` functions that call `serve()` directly). Sentry deferred — see `docs/architecture/integrations.md` §9.5.
+
+→ **Planned:** [`../planned/posthog-analytics-production-readiness.md`](../planned/posthog-analytics-production-readiness.md) — product analytics + error tracking to production (taxonomy, server conversions, legal, two projects). Sentry still deferred. Do not turn session replay on until Phase 5 of that plan.
 
 # 🔵 Offer ads within the app
 

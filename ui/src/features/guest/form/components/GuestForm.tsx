@@ -55,6 +55,12 @@ import {
   stripLegacyFromQueryParam,
 } from '@/features/guest/form/lib/bookingSourceFromSearchParams';
 import { FIND_US_OPTIONS } from '@/features/guest/form/lib/findUsOptions';
+import {
+  appendGuestBookingAccess,
+  captureGuestBookingAccessFromSearchParams,
+  guestFormFetchUrl,
+  storeGuestBookingAccessToken,
+} from '@/features/guest/form/lib/guestBookingAccess';
 import { computeGuestCountsByAge } from '@/features/guest/form/lib/guestCounts';
 import {
   formatGafEmailHint,
@@ -95,6 +101,15 @@ import {
 } from '@/features/guest/lib/guestPublicPaths';
 import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/hooks/usePublicPropertyDetail';
 import { GuestStayContextBar } from '@/features/guest/property/components/GuestStayContextBar';
+import {
+  clearGuestFormStartedMarker,
+  guestFormStepAnalyticsName,
+  trackGuestFormAbandoned,
+  trackGuestFormStarted,
+  trackGuestFormStepCompleted,
+  trackGuestFormStepFailed,
+} from '@/lib/posthog/guestFormAnalytics';
+import { setAnalyticsScope } from '@/lib/posthog/context';
 
 import {
   computeDefaultBookingRate,
@@ -264,6 +279,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
   const [submitReady, setSubmitReady] = useState(false);
   const stepPanelRef = useRef<HTMLDivElement>(null);
   const pendingSubmitAfterAuthRef = useRef(false);
+  const guestFormStartedRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const petVaccinationInputRef = useRef<HTMLInputElement>(null);
   const petImageInputRef = useRef<HTMLInputElement>(null);
@@ -464,8 +480,9 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
       // Extract only the UUID part (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
       const cleanBookingId = bookingId.split('?')[0].split('&')[0].trim();
       setCurrentBookingId(cleanBookingId);
+      captureGuestBookingAccessFromSearchParams(cleanBookingId, searchParams);
     }
-  }, [bookingId]);
+  }, [bookingId, searchParams]);
 
   // Strip `dev` / `testing` / control flags / legacy `from`; migrate `from=airbnb` → `source=airbnb`
   // Skip when embedded — must not navigate the host page away to `/form`.
@@ -619,7 +636,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
     setGuestCanUpdate(true);
 
     try {
-      const response = await fetch(`${apiUrl}/get-form/${bookingId}`, {
+      const response = await fetch(guestFormFetchUrl(apiUrl, bookingId), {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -939,6 +956,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
 
       // Add the booking ID to form data
       formData.append('bookingId', currentBookingId || '');
+      if (currentBookingId) appendGuestBookingAccess(formData, currentBookingId);
 
       // Add all form values to FormData, excluding file upload fields
       const fileFields = new Set([
@@ -1094,6 +1112,14 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
         throw new Error(errorMessage);
       }
 
+      if (
+        typeof result.guestAccessToken === 'string' &&
+        result.guestAccessToken &&
+        currentBookingId
+      ) {
+        storeGuestBookingAccessToken(currentBookingId, result.guestAccessToken);
+      }
+
       if (typeof result.voucherWarning === 'string' && result.voucherWarning) {
         toast.warning('Booking submitted without the voucher', {
           description: result.voucherWarning.replace(/^VOUCHER_[A-Z_]+:\s*/, ''),
@@ -1104,6 +1130,7 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
       // Check if submission was skipped due to no changes
       if (result.skipped) {
         console.log('ℹ️ No changes detected, redirecting to success page');
+        clearGuestFormStartedMarker();
 
         // Prepare booking data to pass to success page
         const bookingData = buildBookingSummary(values);
@@ -1125,6 +1152,8 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
         );
         return;
       }
+
+      clearGuestFormStartedMarker();
 
       // Reset form and redirect to success page
       // Only reset form in normal production mode (not dev controls)
@@ -1322,13 +1351,21 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
   );
 
   const handleNextStep = async () => {
+    const stepId = activeStepConfig?.id ?? currentStep;
+    const stepName = guestFormStepAnalyticsName(stepId);
     if (!canProceed || !activeStepConfig) {
       const values = form.getValues();
       const fields = getFieldsForGuestFormStep(activeStepConfig?.id ?? currentStep, values);
       await form.trigger(fields);
+      trackGuestFormStepFailed({
+        stepId,
+        stepName,
+        errorCount: Math.max(Object.keys(form.formState.errors).length, 1),
+      });
       toast.error('Please complete all required fields before continuing.');
       return;
     }
+    trackGuestFormStepCompleted({ stepId, stepName });
     setCurrentStep((step) => clampGuestFormStep(step + 1, visibilityFlags));
   };
 
@@ -1339,6 +1376,39 @@ export function GuestForm({ embed }: GuestFormProps = {}) {
   useEffect(() => {
     setCurrentStep((step) => clampGuestFormStep(step, visibilityFlags));
   }, [visibilityFlags]);
+
+  useEffect(() => {
+    if (publicProperty?.id) {
+      setAnalyticsScope({ propertyId: publicProperty.id });
+    }
+  }, [publicProperty?.id]);
+
+  useEffect(() => {
+    if (guestFormStartedRef.current) return;
+    if (!guestPaymentInfoFetched || isLoading || invalidBookingId || !completionReady) return;
+    guestFormStartedRef.current = true;
+    trackGuestFormStarted({
+      bookingSource: bookingSource.toLowerCase(),
+      stepCount: guestFormStepCount,
+      propertyId: publicProperty?.id,
+    });
+  }, [
+    guestPaymentInfoFetched,
+    isLoading,
+    invalidBookingId,
+    completionReady,
+    bookingSource,
+    guestFormStepCount,
+    publicProperty?.id,
+  ]);
+
+  useEffect(() => {
+    const onLeave = () => {
+      trackGuestFormAbandoned(activeStepConfig?.id ?? currentStep);
+    };
+    window.addEventListener('pagehide', onLeave);
+    return () => window.removeEventListener('pagehide', onLeave);
+  }, [currentStep, activeStepConfig?.id]);
 
   useEffect(() => {
     stepPanelRef.current?.focus({ preventScroll: true });

@@ -49,7 +49,7 @@ import {
   type ChatThreadSearchController,
 } from '@/lib/chat/useChatThreadSearch';
 import { useChatTyping } from '@/lib/chat/useChatTyping';
-import { isPostHogEnabled, posthog } from '@/lib/posthog/client';
+import { captureAppEvent } from '@/lib/posthog/capture';
 import { cn } from '@/lib/utils';
 
 type ComposerMode =
@@ -317,8 +317,8 @@ export function GuestChatThread({
         );
       }
 
-      if (isPostHogEnabled && composerMode.kind !== 'edit') {
-        posthog.capture('guest_message_sent', {
+      if (composerMode.kind !== 'edit') {
+        captureAppEvent('guest_message_sent', {
           source: 'composer',
           composer_mode: composerMode.kind,
           has_attachments: Boolean(attachments?.length),
@@ -342,13 +342,11 @@ export function GuestChatThread({
     setPickingFaq(true);
     void onSend(text)
       .then(() => {
-        if (isPostHogEnabled) {
-          posthog.capture('guest_message_sent', {
-            source: 'faq_suggestion',
-            composer_mode: 'compose',
-            has_attachments: false,
-          });
-        }
+        captureAppEvent('guest_message_sent', {
+          source: 'faq_suggestion',
+          composer_mode: 'compose',
+          has_attachments: false,
+        });
       })
       .catch((e) => {
         const message = (e as Error).message;
