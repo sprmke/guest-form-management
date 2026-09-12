@@ -13,12 +13,15 @@ alwaysApply: false
 
 ## Layers
 
-| Surface               | Gate                                                                                         |
-| --------------------- | -------------------------------------------------------------------------------------------- |
-| Legacy platform admin | `verifyAdminJwt` + `ADMIN_ALLOWED_EMAILS` — `.cursor/rules/admin-auth.mdc`                   |
-| Org / property admin  | `verifyOrgAccess`, `verifyPropertyAccess` — `_shared/orgAuth.ts`, `_shared/propertyScope.ts` |
-| Public guest          | Anon key; validate inputs; no PII in logs                                                    |
-| Cron / webhooks       | Optional secrets (`X-Telegram-Cron-Secret`, Meta verify token)                               |
+| Surface               | Gate                                                                                                  |
+| --------------------- | ----------------------------------------------------------------------------------------------------- |
+| Legacy platform admin | `verifyAdminJwt` + `ADMIN_ALLOWED_EMAILS` — `.cursor/rules/admin-auth.mdc`                            |
+| Org / property admin  | `verifyOrgAccess`, `verifyPropertyAccess` — `_shared/orgAuth.ts`, `_shared/propertyScope.ts`          |
+| Public guest          | Anon key; validate inputs; no PII in logs                                                             |
+| Cron / webhooks       | `cronSecretGate` — fail-closed on `ENVIRONMENT=production` when job secret unset                      |
+| Public GET scrape     | Durable RL via `publicEndpointRateLimit.ts` + platform `public_rate_limit_per_min`                    |
+| Guest booking PII     | Staged `?access=` tokens on **reads and writes** (`guestBookingAccessToken.ts`); enforce via env flag |
+| Guest doc storage     | Private buckets + signed URLs (`storageSignedUrl.ts`, `get-form`, `get-booking-asset-url`)            |
 
 ## Non-negotiables
 
@@ -31,14 +34,16 @@ alwaysApply: false
 ## Property-scoped edge functions
 
 ```typescript
-import { resolveAdminPropertyId } from '../_shared/propertyScope.ts';
-import { serveAdmin } from '../_shared/serveEdge.ts';
+import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
+import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
-serveAdmin('list-bookings', async (req, admin) => {
-  const propertyId = await resolveAdminPropertyId(req, admin);
-  // all DB reads/writes filter by propertyId
+serveAuthenticated('list-bookings', async (req) => {
+  const { property } = await resolveScopedPropertyAccess(req, 'bookings:view');
+  // all DB reads/writes filter by property.id — never fall back to DEFAULT_PROPERTY
 });
 ```
+
+Public guest handlers (`submit-form`, `get-booked-dates`, `get-guest-payment-info`) require `?property=` or `?property_id=`. Unknown slug is **404**. Missing scope is **400**.
 
 Team RBAC: `_shared/propertyTeamPermissions.ts`, `_shared/orgTeamPermissions.ts`.
 
@@ -50,7 +55,11 @@ Team RBAC: `_shared/propertyTeamPermissions.ts`, `_shared/orgTeamPermissions.ts`
 
 ## Guest PII
 
-Minimize logs. Storage paths: `{propertyId}/{bookingId}/…` via `bookingStoragePaths.ts`.
+Minimize logs. Storage paths: `{propertyId}/…` via `bookingStoragePaths.ts` (legacy flat keys may exist — run `bun scripts/media/storage-audit.ts --key-shapes` before cutover).
+
+Guest form **reads and writes** (`get-form`, `get-sd-form`, `get-guest-review`, `submit-form` updates, `submit-sd-form`, `submit-guest-review`, `claim-sd-voucher`) require `authorizeGuestBookingAccess` when `GUEST_BOOKING_ACCESS_ENFORCE=true`. Token may be `?access=` or body/FormData `access`. Never return unsigned storage URLs for private guest-doc buckets.
+
+Public writes: `antiSpamGate` (heuristics + Turnstile when keys live + durable RL). New `servePublic` handlers must wire `publicGetRateLimitGate` (CI: `check-serve-public-rate-limit.sh`).
 
 ## Don'ts
 

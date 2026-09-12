@@ -9,6 +9,7 @@ import { PwaProvider } from '@/components/pwa/PwaProvider';
 import { PwaQueryPersistence } from '@/components/pwa/PwaQueryPersistence';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
+import { PlatformMaintenanceBanner } from '@/components/platform/PlatformMaintenanceBanner';
 import { AppRoutes } from '@/routes';
 
 // Conservative defaults: short stale time so admins see fresh data, but refetch on window focus
@@ -34,6 +35,7 @@ function App() {
             <GuestEmbedPreviewEffect />
             <SavedPropertiesSync />
             <PwaProvider />
+            <PlatformMaintenanceBanner />
             <AppRoutes />
           </ModeSwitchTransitionProvider>
         </GuestAuthProvider>

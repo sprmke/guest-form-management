@@ -3,8 +3,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { RotateCw } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { isPostHogEnabled, posthog } from '@/lib/posthog/client';
-
+import { captureAppException } from '@/lib/posthog/capture';
 
 type Props = { children: ReactNode };
 type State = { error: Error | null };
@@ -19,9 +18,7 @@ export class AppErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('[AppErrorBoundary]', error, info.componentStack);
-    if (isPostHogEnabled) {
-      posthog.captureException(error, { componentStack: info.componentStack });
-    }
+    captureAppException(error, { componentStack: info.componentStack });
   }
 
   render() {

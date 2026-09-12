@@ -1,21 +1,29 @@
 ---
 name: test-runner
-description: Run lint, type-check, and build after code changes. Use proactively when verifying implementations (no Vitest suite yet).
+description: Run ci:quality (lint, type-check, Vitest, Deno, Playwright smoke, build) after code changes. Use proactively when verifying implementations.
 model: fast
 ---
 
 # Test runner (GFM)
 
-No automated test suite yet. Verify with:
+Run the CI parity gate:
+
+```bash
+bun run ci:quality
+```
+
+Or targeted:
 
 ```bash
 bun run type-check
 bun run lint
+bun run test
+bun run test:edge
+bun run test:edge:handlers
+bun run test:e2e:smoke
 bun run build
 ```
 
-For edge logic changes, exercise via local `./dev.sh` or `bun run dev:api` + curl against `http://127.0.0.1:54321/functions/v1/<name>`.
-
-Scheduled jobs: `docs/archive/operations/scheduled-jobs-and-testing.md`.
+Playwright specs live in `ui/e2e/features/`. Skill **`testing`**, index `docs/guides/testing/README.md`.
 
 Report: pass/fail per command, first error line, suggested fix.
