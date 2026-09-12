@@ -9,7 +9,7 @@ updated: 2026-08-17
 
 Route: `/`
 
-> **Status:** Documented — **Phase 1 (UI only)**. Redesigned guest explore landing; mock data; no public API yet.
+> **Status:** Documented — guest explore landing. Featured stays load from `list-public-properties`. Destination tiles and some hero samples can still be editorial.
 
 ## Progress overview
 
@@ -18,7 +18,7 @@ Route: `/`
 | Hero + search    | —        | —          | Documented | Search-first; optional dates                          |
 | Interactive hero | —        | —          | Documented | Canvas + stacked stay cards (theme-aware)             |
 | Stay categories  | —        | —          | Documented | Quick-filter chips → `/properties`                    |
-| Featured stays   | —        | —          | Documented | Horizontal scroll carousel                            |
+| Featured stays   | —        | —          | Documented | Live `list-public-properties` (hide if empty)         |
 | Destinations     | —        | —          | Documented | 3 editorial destination tiles                         |
 | Social proof     | —        | —          | Documented | Single review + trust stats                           |
 | Preview redesign | —        | —          | Documented | `/explore-preview` — cinematic redesign, pending swap |
@@ -50,7 +50,7 @@ This is the main guest homepage: search, featured stays, and destination tiles t
 **Common host questions**
 
 - Q: Will my listing appear on the home page automatically?
-  A: Not yet. Featured cards still use sample data until the public catalog is connected to live published properties.
+  A: Published homes can appear in Featured stays. The section hides when the catalog is empty.
 - Q: How do guests get from here to my property?
   A: They search or tap a destination, browse the homes catalog, open your listing, then reserve or contact you from there.
 - Q: Where does "Become a host?" take someone?
@@ -65,7 +65,7 @@ This is the main guest homepage: search, featured stays, and destination tiles t
 | Hero           | `GuestHero`           | Split layout: search + category chips  |
 | Hero animation | `HeroCanvas`          | Pointer-reactive canvas + card stack   |
 | Search bar     | `HeroSearch`          | Where / dates / guests → `/properties` |
-| Featured stays | `FeaturedProperties`  | Horizontal snap scroll                 |
+| Featured stays | `FeaturedProperties`  | Live catalog carousel; hidden if empty |
 | Destinations   | `PopularDestinations` | 3 large editorial tiles                |
 | Trust + review | `LandingSocialProof`  | Compact stats + one guest quote        |
 
@@ -98,6 +98,15 @@ Sections: `ExploreHero`, `ExploreTrustRibbon`, `ExploreFeaturedStays`, `ExploreD
 | Canvas  | `ui/src/features/guest/marketing/guest-landing/components/HeroCanvas.tsx`    |
 | Layout  | `ui/src/features/guest/marketing/shared/components/MarketingLayoutShell.tsx` |
 | Routes  | `ui/src/features/guest/marketing/routes/index.tsx`                           |
+
+---
+
+## Testing
+
+| Layer | Path / spec                                                                    | Manual |
+| ----- | ------------------------------------------------------------------------------ | ------ |
+| E2E   | `ui/e2e/features/public/publicPagesSmoke.spec.ts` hero load (`@smoke` / `@ci`) | —      |
+| N/A   | Featured carousel wired to live API                                            | —      |
 
 ---
 

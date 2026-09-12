@@ -50,6 +50,14 @@ Clicking a row opens a sheet with: severity, actor (display name / email + type 
 ## Permissions
 
 Gated on **`org.dashboard:view`** — any org-hub member can view it (transparency surface). Property/parking-scoped members do not see org-scope rows and see only their assigned listings' activity on the property/parking Activity pages. There is no dedicated `activity` RBAC leaf in v1; export and a plan gate are follow-ups.
+---
+
+## Testing
+
+| Layer | Path / spec                                                      | Manual     |
+| ----- | ---------------------------------------------------------------- | ---------- |
+| Unit  | `activityLog.ts` catalog helpers                                 | —          |
+| E2E   | `ui/e2e/features/org/orgHubSmoke.spec.ts` activity shell (`@ci`) | CSV export |
 
 ## Related
 

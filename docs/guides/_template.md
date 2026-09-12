@@ -79,6 +79,16 @@ _(Non-obvious logic, gating, permissions.)_
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                          | Manual                                             |
+| ----- | -------------------------------------------------------------------- | -------------------------------------------------- |
+| Unit  | `ui/src/.../lib/*.test.ts` or `supabase/functions/_shared/*_test.ts` | —                                                  |
+| E2E   | `ui/e2e/features/<domain>/*.spec.ts` (`@smoke` / `@ci`)              | `docs/guides/testing/*-manual.md` when third-party |
+| N/A   | —                                                                    | Document why if no automated coverage              |
+
+---
+
 ## Related docs
 
 - [Route index](./routes/README.md)

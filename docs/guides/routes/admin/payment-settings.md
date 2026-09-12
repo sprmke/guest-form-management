@@ -65,3 +65,12 @@ Singleton platform config for property subscription billing dunning (**`platform
 ## Host-facing knowledge
 
 Hosts do not see this page. Dunning timing affects when renewal emails arrive and when a listing's dashboard is restricted after non-payment. Guest booking flows are never blocked by billing status.
+---
+
+## Testing
+
+| Layer  | Path / spec                                             | Manual                                                      |
+| ------ | ------------------------------------------------------- | ----------------------------------------------------------- |
+| Unit   | `superAdminVerification_test.ts` when auth rules change | —                                                           |
+| E2E    | N/A — use `adminShellSmoke` for `/admin` shell only     | —                                                           |
+| Manual | —                                                       | [`super-admin-manual.md`](../testing/super-admin-manual.md) |

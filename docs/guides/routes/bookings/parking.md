@@ -77,6 +77,15 @@ The retired `POST submit-pay-parking` endpoint still exists for backward-compati
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                 | Manual           |
+| ----- | ----------------------------------------------------------- | ---------------- |
+| Unit  | `parkingStatusMachine_test.ts`                              | —                |
+| E2E   | [`parking-playwright.md`](../testing/parking-playwright.md) | PayMongo `@live` |
+
+---
+
 ## Related docs
 
 - [Route index](../README.md)

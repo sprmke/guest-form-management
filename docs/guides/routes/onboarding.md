@@ -213,3 +213,12 @@ When a property or parking listing's hosting contract nears expiry, is in grace,
 ## Post-registration Setup Guide
 
 After onboarding finishes, hosts land on the listing dashboard. The **Setup Guide** overlay covers initial settings. See [org/setup-guide.md](./org/setup-guide.md).
+---
+
+## Testing
+
+| Layer  | Path / spec                                                                                                         | Manual                   |
+| ------ | ------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| Unit   | setup guide / org creation validators when pure                                                                     | —                        |
+| E2E    | `ui/e2e/features/onboarding/onboardingSmoke.spec.ts` (`@ci`) — org step + property listing selection → verify intro | —                        |
+| Manual | Full verification upload + review                                                                                   | Manual host verification |

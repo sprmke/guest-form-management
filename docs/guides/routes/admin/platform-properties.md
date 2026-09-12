@@ -98,6 +98,16 @@ Standard admin-list pagination (same pattern as the bookings list): `page`/`limi
 
 ---
 
+## Testing
+
+| Layer  | Path / spec                                             | Manual                                                      |
+| ------ | ------------------------------------------------------- | ----------------------------------------------------------- |
+| Unit   | `superAdminVerification_test.ts` when auth rules change | —                                                           |
+| E2E    | N/A — use `adminShellSmoke` for `/admin` shell only     | —                                                           |
+| Manual | —                                                       | [`super-admin-manual.md`](../testing/super-admin-manual.md) |
+
+---
+
 ## Related docs
 
 - [Route index](../README.md)

@@ -66,3 +66,12 @@ Super-admin CRUD surface for the **`pricing_plans`** **subscription** tier catal
 ## Host-facing knowledge
 
 Hosts do not use this page. They manage plans for their whole organization on the org **Plans & Billing** page (`/org/:orgSlug/plans`).
+---
+
+## Testing
+
+| Layer  | Path / spec                                             | Manual                                                      |
+| ------ | ------------------------------------------------------- | ----------------------------------------------------------- |
+| Unit   | `superAdminVerification_test.ts` when auth rules change | —                                                           |
+| E2E    | N/A — use `adminShellSmoke` for `/admin` shell only     | —                                                           |
+| Manual | —                                                       | [`super-admin-manual.md`](../testing/super-admin-manual.md) |

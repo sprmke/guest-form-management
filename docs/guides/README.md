@@ -25,6 +25,10 @@ docs/guides/
     ...
 ```
 
+## Automated testing
+
+Canonical pyramid, layout, scripts, and coverage inventory: [`testing/README.md`](./testing/README.md).
+
 ## Manual testing (feature flows)
 
 | Doc                                                                                            | Purpose                                                                                      |

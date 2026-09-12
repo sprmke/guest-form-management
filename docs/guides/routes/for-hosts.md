@@ -116,6 +116,16 @@ This is the marketing page that introduces the platform to property owners befor
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                                            | Manual |
+| ----- | -------------------------------------------------------------------------------------- | ------ |
+| Unit  | `ui/src/features/dashboard/plans/lib/planPresentation.test.ts` (when touched)          | —      |
+| E2E   | `ui/e2e/features/public/publicPagesSmoke.spec.ts` landing + pricing (`@smoke` / `@ci`) | —      |
+| N/A   | PayMongo checkout                                                                      | Manual |
+
+---
+
 ## Related docs
 
 - [Sign-in (legacy redirect)](./sign-in.md)

@@ -20,6 +20,15 @@ Same feed / filters / detail sheet as the org-level page ([org/activity.md](../a
 ## Permissions
 
 Gated on the coarse **`bookings:view`** parking permission (parking RBAC stays coarse until parking granular RBAC ships). No dedicated `activity` leaf in v1.
+---
+
+## Testing
+
+| Layer | Path / spec                                                                  | Manual        |
+| ----- | ---------------------------------------------------------------------------- | ------------- |
+| Unit  | `parkingStatusMachine_test.ts`                                               | —             |
+| E2E   | [`parking-playwright.md`](../testing/parking-playwright.md) guest/host specs | PayMongo live |
+| N/A   | Parking host dashboard shell load                                            | —             |
 
 ## Related
 

@@ -85,3 +85,15 @@ Status changes: `POST transition-parking-booking?parking_id=…` with `{ booking
 - Route guard: `RequireOrgPermission` section `bookings` → `org.bookings:view`
 - Org-wide `list-bookings`: all-listings admins see every listing; scoped admins (`all_listings = false`) only bookings for assigned properties/parkings
 - Parking rows on org list require org-level access; parking-slot mutations use parking team RBAC on detail/create endpoints.
+
+---
+
+## Testing
+
+| Layer | Path / spec                                                           | Manual            |
+| ----- | --------------------------------------------------------------------- | ----------------- |
+| Unit  | `ui/src/features/dashboard/bookings/lib/workflow.test.ts`             | —                 |
+| E2E   | `ui/e2e/features/org/orgHubSmoke.spec.ts` bookings list shell (`@ci`) | —                 |
+| E2E   | `ui/e2e/features/bookings/propertyBookingProceed.spec.ts` (`@smoke`)  | Host proceed flow |
+
+---

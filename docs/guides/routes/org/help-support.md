@@ -42,6 +42,13 @@ Same as the property-level page: documentation, AI Assistant, and support ticket
 ## API reference · Implementation map
 
 Same as [Property Help & Support](./property/help-support.md) — org-scoped calls use `orgId`/`orgSlug` instead of `propertyId`.
+---
+
+## Testing
+
+| Layer | Path / spec            | Manual                      |
+| ----- | ---------------------- | --------------------------- |
+| N/A   | Help docs + tickets UI | Manual QA when copy changes |
 
 ## Related docs
 

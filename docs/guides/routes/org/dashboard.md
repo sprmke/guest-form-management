@@ -182,6 +182,18 @@ Org scope returns `parkingCount`, `parkingPerformance`, and `recentBookings[].bo
 - Add listing: `org.properties:create` / `org.parkings:create` (via `org-access` flags)
 - Org-wide `dashboard-stats`: all-listings admins see every listing; scoped admins only assigned listings
 
+---
+
+## Testing
+
+| Layer | Path / spec                                                            | Manual |
+| ----- | ---------------------------------------------------------------------- | ------ |
+| Unit  | `supabase/functions/_shared/dashboardService.ts` helpers when pure     | —      |
+| E2E   | `ui/e2e/features/org/orgHubSmoke.spec.ts` dashboard shell load (`@ci`) | —      |
+| N/A   | KPI accuracy vs production data                                        | —      |
+
+---
+
 ## Related docs
 
 - [Route index](../README.md)

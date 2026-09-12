@@ -48,6 +48,14 @@ Guests who tap their account avatar and land on the account area always see thei
 
 ---
 
+## Testing
+
+| Layer | Path / spec                | Manual |
+| ----- | -------------------------- | ------ |
+| E2E   | N/A — redirects to profile | —      |
+
+---
+
 ## Related docs
 
 - [Route index](../README.md)

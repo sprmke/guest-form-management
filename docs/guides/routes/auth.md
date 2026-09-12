@@ -135,6 +135,16 @@ Hosts and guests can both sign in with a one-time code sent to their email, or w
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                                                   | Manual                           |
+| ----- | --------------------------------------------------------------------------------------------- | -------------------------------- |
+| Unit  | OTP/reserved-name validators when touched                                                     | —                                |
+| E2E   | `ui/e2e/features/auth/authPagesSmoke.spec.ts`, `authRedirectSmoke.spec.ts` (`@smoke` / `@ci`) | Google OAuth, real email OTP     |
+| N/A   | —                                                                                             | Turnstile live, Facebook removed |
+
+---
+
 ## Related docs
 
 - [For hosts](./for-hosts.md)

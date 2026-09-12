@@ -93,6 +93,16 @@ when the sidebar is collapsed.
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                 | Manual                                      |
+| ----- | ----------------------------------------------------------- | ------------------------------------------- |
+| Unit  | `supabase/functions/_shared/superAdminVerification_test.ts` | —                                           |
+| E2E   | `ui/e2e/features/admin/adminShellSmoke.spec.ts` (`@ci`)     | Step-up OTP, irreversible admin actions     |
+| N/A   | —                                                           | `docs/guides/testing/super-admin-manual.md` |
+
+---
+
 ## Related docs
 
 - [Route index](../README.md)

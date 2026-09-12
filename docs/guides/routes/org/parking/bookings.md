@@ -109,3 +109,13 @@ Rows live on `guest_submissions` with `parking_id` set (or null while broadcast-
 | Ranking / batching (backend)             | `supabase/functions/_shared/parkingBroadcastRanking.ts`, `supabase/functions/_shared/parkingBroadcastExpireCron.ts`                        |
 | Payment orchestration (backend)          | `supabase/functions/_shared/parkingPaymentOrchestrator.ts`, `supabase/functions/_shared/parkingCancellation.ts`                            |
 | Backend spec                             | `.cursor/rules/parking-workflow.mdc`                                                                                                       |
+
+---
+
+## Testing
+
+| Layer | Path / spec                                                                  | Manual        |
+| ----- | ---------------------------------------------------------------------------- | ------------- |
+| Unit  | `parkingStatusMachine_test.ts`                                               | —             |
+| E2E   | [`parking-playwright.md`](../testing/parking-playwright.md) guest/host specs | PayMongo live |
+| N/A   | Parking host dashboard shell load                                            | —             |

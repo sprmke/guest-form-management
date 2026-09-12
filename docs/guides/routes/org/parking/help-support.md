@@ -42,6 +42,15 @@ Same as the property-level page: documentation, AI Assistant, and support ticket
 ## API reference · Implementation map
 
 Same as [Property Help & Support](../property/help-support.md) — parking-scoped calls use `parkingId` instead of `propertyId`.
+---
+
+## Testing
+
+| Layer | Path / spec                                                                  | Manual        |
+| ----- | ---------------------------------------------------------------------------- | ------------- |
+| Unit  | `parkingStatusMachine_test.ts`                                               | —             |
+| E2E   | [`parking-playwright.md`](../testing/parking-playwright.md) guest/host specs | PayMongo live |
+| N/A   | Parking host dashboard shell load                                            | —             |
 
 ## Related docs
 

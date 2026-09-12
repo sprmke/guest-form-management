@@ -118,6 +118,16 @@ First-class Platform nav item and overview card (label **FAQs**). Category-group
 | Edge functions     | `supabase/functions/{list,get,reply}-support-ticket-admin`, `update-support-ticket-status`, `{list,create,update,delete}-help-center-faq*`             |
 | Route registration | `ui/src/features/dashboard/super-admin/routes/index.tsx`, `superAdminPaths.ts`                                                                         |
 
+---
+
+## Testing
+
+| Layer  | Path / spec                                             | Manual                                                      |
+| ------ | ------------------------------------------------------- | ----------------------------------------------------------- |
+| Unit   | `superAdminVerification_test.ts` when auth rules change | —                                                           |
+| E2E    | N/A — use `adminShellSmoke` for `/admin` shell only     | —                                                           |
+| Manual | —                                                       | [`super-admin-manual.md`](../testing/super-admin-manual.md) |
+
 ## Related docs
 
 - [Route index](../README.md)

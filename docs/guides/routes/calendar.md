@@ -90,6 +90,15 @@ This is the guest-facing date picker guests see before filling out a booking for
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                                                              | Manual |
+| ----- | -------------------------------------------------------------------------------------------------------- | ------ |
+| Unit  | `ui/src/features/guest/calendar/lib/guestCalendarAvailability.ts` (add colocated test when rules change) | —      |
+| E2E   | `ui/e2e/features/guest-form/guestCalendarSmoke.spec.ts` (`@ci`, mocked `get-booked-dates`)               | —      |
+
+---
+
 ## Related docs
 
 - [Guest landing](./index-landing.md)

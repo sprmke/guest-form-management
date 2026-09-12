@@ -116,7 +116,8 @@ Shown on the last step, never gated by `?dev=true`. Checkboxes (all on by defaul
 | Action                                   | Endpoint                                                                                                                                                                                                                                                                                                                                                        |
 | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Submit / update booking                  | `POST submit-form`                                                                                                                                                                                                                                                                                                                                              |
-| Load existing submission                 | `GET get-form/:bookingId`                                                                                                                                                                                                                                                                                                                                       |
+| Load existing submission                 | `GET get-form/:bookingId` — optional `?access=<token>` from `submit-form` response (`guestAccessToken`); UI stores in `sessionStorage` via `guestBookingAccess.ts`. Enforcement off until `GUEST_BOOKING_ACCESS_ENFORCE=true`. Asset URL fields in the response are **signed** (30 min) for private guest-doc buckets.                                          |
+| Update existing submission               | `POST submit-form` with `bookingId` plus the stored `access` field (same enforce/grace as `get-form`). Bare UUID is rejected when enforcement is on and grace has expired.                                                                                                                                                                                      |
 | Load OTA completion link                 | `GET get-form-completion?complete=<token>`                                                                                                                                                                                                                                                                                                                      |
 | Submit OTA completion form               | `POST submit-form-completion` (multipart + `complete=<token>`)                                                                                                                                                                                                                                                                                                  |
 | Booked date ranges                       | `GET get-booked-dates` — now includes each booking's `checkInTime`/`checkOutTime` (used for cleaning-buffer conflict checks)                                                                                                                                                                                                                                    |
@@ -147,6 +148,16 @@ Shown on the last step, never gated by `?dev=true`. Checkboxes (all on by defaul
 | Submit                         | `supabase/functions/submit-form/index.ts`                                                         |
 | Form data fetch                | `supabase/functions/get-form/index.ts`                                                            |
 | Shared services                | `supabase/functions/_shared/{databaseService,receiptValidationService,statusMachine}.ts`          |
+
+---
+
+## Testing
+
+| Layer | Path / spec                                                                              | Manual                      |
+| ----- | ---------------------------------------------------------------------------------------- | --------------------------- |
+| Unit  | `guestFormSteps.test.ts`, `guestBookingAccess.test.ts`, form schema validators           | —                           |
+| E2E   | `ui/e2e/features/guest-form/guestFormLoad.spec.ts`, `guestFormSubmit.spec.ts` (`@smoke`) | Real OAuth not in CI        |
+| N/A   | —                                                                                        | Turnstile live verification |
 
 ---
 

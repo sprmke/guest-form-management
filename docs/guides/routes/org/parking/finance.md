@@ -78,3 +78,13 @@ Property finance uses `property_id` instead; never send both.
 | DB           | `finance_line_items.parking_id` — migration `20260919120000_finance_line_items_parking_id.sql` |
 | Server scope | `supabase/functions/_shared/financeAssetScope.ts`                                              |
 | Server CRUD  | `supabase/functions/finance-line-items/index.ts`                                               |
+
+---
+
+## Testing
+
+| Layer | Path / spec                                                                  | Manual        |
+| ----- | ---------------------------------------------------------------------------- | ------------- |
+| Unit  | `parkingStatusMachine_test.ts`                                               | —             |
+| E2E   | [`parking-playwright.md`](../testing/parking-playwright.md) guest/host specs | PayMongo live |
+| N/A   | Parking host dashboard shell load                                            | —             |

@@ -73,3 +73,12 @@ New properties do **not** auto-receive a paid plan on creation — an org with n
 ## Host-facing knowledge
 
 Hosts manage paid plans on the org's own **Plans & Billing** page (`/org/:orgSlug/plans`, PayMongo checkout). Contact support for manual plan changes, custom Managed pricing, or billing extensions. A **suspended** org restricts dashboard access on every one of its properties to Plans & Billing and Help only; guest booking pages keep working.
+---
+
+## Testing
+
+| Layer  | Path / spec                                             | Manual                                                      |
+| ------ | ------------------------------------------------------- | ----------------------------------------------------------- |
+| Unit   | `superAdminVerification_test.ts` when auth rules change | —                                                           |
+| E2E    | N/A — use `adminShellSmoke` for `/admin` shell only     | —                                                           |
+| Manual | —                                                       | [`super-admin-manual.md`](../testing/super-admin-manual.md) |

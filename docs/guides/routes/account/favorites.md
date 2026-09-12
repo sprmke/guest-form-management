@@ -76,6 +76,16 @@ This is the guest's favorites list: properties they tapped the heart icon on whi
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                                 | Manual        |
+| ----- | --------------------------------------------------------------------------- | ------------- |
+| Unit  | N/A (Supabase RLS + client query)                                           | —             |
+| E2E   | `ui/e2e/features/account/favoritesSmoke.spec.ts` list + empty state (`@ci`) | Save heart UX |
+| N/A   | —                                                                           | —             |
+
+---
+
 ## Related docs
 
 - [Route index](../README.md)

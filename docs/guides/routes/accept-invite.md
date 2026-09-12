@@ -93,6 +93,14 @@ Email mismatch, expired, cancelled, or already-accepted invites surface as error
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                              | Manual            |
+| ----- | -------------------------------------------------------- | ----------------- |
+| E2E   | `ui/e2e/features/auth/acceptInviteSmoke.spec.ts` (`@ci`) | Real invite email |
+
+---
+
 ## Related docs
 
 - [Route index](./README.md)

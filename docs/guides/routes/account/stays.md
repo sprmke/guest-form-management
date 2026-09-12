@@ -110,6 +110,15 @@ Guests have one **Stays** inbox that lists every conversation they've had with a
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                           | Manual              |
+| ----- | --------------------------------------------------------------------- | ------------------- |
+| E2E   | `ui/e2e/features/account/accountSmoke.spec.ts` empty hub load (`@ci`) | Live thread replies |
+| N/A   | Meta / web chat delivery                                              | Manual inbox        |
+
+---
+
 ## Related docs
 
 - [Route index](../README.md)

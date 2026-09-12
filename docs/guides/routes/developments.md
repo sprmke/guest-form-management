@@ -83,23 +83,23 @@ Route is registered **before** `/developments/:slug` so `in` is not treated as a
 
 ## Detail (`/developments/:slug`)
 
-**`DevelopmentDetailPage`** — search bar above compact hero carousel (**Where** = development name). Hero CTAs: **View Homes** → **`/developments/:slug/properties`**, **View Parking** → **`/developments/:slug/parking`** (when slots exist). **`DevelopmentAmenities`**, then **`DevelopmentAvailableSection`** — carousel rows for **Available Homes** and **Available Parking** (title + chevron → full list pages).
+**`DevelopmentDetailPage`** — live `list-public-developments?slug=` (`usePublicDevelopment`; slug is applied on the candidate query, not after a full catalog load). Unknown slug → `/developments`. Search bar above compact hero carousel (**Where** = development name). Hero CTAs: **View Homes** → **`/developments/:slug/properties`**, **View Parking** → **`/developments/:slug/parking`** (when slots exist). **`DevelopmentAmenities`**, then **`DevelopmentAvailableSection`** — live `list-public-properties?development=` and `list-public-parkings?developmentSlug=` (waits for both queries; empty rows hidden; no mock fallback).
 
 ---
 
 ## Properties in development (`/developments/:slug/properties`)
 
-**`DevelopmentPropertiesPage`** — same layout as **`/properties/in/:location`**: search bar, filter toolbar, **Homes in {development}** heading with **View Parking** → `…/parking` on the right when the development has parking slots, then property grid/list/map. Cards link to **`/properties/:propertySlug`**.
+**`DevelopmentPropertiesPage`** — live development + `list-public-properties?development=`. Same layout as **`/properties/in/:location`**: search bar, filter toolbar, **Homes in {development}** heading with **View Parking** → `…/parking` on the right when `list-public-parkings?developmentSlug=` has rows, then property grid/list/map. Cards link to **`/properties/:propertySlug`**. Unknown development → `/developments`.
 
 ---
 
 ## Parking
 
-| Route                  | Page                         | Behavior                                                                                                                                                                                         |
-| ---------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `.../parking`          | `DevelopmentParkingListPage` | Same layout as `…/properties`: hero search, collapsible **ParkingFilters** sidebar (location, tower, price), toolbar + sort, **Parking in {development}** + **View Homes**, available slots only |
-| `.../parking/category` | redirect                     | → `.../parking` (legacy)                                                                                                                                                                         |
-| `.../parking/list`     | redirect                     | → `.../parking` (legacy)                                                                                                                                                                         |
+| Route                  | Page                         | Behavior                                                                                                                                                                                                                 |
+| ---------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `.../parking`          | `DevelopmentParkingListPage` | Live `list-public-parkings?developmentSlug=`. Same layout as `…/properties`: hero search, collapsible **ParkingFilters** sidebar (location, tower, price), toolbar + sort, **Parking in {development}** + **View Homes** |
+| `.../parking/category` | redirect                     | → `.../parking` (legacy)                                                                                                                                                                                                 |
+| `.../parking/list`     | redirect                     | → `.../parking` (legacy)                                                                                                                                                                                                 |
 
 **Search bar** — **`ListingHeroSearch`** / **`HeroSearch`**; **Where** = **`{development} Parking`**; **Who** hidden. Search updates `?location` / `?checkIn` / `?checkOut` (dates reserved for future availability checks). **ParkingFilters:** **Location** (Inside / Outside Tower), **Tower** (when Inside Tower selected), price. List shows **available slots only** (`isAvailable`).
 
@@ -109,19 +109,28 @@ Not connected to operational **`/bookings/:id/parking`** (admin/guest pay parkin
 
 ## Implementation map
 
-| Concern    | Path                                                                |
-| ---------- | ------------------------------------------------------------------- |
-| Pages      | `ui/src/features/guest/marketing/pages/DevelopmentsListPage.tsx`    |
-|            | `DevelopmentsLocationPage.tsx`                                      |
-|            | `DevelopmentDetailPage.tsx`, `DevelopmentPropertiesPage.tsx`        |
-|            | `DevelopmentParkingListPage.tsx`                                    |
-| Components | `ui/src/features/guest/marketing/developments/components/**`        |
-|            | `DevelopmentsByLocation.tsx`, `DevelopmentsLocationRow.tsx`         |
-| Grouping   | `developments/lib/groupDevelopmentsByLocation.ts`                   |
-| Place API  | `shared/hooks/usePublicPlaceGroups.ts`; `list-public-place-groups`  |
-|            | `properties/lib/groupPropertiesByDevelopment.ts`                    |
-| Mock data  | `developments/data/mockDevelopments.ts` (+ linked `mockProperties`) |
-| Routes     | `ui/src/features/guest/marketing/routes/index.tsx`                  |
+| Concern    | Path                                                               |
+| ---------- | ------------------------------------------------------------------ |
+| Pages      | `ui/src/features/guest/marketing/pages/DevelopmentsListPage.tsx`   |
+|            | `DevelopmentsLocationPage.tsx`                                     |
+|            | `DevelopmentDetailPage.tsx`, `DevelopmentPropertiesPage.tsx`       |
+|            | `DevelopmentParkingListPage.tsx`                                   |
+| Components | `ui/src/features/guest/marketing/developments/components/**`       |
+|            | `DevelopmentsByLocation.tsx`, `DevelopmentsLocationRow.tsx`        |
+| Grouping   | `developments/lib/groupDevelopmentsByLocation.ts`                  |
+| Place API  | `shared/hooks/usePublicPlaceGroups.ts`; `list-public-place-groups` |
+|            | `properties/lib/groupPropertiesByDevelopment.ts`                   |
+| Live APIs  | `usePublicDevelopment`, `usePublicProperties`, `usePublicParkings` |
+| Mock data  | `developments/data/mockDevelopments.ts` (landing featured only)    |
+| Routes     | `ui/src/features/guest/marketing/routes/index.tsx`                 |
+
+---
+
+## Testing
+
+| Layer | Path / spec                                          | Manual |
+| ----- | ---------------------------------------------------- | ------ |
+| E2E   | `publicPagesSmoke.spec.ts` developments list (`@ci`) | —      |
 
 ---
 

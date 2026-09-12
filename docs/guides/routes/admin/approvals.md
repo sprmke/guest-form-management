@@ -126,6 +126,16 @@ Data lives in **`organizations.settings.verification`** JSONB (org tiers) and **
 
 ---
 
+## Testing
+
+| Layer  | Path / spec                                                                                                                             | Manual                                                      |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Unit   | `superAdminVerification_test.ts` when auth rules change                                                                                 | —                                                           |
+| E2E    | `ui/e2e/features/admin/adminApprovalsSmoke.spec.ts` (`@ci`) — queue shell + mocked pending row; `adminShellSmoke` for `/admin` overview | —                                                           |
+| Manual | OTP step-up, approve/reject dialogs                                                                                                     | [`super-admin-manual.md`](../testing/super-admin-manual.md) |
+
+---
+
 ## Related docs
 
 - [Route index](../README.md)

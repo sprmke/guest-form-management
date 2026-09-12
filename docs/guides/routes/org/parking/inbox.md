@@ -71,6 +71,16 @@ Parking **Guest Inbox** is for website chat with parking guests; Facebook and In
 | Default quick replies   | `supabase/functions/_shared/inboxDefaultQuickReplies.ts`               |
 | Templates/settings CRUD | `supabase/functions/social-inbox-templates/`, `social-inbox-settings/` |
 
+---
+
+## Testing
+
+| Layer | Path / spec                                                                  | Manual        |
+| ----- | ---------------------------------------------------------------------------- | ------------- |
+| Unit  | `parkingStatusMachine_test.ts`                                               | —             |
+| E2E   | [`parking-playwright.md`](../testing/parking-playwright.md) guest/host specs | PayMongo live |
+| N/A   | Parking host dashboard shell load                                            | —             |
+
 ## Related
 
 - [Org Inbox](../inbox.md)

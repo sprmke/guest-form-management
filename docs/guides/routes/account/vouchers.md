@@ -81,6 +81,16 @@ Guests keep vouchers they earned from a previous stay in their account under **V
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                                              | Manual |
+| ----- | ---------------------------------------------------------------------------------------- | ------ |
+| Unit  | Voucher catalog / wheel helpers in `ui/src/features/guest/vouchers/`                     | —      |
+| E2E   | `ui/e2e/features/vouchers/guest/voucherWallet.spec.ts` and related voucher specs (`@ci`) | —      |
+| N/A   | —                                                                                        | —      |
+
+---
+
 ## Related docs
 
 - [Guest booking form](../form.md)

@@ -53,6 +53,15 @@ The two source PDFs live in **private** Storage buckets (`approved-gafs`, `appro
 | Admin hook       | `ui/src/features/dashboard/bookings/hooks/useBookingDocumentShareLink.ts`                                                      |
 | Migration        | `supabase/migrations/20261102130000_booking_document_share_token.sql`                                                          |
 
+---
+
+## Testing
+
+| Layer | Path / spec                               | Manual          |
+| ----- | ----------------------------------------- | --------------- |
+| Unit  | guest document token allow-list when pure | —               |
+| N/A   | Signed URL redirect                       | Manual token QA |
+
 ## Related
 
 - [[stay-guide|Guest stay guide]] — the precedented token pattern this mirrors

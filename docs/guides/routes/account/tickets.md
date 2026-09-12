@@ -71,6 +71,14 @@ Guests can message Kame from the public Contact page after signing in with their
 
 ---
 
+## Testing
+
+| Layer | Path / spec      | Manual                          |
+| ----- | ---------------- | ------------------------------- |
+| N/A   | Guest tickets UI | Manual when triage flow changes |
+
+---
+
 ## Related docs
 
 - [Account profile / shell](./profile.md)

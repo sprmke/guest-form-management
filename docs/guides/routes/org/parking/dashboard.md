@@ -51,3 +51,13 @@ This dashboard is the home screen for one parking slot. It's the same layout you
 | Calendar block | `ui/src/features/dashboard/parking/components/ParkingDashboardCalendarSection.tsx` |
 | Empty stats    | `ui/src/features/dashboard/parking/hooks/useParkingDashboardStats.ts`              |
 | Shell          | `ui/src/features/dashboard/org/components/ParkingAdminShell.tsx`                   |
+
+---
+
+## Testing
+
+| Layer | Path / spec                                                                  | Manual        |
+| ----- | ---------------------------------------------------------------------------- | ------------- |
+| Unit  | `parkingStatusMachine_test.ts`                                               | —             |
+| E2E   | [`parking-playwright.md`](../testing/parking-playwright.md) guest/host specs | PayMongo live |
+| N/A   | Parking host dashboard shell load                                            | —             |

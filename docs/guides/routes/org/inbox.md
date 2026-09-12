@@ -19,3 +19,11 @@ Org-level Guest Inbox was removed to avoid confusion with property Inbox. Use:
 The old URL `/org/:orgSlug/inbox` **redirects** to `/org/:orgSlug/properties`.
 
 Parking Inbox remains at `/org/:orgSlug/parking/:parkingSlug/inbox` (Channels only; quick replies / automation are managed on a property inbox).
+---
+
+## Testing
+
+| Layer | Path / spec                                                                    | Manual |
+| ----- | ------------------------------------------------------------------------------ | ------ |
+| E2E   | `ui/e2e/features/auth/legacyRouteRedirectSmoke.spec.ts` redirect paths (`@ci`) | —      |
+| N/A   | Redirect-only route                                                            | —      |
