@@ -161,6 +161,9 @@ verify_jwt = false
 [functions.get-public-host]
 verify_jwt = false
 
+[functions.get-public-platform-status]
+verify_jwt = false
+
 [functions.get-guest-review]
 verify_jwt = false
 

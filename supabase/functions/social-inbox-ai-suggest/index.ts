@@ -8,12 +8,21 @@ import { resolveInboxAccess } from '../_shared/inboxAccess.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { getConversationById, listMessages } from '../_shared/socialInboxService.ts';
 import { jsonError, jsonResponse, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
+import { identityFromRequest, rateLimitGate } from '../_shared/rateLimit.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('social-inbox-ai-suggest', async (req, user) => {
   if (req.method !== 'POST') {
     return jsonError(req, 'Method not allowed', 405);
   }
+
+  const limited = await rateLimitGate(req, {
+    scope: 'social-inbox-ai-suggest',
+    identity: identityFromRequest(req, user),
+    limit: 40,
+    windowSec: 3600,
+  });
+  if (limited) return limited;
 
   const body = (await readJsonBody(req)) as Record<string, unknown>;
   const ctx = await resolveInboxAccess(req, 'reply', body);

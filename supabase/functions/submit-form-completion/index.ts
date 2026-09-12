@@ -28,8 +28,10 @@ import { bookingNotificationMetadata } from '../_shared/notificationEnrichment.t
 import { tryGetAuthenticatedUser } from '../_shared/orgAuth.ts';
 import { resolveOrganizationIdForProperty } from '../_shared/propertyScope.ts';
 import type { GuestSubmission } from '../_shared/types.ts';
-import { capturePostHogException } from '../_shared/posthog.ts';
+import { capturePostHogEvent, capturePostHogException } from '../_shared/posthog.ts';
 import { antiSpamGate } from '../_shared/antiSpam.ts';
+import { validateGuestFormFormatFields } from '../_shared/guestFormSubmitValidation.ts';
+import { maintenanceModeResponse } from '../_shared/platformSettingsCache.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -44,6 +46,9 @@ serve(async (req) => {
 
   try {
     if (req.method !== 'POST') return json({ success: false, error: 'Method not allowed' }, 405);
+
+    const maintenance = await maintenanceModeResponse(req);
+    if (maintenance) return maintenance;
 
     const url = new URL(req.url);
     const formData = await req.formData();
@@ -93,6 +98,11 @@ serve(async (req) => {
         },
         gone ? 410 : 409
       );
+    }
+
+    const formatValidation = validateGuestFormFormatFields(formData);
+    if (!formatValidation.ok) {
+      return json({ success: false, error: formatValidation.message }, 400);
     }
 
     // ── Lock server-controlled fields to the stored reservation ──────────────
@@ -163,6 +173,15 @@ serve(async (req) => {
     } catch (notifyErr) {
       console.error('[submit-form-completion] notification failed (non-fatal):', notifyErr);
     }
+
+    await capturePostHogEvent('guest_form_completion_submitted', {
+      logPrefix: 'submit-form-completion',
+      request: req,
+      properties: {
+        property_id: propertyId || undefined,
+        booking_id: bookingId,
+      },
+    });
 
     return json({ success: true, data: { id: bookingId } });
   } catch (error) {

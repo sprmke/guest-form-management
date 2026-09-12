@@ -13,14 +13,27 @@
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import { catchPlanFeatureError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
+import { identityFromRequest, rateLimitGate } from '../_shared/rateLimit.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { maybeRunSmartPricingAi } from '../_shared/smartPricingAi.ts';
 import { computeSmartPricingForProperty, persistPreviewRun } from '../_shared/smartPricingRun.ts';
 
-serveAuthenticated('smart-pricing-preview', async (req) => {
+serveAuthenticated('smart-pricing-preview', async (req, user) => {
   if (req.method !== 'POST') return jsonError(req, 'Method not allowed', 405);
 
-  const { property, user } = await resolveScopedPropertyAccess(req, 'pricing.rates:edit');
+  const limited = await rateLimitGate(req, {
+    scope: 'smart-pricing-preview',
+    identity: identityFromRequest(req, user),
+    limit: 20,
+    windowSec: 3600,
+  });
+  if (limited) return limited;
+
+  const { property, user: scopedUser } = await resolveScopedPropertyAccess(
+    req,
+    'pricing.rates:edit'
+  );
+  const actorUser = user ?? scopedUser;
 
   try {
     await requirePropertyFeature(property.id, 'smartPricing');
@@ -40,7 +53,7 @@ serveAuthenticated('smart-pricing-preview', async (req) => {
     const ai = explain ? await maybeRunSmartPricingAi(property.id, comp).catch(() => null) : null;
 
     const runId = await persistPreviewRun(property.id, comp, {
-      createdBy: user.id,
+      createdBy: actorUser.id,
       ai: ai?.output ?? null,
       creditsConsumed: ai?.creditsConsumed ?? 0,
     });

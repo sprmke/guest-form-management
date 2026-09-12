@@ -10,11 +10,7 @@
 
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
-import {
-  checkIpRateLimit,
-  clientIpFromRequest,
-  pruneExpiredRateLimitBuckets,
-} from '../_shared/publicRateLimit.ts';
+import { pruneExpiredRateLimitBuckets } from '../_shared/publicRateLimit.ts';
 import {
   escapeIlikePattern,
   postgrestOrIlikeValue,
@@ -248,11 +244,8 @@ servePublic('search-suggestions', async (req) => {
   }
 
   pruneExpiredRateLimitBuckets();
-  const ip = clientIpFromRequest(req);
-  const rate = checkIpRateLimit('search-suggestions', ip, 60, 60_000);
-  if (!rate.allowed) {
-    return jsonError(req, 'Too many requests. Please wait a moment.', 429);
-  }
+  const limited = await publicGetRateLimitGate(req, 'search-suggestions');
+  if (limited) return limited;
 
   const url = new URL(req.url);
   const q = (url.searchParams.get('q') ?? '').trim();

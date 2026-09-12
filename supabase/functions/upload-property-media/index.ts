@@ -1,6 +1,6 @@
 /**
  * upload-property-media — Admin upload/delete for property gallery media.
- * Auth: verifyAdminJwt + resolveAdminPropertyId.
+ * Auth: JWT + resolveScopedPropertyAccess (`settings.media:edit`).
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -8,10 +8,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { corsHeaders } from '../_shared/cors.ts';
 import { handleEdgeError } from '../_shared/httpResponse.ts';
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
-import {
-  PROPERTY_MEDIA_BUCKET,
-  normalizePropertyMediaItems,
-} from '../_shared/propertyMedia.ts';
+import { PROPERTY_MEDIA_BUCKET, normalizePropertyMediaItems } from '../_shared/propertyMedia.ts';
 import {
   applyPropertyMediaFromBytes,
   persistPropertyMedia,

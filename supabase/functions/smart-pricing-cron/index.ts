@@ -12,6 +12,7 @@
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { resolvePropertyEntitlements } from '../_shared/planEntitlements.ts';
 import { createOrCoalesceNotification } from '../_shared/notificationService.ts';
+import { verifyCronSecret } from '../_shared/cronSecretGate.ts';
 import { serveCronPost } from '../_shared/serveEdge.ts';
 import { resolveOrgIdForProperty } from '../_shared/aiUsageService.ts';
 import { manilaTodayYmd } from '../_shared/calendarAvailabilityManila.ts';
@@ -30,9 +31,10 @@ const NOTIFY_MIN_AVG_DELTA_PCT = 3;
 const AI_MIN_INTERVAL_DAYS = 6;
 
 function cronSecretOk(req: Request): boolean {
-  const expected = Deno.env.get('SMART_PRICING_CRON_SECRET')?.trim();
-  if (!expected) return true;
-  return req.headers.get('x-smart-pricing-cron-secret')?.trim() === expected;
+  return verifyCronSecret(req, {
+    envKey: 'SMART_PRICING_CRON_SECRET',
+    headerName: 'x-smart-pricing-cron-secret',
+  });
 }
 
 async function aiPassIsDue(propertyId: string): Promise<boolean> {

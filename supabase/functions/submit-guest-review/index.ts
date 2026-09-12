@@ -16,9 +16,15 @@ import {
   validateGuestReviewFeedbackTags,
 } from '../_shared/guestReviewFeedbackTags.ts';
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
+import { capturePostHogEvent } from '../_shared/posthog.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
 import { logGuestActivity } from '../_shared/guestActivity.ts';
 import { antiSpamGate } from '../_shared/antiSpam.ts';
+import { maintenanceModeResponse } from '../_shared/platformSettingsCache.ts';
+import {
+  authorizeGuestBookingAccess,
+  guestBookingAccessTokenFromRequest,
+} from '../_shared/guestBookingAccessToken.ts';
 
 function parseStarRating(raw: FormDataEntryValue | null): number | null {
   const n = typeof raw === 'string' ? Number.parseInt(raw, 10) : NaN;
@@ -30,6 +36,9 @@ servePublic('submit-guest-review', async (req) => {
   if (req.method !== 'POST') {
     return jsonError(req, `Method ${req.method} not allowed`, 405);
   }
+
+  const maintenance = await maintenanceModeResponse(req);
+  if (maintenance) return maintenance;
 
   const contentType = req.headers.get('content-type') ?? '';
   if (!contentType.includes('multipart/form-data')) {
@@ -69,6 +78,12 @@ servePublic('submit-guest-review', async (req) => {
   }
 
   const row = await DatabaseService.getBookingById(bookingId);
+  const authz = await authorizeGuestBookingAccess({
+    bookingIdFromPath: bookingId,
+    accessTokenFromQuery: guestBookingAccessTokenFromRequest(req, form),
+    bookingCreatedAt: (row?.created_at as string | null | undefined) ?? null,
+  });
+  if (!authz.ok) return jsonError(req, authz.message, authz.status);
   if (!row) return jsonError(req, 'Booking not found', 404);
 
   if (!canAccessGuestReview(row)) {
@@ -104,6 +119,18 @@ servePublic('submit-guest-review', async (req) => {
     targetId: bookingId,
     targetLabel: guestDisplayName,
     metadata: { star_rating: starRating, has_media: mediaUrls.length > 0 },
+  });
+
+  await capturePostHogEvent('guest_review_submitted', {
+    logPrefix: 'submit-guest-review',
+    request: req,
+    properties: {
+      property_id: propertyId,
+      booking_id: bookingId,
+      star_rating: starRating,
+      feedback_tag_count: feedbackTags.length,
+      media_count: mediaUrls.length,
+    },
   });
 
   return jsonSuccess(req, { submitted: true });

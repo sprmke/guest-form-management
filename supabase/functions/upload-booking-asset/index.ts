@@ -25,10 +25,19 @@ import {
   resolveScopedPropertyAccess,
   verifyBookingBelongsToProperty,
 } from '../_shared/propertyScope.ts';
+import { identityFromRequest, rateLimitGate } from '../_shared/rateLimit.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('upload-booking-asset', async (req, user) => {
   requireHttpMethod(req, 'POST');
+
+  const limited = await rateLimitGate(req, {
+    scope: 'upload-booking-asset',
+    identity: identityFromRequest(req, user),
+    limit: 30,
+    windowSec: 3600,
+  });
+  if (limited) return limited;
 
   const formData = await req.formData();
   const bookingId = formData.get('bookingId') as string;

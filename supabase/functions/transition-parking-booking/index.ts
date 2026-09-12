@@ -57,7 +57,7 @@ serveAuthenticated(
       return jsonError(req, `Cannot transition from ${fromStatus} to ${toStatus}`);
     }
 
-    const updated = await DatabaseService.updateBookingStatus(bookingId, toStatus);
+    const updated = await DatabaseService.updateBookingStatus(bookingId, toStatus, fromStatus);
 
     await logParkingStatusChange({
       booking,

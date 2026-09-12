@@ -26,8 +26,18 @@ import { createServiceClient, tryGetAuthenticatedUser } from '../_shared/orgAuth
 import { applyVoucherToBooking, assertVoucherEligible } from '../_shared/voucherRedemption.ts';
 import { linkGuestBookingsByEmail } from '../_shared/guestProfileService.ts';
 import { checkIpRateLimit, clientIpFromRequest } from '../_shared/publicRateLimit.ts';
-import { capturePostHogException } from '../_shared/posthog.ts';
+import { capturePostHogEvent, capturePostHogException } from '../_shared/posthog.ts';
 import { antiSpamGate } from '../_shared/antiSpam.ts';
+import {
+  validateGuestFormCheckOutAfterCheckIn,
+  validateGuestFormFormatFields,
+} from '../_shared/guestFormSubmitValidation.ts';
+import {
+  authorizeGuestBookingAccess,
+  guestBookingAccessTokenFromRequest,
+  mintGuestBookingAccessToken,
+} from '../_shared/guestBookingAccessToken.ts';
+import { maintenanceModeResponse } from '../_shared/platformSettingsCache.ts';
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -43,11 +53,20 @@ serve(async (req) => {
       throw new Error(`Method ${req.method} not allowed`);
     }
 
+    const maintenance = await maintenanceModeResponse(req);
+    if (maintenance) return maintenance;
+
     // Generous per-IP throttle — real guests submit/edit a handful of times at most;
     // this only blunts scripted spam/abuse of the unauthenticated public endpoint.
     const ip = clientIpFromRequest(req);
     const rate = checkIpRateLimit('submit-form', ip, 20, 60_000);
     if (!rate.allowed) {
+      await capturePostHogEvent('guest_form_rejected', {
+        logPrefix: 'submit-form',
+        request: req,
+        system: true,
+        properties: { reason: 'rate_limited' },
+      });
       return new Response(
         JSON.stringify({ success: false, error: 'Too many requests. Please wait a moment.' }),
         { status: 429, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
@@ -123,44 +142,11 @@ serve(async (req) => {
     console.log('  Check-out:', checkOutDate);
     console.log('  Booking ID:', bookingId);
 
-    if (!checkInDate || !checkOutDate) {
-      throw new Error('Check-in and check-out dates are required');
-    }
+    const dateOrder = validateGuestFormCheckOutAfterCheckIn(checkInDate, checkOutDate);
+    if (!dateOrder.ok) throw new Error(dateOrder.message);
 
-    if (checkOutDate <= checkInDate) {
-      throw new Error('Check-out date must be after check-in date');
-    }
-
-    // Server-side mirror of guestFormSchema.ts's format-only rules (guest-form-management
-    // Phase 2 hardening) — the client already blocks these in the browser, so real guests
-    // never hit these branches; this only rejects payloads posted by bypassing the UI.
-    // Deliberately NOT mirroring property-config-dependent rules here (guest count caps,
-    // cleaning buffer, Airbnb-conditional payment receipt) — those depend on per-property
-    // settings resolved later in this handler / DatabaseService and are riskier to duplicate
-    // without live verification.
-    const guestFacebookName = ((formData.get('guestFacebookName') as string) || '').trim();
-    if (!guestFacebookName) {
-      throw new Error('Your name is required');
-    }
-
-    const guestEmailRaw = ((formData.get('guestEmail') as string) || '').trim();
-    if (!guestEmailRaw || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmailRaw)) {
-      throw new Error('Please enter a valid email address');
-    }
-
-    const guestPhoneDigits = ((formData.get('guestPhoneNumber') as string) || '').replace(
-      /\s+/g,
-      ''
-    );
-    if (!/^09\d{9}$/.test(guestPhoneDigits)) {
-      throw new Error("Please enter a valid 11-digit phone number starting with '09'");
-    }
-
-    const numberOfAdultsRaw = formData.get('numberOfAdults');
-    const numberOfAdults = numberOfAdultsRaw != null ? Number(numberOfAdultsRaw) : NaN;
-    if (!Number.isFinite(numberOfAdults) || numberOfAdults < 1) {
-      throw new Error('At least 1 adult guest is required');
-    }
+    const formatValidation = validateGuestFormFormatFields(formData);
+    if (!formatValidation.ok) throw new Error(formatValidation.message);
 
     // Check for overlapping bookings (only if saving to database)
     if (isSaveToDatabaseEnabled) {
@@ -237,6 +223,18 @@ serve(async (req) => {
       existingData = await DatabaseService.getRawData(bookingId);
 
       if (existingData) {
+        const authz = await authorizeGuestBookingAccess({
+          bookingIdFromPath: bookingId,
+          accessTokenFromQuery: guestBookingAccessTokenFromRequest(req, formData),
+          bookingCreatedAt: (existingData.created_at as string | null | undefined) ?? null,
+        });
+        if (!authz.ok) {
+          return new Response(JSON.stringify({ success: false, error: authz.message }), {
+            status: authz.status,
+            headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+          });
+        }
+
         if (!canGuestPublicUpdateForm(existingData.status)) {
           throw new Error(
             'GUEST_FORM_LOCKED: This booking has already been reviewed. Contact your host on Facebook or Airbnb to request changes.'
@@ -484,12 +482,45 @@ serve(async (req) => {
 
     console.log('Form submission process completed successfully');
 
+    if (isSaveToDatabaseEnabled && submissionData?.id) {
+      const nightsRaw = Number(submissionData.number_of_nights);
+      await capturePostHogEvent('guest_form_submitted', {
+        logPrefix: 'submit-form',
+        request: req,
+        system: true,
+        properties: {
+          property_id: propertyId,
+          booking_source: String(submissionData.booking_source ?? 'unknown'),
+          is_update: !isNewGuestSubmission,
+          has_pets: submissionData.has_pets === true,
+          need_parking: submissionData.need_parking === true,
+          nights: Number.isFinite(nightsRaw) ? nightsRaw : undefined,
+          reverted_to_pending_review:
+            revertReadyForCheckinToPendingReview ||
+            (existingData != null &&
+              shouldRevertGuestFieldEditsToPendingReview(String(existingData.status)) &&
+              guestFormChangedFields.length > 0),
+        },
+      });
+    }
+
+    let guestAccessToken: string | undefined;
+    const savedId = submissionData?.id as string | undefined;
+    if (isSaveToDatabaseEnabled && savedId) {
+      try {
+        guestAccessToken = await mintGuestBookingAccessToken(savedId);
+      } catch (tokenErr) {
+        console.error('[submit-form] guest access token mint failed (non-fatal):', tokenErr);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         data: submissionData,
         voucherApplied,
         ...(voucherWarning ? { voucherWarning } : {}),
+        ...(guestAccessToken ? { guestAccessToken } : {}),
       }),
       {
         headers: {
@@ -500,6 +531,12 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Error processing form submission:', error);
+    await capturePostHogEvent('guest_form_rejected', {
+      logPrefix: 'submit-form',
+      request: req,
+      system: true,
+      properties: { reason: 'validation' },
+    });
     await capturePostHogException(error, { logPrefix: 'submit-form', request: req });
 
     return new Response(

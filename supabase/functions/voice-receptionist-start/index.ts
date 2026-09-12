@@ -5,8 +5,15 @@
  * Auth: any signed-in guest (Supabase JWT, not admin allow list).
  */
 
+import {
+  assertOrgAndPropertyAiQuota,
+  getOrgAiUsageSummary,
+  isAiPlatformDisabledError,
+  isAiQuotaError,
+} from '../_shared/aiUsageService.ts';
 import { jsonError, jsonSuccess, jsonUpgradeHook, readJsonBody } from '../_shared/httpResponse.ts';
 import { PlanFeatureRequiredError, requirePropertyFeature } from '../_shared/planEntitlements.ts';
+import { identityFromRequest, rateLimitGate } from '../_shared/rateLimit.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { buildAiGroundingFacts } from '../_shared/inboxAiGuestContext.ts';
@@ -46,6 +53,14 @@ serveAuthenticated('voice-receptionist-start', async (req, user) => {
   if (req.method !== 'POST') {
     return jsonError(req, 'Method not allowed', 405);
   }
+
+  const limited = await rateLimitGate(req, {
+    scope: 'voice-receptionist-start',
+    identity: identityFromRequest(req, user),
+    limit: 10,
+    windowSec: 3600,
+  });
+  if (limited) return limited;
 
   const body = await readJsonBody(req);
   const propertySlug = String(body.propertySlug ?? body.property_slug ?? '').trim();
@@ -88,6 +103,29 @@ serveAuthenticated('voice-receptionist-start', async (req, user) => {
 
     await enforceVoiceReceptionistCaps(propertyId, user.id, settings);
 
+    try {
+      await assertOrgAndPropertyAiQuota(orgId, propertyId, 'voice_receptionist');
+    } catch (err) {
+      if (isAiQuotaError(err) || isAiPlatformDisabledError(err)) {
+        return jsonUpgradeHook(req, (err as Error).message, { feature: 'aiReceptionist' });
+      }
+      throw err;
+    }
+
+    const orgUsage = await getOrgAiUsageSummary(orgId);
+    let effectiveMaxSessionSeconds = settings.maxSessionSeconds;
+    const costRemaining = orgUsage.dailyCostRemaining;
+    if (costRemaining <= 0) {
+      return jsonUpgradeHook(req, 'Daily AI cost limit reached for this organization.', {
+        feature: 'aiReceptionist',
+      });
+    }
+    if (costRemaining < 1) {
+      effectiveMaxSessionSeconds = Math.min(effectiveMaxSessionSeconds, 90);
+    } else if (costRemaining < 3) {
+      effectiveMaxSessionSeconds = Math.min(effectiveMaxSessionSeconds, 180);
+    }
+
     const profile = await loadAuthUserProfile(sb, user.id);
     const participantName = profile.name.trim() || profile.email.split('@')[0]?.trim() || 'Guest';
 
@@ -129,7 +167,7 @@ serveAuthenticated('voice-receptionist-start', async (req, user) => {
     const minted = await mintGeminiLiveEphemeralToken({
       voiceName: settings.voiceId,
       systemInstruction,
-      expireMinutes: Math.max(Math.ceil(settings.maxSessionSeconds / 60) + 2, 5),
+      expireMinutes: Math.max(Math.ceil(effectiveMaxSessionSeconds / 60) + 2, 5),
     });
 
     const session = await createVoiceReceptionistSession({
@@ -143,7 +181,7 @@ serveAuthenticated('voice-receptionist-start', async (req, user) => {
       sessionId: session.id,
       model: minted.model,
       voiceId: minted.voiceName,
-      maxSessionSeconds: settings.maxSessionSeconds,
+      maxSessionSeconds: effectiveMaxSessionSeconds,
     });
   } catch (e) {
     if (e instanceof VoiceReceptionistCapError) {

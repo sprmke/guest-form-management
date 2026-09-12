@@ -6,7 +6,7 @@
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { capturePostHogException } from '../_shared/posthog.ts';
+import { capturePostHogEvent, capturePostHogException } from '../_shared/posthog.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
@@ -16,6 +16,11 @@ import { logGuestActivity } from '../_shared/guestActivity.ts';
 import { notifyTelegramAdminSdFormSubmitted } from '../_shared/telegramAdmin.ts';
 import { isSdRefundBank, type SdRefundBank } from '../_shared/sdRefundBank.ts';
 import { antiSpamGate } from '../_shared/antiSpam.ts';
+import { maintenanceModeResponse } from '../_shared/platformSettingsCache.ts';
+import {
+  authorizeGuestBookingAccess,
+  guestBookingAccessTokenFromRequest,
+} from '../_shared/guestBookingAccessToken.ts';
 
 type RefundBody = {
   method: 'same_phone' | 'other_bank' | 'cash';
@@ -65,6 +70,9 @@ serve(async (req) => {
       throw new Error(`Method ${req.method} not allowed`);
     }
 
+    const maintenance = await maintenanceModeResponse(req);
+    if (maintenance) return maintenance;
+
     const body = (await req.json().catch(() => null)) as {
       bookingId?: string;
       guestFeedback?: string;
@@ -88,6 +96,18 @@ serve(async (req) => {
     if (errRefund) throw new Error(errRefund);
 
     const row = await DatabaseService.getBookingById(bookingId);
+    const authz = await authorizeGuestBookingAccess({
+      bookingIdFromPath: bookingId,
+      accessTokenFromQuery: guestBookingAccessTokenFromRequest(req, body),
+      bookingCreatedAt: (row?.created_at as string | null | undefined) ?? null,
+    });
+    if (!authz.ok) {
+      return new Response(JSON.stringify({ success: false, error: authz.message }), {
+        status: authz.status,
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      });
+    }
+
     if (!row || row.status !== 'READY_FOR_CHECKOUT') {
       return new Response(
         JSON.stringify({
@@ -146,6 +166,16 @@ serve(async (req) => {
     } catch (tgErr) {
       console.error('[submit-sd-form] Telegram admin SD form notify failed (non-fatal):', tgErr);
     }
+
+    await capturePostHogEvent('sd_form_submitted', {
+      logPrefix: 'submit-sd-form',
+      request: req,
+      properties: {
+        property_id: (row.property_id as string | null) ?? undefined,
+        booking_id: bookingId,
+        refund_method: refund!.method,
+      },
+    });
 
     return new Response(
       JSON.stringify({

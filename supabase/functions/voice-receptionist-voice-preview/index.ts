@@ -3,18 +3,42 @@
  * Auth: property team member (settings:edit) — preview spends API tokens.
  */
 
-import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
+import {
+  assertOrgAndPropertyAiQuota,
+  isAiPlatformDisabledError,
+  isAiQuotaError,
+  recordAiUsage,
+} from '../_shared/aiUsageService.ts';
+import { jsonError, jsonSuccess, jsonUpgradeHook, readJsonBody } from '../_shared/httpResponse.ts';
 import { previewGeminiLiveVoice } from '../_shared/geminiLiveVoicePreview.ts';
 import { resolvePropertyGuestName } from '../_shared/propertyGuestName.ts';
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
+import { identityFromRequest, rateLimitGate } from '../_shared/rateLimit.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
-serveAuthenticated('voice-receptionist-voice-preview', async (req) => {
+serveAuthenticated('voice-receptionist-voice-preview', async (req, user) => {
   if (req.method !== 'POST') {
     return jsonError(req, 'Method not allowed', 405);
   }
 
+  const limited = await rateLimitGate(req, {
+    scope: 'voice-receptionist-voice-preview',
+    identity: identityFromRequest(req, user),
+    limit: 20,
+    windowSec: 3600,
+  });
+  if (limited) return limited;
+
   const access = await resolveScopedPropertyAccess(req, 'settings.voiceReceptionist:edit');
+
+  try {
+    await assertOrgAndPropertyAiQuota(access.org.id, access.property.id, 'voice_receptionist');
+  } catch (err) {
+    if (isAiQuotaError(err) || isAiPlatformDisabledError(err)) {
+      return jsonUpgradeHook(req, err.message, { feature: 'aiReceptionist' });
+    }
+    throw err;
+  }
 
   const body = await readJsonBody(req);
   const voiceId = String(body.voiceId ?? body.voice_id ?? '').trim();
@@ -32,6 +56,20 @@ serveAuthenticated('voice-receptionist-voice-preview', async (req) => {
 
   try {
     const data = await previewGeminiLiveVoice(voiceId, propertyName);
+    try {
+      await recordAiUsage({
+        organizationId: access.org.id,
+        propertyId: access.property.id,
+        feature: 'voice_receptionist',
+        provider: 'gemini',
+        model: 'gemini-2.5-flash-preview-tts',
+        durationSeconds: 4,
+        actorUserId: user.id,
+        actorType: 'staff',
+      });
+    } catch (usageErr) {
+      console.warn('[voice-receptionist-voice-preview] usage record failed:', usageErr);
+    }
     return jsonSuccess(req, data);
   } catch (e) {
     const message = (e as Error).message || 'Could not preview voice';
