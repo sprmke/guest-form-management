@@ -95,3 +95,12 @@ The Setup Guide is a one-time walkthrough that helps new hosts finish the basics
 | Migration               | `20261306140000_host_verification_reward.sql`                             |
 
 ---
+
+---
+
+## Testing
+
+| Layer | Path / spec                                | Manual            |
+| ----- | ------------------------------------------ | ----------------- |
+| Unit  | `setupGuideProgress` / step assembly tests | —                 |
+| N/A   | Setup Guide overlay auto-open              | Manual onboarding |

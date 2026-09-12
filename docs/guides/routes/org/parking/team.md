@@ -95,6 +95,16 @@ Query/body scope: **`parking_id`** / **`parkingId`**.
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                                  | Manual        |
+| ----- | ---------------------------------------------------------------------------- | ------------- |
+| Unit  | `parkingStatusMachine_test.ts`                                               | —             |
+| E2E   | [`parking-playwright.md`](../testing/parking-playwright.md) guest/host specs | PayMongo live |
+| N/A   | Parking host dashboard shell load                                            | —             |
+
+---
+
 ## Related
 
 - Property team: [../property/team.md](../property/team.md)

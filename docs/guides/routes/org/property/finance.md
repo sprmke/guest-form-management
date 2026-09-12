@@ -200,6 +200,16 @@ Legacy stored `finance:edit` expands to all transaction + export leaves. Parking
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                                     | Manual |
+| ----- | ------------------------------------------------------------------------------- | ------ |
+| Unit  | `supabase/functions/_shared/financeRecurrence_test.ts`                          | —      |
+| E2E   | `ui/e2e/features/dashboard/dashboardModulesSmoke.spec.ts` finance shell (`@ci`) | —      |
+| N/A   | Telegram finance reminders, PDF export pixel checks                             | Manual |
+
+---
+
 ## Related docs
 
 - [Route index](../../README.md)

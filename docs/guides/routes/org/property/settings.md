@@ -420,7 +420,7 @@ Opt-in AI voice assistant guests can talk to (check-in, wifi, parking, and other
 
 Save path: page **Save Changes** → `PATCH voice-receptionist-settings?property_id=` when this section is dirty (`settings.voiceReceptionist:edit`; enabling also requires plan `aiReceptionist`). Hook: `useVoiceReceptionistSettings.ts`. UI: `PropertyVoiceReceptionistSection.tsx` (controlled from `PropertySettingsCard.tsx`).
 
-**Test voice** — outline button beside the voice picker. `POST voice-receptionist-voice-preview?property_id=` (`settings.voiceReceptionist:edit`) runs a short Gemini TTS sample using the **Basic Information property name** (not tower + unit; e.g. _"Hi, I'm the Solea Ocean View receptionist…"_) and the selected prebuilt voice, then plays PCM audio in the browser. The client sends the current **Property Name** draft so unsaved edits are reflected. Uses Gemini API tokens (not a free local sample). Hook: `usePreviewVoiceReceptionistVoice`.
+**Test voice** — outline button beside the voice picker. `POST voice-receptionist-voice-preview?property_id=` (`settings.voiceReceptionist:edit`) runs a short Gemini TTS sample using the **Basic Information property name** (not tower + unit; e.g. _"Hi, I'm the Solea Ocean View receptionist…"_) and the selected prebuilt voice, then plays PCM audio in the browser. The client sends the current **Property Name** draft so unsaved edits are reflected. Uses Gemini API tokens (not a free local sample). Server checks org/property AI quota, rate-limits 20 previews per hour per user, and records the sample on `ai_platform_usage_events`. Hook: `usePreviewVoiceReceptionistVoice`.
 
 **Plan gating:** Hidden from the secondary settings nav and the settings card unless the property is entitled to **`aiReceptionist`** (Business and above). When entitled, enable/save still require that feature server-side (`voice-receptionist-settings` PATCH, `voice-receptionist-start`).
 
@@ -504,6 +504,16 @@ Keep UI and edge copies in sync when changing rules.
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                                      | Manual                                      |
+| ----- | -------------------------------------------------------------------------------- | ------------------------------------------- |
+| Unit  | Document requirements resolution, cleaning buffer mirrors when changed           | —                                           |
+| E2E   | `ui/e2e/features/dashboard/dashboardModulesSmoke.spec.ts` settings shell (`@ci`) | OTP payment method, live Maps, media upload |
+| N/A   | —                                                                                | —                                           |
+
+---
+
 ## Related docs
 
 - [Organization Settings — AI platform](../settings.md) § AI platform
@@ -518,7 +528,7 @@ Keep UI and edge copies in sync when changing rules.
 - [ ] Org-level residence catalog (DB-driven instead of code constants)
 - [ ] Location: optional per-org Maps API key override
 - [ ] Soft-delete flag instead of hard delete for edge cases
-- [ ] Automated tests for property settings validation
+- [x] Automated tests for property settings validation (load smoke in `dashboardModulesSmoke.spec.ts`; save paths manual)
 - [x] Remove deprecated `voice-receptionist-global-settings` edge function and UI card
 - [ ] Drop legacy `voice_receptionist_global_settings` table after verifying the platform switch is seeded on hosted environments
 

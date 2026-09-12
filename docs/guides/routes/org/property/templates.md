@@ -239,3 +239,13 @@ Implementation: **`guestContactInfo.ts`** (contact resolution), **`propertyTempl
 - **Ready for check-in** — payment/GCash placeholders resolve to empty strings when total guest balance is 0.
 - **`house-rules`** standard template is not injected into ready-for-check-in (legacy `houseRulesSection` remains disabled for Gmail size).
 - Missing `property_id` on a booking falls back to built-in defaults (no DB row).
+
+---
+
+## Testing
+
+| Layer | Path / spec                                                                       | Manual                   |
+| ----- | --------------------------------------------------------------------------------- | ------------------------ |
+| Unit  | Template placeholder normalization when pure helpers change                       | —                        |
+| E2E   | `ui/e2e/features/dashboard/dashboardModulesSmoke.spec.ts` templates shell (`@ci`) | WYSIWYG save, email send |
+| N/A   | —                                                                                 | —                        |

@@ -136,6 +136,14 @@ Empty and load-error states stay inside the list pane under **My Tickets** (icon
 | Scope resolution   | `supabase/functions/_shared/supportTicketScope.ts`                                                                                                                                                                                                                                                             |
 | Route registration | `ui/src/features/dashboard/help-support/routes/index.tsx`                                                                                                                                                                                                                                                      |
 
+---
+
+## Testing
+
+| Layer | Path / spec            | Manual                      |
+| ----- | ---------------------- | --------------------------- |
+| N/A   | Help docs + tickets UI | Manual QA when copy changes |
+
 ## Related docs
 
 - [Route index](../../README.md)

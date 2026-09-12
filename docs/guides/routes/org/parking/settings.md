@@ -161,3 +161,12 @@ Since parking type, residence, tower, level, and slot number can't change in Set
 ## Setup Guide
 
 The same sections can be completed inside the post-onboarding [Setup Guide](../setup-guide.md) overlay (identical storage and validation).
+---
+
+## Testing
+
+| Layer | Path / spec                                                                  | Manual        |
+| ----- | ---------------------------------------------------------------------------- | ------------- |
+| Unit  | `parkingStatusMachine_test.ts`                                               | —             |
+| E2E   | [`parking-playwright.md`](../testing/parking-playwright.md) guest/host specs | PayMongo live |
+| N/A   | Parking host dashboard shell load                                            | —             |

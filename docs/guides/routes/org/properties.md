@@ -193,6 +193,17 @@ Server: `list-properties` loads org properties, batch-loads `guest_submissions` 
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                                      | Manual                   |
+| ----- | -------------------------------------------------------------------------------- | ------------------------ |
+| Unit  | `supabase/functions/_shared/propertySettingsClone_test.ts`                       | —                        |
+| E2E   | `ui/e2e/features/org/orgHubSmoke.spec.ts` inventory shell load (`@ci`)           | —                        |
+| E2E   | `ui/e2e/features/org/copyPropertySettingsDryRun.spec.ts` dry-run preview (`@ci`) | Real multi-property copy |
+| N/A   | Add property dialog full create flow                                             | —                        |
+
+---
+
 ## Related docs
 
 - [Route index](../README.md)

@@ -61,6 +61,7 @@ hide the ones you don't need, and set colours / fonts / motion — the same cont
 | **Window** | **Asia/Manila** check-in day `00:00` through end of day **after** check-out (`23:59:59+08:00`)                |
 | **Status** | `READY_FOR_CHECKIN`, `READY_FOR_CHECKOUT`, `PENDING_SD_REFUND`, or `COMPLETED` (not `CANCELLED` or pre-ready) |
 | **Slug**   | API accepts optional `?property=`; must match booking property when provided                                  |
+| **Title**  | `{Property Name} - Stay Guide` via `usePageTitle` / `ShowcaseShell`                                           |
 
 Expired or invalid token → generic unavailable message (no leak of booking existence).
 `?preview=1&property_id=<uuid>` (signed-in host, `templates:view`) and `?embed=1` bypass the
@@ -175,3 +176,13 @@ editor frame and palette/motion follow the config live.
 | Edge            | `get-guest-stay-guide/`, `preview-guest-stay-guide/`, `public-page-configs/`, `custom-pages-settings/`                                                                                                                                                               |
 | Shared server   | `_shared/guestStayGuide.ts`, `_shared/publicPageConfigs.ts` (v2 + v1 upgrade), `_shared/customPages.ts`                                                                                                                                                              |
 | Migrations      | `20261210120100_stay_guide_config_v2.sql`, `20261210120300_stay_guide_template_keys.sql` (+ token / custom_pages / public_page_configs base migrations)                                                                                                              |
+
+---
+
+## Testing
+
+| Layer | Path / spec                                                                         | Manual                                     |
+| ----- | ----------------------------------------------------------------------------------- | ------------------------------------------ |
+| Unit  | `ui/src/features/guest/lib/guestPublicPaths.test.ts` (stay-guide URLs)              | —                                          |
+| E2E   | `ui/e2e/features/guest-form/stayGuideToken.spec.ts` (`@ci`, token 404 + happy mock) | `docs/guides/testing/stay-guide-manual.md` |
+| N/A   | —                                                                                   | Editor preview canvas animations           |

@@ -78,6 +78,15 @@ Visiting the organization hub does not show a list of organizations to pick from
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                                    | Manual |
+| ----- | ------------------------------------------------------------------------------ | ------ |
+| E2E   | `ui/e2e/features/auth/legacyRouteRedirectSmoke.spec.ts` redirect paths (`@ci`) | —      |
+| N/A   | Redirect-only route                                                            | —      |
+
+---
+
 ## Related docs
 
 - [Route index](../README.md)

@@ -49,6 +49,15 @@ This page previews add-on services (cleaning, maintenance, supplies, and similar
 | Search fields  | `ui/src/features/guest/marketing/shared/lib/listingSearchFields.ts`          |
 | Search morph   | `ui/src/features/guest/marketing/shared/lib/listingScrollSearchPaths.ts`     |
 
+---
+
+## Testing
+
+| Layer | Path / spec           | Manual |
+| ----- | --------------------- | ------ |
+| E2E   | N/A                   | —      |
+| N/A   | Static marketing copy | —      |
+
 ## Related docs
 
 - [Properties](./properties.md)

@@ -142,6 +142,16 @@ Cron: global `telegram-finance-cron` (hourly) processes unpaid `finance_line_ite
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                                  | Manual        |
+| ----- | ---------------------------------------------------------------------------- | ------------- |
+| Unit  | `parkingStatusMachine_test.ts`                                               | —             |
+| E2E   | [`parking-playwright.md`](../testing/parking-playwright.md) guest/host specs | PayMongo live |
+| N/A   | Parking host dashboard shell load                                            | —             |
+
+---
+
 ## Related
 
 - Parking finance transactions: [finance.md](./finance.md)

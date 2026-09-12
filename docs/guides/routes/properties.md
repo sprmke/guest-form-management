@@ -124,7 +124,7 @@ Route is registered **before** `/properties/:propertySlug` so `in` is not treate
 
 ## Detail (`/properties/:propertySlug`)
 
-**Phase 2a:** `usePublicPropertyDetail` calls **`get-public-property?property=<slug>`** (anon). **ACTIVE** DB properties return live dashboard data; **404** falls back to mock (`mockPropertyDetail` / `mockProperties`). TanStack Query caches 5 min; mock `placeholderData` paints instantly while loading.
+**Phase 2a:** `usePublicPropertyDetail` calls **`get-public-property?property=<slug>`** (anon). **ACTIVE** DB properties return live dashboard data; **404** or a missing payload redirects to **`/properties`**. TanStack Query caches 5 min. Dashboard **Page Editor** preview still injects override data (`previewOverride`).
 
 Gap analysis (ratings, nearby POIs, etc.): **[[public-property-catalog|Public property catalog — reference]]**.
 
@@ -141,7 +141,7 @@ Gap analysis (ratings, nearby POIs, etc.): **[[public-property-catalog|Public pr
 | Rules       | `PropertyRules`                                                          | House rules preview (6) + modal; cancellation live; safety mock-only                                                                                                                                |
 | Reviews     | `PropertyReviews`                                                        | Merged Kame guest + approved external reviews (newest first); source badges; feedback tags on Kame reviews only; photos + lightbox; **See more** modal. No category bars, search, or helpful votes. |
 | Booking     | `BookingCard` + `GuestBookingFormModal`                                  | API pricing; Reserve → in-page `GuestForm` modal                                                                                                                                                    |
-| Similar     | `SimilarProperties`                                                      | other mock listings (unchanged)                                                                                                                                                                     |
+| Similar     | `SimilarProperties`                                                      | live `list-public-properties` (same development/type/city); hidden when empty                                                                                                                       |
 | Parking CTA | Marketplace **`/parkings`** browse or linked slot detail when configured |
 
 ---
@@ -191,6 +191,16 @@ Full field map + dashboard gaps: **[[public-property-catalog|Public property cat
 | Image helper   | `marketing/shared/components/MarketingImage.tsx` (Vite `img` wrapper)                     |
 | Scroll search  | `marketing/shared/context/ListingScrollSearchContext.tsx`, `MarketingNav.tsx`             |
 | Routes         | `ui/src/features/guest/marketing/routes/index.tsx`                                        |
+
+---
+
+## Testing
+
+| Layer | Path / spec                                                                             | Manual |
+| ----- | --------------------------------------------------------------------------------------- | ------ |
+| Unit  | Amenity/facet helpers when pure                                                         | —      |
+| E2E   | `ui/e2e/features/public/publicPagesSmoke.spec.ts` list + detail mock (`@smoke` / `@ci`) | —      |
+| N/A   | —                                                                                       | —      |
 
 ---
 

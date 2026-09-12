@@ -137,3 +137,13 @@ Auth: signed-in user + org parking permission. `verify_jwt = false`; handler use
 | Shared                                                              | `supabase/functions/_shared/parkingPricing.ts` (incl. server-side cap enforcement), `parkingPlatformSettings.ts` (live config resolver), `parkingBlockedDates.ts`, `parkingDirectLink.ts` (Phase 8 token)         |
 | Migration                                                           | `supabase/migrations/20260918140000_parking_pricing.sql`, `20261104120000_parking_blocked_dates_automation.sql`, `20261129120000_parking_platform_settings.sql`, `20261202120000_parking_direct_booking_link.sql` |
 | Calendar UI (shared)                                                | `ui/src/features/dashboard/pricing/components/PricingCalendarGrid.tsx`                                                                                                                                            |
+
+---
+
+## Testing
+
+| Layer | Path / spec                                                                  | Manual        |
+| ----- | ---------------------------------------------------------------------------- | ------------- |
+| Unit  | `parkingStatusMachine_test.ts`                                               | —             |
+| E2E   | [`parking-playwright.md`](../testing/parking-playwright.md) guest/host specs | PayMongo live |
+| N/A   | Parking host dashboard shell load                                            | —             |

@@ -25,3 +25,13 @@ Gated on **`bookings:view`** (any member who can see this property's bookings). 
 
 - Org-wide view: [org/activity.md](../activity.md) · Parking: [org/parking/activity.md](../parking/activity.md)
 - `<EntityActivityHistory targetType="booking" targetId={...} />` renders a compact per-booking feed on the booking detail Overview tab.
+
+---
+
+## Testing
+
+| Layer | Path / spec                                                                           | Manual         |
+| ----- | ------------------------------------------------------------------------------------- | -------------- |
+| Unit  | `supabase/functions/_shared/activityLog.ts` catalog + redaction helpers               | —              |
+| E2E   | `ui/e2e/features/dashboard/dashboardModulesSmoke.spec.ts` activity shell load (`@ci`) | CSV export     |
+| N/A   | Per-booking `<EntityActivityHistory>` panel                                           | Booking detail |

@@ -183,6 +183,14 @@ Backlog: [GitHub Issue #110 — Epic 10](https://github.com/sprmke/kame-homes/is
 | Migration       | `20260719153000_web_guest_chat.sql`, `20260927120000_chat_message_lifecycle.sql`, `20260928120000_chat_phase5.sql`                                                                                |
 | Host inbox      | `ui/src/features/dashboard/inbox/**` — **Web** tab                                                                                                                                                |
 
+---
+
+## Testing
+
+| Layer | Path / spec                | Manual                          |
+| ----- | -------------------------- | ------------------------------- |
+| N/A   | Property-scoped guest chat | Manual + stays hub E2E for list |
+
 ## Related
 
 - [properties.md](./properties.md) — property detail + Contact host

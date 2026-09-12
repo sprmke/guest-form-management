@@ -59,3 +59,12 @@ This is your parking inventory hub, showing every slot your organization offers,
 | Summary / toolbar | `OrgParkingsSummaryCards.tsx`, `OrgParkingsToolbar.tsx`                    |
 | Filters           | `ui/src/features/dashboard/org/lib/orgParkingsFilters.ts`                  |
 | Edge              | `supabase/functions/list-parkings`, `create-parking`                       |
+
+---
+
+## Testing
+
+| Layer | Path / spec                                       | Manual |
+| ----- | ------------------------------------------------- | ------ |
+| E2E   | `orgHubSmoke.spec.ts` + parking marketplace specs | —      |
+| N/A   | Org parkings inventory dedicated smoke            | —      |

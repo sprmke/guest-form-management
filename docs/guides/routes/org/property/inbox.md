@@ -128,6 +128,14 @@ Manage chrome is **leaf-split**: Channels / Quick replies / Automation buttons a
 | Guest resolver page          | `ui/src/features/guest/booking-documents/pages/GuestBookingDocumentPage.tsx` — see [[guest-booking-document\|Guest booking document]]                                                                                                                                                                                                               |
 | Migration                    | `supabase/migrations/20261102130000_booking_document_share_token.sql`                                                                                                                                                                                                                                                                               |
 
+## Testing
+
+| Layer | Path / spec                                                  | Manual                |
+| ----- | ------------------------------------------------------------ | --------------------- |
+| Unit  | `supabase/functions/_shared/inboxAiSafetyGuard_test.ts`      | —                     |
+| E2E   | `ui/e2e/features/inbox/inboxThreadListSmoke.spec.ts` (`@ci`) | Meta OAuth, live send |
+| N/A   | —                                                            | Meta connect manual   |
+
 ## Related
 
 - [Parking Inbox](../parking/inbox.md)

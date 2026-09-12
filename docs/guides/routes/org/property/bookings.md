@@ -193,6 +193,15 @@ Kanban card open still works without workflow permission (Progress rail read-onl
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                            | Manual |
+| ----- | ------------------------------------------------------ | ------ |
+| Unit  | `workflow.test.ts`                                     | —      |
+| E2E   | `dashboardModulesSmoke.spec.ts` bookings shell (`@ci`) | —      |
+
+---
+
 ## Related docs
 
 - [Booking detail](./bookings-detail.md)

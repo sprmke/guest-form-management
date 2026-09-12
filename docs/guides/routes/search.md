@@ -223,3 +223,13 @@ Both layers must agree on what the guest is looking at. Availability helpers are
 | Edge          | `supabase/functions/search-suggestions/`, `search-listings/`, `list-public-*`                                                        |
 | Migration     | `supabase/migrations/20261005130000_search_indexes.sql`                                                                              |
 | Manual QA     | `docs/guides/testing/smart-search-intents-manual.md`                                                                                 |
+
+---
+
+## Testing
+
+| Layer | Path / spec                                                                      | Manual                                               |
+| ----- | -------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Unit  | `ui/src/features/guest/search/lib/searchIntents.test.ts`                         | —                                                    |
+| E2E   | `ui/e2e/features/public/publicPagesSmoke.spec.ts` search page (`@smoke` / `@ci`) | Geolocation Nearby, full intent matrix               |
+| N/A   | —                                                                                | `docs/guides/testing/smart-search-intents-manual.md` |

@@ -393,19 +393,29 @@ This is the page a host opens to manage one specific booking end to end: guest d
 
 ## API reference
 
-| Action                              | Endpoint                                                             |
-| ----------------------------------- | -------------------------------------------------------------------- |
-| Load booking                        | Supabase `guest_submissions` select (admin session)                  |
-| Save edit-form fields               | Supabase `guest_submissions` update (admin session)                  |
-| Advance/back a workflow step        | `POST transition-booking`                                            |
-| Cancel booking                      | `POST cancel-booking`                                                |
-| Upload/replace a guest document     | `POST upload-booking-asset`                                          |
-| Manually run check-out automation   | `POST sd-refund-cron` (scoped to `{ bookingId }`)                    |
-| Resend Check-out Instructions email | `POST send-sd-refund-form-email`                                     |
-| Issue/refresh guest stay-guide link | `POST issue-guest-stay-guide-token`                                  |
-| Optional admin receipt re-validate  | `POST validate-booking-receipts` (not called from booking detail UI) |
-| Trigger AI summary job              | `POST booking-ai-review` (`{ bookingId, refresh? }`)                 |
-| Poll AI summary job                 | `GET get-booking-ai-review` (includes computed `stale_sections`)     |
+| Action                              | Endpoint                                                                 |
+| ----------------------------------- | ------------------------------------------------------------------------ |
+| Load booking                        | Supabase `guest_submissions` select (admin session)                      |
+| Save edit-form fields               | Supabase `guest_submissions` update (admin session)                      |
+| Advance/back a workflow step        | `POST transition-booking` — **409** if another host already moved status |
+| Cancel booking                      | `POST cancel-booking`                                                    |
+| Upload/replace a guest document     | `POST upload-booking-asset`                                              |
+| Manually run check-out automation   | `POST sd-refund-cron` (scoped to `{ bookingId }`)                        |
+| Resend Check-out Instructions email | `POST send-sd-refund-form-email`                                         |
+| Issue/refresh guest stay-guide link | `POST issue-guest-stay-guide-token`                                      |
+| Optional admin receipt re-validate  | `POST validate-booking-receipts` (not called from booking detail UI)     |
+| Trigger AI summary job              | `POST booking-ai-review` (`{ bookingId, refresh? }`)                     |
+| Poll AI summary job                 | `GET get-booking-ai-review` (includes computed `stale_sections`)         |
+
+---
+
+## Testing
+
+| Layer | Path / spec                                                                                                                                   | Manual                         |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| Unit  | `supabase/functions/_shared/statusMachine_test.ts`, `workflowOrchestrator_test.ts`; `ui/src/features/dashboard/bookings/lib/workflow.test.ts` | —                              |
+| E2E   | `ui/e2e/features/bookings/propertyBookingProceed.spec.ts` (`@smoke` proceed flow); parking free-manual workflow spec for plan skip            | Resend inbound GAF approval    |
+| N/A   | —                                                                                                                                             | Real email sends on transition |
 
 ---
 

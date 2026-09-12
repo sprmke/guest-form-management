@@ -85,6 +85,14 @@ After a guest submits their booking form, they land on a confirmation screen rec
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                             | Manual |
+| ----- | ------------------------------------------------------- | ------ |
+| E2E   | `guestFormSubmit.spec.ts` success path (`@smoke` `@ci`) | —      |
+
+---
+
 ## Related docs
 
 - [Route index](./README.md)

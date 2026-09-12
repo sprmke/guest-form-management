@@ -308,6 +308,17 @@ Auth: Bearer JWT + `verifyPropertyAccess` (`_shared/orgAuth.ts`). `property_id` 
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                                  | Manual |
+| ----- | ---------------------------------------------------------------------------- | ------ |
+| Unit  | `ui/src/features/dashboard/team/lib/propertyTeamCatalogDrift.test.ts`        | —      |
+| E2E   | `ui/e2e/features/team/propertyTeamNavRbac.spec.ts` (`@smoke` / `@ci`)        | —      |
+| E2E   | `ui/e2e/features/dashboard/dashboardModulesSmoke.spec.ts` team shell (`@ci`) | —      |
+| N/A   | Invite email delivery, accept-invite with real token                         | Resend |
+
+---
+
 ## Related docs
 
 - [Route index](./README.md)

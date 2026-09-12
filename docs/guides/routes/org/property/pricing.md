@@ -386,3 +386,13 @@ bookings calendar module.
 - **Feed failures:** after 4 consecutive failed pulls the dialog shows `Error` and a
   `calendar_sync_failing` notification fires once; syncing resumes automatically when the
   next pull succeeds.
+
+---
+
+## Testing
+
+| Layer | Path / spec                                                                          | Manual                         |
+| ----- | ------------------------------------------------------------------------------------ | ------------------------------ |
+| Unit  | `supabase/functions/_shared/smartPricingEngine_test.ts`, calendar sync service tests | —                              |
+| E2E   | `ui/e2e/features/dashboard/dashboardModulesSmoke.spec.ts` pricing shell (`@ci`)      | AI preview, channel sync OAuth |
+| N/A   | Polotno/canvas internals                                                             | Manual calendar sync guide     |

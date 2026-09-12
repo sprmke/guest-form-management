@@ -121,6 +121,16 @@ Full design/rationale: [`docs/workflow/done/org-level-billing-migration.md`](../
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                                                                  | Manual                   |
+| ----- | ------------------------------------------------------------------------------------------------------------ | ------------------------ |
+| Unit  | `planEntitlements` / `planPresentation` Vitest when touched                                                  | —                        |
+| E2E   | `ui/e2e/features/plans/org/orgPlanCheckout.spec.ts`, `orgPlanDowngrade.spec.ts` (`@ci` via `test:e2e:plans`) | PayMongo live settlement |
+| N/A   | —                                                                                                            | Real PayMongo webhook    |
+
+---
+
 ## Host-facing knowledge
 
 - Pricing is **per property**, but billed and managed **once for the whole organization** — every listing in the org is included automatically.

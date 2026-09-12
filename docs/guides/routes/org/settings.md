@@ -285,6 +285,16 @@ Danger zone: slug confirmation + `delete-organization`; blocked when booking his
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                              | Manual                           |
+| ----- | ------------------------------------------------------------------------ | -------------------------------- |
+| Unit  | Org settings completion helpers when changed                             | —                                |
+| E2E   | `ui/e2e/features/org/orgSettingsSave.spec.ts` socials PATCH save (`@ci`) | Logo upload, org delete, AI save |
+| N/A   | —                                                                        | —                                |
+
+---
+
 ## Related docs
 
 - [Route index](../README.md)

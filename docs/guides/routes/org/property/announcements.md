@@ -74,6 +74,14 @@ Body is authored by super-admins as rich text (WYSIWYG editor — bold/italic, h
 | API         | `list-host-announcements`                                                           |
 | Routes      | `ui/src/features/dashboard/announcements/routes/index.tsx`                          |
 
+---
+
+## Testing
+
+| Layer | Path / spec        | Manual                   |
+| ----- | ------------------ | ------------------------ |
+| N/A   | Announcements CRUD | Manual when copy changes |
+
 ## Related
 
 - [Property Help & Support](./help-support.md)

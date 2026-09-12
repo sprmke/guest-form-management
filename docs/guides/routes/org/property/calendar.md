@@ -16,3 +16,11 @@ This legacy URL redirects to `/org/:orgSlug/property/:propertySlug/pricing` with
 
 The pricing UI, permissions, fields, save paths, and owner-managed date blocks are
 documented in the [Pricing operator guide](./pricing.md).
+---
+
+## Testing
+
+| Layer | Path / spec                                                     | Manual |
+| ----- | --------------------------------------------------------------- | ------ |
+| E2E   | `ui/e2e/features/auth/legacyRouteRedirectSmoke.spec.ts` (`@ci`) | —      |
+| N/A   | Redirect-only route                                             | —      |

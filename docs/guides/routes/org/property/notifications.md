@@ -208,6 +208,16 @@ Credentials unlock logic: `telegramCredentialsReady()` — saved token **and** c
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                                           | Manual                          |
+| ----- | ------------------------------------------------------------------------------------- | ------------------------------- |
+| Unit  | Telegram template validators when pure helpers exist                                  | —                               |
+| E2E   | `ui/e2e/features/dashboard/dashboardModulesSmoke.spec.ts` notifications shell (`@ci`) | Live Telegram send, PWA OS push |
+| N/A   | —                                                                                     | —                               |
+
+---
+
 ## Related docs
 
 - [Route index](../../README.md)

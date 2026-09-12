@@ -105,6 +105,16 @@ Legacy stored `maintenance:edit` expands to all reminder + export leaves.
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                                         | Manual |
+| ----- | ----------------------------------------------------------------------------------- | ------ |
+| Unit  | Recurrence helpers mirror finance patterns when extracted                           | —      |
+| E2E   | `ui/e2e/features/dashboard/dashboardModulesSmoke.spec.ts` maintenance shell (`@ci`) | —      |
+| N/A   | PDF export layout checks                                                            | Manual |
+
+---
+
 ## Related docs
 
 - [Route index](../../README.md)

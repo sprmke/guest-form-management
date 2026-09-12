@@ -236,6 +236,15 @@ Security / access notes:
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                 | Manual           |
+| ----- | ----------------------------------------------------------- | ---------------- |
+| Unit  | `parkingStatusMachine_test.ts`                              | —                |
+| E2E   | [`parking-playwright.md`](../testing/parking-playwright.md) | PayMongo `@live` |
+
+---
+
 ## Related
 
 - [properties.md](./properties.md) — homes list pattern this mirrors

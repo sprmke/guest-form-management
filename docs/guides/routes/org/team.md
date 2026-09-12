@@ -206,6 +206,15 @@ Migration: `supabase/migrations/20261209130000_org_team_granular_permissions.sql
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                       | Manual              |
+| ----- | ----------------------------------------------------------------- | ------------------- |
+| Unit  | `ui/src/features/dashboard/team/lib/orgTeamCatalogDrift.test.ts`  | —                   |
+| E2E   | `ui/e2e/features/org/orgHubSmoke.spec.ts` team shell load (`@ci`) | Invite email accept |
+
+---
+
 ## Related docs
 
 - [Property team](./property/team.md) — property-scoped roles (Manager / Staff / Viewer)

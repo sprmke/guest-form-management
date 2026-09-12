@@ -212,6 +212,16 @@ Without the leaf, the card is omitted and its finance/maintenance queries stay d
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                                          | Manual |
+| ----- | ------------------------------------------------------------------------------------ | ------ |
+| Unit  | KPI aggregators when pure helpers exist                                              | —      |
+| E2E   | `ui/e2e/features/dashboard/dashboardModulesSmoke.spec.ts` property dashboard (`@ci`) | —      |
+| N/A   | —                                                                                    | —      |
+
+---
+
 ## Related docs
 
 - [Route index](../../README.md)

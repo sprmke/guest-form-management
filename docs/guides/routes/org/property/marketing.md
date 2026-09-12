@@ -254,3 +254,13 @@ See [notifications.md](./notifications.md) for the unified page layout and save 
 | `generate-marketing-template` (video)    | Documented |
 | `publish-to-meta`                        | Documented |
 | Content Studio UI                        | Documented |
+
+---
+
+## Testing
+
+| Layer | Path / spec                                                      | Manual                       |
+| ----- | ---------------------------------------------------------------- | ---------------------------- |
+| Unit  | Caption validators in marketing lib when touched                 | —                            |
+| E2E   | `ui/e2e/features/marketing/marketingStudioSmoke.spec.ts` (`@ci`) | Meta publish, Polotno canvas |
+| N/A   | —                                                                | Meta OAuth manual            |

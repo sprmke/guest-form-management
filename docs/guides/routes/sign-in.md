@@ -66,6 +66,14 @@ No server round-trip beyond the SPA route — **`LegacySignInRedirect`** renders
 
 ---
 
+## Testing
+
+| Layer | Path / spec                                                | Manual |
+| ----- | ---------------------------------------------------------- | ------ |
+| E2E   | `ui/e2e/features/auth/legacyRedirectSmoke.spec.ts` (`@ci`) | —      |
+
+---
+
 ## Related docs
 
 - [Guest & host auth](./auth.md)

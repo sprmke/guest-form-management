@@ -155,3 +155,15 @@ See **[[stay-guide|Guest stay guide (token-gated brochure)]]** for the `stay-gui
 - Gallery does not wait on `custom-pages-settings`; it always lists the guest URLs from the registry (including Showcase).
 - Showcase / Stay Guide / Property editors are explore-open on Free; Save opens the Pro upgrade modal when `publicPagesAutosave` is off.
 - Live Showcase URL without Pro shows a non-dismissible blurred plan-lock overlay (guest copy + **Home** → Explore `/`; no close control).
+
+---
+
+## Testing
+
+| Layer  | Path / spec                                                                          | Manual                                        |
+| ------ | ------------------------------------------------------------------------------------ | --------------------------------------------- |
+| Unit   | `buildPropertyGuestPublicPages` registry helpers when pure                           | —                                             |
+| E2E    | `ui/e2e/features/dashboard/dashboardModulesSmoke.spec.ts` gallery shell load (`@ci`) | Editor save, showcase live URL, autosave gate |
+| Manual | [`custom-pages-module-manual.md`](../../testing/custom-pages-module-manual.md)       | Full editor + publish                         |
+
+---

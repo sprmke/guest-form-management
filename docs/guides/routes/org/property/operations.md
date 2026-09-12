@@ -40,3 +40,11 @@ Operations Telegram settings have moved to the Notifications page. Opening the o
 | Edge        | `supabase/functions/telegram-admin-settings/`                                 |
 
 See [notifications.md](./notifications.md) for the unified page layout and save paths.
+---
+
+## Testing
+
+| Layer | Path / spec                                                     | Manual |
+| ----- | --------------------------------------------------------------- | ------ |
+| E2E   | `ui/e2e/features/auth/legacyRouteRedirectSmoke.spec.ts` (`@ci`) | —      |
+| N/A   | Redirect-only route                                             | —      |

@@ -122,13 +122,13 @@ A standalone **`/properties/:propertySlug/guest-review?bookingId=`** route (`Gue
 
 ## API reference
 
-| Action                   | Endpoint                   |
-| ------------------------ | -------------------------- |
-| Load SD-form bootstrap   | `GET get-sd-form`          |
-| Load Airbnb guest-review | `GET get-guest-review`     |
-| Submit review            | `POST submit-guest-review` |
-| Claim / re-fetch voucher | `POST claim-sd-voucher`    |
-| Submit refund details    | `POST submit-sd-form`      |
+| Action                   | Endpoint                                                                               |
+| ------------------------ | -------------------------------------------------------------------------------------- |
+| Load SD-form bootstrap   | `GET get-sd-form`                                                                      |
+| Load Airbnb guest-review | `GET get-guest-review`                                                                 |
+| Submit review            | `POST submit-guest-review` — FormData includes `access` when stored                    |
+| Claim / re-fetch voucher | `POST claim-sd-voucher` — `{ bookingId, access? }` (same token/grace as `get-sd-form`) |
+| Submit refund details    | `POST submit-sd-form` — `{ bookingId, access?, refund }`                               |
 
 ---
 
@@ -149,6 +149,16 @@ A standalone **`/properties/:propertySlug/guest-review?bookingId=`** route (`Gue
 | Paths                | `ui/src/features/guest/lib/guestPublicPaths.ts`                                                                        |
 | Edge                 | `supabase/functions/get-sd-form/`, `submit-sd-form/`, `claim-sd-voucher/`, `submit-guest-review/`, `get-guest-review/` |
 | Shared services      | `supabase/functions/_shared/{guestReviewService,voucher,workflowOrchestrator,statusMachine}.ts`                        |
+
+---
+
+## Testing
+
+| Layer | Path / spec                                                                     | Manual                            |
+| ----- | ------------------------------------------------------------------------------- | --------------------------------- |
+| Unit  | `ui/src/features/guest/sd-form/lib/voucher*.ts` (existing voucher tests)        | —                                 |
+| E2E   | `ui/e2e/features/guest-form/sdFormSubmit.spec.ts` (`@ci`, mocked `get-sd-form`) | PayMongo / live refund settlement |
+| N/A   | —                                                                               | CAPTCHA on submit in production   |
 
 ---
 
