@@ -19,7 +19,6 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
-import { isPostHogEnabled, posthog } from '@/lib/posthog/client';
 
 export interface SdFormReviewSectionProps {
   bookingId: string;
@@ -61,13 +60,6 @@ export function SdFormReviewSection({
       }
     },
     onSuccess: () => {
-      if (isPostHogEnabled) {
-        posthog.capture('guest_review_submitted', {
-          star_rating: starRating,
-          feedback_tag_count: feedbackTagIds.length,
-          media_count: mediaItems.length,
-        });
-      }
       toast.success('Thanks for your review');
       onReviewSubmitted();
     },

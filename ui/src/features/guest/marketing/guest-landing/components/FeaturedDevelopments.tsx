@@ -5,7 +5,11 @@ import { Link } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import { MapPin, Star, Building2, Home, Layers, ArrowRight } from 'lucide-react';
 
-import { mockDevelopments } from '@/features/guest/marketing/developments/data/mockDevelopments';
+import { usePublicDevelopments } from '@/features/guest/marketing/developments/hooks/usePublicDevelopments';
+import {
+  DEFAULT_DEVELOPMENTS_QUERY,
+  toDevelopmentCard,
+} from '@/features/guest/marketing/developments/lib/developmentsQuery';
 import type { Development, DevelopmentType } from '@/features/guest/marketing/developments/types';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 
@@ -44,8 +48,6 @@ const TYPE_CONFIG: Record<
   },
 };
 
-const FEATURED = mockDevelopments.slice(0, 4);
-
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
@@ -59,6 +61,15 @@ const itemVariants = {
 export function FeaturedDevelopments() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-100px' });
+  const featuredQuery = usePublicDevelopments({
+    ...DEFAULT_DEVELOPMENTS_QUERY,
+    sort: 'recommended',
+    page: 1,
+    pageSize: 4,
+  });
+  const featured = (featuredQuery.data?.data ?? []).map(toDevelopmentCard);
+
+  if (!featuredQuery.isLoading && featured.length === 0) return null;
 
   return (
     <section className="border-border from-muted/20 to-background border-t bg-gradient-to-b py-20 lg:py-32">
@@ -104,7 +115,7 @@ export function FeaturedDevelopments() {
           animate={isInView ? 'visible' : 'hidden'}
           className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
         >
-          {FEATURED.map((development) => (
+          {featured.map((development) => (
             <DevelopmentMiniCard key={development.id} development={development} />
           ))}
         </motion.div>

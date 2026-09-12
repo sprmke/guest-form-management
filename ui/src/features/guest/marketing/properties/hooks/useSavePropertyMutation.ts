@@ -6,6 +6,7 @@ import {
   unsavePropertySlug,
 } from '@/features/guest/marketing/properties/lib/savedPropertiesApi';
 import { savedPropertiesQueryKeys } from '@/features/guest/marketing/properties/lib/savedPropertiesQueryKeys';
+import { captureAppEvent } from '@/lib/posthog/capture';
 
 type SavePropertyVariables = {
   propertySlug: string;
@@ -32,6 +33,13 @@ export function useSavePropertyMutation() {
         : previous.filter((slug) => slug !== propertySlug);
       queryClient.setQueryData(savedPropertiesQueryKeys.all, next);
       return { previous };
+    },
+    onSuccess: (_data, variables) => {
+      captureAppEvent('guest_favorite_toggled', {
+        on: variables.saved,
+        listing_kind: 'property',
+        slug: variables.propertySlug,
+      });
     },
     onError: (error, _variables, context) => {
       if (context?.previous) {

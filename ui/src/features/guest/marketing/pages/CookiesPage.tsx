@@ -18,8 +18,8 @@ export function CookiesPage() {
           title: 'Overview',
           paragraphs: [
             PLATFORM_APP_NAME
-              ? `${PLATFORM_APP_NAME} uses a small amount of browser storage to keep you signed in and to remember basic preferences. We do not load separate analytics or advertising cookie scripts on the marketing or guest booking surfaces as of this policy.`
-              : 'We use a small amount of browser storage to keep you signed in and to remember basic preferences. We do not load separate analytics or advertising cookie scripts on the marketing or guest booking surfaces as of this policy.',
+              ? `${PLATFORM_APP_NAME} uses browser storage for sign-in sessions, preferences, and first-party product analytics (PostHog) when enabled. We do not load advertising pixels or third-party ad trackers on marketing or guest booking surfaces.`
+              : 'We use browser storage for sign-in sessions, preferences, and first-party product analytics (PostHog) when enabled. We do not load advertising pixels or third-party ad trackers on marketing or guest booking surfaces.',
             `Contact: ${PLATFORM_CONTACT_EMAIL}. See also our Privacy Policy and Terms of Service.`,
           ],
         },
@@ -27,7 +27,8 @@ export function CookiesPage() {
           title: 'What we store',
           paragraphs: [
             'When you sign in (host dashboard or guest portal), Supabase Auth stores a session in the browser (typically local storage or cookies managed by the auth client) so you stay logged in across page loads.',
-            'We may also store UI preferences such as theme (light/dark) locally. Mode-switch and similar client state may use in-memory or local storage for navigation between guest and host marketing modes.',
+            'We may also store UI preferences such as theme (light/dark) locally. When analytics is enabled, PostHog may set first-party cookies or local storage to measure product usage and errors. Session replay stays off unless we explicitly enable it with input masking.',
+            'Mode-switch and similar client state may use in-memory or local storage for navigation between guest and host marketing modes.',
           ],
         },
         {

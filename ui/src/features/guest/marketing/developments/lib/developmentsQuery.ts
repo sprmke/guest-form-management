@@ -34,6 +34,8 @@ export type DevelopmentsListingQuery = {
   neLng: number | null;
   /** Place group slug for `/developments/in/:location`. */
   locationSlug: string;
+  /** Exact development slug for detail pages. */
+  slug: string;
   sort: DevelopmentsSort;
   page: number;
   pageSize: number;
@@ -53,6 +55,7 @@ export const DEFAULT_DEVELOPMENTS_QUERY: DevelopmentsListingQuery = {
   neLat: null,
   neLng: null,
   locationSlug: '',
+  slug: '',
   sort: 'recommended',
   page: 1,
   pageSize: 24,
@@ -111,6 +114,7 @@ export function parseDevelopmentsQuery(sp: URLSearchParams): DevelopmentsListing
     neLat: parseOptionalNumber(sp.get('neLat')),
     neLng: parseOptionalNumber(sp.get('neLng')),
     locationSlug: (sp.get('locationSlug') ?? '').trim().toLowerCase(),
+    slug: (sp.get('slug') ?? '').trim().toLowerCase(),
     sort: parseSortAllowlist(sp.get('sort'), DEVELOPMENTS_SORTS, DEFAULT_DEVELOPMENTS_QUERY.sort),
     page: parsePositiveInt(sp.get('page'), 1),
     pageSize: Math.min(
@@ -139,6 +143,7 @@ export function writeDevelopmentsQuery(
     'neLat',
     'neLng',
     'locationSlug',
+    'slug',
     'sort',
     'page',
     'pageSize',
@@ -158,6 +163,7 @@ export function writeDevelopmentsQuery(
   setIfNotDefault(next, 'neLat', query.neLat, null);
   setIfNotDefault(next, 'neLng', query.neLng, null);
   setOrDelete(next, 'locationSlug', query.locationSlug || null);
+  setOrDelete(next, 'slug', query.slug || null);
   setIfNotDefault(next, 'sort', query.sort, DEFAULT_DEVELOPMENTS_QUERY.sort);
   setIfNotDefault(next, 'page', query.page, 1);
   setIfNotDefault(next, 'pageSize', query.pageSize, DEFAULT_DEVELOPMENTS_QUERY.pageSize);

@@ -11,8 +11,7 @@ import {
   ParkingSlotsGrid,
   ParkingToolbar,
 } from '@/features/guest/marketing/developments/components';
-import { mockDevelopments } from '@/features/guest/marketing/developments/data/mockDevelopments';
-import { getParkingSlotsByDevelopmentSlug } from '@/features/guest/marketing/developments/data/mockParkingSlots';
+import { usePublicDevelopment } from '@/features/guest/marketing/developments/hooks/usePublicDevelopment';
 import {
   DEFAULT_PARKING_FILTERS,
   filterParkingSlots,
@@ -23,9 +22,14 @@ import {
   type ParkingSortKey,
 } from '@/features/guest/marketing/developments/lib/parkingSlotFilters';
 import type { HeroSearchValues } from '@/features/guest/marketing/guest-landing/components/HeroSearch';
-import { parkingListEntriesForSlots } from '@/features/guest/marketing/parkings/lib/parkingListEntries';
+import { usePublicParkings } from '@/features/guest/marketing/parkings/hooks/usePublicParkings';
+import {
+  DEFAULT_PARKINGS_QUERY,
+  toParkingListEntry,
+} from '@/features/guest/marketing/parkings/lib/parkingsQuery';
 
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 
 function searchValuesFromParams(
   params: URLSearchParams,
@@ -48,7 +52,11 @@ function initialFiltersFromParams(searchParams: URLSearchParams): ParkingFilterS
 export function DevelopmentParkingListPage() {
   const { slug = '' } = useParams<{ slug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const development = mockDevelopments.find((d) => d.slug === slug);
+  const { data: development, isLoading, isError } = usePublicDevelopment(slug);
+  const parkingsResult = usePublicParkings(
+    { ...DEFAULT_PARKINGS_QUERY, developmentSlug: slug, pageSize: 48 },
+    Boolean(slug)
+  );
 
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -84,26 +92,35 @@ export function DevelopmentParkingListPage() {
     [searchParams, setSearchParams]
   );
 
-  const slots = useMemo(
-    () => (development ? getParkingSlotsByDevelopmentSlug(slug) : []),
-    [development, slug]
+  const entries = useMemo(
+    () => (parkingsResult.data?.data ?? []).map(toParkingListEntry),
+    [parkingsResult.data?.data]
   );
-
+  const slots = useMemo(() => entries.map((entry) => entry.slot), [entries]);
   const insideTowerOptions = useMemo(() => uniqueTowersFromInsideSlots(slots), [slots]);
 
   const filteredEntries = useMemo(() => {
     if (!development) return [];
     const filtered = filterParkingSlots(slots, filters, searchValues);
+    const filteredIds = new Set(filtered.map((slot) => slot.id));
     const sorted = sortParkingSlots(filtered, sortBy);
-    return parkingListEntriesForSlots(sorted, development);
-  }, [slots, filters, searchValues, sortBy, development]);
+    const byId = new Map(entries.map((entry) => [entry.slot.id, entry]));
+    return sorted.flatMap((slot) => {
+      const entry = byId.get(slot.id);
+      return entry && filteredIds.has(slot.id) ? [entry] : [];
+    });
+  }, [slots, filters, searchValues, sortBy, development, entries]);
 
-  if (!development) {
-    return <Navigate to="/developments" replace />;
+  if (isLoading || parkingsResult.isLoading) {
+    return (
+      <div className="bg-background min-h-screen">
+        <Skeleton className="h-48 w-full" />
+      </div>
+    );
   }
 
-  if (slots.length === 0) {
-    return <Navigate to={`/developments/${slug}`} replace />;
+  if (isError || !development) {
+    return <Navigate to="/developments" replace />;
   }
 
   return (
@@ -176,7 +193,13 @@ export function DevelopmentParkingListPage() {
               exit={{ opacity: 0 }}
               className="min-w-0 p-4 sm:p-6"
             >
-              <ParkingSlotsGrid entries={filteredEntries} />
+              {filteredEntries.length === 0 ? (
+                <p className="text-muted-foreground py-24 text-center">
+                  No parking listed here yet.
+                </p>
+              ) : (
+                <ParkingSlotsGrid entries={filteredEntries} />
+              )}
             </motion.div>
           </AnimatePresence>
         </main>

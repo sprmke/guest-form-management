@@ -1,13 +1,7 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { usePreviewOverride } from '@/features/guest/lib/previewOverrideContext';
-import { mockProperties } from '@/features/guest/marketing/properties/data/mockProperties';
-import { getPropertyDetail } from '@/features/guest/marketing/properties/data/mockPropertyDetail';
-import {
-  mapApiPropertyToResolved,
-  mapBasicMockToResolved,
-  mapMockPropertyToResolved,
-} from '@/features/guest/marketing/properties/lib/mapPublicPropertyDetail';
+import { mapApiPropertyToResolved } from '@/features/guest/marketing/properties/lib/mapPublicPropertyDetail';
 import type {
   PublicPropertyDetailDto,
   ResolvedPropertyDetail,
@@ -22,16 +16,6 @@ function publicPropertyUrl(slug: string): string {
   return `${FUNCTIONS_URL}/get-public-property?property=${encodeURIComponent(slug)}`;
 }
 
-function resolveMockProperty(slug: string): ResolvedPropertyDetail | null {
-  const detail = getPropertyDetail(slug);
-  if (detail) return mapMockPropertyToResolved(detail);
-
-  const basic = mockProperties.find((entry) => entry.slug === slug || entry.id === slug);
-  if (basic) return mapBasicMockToResolved(basic);
-
-  return null;
-}
-
 async function fetchPublicProperty(slug: string): Promise<ResolvedPropertyDetail | null> {
   const res = await fetch(publicPropertyUrl(slug), {
     headers: {
@@ -41,11 +25,7 @@ async function fetchPublicProperty(slug: string): Promise<ResolvedPropertyDetail
   });
 
   if (res.status === 404) {
-    // Dev-only fallback so the marketing UI still has content to preview locally
-    // without seeded data. In production a genuine 404 must resolve to `null` so
-    // PropertyDetailPage's `isError || !propertyData` branch redirects to
-    // `/properties` instead of silently rendering a fake listing to a real guest.
-    return import.meta.env.DEV ? resolveMockProperty(slug) : null;
+    return null;
   }
 
   const json = (await res.json()) as {
@@ -102,7 +82,6 @@ function propertyLandingOverrideResult(
 export function usePublicPropertyDetail(propertySlug: string) {
   const override = usePreviewOverride();
   const hasOverride = override?.kind === 'property-landing';
-  const mockPlaceholder = resolveMockProperty(propertySlug);
 
   const query = useQuery({
     queryKey: [...PUBLIC_PROPERTY_QUERY_KEY, propertySlug],
@@ -111,7 +90,6 @@ export function usePublicPropertyDetail(propertySlug: string) {
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     retry: 1,
-    placeholderData: mockPlaceholder ?? undefined,
   });
 
   if (hasOverride) {

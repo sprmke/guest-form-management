@@ -59,6 +59,13 @@ export function PrivacyPage() {
           ],
         },
         {
+          title: 'Analytics and error reporting',
+          paragraphs: [
+            'When enabled, we use PostHog (first-party analytics) to understand product usage, funnels, and client-side errors. Events use pseudonymous ids and avoid message bodies, government IDs, and payment account details. Host dashboards may include email on the person profile; guest account sessions do not.',
+            'We do not sell personal information or use ad-network pixels for retargeting.',
+          ],
+        },
+        {
           title: 'Your rights and choices',
           paragraphs: [
             `Subject to applicable Philippine law, you may request access, correction, or deletion of personal information we hold about you by emailing ${PLATFORM_CONTACT_EMAIL}. We may need to verify your identity and retain certain records when the law requires it.`,

@@ -46,6 +46,12 @@ const TERMINAL_STATUSES: ReadonlySet<string> = new Set([
   'NO_HOST_AVAILABLE',
 ]);
 
+/** Short-interval poll only while host acceptance or guest payment is in flight. */
+const IN_FLIGHT_STATUSES: ReadonlySet<string> = new Set([
+  'PENDING_HOST_ACCEPTANCE',
+  'PENDING_PAYMENT',
+]);
+
 async function fetchParkingBookingStatus(bookingId: string): Promise<ParkingBookingStatus> {
   const res = await fetch(
     `${FUNCTIONS_URL}/get-parking-booking-status?bookingId=${encodeURIComponent(bookingId)}`,
@@ -82,7 +88,8 @@ export function useParkingBookingStatus(bookingId: string) {
     retry: 1,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      if (status && TERMINAL_STATUSES.has(status)) return false;
+      if (!status || TERMINAL_STATUSES.has(status)) return false;
+      if (!IN_FLIGHT_STATUSES.has(status)) return false;
       return 4000;
     },
   });

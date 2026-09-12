@@ -5,8 +5,9 @@ import { Navigate, Link, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Car, SlidersHorizontal } from 'lucide-react';
 
-import { mockDevelopments } from '@/features/guest/marketing/developments/data/mockDevelopments';
-import { getParkingSlotsByDevelopmentSlug } from '@/features/guest/marketing/developments/data/mockParkingSlots';
+import { usePublicDevelopment } from '@/features/guest/marketing/developments/hooks/usePublicDevelopment';
+import { usePublicParkings } from '@/features/guest/marketing/parkings/hooks/usePublicParkings';
+import { DEFAULT_PARKINGS_QUERY } from '@/features/guest/marketing/parkings/lib/parkingsQuery';
 import {
   PropertiesFilters,
   PropertiesHero,
@@ -16,19 +17,20 @@ import {
   PropertyListItem,
   type ViewMode,
 } from '@/features/guest/marketing/properties/components';
-import { mockProperties } from '@/features/guest/marketing/properties/data/mockProperties';
-import { propertiesForDevelopment } from '@/features/guest/marketing/properties/lib/groupPropertiesByDevelopment';
+import { usePublicProperties } from '@/features/guest/marketing/properties/hooks/usePublicProperties';
 import {
   DEFAULT_PROPERTIES_QUERY,
   EMPTY_PROPERTIES_FACETS,
+  toPropertyCard,
   type PropertiesListingQuery,
 } from '@/features/guest/marketing/properties/lib/propertiesQuery';
 
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export function DevelopmentPropertiesPage() {
   const { slug = '' } = useParams<{ slug: string }>();
-  const development = mockDevelopments.find((d) => d.slug === slug);
+  const { data: development, isLoading, isError } = usePublicDevelopment(slug);
 
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -36,28 +38,33 @@ export function DevelopmentPropertiesPage() {
   const [sortBy, setSortBy] = useState('recommended');
   const [filterQuery, setFilterQuery] = useState<PropertiesListingQuery>(DEFAULT_PROPERTIES_QUERY);
 
-  const developmentProperties = useMemo(() => {
-    if (!development) return [];
-    return propertiesForDevelopment(development, mockProperties);
-  }, [development]);
+  const listingQuery: PropertiesListingQuery = {
+    ...filterQuery,
+    development: [slug],
+    sort: sortBy as PropertiesListingQuery['sort'],
+  };
 
-  const sortedProperties = useMemo(() => {
-    const sorted = [...developmentProperties];
-    switch (sortBy) {
-      case 'rating':
-        return sorted.sort((a, b) => b.rating - a.rating);
-      case 'reviews':
-        return sorted.sort((a, b) => b.reviews - a.reviews);
-      case 'newest':
-        return sorted.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
-      default:
-        return sorted;
-    }
-  }, [developmentProperties, sortBy]);
+  const propertiesResult = usePublicProperties(listingQuery, Boolean(slug));
+  const parkingResult = usePublicParkings(
+    { ...DEFAULT_PARKINGS_QUERY, developmentSlug: slug, pageSize: 1 },
+    Boolean(slug)
+  );
 
-  const hasParking = getParkingSlotsByDevelopmentSlug(slug).length > 0;
+  const properties = useMemo(
+    () => (propertiesResult.data?.data ?? []).map(toPropertyCard),
+    [propertiesResult.data?.data]
+  );
+  const hasParking = (parkingResult.data?.total ?? 0) > 0;
 
-  if (!development) {
+  if (isLoading) {
+    return (
+      <div className="bg-background min-h-screen">
+        <Skeleton className="h-48 w-full" />
+      </div>
+    );
+  }
+
+  if (isError || !development) {
     return <Navigate to="/developments" replace />;
   }
 
@@ -83,7 +90,7 @@ export function DevelopmentPropertiesPage() {
           isMobile={false}
           value={filterQuery}
           onChange={setFilterQuery}
-          facets={EMPTY_PROPERTIES_FACETS}
+          facets={propertiesResult.data?.facets ?? EMPTY_PROPERTIES_FACETS}
         />
 
         <PropertiesFilters
@@ -92,7 +99,7 @@ export function DevelopmentPropertiesPage() {
           isMobile={true}
           value={filterQuery}
           onChange={setFilterQuery}
-          facets={EMPTY_PROPERTIES_FACETS}
+          facets={propertiesResult.data?.facets ?? EMPTY_PROPERTIES_FACETS}
         />
 
         <main className="min-w-0 flex-1 overflow-x-hidden">
@@ -101,7 +108,7 @@ export function DevelopmentPropertiesPage() {
             onViewModeChange={setViewMode}
             sortBy={sortBy}
             onSortChange={setSortBy}
-            totalResults={sortedProperties.length}
+            totalResults={propertiesResult.data?.total ?? properties.length}
             filtersOpen={filtersOpen}
             onToggleFilters={() => setFiltersOpen(!filtersOpen)}
           />
@@ -134,7 +141,7 @@ export function DevelopmentPropertiesPage() {
                 exit={{ opacity: 0 }}
                 className="min-w-0 p-4 sm:p-6"
               >
-                <PropertiesMap properties={sortedProperties} />
+                <PropertiesMap properties={properties} />
               </motion.div>
             ) : (
               <motion.div
@@ -144,21 +151,19 @@ export function DevelopmentPropertiesPage() {
                 exit={{ opacity: 0 }}
                 className="min-w-0 p-4 sm:p-6"
               >
-                {sortedProperties.length === 0 ? (
+                {properties.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-24 text-center">
-                    <p className="text-muted-foreground">
-                      No homes match your search criteria. Try adjusting your filters.
-                    </p>
+                    <p className="text-muted-foreground">No homes listed here yet.</p>
                   </div>
                 ) : viewMode === 'grid' ? (
                   <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                    {sortedProperties.map((property, index) => (
+                    {properties.map((property, index) => (
                       <PropertyCard key={property.id} property={property} index={index} />
                     ))}
                   </div>
                 ) : (
                   <div className="mx-auto max-w-4xl space-y-4">
-                    {sortedProperties.map((property, index) => (
+                    {properties.map((property, index) => (
                       <PropertyListItem key={property.id} property={property} index={index} />
                     ))}
                   </div>

@@ -1,3 +1,4 @@
+import type { Property } from '@/features/guest/marketing/properties/components/PropertyCard';
 import {
   parseCsvParam,
   parseNonNegInt,
@@ -9,6 +10,7 @@ import {
   setIfNotDefault,
   setOrDelete,
 } from '@/features/guest/marketing/shared/lib/listingQueryParams';
+import { resolveListingImages } from '@/features/guest/marketing/shared/lib/mockListingImages';
 
 export const PROPERTIES_SORTS = ['recommended', 'rating', 'reviews', 'newest'] as const;
 
@@ -235,5 +237,31 @@ export function clearPropertyFilters(query: PropertiesListingQuery): PropertiesL
     amenities: [],
     development: [],
     page: 1,
+  };
+}
+
+export function toPropertyCard(item: PublicPropertyListItem): Property {
+  return {
+    id: item.id,
+    slug: item.slug,
+    name: item.name,
+    location: item.location,
+    price: item.price,
+    rating: item.rating,
+    reviews: item.reviews,
+    images: resolveListingImages(item.images, 'property', item.slug),
+    type: item.type,
+    guests: item.guests,
+    bedrooms: item.bedrooms,
+    bathrooms: item.bathrooms,
+    amenities: item.amenities,
+    isSuperhost: item.isSuperhost,
+    isNew: item.isNew,
+    developmentSlug: item.developmentSlug,
+    developmentName: item.developmentName,
+    tower: item.tower,
+    unitNumber: item.unitNumber,
+    latitude: item.latitude,
+    longitude: item.longitude,
   };
 }

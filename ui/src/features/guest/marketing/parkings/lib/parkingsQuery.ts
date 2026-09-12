@@ -39,6 +39,8 @@ export type ParkingsListingQuery = {
   neLng: number | null;
   /** Place group slug for `/parkings/in/:location`. */
   locationSlug: string;
+  /** Exact development slug for `/developments/:slug/parking`. */
+  developmentSlug: string;
   sort: ParkingSortKey;
   page: number;
   pageSize: number;
@@ -60,6 +62,7 @@ export const DEFAULT_PARKINGS_QUERY: ParkingsListingQuery = {
   neLat: null,
   neLng: null,
   locationSlug: '',
+  developmentSlug: '',
   sort: 'tower',
   page: 1,
   pageSize: 24,
@@ -162,6 +165,7 @@ export function parseParkingsQuery(sp: URLSearchParams): ParkingsListingQuery {
     neLat: parseOptionalNumber(sp.get('neLat')),
     neLng: parseOptionalNumber(sp.get('neLng')),
     locationSlug: (sp.get('locationSlug') ?? '').trim().toLowerCase(),
+    developmentSlug: (sp.get('developmentSlug') ?? '').trim().toLowerCase(),
     sort: parseSortAllowlist(sp.get('sort'), PARKINGS_SORTS, DEFAULT_PARKINGS_QUERY.sort),
     page: parsePositiveInt(sp.get('page'), 1),
     pageSize: Math.min(
@@ -192,6 +196,7 @@ export function writeParkingsQuery(
     'neLat',
     'neLng',
     'locationSlug',
+    'developmentSlug',
     'sort',
     'page',
     'pageSize',
@@ -212,6 +217,7 @@ export function writeParkingsQuery(
   setIfNotDefault(next, 'neLat', query.neLat, null);
   setIfNotDefault(next, 'neLng', query.neLng, null);
   setOrDelete(next, 'locationSlug', query.locationSlug || null);
+  setOrDelete(next, 'developmentSlug', query.developmentSlug || null);
   setIfNotDefault(next, 'sort', query.sort, DEFAULT_PARKINGS_QUERY.sort);
   setIfNotDefault(next, 'page', query.page, 1);
   setIfNotDefault(next, 'pageSize', query.pageSize, DEFAULT_PARKINGS_QUERY.pageSize);

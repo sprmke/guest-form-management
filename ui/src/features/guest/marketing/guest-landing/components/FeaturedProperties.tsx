@@ -5,7 +5,11 @@ import { Link } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Star } from 'lucide-react';
 
-import { featuredStays } from '@/features/guest/marketing/guest-landing/data/landingContent';
+import { usePublicProperties } from '@/features/guest/marketing/properties/hooks/usePublicProperties';
+import {
+  DEFAULT_PROPERTIES_QUERY,
+  toPropertyCard,
+} from '@/features/guest/marketing/properties/lib/propertiesQuery';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 
 import { Button } from '@/components/ui/button';
@@ -19,6 +23,13 @@ export function FeaturedProperties() {
   const isInView = useInView(ref, { once: true, margin: '-80px' });
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
+  const featuredQuery = usePublicProperties({
+    ...DEFAULT_PROPERTIES_QUERY,
+    sort: 'recommended',
+    page: 1,
+    pageSize: 8,
+  });
+  const stays = (featuredQuery.data?.data ?? []).map(toPropertyCard);
 
   const updateScrollState = useCallback(() => {
     const node = scrollRef.current;
@@ -33,6 +44,8 @@ export function FeaturedProperties() {
     window.addEventListener('resize', updateScrollState);
     return () => window.removeEventListener('resize', updateScrollState);
   }, [updateScrollState]);
+
+  if (!featuredQuery.isLoading && stays.length === 0) return null;
 
   const scroll = (direction: 'left' | 'right') => {
     const node = scrollRef.current;
@@ -103,7 +116,7 @@ export function FeaturedProperties() {
             className="scrollbar-hide flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain px-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-5 sm:px-6 lg:px-8 [&::-webkit-scrollbar]:hidden"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
-            {featuredStays.map((stay, index) => (
+            {stays.map((stay, index) => (
               <motion.article
                 key={stay.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -111,10 +124,10 @@ export function FeaturedProperties() {
                 transition={{ duration: 0.4, delay: index * 0.06 }}
                 className="w-[min(78vw,300px)] shrink-0 snap-start sm:w-[280px] lg:w-[300px]"
               >
-                <Link to={`/properties/${stay.id}`} className="group block">
+                <Link to={`/properties/${stay.slug}`} className="group block">
                   <div className="relative aspect-[4/3] overflow-hidden rounded-2xl">
                     <Image
-                      src={stay.image}
+                      src={stay.images[0] ?? ''}
                       alt={stay.name}
                       fill
                       className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
@@ -123,13 +136,16 @@ export function FeaturedProperties() {
                   <div className="mt-3 space-y-1">
                     <div className="flex items-start justify-between gap-2">
                       <h3 className="text-foreground line-clamp-1 font-semibold">{stay.name}</h3>
-                      <span className="text-foreground flex shrink-0 items-center gap-1 text-sm">
-                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden />
-                        {stay.rating}
-                      </span>
+                      {stay.rating != null && stay.rating > 0 && (
+                        <span className="text-foreground flex shrink-0 items-center gap-1 text-sm">
+                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden />
+                          {stay.rating}
+                        </span>
+                      )}
                     </div>
                     <p className="text-muted-foreground text-sm">
-                      {stay.location} · {stay.guests} guests
+                      {stay.location}
+                      {stay.guests > 0 ? ` · ${stay.guests} guests` : ''}
                     </p>
                     <p className="text-foreground text-sm">
                       <span className="font-semibold">₱{stay.price.toLocaleString()}</span>

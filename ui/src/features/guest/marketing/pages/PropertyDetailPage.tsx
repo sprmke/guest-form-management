@@ -25,11 +25,15 @@ import {
   GuestBookingFormModal,
   SimilarProperties,
 } from '@/features/guest/marketing/properties/components/property-detail';
-import { mockProperties } from '@/features/guest/marketing/properties/data/mockProperties';
 import { usePropertyContactHost } from '@/features/guest/marketing/properties/hooks/usePropertyContactHost';
 import { usePropertyPageViewTracking } from '@/features/guest/marketing/properties/hooks/usePropertyPageViewTracking';
 import { usePropertyReserve } from '@/features/guest/marketing/properties/hooks/usePropertyReserve';
+import { usePublicProperties } from '@/features/guest/marketing/properties/hooks/usePublicProperties';
 import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/hooks/usePublicPropertyDetail';
+import {
+  DEFAULT_PROPERTIES_QUERY,
+  toPropertyCard,
+} from '@/features/guest/marketing/properties/lib/propertiesQuery';
 import { resolvePropertyLandingSections } from '@/features/guest/marketing/properties/lib/propertyLandingSections';
 import type { PropertyLandingSectionId } from '@/features/guest/marketing/properties/types/publicProperty';
 import { GuestPublicBrandShell } from '@/features/guest/marketing/shared/components/GuestPublicBrandShell';
@@ -41,6 +45,7 @@ import { ContextualActionBar } from '@/components/mobile/ContextualActionBar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
+import { captureAppEvent } from '@/lib/posthog/capture';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 import { cn } from '@/lib/utils';
 import { parseGuestInquiryDateRange, formatDateToYYYYMMDD } from '@/utils/format/dates';
@@ -56,8 +61,34 @@ export function PropertyDetailPage() {
   const isBelowLg = useIsBelowLg();
   const propertySlugForActions = propertySlug || (isEditorPreview ? previewOverride.data.slug : '');
   const { data: propertyData, isLoading, isError } = usePublicPropertyDetail(propertySlug);
+  const similarResult = usePublicProperties(
+    {
+      ...DEFAULT_PROPERTIES_QUERY,
+      development: propertyData?.developmentSlug ? [propertyData.developmentSlug] : [],
+      type: propertyData?.type ? [propertyData.type] : [],
+      where: !propertyData?.developmentSlug && propertyData?.city ? propertyData.city : '',
+      pageSize: 12,
+    },
+    Boolean(propertyData)
+  );
+  const similarProperties = useMemo(
+    () =>
+      (similarResult.data?.data ?? [])
+        .filter((item) => item.slug !== propertySlug && item.id !== propertyData?.id)
+        .map(toPropertyCard),
+    [similarResult.data?.data, propertySlug, propertyData?.id]
+  );
   usePageTitle(publicPageTitle(propertyData?.name ? `${propertyData.name}` : 'Property'));
   usePropertyPageViewTracking(propertyData?.id, !isEditorPreview && propertyData?.source === 'api');
+
+  useEffect(() => {
+    if (!propertyData?.slug || isEditorPreview) return;
+    captureAppEvent('listing_viewed', {
+      listing_kind: 'property',
+      slug: propertyData.slug,
+      ...(propertyData.id ? { property_id: propertyData.id } : {}),
+    });
+  }, [propertyData?.slug, propertyData?.id, isEditorPreview]);
   const { setBrandColor } = useMarketingBrandColor();
   const { status, requireGuestAuth } = useGuestAuth();
 
@@ -487,13 +518,15 @@ export function PropertyDetailPage() {
             </div>
           </div>
 
-          <div className="mt-16 min-w-0">
-            <hr className="border-border mb-10" />
-            <SimilarProperties
-              properties={mockProperties}
-              currentPropertyId={propertySlugForActions}
-            />
-          </div>
+          {similarProperties.length > 0 ? (
+            <div className="mt-16 min-w-0">
+              <hr className="border-border mb-10" />
+              <SimilarProperties
+                properties={similarProperties}
+                currentPropertyId={propertySlugForActions}
+              />
+            </div>
+          ) : null}
         </div>
 
         {!forceDesktopChrome && (forceMobileChrome || isBelowLg) ? (

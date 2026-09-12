@@ -1,10 +1,16 @@
 import { motion } from 'framer-motion';
 
-import { getParkingSlotsByDevelopmentSlug } from '@/features/guest/marketing/developments/data/mockParkingSlots';
-import { parkingListEntriesForSlots } from '@/features/guest/marketing/parkings/lib/parkingListEntries';
+import { usePublicParkings } from '@/features/guest/marketing/parkings/hooks/usePublicParkings';
+import {
+  DEFAULT_PARKINGS_QUERY,
+  toParkingListEntry,
+} from '@/features/guest/marketing/parkings/lib/parkingsQuery';
 import { PropertiesLocationRow } from '@/features/guest/marketing/properties/components/PropertiesLocationRow';
-import { mockProperties } from '@/features/guest/marketing/properties/data/mockProperties';
-import { propertiesForDevelopment } from '@/features/guest/marketing/properties/lib/groupPropertiesByDevelopment';
+import { usePublicProperties } from '@/features/guest/marketing/properties/hooks/usePublicProperties';
+import {
+  DEFAULT_PROPERTIES_QUERY,
+  toPropertyCard,
+} from '@/features/guest/marketing/properties/lib/propertiesQuery';
 
 import { DevelopmentParkingRow } from './DevelopmentParkingRow';
 
@@ -15,13 +21,22 @@ interface DevelopmentAvailableSectionProps {
 }
 
 export function DevelopmentAvailableSection({ development }: DevelopmentAvailableSectionProps) {
-  const properties = propertiesForDevelopment(development, mockProperties);
-  const parkingSlots = getParkingSlotsByDevelopmentSlug(development.slug, {
-    availableOnly: true,
+  const propertiesQuery = usePublicProperties({
+    ...DEFAULT_PROPERTIES_QUERY,
+    development: [development.slug],
+    pageSize: 8,
   });
-  const parkingEntries = parkingListEntriesForSlots(parkingSlots, development);
+  const parkingsQuery = usePublicParkings({
+    ...DEFAULT_PARKINGS_QUERY,
+    developmentSlug: development.slug,
+    pageSize: 8,
+  });
 
-  if (properties.length === 0 && parkingEntries.length === 0) return null;
+  const properties = (propertiesQuery.data?.data ?? []).map(toPropertyCard);
+  const parkingEntries = (parkingsQuery.data?.data ?? []).map(toParkingListEntry);
+  const listingsReady = !propertiesQuery.isLoading && !parkingsQuery.isLoading;
+
+  if (!listingsReady || (properties.length === 0 && parkingEntries.length === 0)) return null;
 
   return (
     <section className="border-border border-t">

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useSearchParams } from 'react-router-dom';
 
@@ -67,6 +67,7 @@ import type {
 } from '@/features/guest/search/types/search';
 
 import { Button } from '@/components/ui/button';
+import { captureAppEvent } from '@/lib/posthog/capture';
 import { publicPageTitle, usePageTitle } from '@/lib/pageTitle';
 
 type CategoryId = Exclude<SearchListingsType, 'all'>;
@@ -228,6 +229,33 @@ export function SearchResultsPage() {
     ]
   );
   const overviewSearch = useSearchListings(overviewQuery);
+  const searchTrackedRef = useRef('');
+
+  useEffect(() => {
+    if (!overviewSearch.isFetched || overviewSearch.isFetching) return;
+    const trackKey = JSON.stringify({
+      where: query.where,
+      checkIn: query.checkIn,
+      checkOut: query.checkOut,
+      type: query.type,
+    });
+    if (searchTrackedRef.current === trackKey) return;
+    searchTrackedRef.current = trackKey;
+    captureAppEvent('search_performed', {
+      query_len: query.where.trim().length,
+      result_count: overviewSearch.data?.totals.all ?? 0,
+      has_dates: Boolean(query.checkIn && query.checkOut),
+      category: query.type,
+    });
+  }, [
+    overviewSearch.isFetched,
+    overviewSearch.isFetching,
+    overviewSearch.data?.totals.all,
+    query.where,
+    query.checkIn,
+    query.checkOut,
+    query.type,
+  ]);
 
   const propertiesListQuery = useMemo(
     () => propertiesQueryFromSearch(searchParams, query),

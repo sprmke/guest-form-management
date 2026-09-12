@@ -6,6 +6,13 @@ import {
 } from '@/lib/security/antiSpamRequest';
 import { antiSpamErrorMessage, isAntiSpamFailure } from '@/lib/security/antiSpamResponse';
 
+import {
+  appendGuestBookingAccess,
+  guestBookingAccessFields,
+  guestReviewFetchUrl,
+  guestSdFormFetchUrl,
+} from '@/features/guest/form/lib/guestBookingAccess';
+
 import type { SdBank } from './sdFormSchema';
 import type { VoucherRevealStyle } from './voucherRevealStyle';
 
@@ -37,7 +44,7 @@ export type GuestReviewBootstrap = {
 };
 
 export async function fetchGuestReview(bookingId: string): Promise<GuestReviewBootstrap> {
-  const url = `${FUNCTIONS_URL}/get-guest-review?bookingId=${encodeURIComponent(bookingId)}`;
+  const url = guestReviewFetchUrl(FUNCTIONS_URL, bookingId);
   const res = await fetch(url, { headers: fnHeaders() });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json.success || !json.data) {
@@ -87,7 +94,9 @@ export async function claimSdVoucher(
   const res = await fetch(`${FUNCTIONS_URL}/claim-sd-voucher`, {
     method: 'POST',
     headers: fnHeaders(),
-    body: JSON.stringify(withAntiSpam({ bookingId }, antiSpam)),
+    body: JSON.stringify(
+      withAntiSpam({ bookingId, ...guestBookingAccessFields(bookingId) }, antiSpam)
+    ),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json.success || !json.data) {
@@ -100,7 +109,7 @@ export async function claimSdVoucher(
 }
 
 export async function fetchSdForm(bookingId: string): Promise<SdFormBootstrap> {
-  const url = `${FUNCTIONS_URL}/get-sd-form?bookingId=${encodeURIComponent(bookingId)}`;
+  const url = guestSdFormFetchUrl(FUNCTIONS_URL, bookingId);
   const res = await fetch(url, { headers: fnHeaders() });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json.success || !json.data) {
@@ -151,6 +160,7 @@ export async function submitGuestReview(
     if (prepared.error) throw new Error(prepared.error);
     form.append('media', prepared.file);
   }
+  appendGuestBookingAccess(form, input.bookingId);
   appendAntiSpamToFormData(form, antiSpam);
 
   const res = await fetch(`${FUNCTIONS_URL}/submit-guest-review`, {
@@ -177,7 +187,9 @@ export async function submitSdForm(
   const res = await fetch(`${FUNCTIONS_URL}/submit-sd-form`, {
     method: 'POST',
     headers: fnHeaders(),
-    body: JSON.stringify(withAntiSpam({ ...body }, antiSpam)),
+    body: JSON.stringify(
+      withAntiSpam({ ...body, ...guestBookingAccessFields(body.bookingId) }, antiSpam)
+    ),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json.success) {

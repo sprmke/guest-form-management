@@ -1,4 +1,4 @@
-import { Suspense, useMemo } from 'react';
+import { Suspense, useEffect, useMemo, useRef } from 'react';
 
 import { useParams, useSearchParams } from 'react-router-dom';
 
@@ -11,6 +11,8 @@ import {
 } from '@/features/guest/stay-guide/hooks/useGuestStayGuide';
 import { mapStayGuideData } from '@/features/guest/stay-guide/lib/mapStayGuideData';
 
+import { captureAppEvent } from '@/lib/posthog/capture';
+import { propertyPublicPageTitle, usePageTitle } from '@/lib/pageTitle';
 import { cn } from '@/lib/utils';
 
 function StayGuideLoading() {
@@ -71,6 +73,17 @@ export function StayGuidePage() {
         : null,
     [data, isEditorPreview, isPreview, isEmbed]
   );
+  const stayTitle = data?.property.name.trim();
+  usePageTitle(stayTitle ? propertyPublicPageTitle(stayTitle, 'Stay Guide') : undefined);
+  const stayGuideOpenedRef = useRef(false);
+
+  useEffect(() => {
+    if (!data || isEditorPreview || isPreview || stayGuideOpenedRef.current) return;
+    stayGuideOpenedRef.current = true;
+    captureAppEvent('guest_stay_guide_opened', {
+      slug: data.property.slug,
+    });
+  }, [data, isEditorPreview, isPreview]);
 
   if (!isEditorPreview && planAccessDenied) {
     return (

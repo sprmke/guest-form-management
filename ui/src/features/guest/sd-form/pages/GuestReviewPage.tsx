@@ -10,6 +10,7 @@ import {
   DEFAULT_GUEST_PAYMENT_INFO,
   useGuestPaymentInfo,
 } from '@/features/guest/form/hooks/useGuestPaymentInfo';
+import { captureGuestBookingAccessFromSearchParams } from '@/features/guest/form/lib/guestBookingAccess';
 import { pickGuestBrandHeaderProps } from '@/features/guest/form/lib/guestFormBranding';
 import { isGuestEmbedPreview } from '@/features/guest/lib/guestEmbedPreview';
 import { GuestReviewEmbedPreview } from '@/features/guest/sd-form/components/GuestReviewEmbedPreview';
@@ -41,6 +42,11 @@ export function GuestReviewPage() {
   const [searchParams] = useSearchParams();
   const bookingId = (searchParams.get('bookingId') ?? '').trim();
   const embedPreview = isGuestEmbedPreview(searchParams);
+
+  useEffect(() => {
+    if (bookingId) captureGuestBookingAccessFromSearchParams(bookingId, searchParams);
+  }, [bookingId, searchParams]);
+
   const { data: guestBrand = DEFAULT_GUEST_PAYMENT_INFO } = useGuestPaymentInfo();
   const brandHeader = pickGuestBrandHeaderProps(guestBrand);
   const [phase, setPhase] = useState<Phase>('review');

@@ -19,7 +19,7 @@ export type PublicDevelopmentsResult = {
   pageSize: number;
 };
 
-async function fetchPublicDevelopments(
+export async function fetchPublicDevelopments(
   query: DevelopmentsListingQuery
 ): Promise<PublicDevelopmentsResult> {
   const params = writeDevelopmentsQuery(query);

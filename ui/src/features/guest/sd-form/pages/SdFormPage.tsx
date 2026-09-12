@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useSearchParams, Link } from 'react-router-dom';
 
@@ -11,6 +11,7 @@ import {
   DEFAULT_GUEST_PAYMENT_INFO,
   useGuestPaymentInfo,
 } from '@/features/guest/form/hooks/useGuestPaymentInfo';
+import { captureGuestBookingAccessFromSearchParams } from '@/features/guest/form/lib/guestBookingAccess';
 import {
   formatGuestFarewell,
   formatGuestStayThanks,
@@ -43,6 +44,7 @@ import {
 } from '@/features/guest/sd-form/lib/voucher';
 import { normalizeVoucherRevealStyle } from '@/features/guest/sd-form/lib/voucherRevealStyle';
 
+import { captureAppEvent } from '@/lib/posthog/capture';
 import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
 import { bottomTabBarOffsetClassName } from '@/components/mobile/BottomTabBar';
 import { ContextualActionBar } from '@/components/mobile/ContextualActionBar';
@@ -75,6 +77,10 @@ export function SdFormPage() {
   const [searchParams] = useSearchParams();
   const bookingId = (searchParams.get('bookingId') ?? '').trim();
   const embedPreview = isGuestEmbedPreview(searchParams);
+
+  useEffect(() => {
+    if (bookingId) captureGuestBookingAccessFromSearchParams(bookingId, searchParams);
+  }, [bookingId, searchParams]);
   const { data: guestBrand = DEFAULT_GUEST_PAYMENT_INFO } = useGuestPaymentInfo();
   const brandHeader = pickGuestBrandHeaderProps(guestBrand);
 
@@ -98,6 +104,16 @@ export function SdFormPage() {
     retry: false,
     refetchInterval: (q) => (q.state.data?.awaiting_balance_settlement === true ? 8000 : false),
   });
+
+  const sdFormOpenedRef = useRef(false);
+  useEffect(() => {
+    if (!query.data || sdFormOpenedRef.current) return;
+    sdFormOpenedRef.current = true;
+    captureAppEvent('sd_form_opened', {
+      had_voucher_reveal: Boolean(query.data.next_stay_voucher_code),
+      booking_id: bookingId,
+    });
+  }, [query.data, bookingId]);
 
   const existingVoucher = query.data?.next_stay_voucher_code
     ? findVoucher(query.data.next_stay_voucher_code, query.data.next_stay_voucher_amount)
