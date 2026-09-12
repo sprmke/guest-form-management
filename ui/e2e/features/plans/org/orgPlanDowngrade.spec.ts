@@ -6,7 +6,7 @@ import {
   openOrgPlansPage,
 } from '../shared/orgPlanDowngradeHarness';
 
-test.describe('org plan downgrade flow', () => {
+test.describe('@ci org plan downgrade flow', () => {
   test('paid→paid shows Confirm downgrade and applies without PayMongo', async ({ page }) => {
     const state = await installPlansDowngradeMocks(page);
     await openOrgPlansPage(page);

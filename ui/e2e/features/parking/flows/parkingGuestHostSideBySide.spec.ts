@@ -20,7 +20,9 @@ import {
 } from '../shared/parkingSideBySideHelpers';
 
 test.describe('parking guest and host side by side', () => {
-  test('full marketplace flow: submit, accept, pay, confirm, and complete', async (_fixtures, testInfo) => {
+  test('full marketplace flow: submit, accept, pay, confirm, and complete', async ({
+    page: _page,
+  }, testInfo) => {
     test.setTimeout(sideBySideTimeoutMs());
     test.skip(
       testInfo.project.name !== 'chromium-side-by-side',
@@ -113,7 +115,7 @@ test.describe('parking guest and host side by side', () => {
     }
   });
 
-  test('host decline closes the guest request', async (_fixtures, testInfo) => {
+  test('host decline closes the guest request', async ({ page: _page }, testInfo) => {
     test.setTimeout(sideBySideTimeoutMs());
     test.skip(
       testInfo.project.name !== 'chromium-side-by-side',
@@ -150,7 +152,9 @@ test.describe('parking guest and host side by side', () => {
     }
   });
 
-  test('guest can cancel while awaiting payment after host accept', async (_fixtures, testInfo) => {
+  test('guest can cancel while awaiting payment after host accept', async ({
+    page: _page,
+  }, testInfo) => {
     test.setTimeout(sideBySideTimeoutMs());
     test.skip(
       testInfo.project.name !== 'chromium-side-by-side',
@@ -189,7 +193,7 @@ test.describe('parking guest and host side by side', () => {
     }
   });
 
-  test('direct booking link and host pricing card are wired', async (_fixtures, testInfo) => {
+  test('direct booking link and host pricing card are wired', async ({ page: _page }, testInfo) => {
     test.setTimeout(sideBySideTimeoutMs());
     test.skip(
       testInfo.project.name !== 'chromium-side-by-side',

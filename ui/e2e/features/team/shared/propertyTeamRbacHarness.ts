@@ -5,10 +5,24 @@
 
 import { expect, type Page, type Route } from '@playwright/test';
 
+import { PLAN_PRO, PLANS_E2E_CATALOG } from '../../plans/shared/orgPlanHarnessShared';
+
 const ORG_ID = 'org-team-e2e-001';
 export const TEAM_E2E_PROPERTY_ID = 'property-team-e2e-001';
+export const TEAM_E2E_PROPERTY_ID_2 = 'property-team-e2e-002';
 export const TEAM_E2E_ORG_SLUG = 'kame-homes-ph';
 export const TEAM_E2E_PROPERTY_SLUG = 'solea-mactan';
+export const TEAM_E2E_PROPERTY_SLUG_2 = 'solea-cebu';
+export const TEAM_E2E_PROPERTY_NAME_2 = 'Solea Cebu';
+
+export type PropertyTeamRbacMockOpts = {
+  freePlan?: boolean;
+  assistantEnabled?: boolean;
+  /** Two properties in org inventory (copy settings wizard). */
+  multiProperty?: boolean;
+  /** Org hub pages: owner org-access + org-settings PATCH. */
+  orgHub?: boolean;
+};
 
 const SUPABASE_AUTH_STORAGE_KEY = 'sb-127-auth-token';
 
@@ -137,6 +151,15 @@ export const teamRbacPaths = {
   marketing: `/org/${TEAM_E2E_ORG_SLUG}/property/${TEAM_E2E_PROPERTY_SLUG}/marketing`,
   settings: `/org/${TEAM_E2E_ORG_SLUG}/property/${TEAM_E2E_PROPERTY_SLUG}/settings`,
   team: `/org/${TEAM_E2E_ORG_SLUG}/property/${TEAM_E2E_PROPERTY_SLUG}/team`,
+  publicPages: `/org/${TEAM_E2E_ORG_SLUG}/property/${TEAM_E2E_PROPERTY_SLUG}/public-pages`,
+  activity: `/org/${TEAM_E2E_ORG_SLUG}/property/${TEAM_E2E_PROPERTY_SLUG}/activity`,
+} as const;
+
+export const orgHubPaths = {
+  dashboard: `/org/${TEAM_E2E_ORG_SLUG}/dashboard`,
+  bookings: `/org/${TEAM_E2E_ORG_SLUG}/bookings`,
+  properties: `/org/${TEAM_E2E_ORG_SLUG}/properties`,
+  team: `/org/${TEAM_E2E_ORG_SLUG}/team`,
 } as const;
 
 function permissionsForTemplate(template: TeamRbacTemplate): readonly string[] {
@@ -193,21 +216,42 @@ function organizationList() {
   };
 }
 
-function propertyList() {
+function propertyList(multiProperty = false) {
+  const primary = {
+    id: TEAM_E2E_PROPERTY_ID,
+    organizationId: ORG_ID,
+    name: 'Solea Mactan',
+    slug: TEAM_E2E_PROPERTY_SLUG,
+    type: 'condo',
+    status: 'ACTIVE',
+    address: 'Mactan',
+    towerAndUnit: null,
+    tower: 'Tower A',
+    unitNumber: '1204',
+    residenceName: 'Solea Mactan',
+    maxGuests: 4,
+    settings: {},
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  };
+  if (!multiProperty) {
+    return { properties: [primary] };
+  }
   return {
     properties: [
+      primary,
       {
-        id: TEAM_E2E_PROPERTY_ID,
+        id: TEAM_E2E_PROPERTY_ID_2,
         organizationId: ORG_ID,
-        name: 'Solea Mactan',
-        slug: TEAM_E2E_PROPERTY_SLUG,
+        name: TEAM_E2E_PROPERTY_NAME_2,
+        slug: TEAM_E2E_PROPERTY_SLUG_2,
         type: 'condo',
         status: 'ACTIVE',
-        address: 'Mactan',
+        address: 'Cebu City',
         towerAndUnit: null,
-        tower: 'Tower A',
-        unitNumber: '1204',
-        residenceName: 'Solea Mactan',
+        tower: 'Tower B',
+        unitNumber: '804',
+        residenceName: 'Solea Cebu',
         maxGuests: 4,
         settings: {},
         createdAt: '2026-01-01T00:00:00.000Z',
@@ -228,6 +272,155 @@ function propertyAccessPayload(permissions: readonly string[]) {
     propertySlug: TEAM_E2E_PROPERTY_SLUG,
     propertyName: 'Solea Mactan',
     planLimited: false,
+  };
+}
+
+const emptyTelegramCredentials = {
+  tokenConfigured: false,
+  chatIdConfigured: false,
+  tokenSource: 'none' as const,
+  chatIdSource: 'none' as const,
+  secretsEncryptionConfigured: false,
+};
+
+function telegramMarketingSettingsPayload() {
+  return {
+    enabled: false,
+    notifyOnNewBooking: true,
+    notifyOnCancellation: true,
+    notifyOnDailyDefault: true,
+    notifyOnDailyUrgency: true,
+    urgencyDaysThreshold: 5,
+    newBookingDatesLimit: 8,
+    dailyReminderTimesManila: [{ hour: 10, minute: 0 }],
+    dailyReminderUtcCronPreview: ['0 2 * * *'],
+    dailyDefaultTemplate: 'Daily default',
+    dailyUrgencyTemplate: 'Daily urgency',
+    newBookingTemplate: 'New booking',
+    cancellationTemplate: 'Cancellation',
+    placeholdersReference: [] as string[],
+    credentials: emptyTelegramCredentials,
+  };
+}
+
+function telegramAdminSettingsPayload() {
+  return {
+    enabled: false,
+    notifyOnNewBooking: true,
+    notifyOnSdFormSubmitted: true,
+    notifyOnBalanceReceiptUploaded: true,
+    notifyPendingDocsHourly: true,
+    notifyBalanceReceiptHourly: true,
+    notifySdRefundPendingHourly: true,
+    newBookingTemplate: 'New booking',
+    pendingDocsTemplate: 'Pending docs',
+    balanceReceiptTemplate: 'Balance receipt',
+    balanceReceiptUploadedTemplate: 'Receipt uploaded',
+    sdFormSubmittedTemplate: 'SD form',
+    sdRefundPendingTemplate: 'SD refund',
+    hourlyUtcCronPreview: '0 * * * *',
+    placeholdersReference: [] as string[],
+    scenarios: [] as Array<{ id: string; label: string; trigger: string; type: string }>,
+    credentials: emptyTelegramCredentials,
+  };
+}
+
+function telegramStaffSettingsPayload() {
+  return {
+    enabled: false,
+    notifyOnSameDayCheckin: true,
+    notifyOnDailySummary: true,
+    notifyOnDailySummaryNoBookings: true,
+    dailySummaryTemplate: 'Summary',
+    dailySummaryNoBookingsTemplate: 'No bookings',
+    sameDayCheckinTemplate: 'Same day',
+    dailySummaryTimeManila: { hour: 8, minute: 0 },
+    dailySummaryUtcCronPreview: '0 0 * * *',
+    placeholdersReference: [] as string[],
+    scenarios: [] as Array<{ id: string; label: string; trigger: string; type: string }>,
+    credentials: emptyTelegramCredentials,
+  };
+}
+
+function telegramChatSettingsPayload() {
+  return {
+    enabled: false,
+    notifyOnNewMessage: true,
+    newMessageTemplate: 'New message',
+    placeholdersReference: [] as string[],
+    credentials: emptyTelegramCredentials,
+  };
+}
+
+function telegramFinanceSettingsPayload() {
+  return {
+    enabled: false,
+    defaultReminderTemplate: 'Finance reminder',
+    dailyCheckTimeManila: { hour: 9, minute: 0 },
+    dailyCheckUtcCronPreview: '0 1 * * *',
+    placeholdersReference: [] as string[],
+    credentials: emptyTelegramCredentials,
+  };
+}
+
+function telegramMaintenanceSettingsPayload() {
+  return {
+    enabled: false,
+    defaultReminderTemplate: 'Maintenance reminder',
+    dailyCheckTimeManila: { hour: 9, minute: 0 },
+    dailyCheckUtcCronPreview: '0 1 * * *',
+    placeholdersReference: [] as string[],
+    credentials: emptyTelegramCredentials,
+  };
+}
+
+function telegramGlobalSettingsPayload() {
+  return {
+    tokenConfigured: false,
+    botToken: null,
+    secretsEncryptionConfigured: false,
+  };
+}
+
+function orgPlanPayload(multiProperty = false) {
+  const businessPlan = PLANS_E2E_CATALOG.find((plan) => plan.id === PLAN_PRO) ?? PLANS_E2E_CATALOG[3]!;
+  const planProperties = [
+    {
+      id: TEAM_E2E_PROPERTY_ID,
+      name: 'Solea Mactan',
+      slug: TEAM_E2E_PROPERTY_SLUG,
+      status: 'ACTIVE',
+    },
+  ];
+  if (multiProperty) {
+    planProperties.push({
+      id: TEAM_E2E_PROPERTY_ID_2,
+      name: TEAM_E2E_PROPERTY_NAME_2,
+      slug: TEAM_E2E_PROPERTY_SLUG_2,
+      status: 'ACTIVE',
+    });
+  }
+  return {
+    plans: PLANS_E2E_CATALOG,
+    properties: planProperties,
+    subscription: {
+      id: 'sub-team-e2e-001',
+      planId: businessPlan.id,
+      planCode: businessPlan.code,
+      planName: businessPlan.name,
+      pricingModel: 'subscription',
+      status: 'active',
+      pricePhpSnapshot: businessPlan.pricePhp,
+      currentPeriodStart: '2026-08-01T00:00:00.000Z',
+      currentPeriodEnd: '2026-09-01T00:00:00.000Z',
+      gracePeriodEndsAt: null,
+    },
+    assignedPropertyIds: multiProperty
+      ? [TEAM_E2E_PROPERTY_ID, TEAM_E2E_PROPERTY_ID_2]
+      : [TEAM_E2E_PROPERTY_ID],
+    pendingCheckoutUrl: null,
+    pendingCheckoutPlanId: null,
+    transactions: [],
   };
 }
 
@@ -257,8 +450,10 @@ function entitlementsPayload(freePlan = false, assistantEnabled = false) {
     publicPagesAutosave: true,
     bookingImport: true,
     customRoles: true,
-    planId: 'plan-team-e2e-001',
-    planCode: 'business',
+    calendarSync: true,
+    smartPricing: true,
+    planId: PLAN_PRO,
+    planCode: 'pro',
     planName: 'Business',
     pricingModel: 'monthly',
     status: 'active',
@@ -437,13 +632,181 @@ function assistantOrgSettingsPayload() {
   };
 }
 
-function orgAccessPayload() {
+function orgAccessPayload(orgHub = false) {
+  if (!orgHub) {
+    return {
+      accessKind: 'member' as const,
+      permissions: ['org:properties:view', 'org:bookings:view'] as string[],
+      orgId: ORG_ID,
+      orgSlug: TEAM_E2E_ORG_SLUG,
+      orgName: 'Kame Homes PH',
+    };
+  }
   return {
-    accessKind: 'member' as const,
-    permissions: ['org:properties:view', 'org:bookings:view'] as string[],
+    accessKind: 'owner' as const,
+    permissions: [
+      'org.dashboard:view',
+      'org.bookings:view',
+      'org.properties:view',
+      'org.properties:create',
+      'org.properties:manage',
+      'org.parkings:view',
+      'org.team:view',
+      'org.settings:view',
+      'org.settings.basic:edit',
+      'org.settings.socials:edit',
+      'org.settings.aiPlatform:edit',
+      'org.settings.aiAssistant:edit',
+      'org.plans:view',
+    ],
+    memberId: null,
+    canListAllProperties: true,
     orgId: ORG_ID,
     orgSlug: TEAM_E2E_ORG_SLUG,
     orgName: 'Kame Homes PH',
+    canManageTeam: true,
+    canInviteTeam: true,
+    canCreateProperties: true,
+    canManageProperties: true,
+    canCreateParkings: true,
+    canManageParkings: true,
+    canEditBasicSettings: true,
+    canEditSocials: true,
+    canEditAiPlatform: true,
+    canEditAiAssistant: true,
+    canEditSettings: true,
+    planLimited: false,
+  };
+}
+
+function aiPlatformSettingsPayload() {
+  return {
+    organizationId: ORG_ID,
+    enabled: true,
+    dailyCallLimit: 100,
+    monthlyCallLimit: 1000,
+    dailyCostUsdLimit: 10,
+    planTier: 'pro',
+    updatedAt: null,
+  };
+}
+
+function aiPlatformUsagePayload() {
+  return {
+    todayCallCount: 0,
+    monthCallCount: 0,
+    todayCostUsd: 0,
+    monthCostUsd: 0,
+    todayCreditsConsumed: 0,
+    monthCreditsConsumed: 0,
+    dailyCallLimit: 100,
+    monthlyCallLimit: 1000,
+    dailyCostUsdLimit: 10,
+    dailyCreditLimit: 100,
+    monthlyCreditLimit: 1000,
+    walletBalanceCredits: 0,
+    dailyRemaining: 100,
+    monthlyRemaining: 1000,
+    dailyCostRemaining: 10,
+    planTier: 'pro',
+    quotaExceeded: false,
+    featureBreakdown: [] as Array<{ feature: string; calls: number; estimatedCostUsd: number }>,
+    propertyBreakdown: [] as Array<{
+      propertyId: string;
+      todayCallCount: number;
+      todayCostUsd: number;
+      monthCallCount: number;
+      monthCostUsd: number;
+    }>,
+  };
+}
+
+function propertyTemplatesSettingsPayload() {
+  const template = (
+    templateKey: string,
+    name: string,
+    category: 'standard' | 'email'
+  ) => ({
+    templateKey,
+    name,
+    category,
+    content: `Default ${name} content`,
+    defaultContent: `Default ${name} content`,
+    isDefault: true,
+    description: null,
+    previewTemplateSlug: null,
+    sectionImageUrl: null,
+    updatedAt: null,
+  });
+  return {
+    templates: [
+      template('house-rules', 'House Rules', 'standard'),
+      template('check-in-instructions', 'Check-in Instructions', 'standard'),
+      template('check-out-instructions', 'Check-out Instructions', 'standard'),
+      template('parking-reminders', 'Parking Reminders', 'standard'),
+      template('email-gaf-request', 'GAF Request', 'email'),
+      template('email-pet-request', 'Pet Request', 'email'),
+      template('email-parking-request', 'Parking Request', 'email'),
+      template('email-new-booking-request', 'New Booking Request', 'email'),
+      template('email-booking-acknowledgement', 'Booking Acknowledgement', 'email'),
+      template('email-ready-for-checkin', 'Ready for Check-in', 'email'),
+      template('email-sd-refund-form-request', 'SD Refund Form Request', 'email'),
+    ],
+    placeholdersReference: ['{{guestName}}'],
+  };
+}
+
+function orgSuperhostProgressPayload() {
+  const row = (value: number, required: number, sampleSize = 8) => ({
+    value,
+    required,
+    met: value >= required,
+    sampleSize,
+  });
+  return {
+    earned: false,
+    earnedAt: null,
+    lastAssessmentAt: null,
+    nextAssessmentAt: '2026-10-01T00:00:00.000Z',
+    assessmentKey: '2026-09',
+    allCriteriaMet: false,
+    criteria: {
+      rating: row(4.85, 4.8),
+      responseRate: row(0.95, 0.9),
+      cancellationRate: { value: 0.02, required: 0.05, met: true, sampleSize: 8 },
+      activity: row(12, 10),
+    },
+  };
+}
+
+function orgTeamMembersPayload() {
+  return {
+    members: [] as Array<Record<string, unknown>>,
+    access: { canManage: true, accessKind: 'owner' as const },
+    teamInviteCapacity: { used: 1, max: null },
+  };
+}
+
+function listActivityLogPayload() {
+  return { events: [] as Array<Record<string, unknown>>, nextCursor: null };
+}
+
+function copyPropertySettingsResponse(body: {
+  dryRun?: boolean;
+  targetPropertyIds?: string[];
+}) {
+  const targetIds = body.targetPropertyIds ?? [];
+  const dryRun = Boolean(body.dryRun);
+  return {
+    dryRun,
+    results: targetIds.map((targetPropertyId) => ({
+      targetPropertyId,
+      applied: ['contact', 'guestForm'],
+      skipped: [],
+      failed: [],
+      alreadyCustomized: [],
+    })),
+    ...(dryRun ? {} : { logId: 'log-e2e-copy-001' }),
   };
 }
 
@@ -494,11 +857,14 @@ export async function installTeamMemberSession(page: Page) {
 export async function installPropertyTeamRbacMocks(
   page: Page,
   template: TeamRbacTemplate,
-  opts?: { freePlan?: boolean; assistantEnabled?: boolean }
+  opts?: PropertyTeamRbacMockOpts
 ) {
   const permissions = permissionsForTemplate(template);
   const freePlan = Boolean(opts?.freePlan);
   const assistantEnabled = Boolean(opts?.assistantEnabled);
+  const multiProperty = Boolean(opts?.multiProperty);
+  const orgHub = Boolean(opts?.orgHub);
+  let orgSettingsState = orgSettingsPayload();
   await installTeamMemberSession(page);
 
   await page.route('**/functions/v1/**', async (route) => {
@@ -510,7 +876,7 @@ export async function installPropertyTeamRbacMocks(
         await fulfillJson(route, { success: true, data: organizationList() });
         return;
       case 'list-properties':
-        await fulfillJson(route, { success: true, data: propertyList() });
+        await fulfillJson(route, { success: true, data: propertyList(multiProperty) });
         return;
       case 'list-parkings':
         await fulfillJson(route, { success: true, data: { parkings: [] } });
@@ -531,22 +897,48 @@ export async function installPropertyTeamRbacMocks(
         await fulfillJson(route, { success: true, data: appSettingsPayload() });
         return;
       case 'org-settings':
-        await fulfillJson(route, { success: true, data: orgSettingsPayload() });
+        if (route.request().method() === 'PATCH') {
+          const body = (route.request().postDataJSON() ?? {}) as Record<string, string>;
+          orgSettingsState = {
+            ...orgSettingsState,
+            ...body,
+            updatedAt: '2026-09-10T12:00:00.000Z',
+          };
+          await fulfillJson(route, { success: true, data: orgSettingsState });
+          return;
+        }
+        await fulfillJson(route, { success: true, data: orgSettingsState });
         return;
       case 'org-access':
-        await fulfillJson(route, { success: true, data: orgAccessPayload() });
+        await fulfillJson(route, { success: true, data: orgAccessPayload(orgHub) });
         return;
       case 'org-plan':
+        await fulfillJson(route, { success: true, data: orgPlanPayload(multiProperty) });
+        return;
+      case 'ai-platform-settings':
+        await fulfillJson(route, { success: true, data: aiPlatformSettingsPayload() });
+        return;
+      case 'ai-platform-usage':
+        await fulfillJson(route, { success: true, data: aiPlatformUsagePayload() });
+        return;
+      case 'property-templates-settings':
+        await fulfillJson(route, { success: true, data: propertyTemplatesSettingsPayload() });
+        return;
+      case 'copy-property-settings': {
+        const body = (route.request().postDataJSON() ?? {}) as Record<string, unknown>;
+        if (body.action === 'listLogs') {
+          await fulfillJson(route, { success: true, data: { logs: [] } });
+          return;
+        }
         await fulfillJson(route, {
           success: true,
-          data: {
-            planId: 'plan-team-e2e-001',
-            planCode: 'business',
-            planName: 'Business',
-            status: 'active',
-          },
+          data: copyPropertySettingsResponse({
+            dryRun: Boolean(body.dryRun),
+            targetPropertyIds: body.targetPropertyIds as string[] | undefined,
+          }),
         });
         return;
+      }
       case 'list-bookings':
         await fulfillJson(route, { success: true, data: [], total: 0 });
         return;
@@ -565,9 +957,19 @@ export async function installPropertyTeamRbacMocks(
       case 'dashboard-assistant-settings':
         await fulfillJson(route, {
           success: true,
-          data: assistantEnabled
-            ? assistantOrgSettingsPayload()
-            : { enabled: false, disabledPropertyIds: [] },
+          data:
+            orgHub || assistantEnabled
+              ? assistantOrgSettingsPayload()
+              : { enabled: false, disabledPropertyIds: [] },
+        });
+        return;
+      case 'get-org-superhost-progress':
+        await fulfillJson(route, { success: true, data: orgSuperhostProgressPayload() });
+        return;
+      case 'check-organization-name':
+        await fulfillJson(route, {
+          success: true,
+          data: { available: true, message: null },
         });
         return;
       case 'dashboard-assistant-conversations':
@@ -615,14 +1017,81 @@ export async function installPropertyTeamRbacMocks(
       case 'get-booking-ai-assistant-audit':
         await fulfillJson(route, { success: true, data: { entries: [] } });
         return;
+      case 'finance-summary':
+        await fulfillJson(route, {
+          success: true,
+          data: {
+            period: { basis: 'check_in', from: null, to: null },
+            stays: {
+              count: 0,
+              completedCount: 0,
+              bookingRate: 0,
+              otherFees: 0,
+              parkingMargin: 0,
+              sdExpenses: 0,
+              hostNetCompleted: 0,
+              projectedNetPipeline: 0,
+              outstandingGuestBalance: 0,
+            },
+            operating: { income: 0, expenses: 0, net: 0 },
+            grandNet: 0,
+          },
+        });
+        return;
+      case 'finance-bookings':
+        await fulfillJson(route, { success: true, data: [], total: 0, page: 1, limit: 100 });
+        return;
+      case 'maintenance-summary':
+        await fulfillJson(route, {
+          success: true,
+          data: {
+            period: { basis: 'due_date', from: null, to: null },
+            totals: { open: 0, overdue: 0, completed: 0, upcoming: 0 },
+          },
+        });
+        return;
       case 'finance-line-items':
         await fulfillJson(route, { success: true, data: [] });
         return;
       case 'maintenance-items':
         await fulfillJson(route, { success: true, data: [] });
         return;
+      case 'property-pricing':
+        await fulfillJson(route, {
+          success: true,
+          data: {
+            weekdayNightlyRate: 3500,
+            weekendNightlyRate: 4000,
+            downPayment: 1000,
+            securityDeposit: 3000,
+            petFee: 300,
+            parkingRateGuest: 400,
+            guestAdditionalFee: 0,
+            dateOverrides: {},
+            bookedDateKeys: [],
+            blockedDateKeys: [],
+            importedBlockedDateKeys: [],
+            holidayRules: [],
+            calendarBookings: [],
+            smartRecommendations: {},
+            smartPricingEnabled: false,
+          },
+        });
+        return;
       case 'marketing-templates':
         await fulfillJson(route, { success: true, data: { templates: [] } });
+        return;
+      case 'org-team-members':
+        await fulfillJson(route, { success: true, data: orgTeamMembersPayload() });
+        return;
+      case 'org-team-invitations':
+        await fulfillJson(route, { success: true, data: { invitations: [] } });
+        return;
+      case 'org-team-custom-roles':
+        await fulfillJson(route, { success: true, data: { customRoles: [] } });
+        return;
+      case 'list-activity-log':
+        await fulfillJson(route, { success: true, data: listActivityLogPayload() });
         return;
       case 'property-team-members':
         await fulfillJson(route, {
@@ -635,6 +1104,27 @@ export async function installPropertyTeamRbacMocks(
         return;
       case 'property-team-invitations':
         await fulfillJson(route, { success: true, data: { invitations: [] } });
+        return;
+      case 'telegram-global-settings':
+        await fulfillJson(route, { success: true, data: telegramGlobalSettingsPayload() });
+        return;
+      case 'telegram-marketing-settings':
+        await fulfillJson(route, { success: true, data: telegramMarketingSettingsPayload() });
+        return;
+      case 'telegram-admin-settings':
+        await fulfillJson(route, { success: true, data: telegramAdminSettingsPayload() });
+        return;
+      case 'telegram-staff-settings':
+        await fulfillJson(route, { success: true, data: telegramStaffSettingsPayload() });
+        return;
+      case 'telegram-chat-settings':
+        await fulfillJson(route, { success: true, data: telegramChatSettingsPayload() });
+        return;
+      case 'telegram-finance-settings':
+        await fulfillJson(route, { success: true, data: telegramFinanceSettingsPayload() });
+        return;
+      case 'telegram-maintenance-settings':
+        await fulfillJson(route, { success: true, data: telegramMaintenanceSettingsPayload() });
         return;
       default:
         await fulfillJson(route, { success: true, data: {} });

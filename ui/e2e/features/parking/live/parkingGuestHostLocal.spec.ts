@@ -12,7 +12,7 @@ import {
 } from '../shared/parkingLiveLocalHarness';
 import { captureParkingScreen, setParkingScreenSuite } from '../shared/parkingScreenCapture';
 
-test.describe('parking live local flow', () => {
+test.describe('@live parking live local flow', () => {
   test('guest submission and host acceptance work against local Supabase', async ({
     browser,
     page,

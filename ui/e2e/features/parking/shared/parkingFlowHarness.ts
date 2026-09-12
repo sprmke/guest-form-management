@@ -57,7 +57,7 @@ export const parkingFlowLabels = {
   continue: 'Continue',
   submit: 'Submit request',
   whichStay: 'Which stay?',
-  differentBooking: 'Different booking — enter details',
+  differentBooking: 'Different booking. Enter details',
   confirmRequest: 'Confirm request',
   accept: 'Accept',
   decline: 'Decline',
@@ -1024,7 +1024,7 @@ export async function guestPayForParking(page: Page, state: ParkingFlowState) {
   await expect.poll(() => state.status).toBe('PENDING_REVIEW');
   await expect(
     page.getByRole('heading', { name: parkingGuestStatusLabels.parkingConfirmed })
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 20_000 });
 }
 
 export async function hostAcceptPendingBooking(

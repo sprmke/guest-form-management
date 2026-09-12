@@ -43,6 +43,7 @@ export function emptyPlanFeatures() {
     publicPagesAutosave: false,
     bookingImport: false,
     calendarSync: false,
+    smartPricing: false,
     customRoles: false,
     copyPropertySettings: false,
   };
@@ -95,6 +96,7 @@ function growthFeatures() {
     aiValidations: true,
     propertyShowcase: true,
     calendarSync: true,
+    smartPricing: true,
     copyPropertySettings: true,
     searchVisibilityTier: 'top30' as const,
     recommendedBadgeEligible: true,
@@ -193,7 +195,16 @@ export function organizationList(accessKind: 'owner' | 'member') {
         slug: PLANS_E2E_ORG_SLUG,
         description: null,
         logoUrl: null,
-        settings: {},
+        settings: {
+          setupGuide: {
+            version: 1,
+            dismissedAt: '2026-01-01T00:00:00.000Z',
+            completedAt: null,
+            lastStepId: null,
+            skippedSteps: [],
+            reviewedSteps: [],
+          },
+        },
         accessKind: accessKind === 'owner' ? 'owner' : 'org_admin',
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',
@@ -257,11 +268,16 @@ export function dashboardStatsPayload() {
 
 export async function installPlansE2eSession(page: Page) {
   await page.addInitScript(
-    ({ authKey, session, supabaseAuthKey, supabaseAuthSession, orgSlug }) => {
+    ({ authKey, session, supabaseAuthKey, supabaseAuthSession, orgSlug, orgId }) => {
       window.localStorage.setItem(authKey, JSON.stringify(session));
       window.localStorage.setItem(supabaseAuthKey, JSON.stringify(supabaseAuthSession));
       window.localStorage.setItem('kame-last-org-slug', orgSlug);
       window.localStorage.setItem('kame-last-tenant-kind', 'org');
+      try {
+        window.sessionStorage.setItem(`setup-guide:snooze:${orgId}`, '1');
+      } catch {
+        /* ignore */
+      }
     },
     {
       authKey: 'kame:e2e-admin-session',
@@ -275,6 +291,7 @@ export async function installPlansE2eSession(page: Page) {
         name: 'Plans Owner',
       },
       orgSlug: PLANS_E2E_ORG_SLUG,
+      orgId: PLANS_E2E_ORG_ID,
     }
   );
 }

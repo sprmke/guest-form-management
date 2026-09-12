@@ -22,7 +22,7 @@ import {
 
 test.describe.configure({ mode: 'default' });
 
-test.describe('AI assistant live local — §11–13 browser + Gemini', () => {
+test.describe('@live AI assistant live local — §11–13 browser + Gemini', () => {
   test.beforeEach(async ({ request }) => {
     test.skip(
       process.env.PLAYWRIGHT_ASSISTANT_LIVE !== '1',
@@ -31,7 +31,7 @@ test.describe('AI assistant live local — §11–13 browser + Gemini', () => {
     await ensureAssistantLivePrerequisites(request);
   });
 
-  test.afterEach(async (_fixtures, testInfo) => {
+  test.afterEach(async ({ context: _context }, testInfo) => {
     // Skip cooldown after failures so retries / remaining serial tests start sooner.
     if (testInfo.status !== 'passed') return;
     await pauseBetweenLiveAssistantTurns();

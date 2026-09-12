@@ -11,7 +11,7 @@ import {
 } from '../shared/parkingFlowHarness';
 import { captureParkingScreen, setParkingScreenSuite } from '../shared/parkingScreenCapture';
 
-test.describe('parking guest and host outcomes', () => {
+test.describe('@ci parking guest and host outcomes', () => {
   test('guest sees a no-host-available state when the request expires', async ({ page }) => {
     setParkingScreenSuite('outcome-expired');
     const state = createParkingFlowState();

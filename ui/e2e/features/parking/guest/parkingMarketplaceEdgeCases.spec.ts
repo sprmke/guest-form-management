@@ -35,7 +35,7 @@ test.describe('parking marketplace edge cases', () => {
     await expect(page.getByRole('button', { name: /Solea Mactan/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /Aug 24-28, 2026/ })).toBeVisible();
     await expect(
-      page.getByRole('button', { name: 'Different booking — enter details' })
+      page.getByRole('button', { name: 'Different booking. Enter details' })
     ).toBeVisible();
 
     await page.getByRole('button', { name: /Solea Mactan/ }).click();

@@ -14,7 +14,7 @@ import {
   seedExpiredCheckoutWatch,
 } from '../shared/orgPlanCheckoutHarness';
 
-test.describe('org plan upgrade checkout', () => {
+test.describe('@ci org plan upgrade checkout', () => {
   test('upgrade review opens and starts PayMongo checkout', async ({ page }) => {
     const state = await installPlansCheckoutMocks(page, { subscriptionPlanId: PLAN_STARTER });
     await installPaymongoCheckoutRedirectStub(page, 'success');

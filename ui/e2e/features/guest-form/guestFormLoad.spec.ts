@@ -1,0 +1,15 @@
+import { expect, test } from '@playwright/test';
+
+import { seedSupabaseAuthSession } from '../../shared/authSeam';
+import { guestFormPath, installGuestFormMocks } from './shared/guestFormHarness';
+
+test.describe('@smoke guest form load', () => {
+  test('renders booking form for property-scoped URL', async ({ page }) => {
+    await seedSupabaseAuthSession(page, 'guest');
+    await installGuestFormMocks(page);
+    await page.goto(guestFormPath());
+    await expect(page.locator('#guest-form-step-heading')).toHaveText('Guest', {
+      timeout: 20_000,
+    });
+  });
+});

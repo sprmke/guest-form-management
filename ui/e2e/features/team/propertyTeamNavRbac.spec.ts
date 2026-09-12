@@ -9,7 +9,7 @@ import {
   teamRbacPaths,
 } from './shared/propertyTeamRbacHarness';
 
-test.describe('property team RBAC nav smoke', () => {
+test.describe('@smoke @ci property team RBAC nav smoke', () => {
   test('Full Access shows Finance, Marketing, Settings, and Team', async ({ page }) => {
     await installPropertyTeamRbacMocks(page, 'full_access');
     await openPropertyDashboard(page);

@@ -9,7 +9,9 @@ import {
 } from '../shared/parkingFlowHarness';
 import { captureParkingScreen, setParkingScreenSuite } from '../shared/parkingScreenCapture';
 
-test.describe('parking guest flow', () => {
+test.describe('@smoke @ci parking guest flow', () => {
+  test.describe.configure({ mode: 'serial' });
+
   test('guest can submit a parking request and land on the waiting screen', async ({ page }) => {
     setParkingScreenSuite('guest-request');
     const state = createParkingFlowState();
@@ -43,14 +45,18 @@ test.describe('parking guest flow', () => {
     state.paymentExpiresAt = new Date(Date.now() + 45 * 60_000).toISOString();
     state.broadcastResponse = 'claimed';
 
+    const statusReady = page.waitForResponse(
+      (res) => res.url().includes('/functions/v1/get-parking-booking-status') && res.ok()
+    );
     await page.reload();
+    await statusReady;
     await expect(
       page.getByRole('heading', { name: parkingGuestStatusLabels.payToConfirm })
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 20_000 });
     await guestPayForParking(page, state);
     await expect(
       page.getByRole('heading', { name: parkingGuestStatusLabels.parkingConfirmed })
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText('Access')).toBeVisible();
     await captureParkingScreen(page, 'guest-paid-final', { role: 'guest' });
   });
