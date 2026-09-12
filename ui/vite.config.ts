@@ -228,6 +228,11 @@ function gfmPwaPlugin(): Plugin[] {
 /** Monotonic build id (epoch seconds) — the PWA kill-switch compares against it. */
 const pwaBuildId = String(Math.floor(Date.now() / 1000));
 
+const posthogReleaseName =
+  process.env.VERCEL_GIT_COMMIT_SHA?.trim() ||
+  process.env.GITHUB_SHA?.trim() ||
+  `guest-form-management-ui@${pwaBuildId}`;
+
 export default defineConfig({
   define: {
     __PWA_BUILD_ID__: JSON.stringify(pwaBuildId),
@@ -244,7 +249,7 @@ export default defineConfig({
             projectId: process.env.POSTHOG_PROJECT_ID!,
             host: process.env.POSTHOG_HOST,
             sourcemaps: {
-              releaseName: 'guest-form-management-ui',
+              releaseName: posthogReleaseName,
               deleteAfterUpload: true,
             },
           }),

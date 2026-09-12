@@ -47,7 +47,7 @@ Dev/staging setup guide: **`docs/archive/operations/dev-staging-environment.md`*
 
 **Dual-track (multi-tenant WIP):** Live = `main` + [`guest-form-management-app`](https://vercel.com/sprmkes-projects/guest-form-management-app) + LEGACY `zftt…`. Multi-tenant = [`kame-homes`](https://vercel.com/kame-works/kame-homes) + `fwor…`. Inventory: `docs/architecture/deployment.md`.
 
-CI (`.github/workflows/ci.yml`): type-check, lint, check:filenames, build — no test step (none exist yet, see Conventions).
+CI (`.github/workflows/ci.yml`): type-check, lint, check:filenames, Vitest, Deno `_shared` + handler tests, Playwright `@smoke`, build. Develop CD adds Playwright `@ci`. See `docs/guides/testing/README.md`.
 
 Root `bun run *:supabase` wrappers source `ui/.env.development` before invoking the Supabase CLI (needed for `GOOGLE_CLIENT_*` to resolve) — prefer them over a global `supabase` CLI (easy to leave outdated, breaks Postgres 17 migrations) or `cd ui && bun run dev` directly.
 
@@ -116,7 +116,7 @@ Prefer `serveAdmin`/`servePublic`/`serveCronPost` (`_shared/serveEdge.ts`) over 
 - **Dates**: DB guest fields often `MM-DD-YYYY` text; UI/query params `YYYY-MM-DD`. Use `_shared/utils.ts` / `ui/src/utils/dates.ts` normalizers. All user-visible times: `Asia/Manila`.
 - **Naming**: `PascalCase.tsx` components/pages, `useX.ts` hooks, `camelCase.ts` lib/schema, `kebab-case/index.ts` edge functions, shadcn stays `kebab-case.tsx`. Named exports only. Full rules: `.cursor/rules/naming-conventions.mdc`.
 - **Secrets**: local edge secrets in `supabase/.env.local` (gitignored); never commit or log credentials/tokens/PII.
-- **Testing**: none exist yet. If adding: Vitest + RTL for UI, Deno's test runner for edge functions — not Bun's.
+- **Testing**: Vitest (UI unit, Node env), Deno test (`_shared/*_test.ts`, `functions/tests/*.test.ts`), Playwright mocked E2E (`ui/e2e/features/`). Commands: `bun run test`, `test:edge`, `test:edge:handlers`, `test:e2e:smoke`, `test:e2e:ci`, `bun run ci:quality`. Skill **`testing`**, rule **`.cursor/rules/testing.mdc`**. Playwright MCP is for exploration only, not CI.
 - **Mobile**: every screen works at 375/768/1024px+, 44×44px touch targets — always-on on the Cursor side (`mobile-responsive.mdc`); pull in the `mobile-responsive` skill on the Claude Code side for any UI task.
 - **Copy**: prefer no extra UI prose (`ui-minimal-copy.mdc` / `minimal-ui-copy`). When text is required, keep it short, plain, and production-grade with no AI tells and no em dashes (`human-copy.mdc` / skill `human-copy`). Claude Code: invoke `human-copy` on string changes.
 
