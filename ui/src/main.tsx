@@ -8,6 +8,7 @@ import { PostHogProvider } from '@posthog/react';
 
 import { AppErrorBoundary } from '@/components/error/AppErrorBoundary';
 import { ScrollToTop } from '@/components/navigation/ScrollToTop';
+import { bootstrapPostHogTelemetry } from '@/lib/posthog/bootstrapTelemetry';
 import { posthog } from '@/lib/posthog/client';
 import { PostHogIdentitySync } from '@/lib/posthog/PostHogIdentitySync';
 
@@ -17,6 +18,8 @@ import { ThemeProvider } from './components/theme/ThemeProvider';
 import '@/lib/pwa/installPrompt'; // capture beforeinstallprompt early
 import 'react-day-picker/dist/style.css';
 import './index.css';
+
+bootstrapPostHogTelemetry();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

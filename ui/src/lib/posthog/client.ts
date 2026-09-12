@@ -1,8 +1,14 @@
 import posthog from 'posthog-js';
 
-// Singleton configuration read from Vite's browser-safe environment variables.
+import { shouldAutocapture } from '@/lib/posthog/analyticsMode';
+import {
+  detectAnalyticsEnvironment,
+  detectAppTrack,
+  resolvePostHogApiHost,
+} from '@/lib/posthog/env';
+
 const apiKey = (import.meta.env.VITE_POSTHOG_KEY as string | undefined)?.trim();
-const apiHost = (import.meta.env.VITE_POSTHOG_HOST as string | undefined)?.trim();
+const apiHost = resolvePostHogApiHost();
 const supabaseFunctionsHost = (() => {
   const functionsUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
   if (!functionsUrl) return undefined;
@@ -16,31 +22,38 @@ const supabaseFunctionsHost = (() => {
 
 export const isPostHogEnabled = Boolean(apiKey && apiHost);
 
+const isProdBuild = import.meta.env.PROD;
+const sessionReplayEnabled =
+  (import.meta.env.VITE_POSTHOG_SESSION_REPLAY as string | undefined)?.trim().toLowerCase() ===
+  'true';
+
 if (isPostHogEnabled) {
   posthog.init(apiKey!, {
     api_host: apiHost,
-    // Bundles current best-practice defaults (SPA history-based pageviews,
-    // rageclick detection, etc.) — see https://posthog.com/docs/libraries/js/config
     defaults: '2026-05-30',
     person_profiles: 'identified_only',
-    // Carries the persisted browser distinct and session IDs to Supabase Edge
-    // Functions so their exception reports belong to the same person.
+    persistence: 'localStorage+cookie',
+    opt_out_capturing_by_default: false,
+    autocapture: shouldAutocapture(),
+    disable_session_recording: isProdBuild && !sessionReplayEnabled,
+    session_recording: {
+      maskAllInputs: true,
+      maskTextSelector: '[data-ph-mask], input, textarea',
+    },
     ...(supabaseFunctionsHost ? { tracing_headers: [supabaseFunctionsHost] } : {}),
-    // Send uncaught browser errors and promise rejections to Error Tracking.
-    // Console errors are intentionally excluded to avoid noisy error ingestion.
     capture_exceptions: {
       capture_unhandled_errors: true,
       capture_unhandled_rejections: true,
       capture_console_errors: false,
     },
+    loaded: (ph) => {
+      ph.register({
+        environment: detectAnalyticsEnvironment(),
+        app_track: detectAppTrack(),
+      });
+    },
   });
-} else if (import.meta.env.DEV) {
-  const missingVariable = apiKey ? 'VITE_POSTHOG_HOST' : 'VITE_POSTHOG_KEY';
-  throw new Error(
-    `${missingVariable} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${missingVariable} is configured`
-  );
 }
 
-// Singleton. Do not call posthog.init() elsewhere — import this module instead so the
-// guard above always runs first.
+// Singleton. Do not call posthog.init() elsewhere — import this module instead.
 export { posthog };
