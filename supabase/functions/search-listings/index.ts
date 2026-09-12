@@ -229,6 +229,9 @@ servePublic('search-listings', async (req) => {
     return jsonError(req, `Method ${req.method} not allowed`, 405);
   }
 
+  const limited = await publicGetRateLimitGate(req, 'search-listings');
+  if (limited) return limited;
+
   const url = new URL(req.url);
   const where = (url.searchParams.get('where') ?? url.searchParams.get('location') ?? '').trim();
   const checkIn = url.searchParams.get('checkIn');

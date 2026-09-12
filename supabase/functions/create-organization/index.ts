@@ -43,6 +43,13 @@ import {
   parseParkingSlotFromBody,
 } from '../_shared/parkingSlotUnit.ts';
 import { seedParkingSettings } from '../_shared/parkingSettingsSeed.ts';
+import { assignDefaultOrgPlanIfConfigured } from '../_shared/defaultOrgPlan.ts';
+import {
+  maintenanceModeResponse,
+  signupsDisabledResponse,
+} from '../_shared/platformSettingsCache.ts';
+import { identityFromRequest, rateLimitGate } from '../_shared/rateLimit.ts';
+import { capturePostHogEvent } from '../_shared/posthog.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 import { seedOrgSettings } from '../_shared/orgSettingsSeed.ts';
 import { seedOrgTeamTemplates } from '../_shared/orgTeamTemplates.ts';
@@ -61,6 +68,21 @@ function parseHostModes(body: Record<string, unknown>): string[] {
 
 serveAuthenticated('create-organization', async (req, user) => {
   requireHttpMethod(req, 'POST');
+
+  const maintenance = await maintenanceModeResponse(req);
+  if (maintenance) return maintenance;
+
+  const signupsBlocked = await signupsDisabledResponse(req);
+  if (signupsBlocked) return signupsBlocked;
+
+  const limited = await rateLimitGate(req, {
+    scope: 'create-organization',
+    identity: identityFromRequest(req, user),
+    limit: 3,
+    windowSec: 86_400,
+  });
+  if (limited) return limited;
+
   const body = await readJsonBody(req);
 
   const name = typeof body.name === 'string' ? body.name.trim() : '';
@@ -366,6 +388,14 @@ serveAuthenticated('create-organization', async (req, user) => {
     .eq('id', org.id)
     .single();
 
+  if (property && typeof (property as { id?: string }).id === 'string') {
+    await assignDefaultOrgPlanIfConfigured({
+      organizationId: org.id as string,
+      propertyIds: [(property as { id: string }).id],
+      assignedByUserId: user.id,
+    });
+  }
+
   const actor = buildActorContext(
     'dashboard',
     { authUser: user, actorType: 'org_owner', role: 'owner' },
@@ -405,6 +435,41 @@ serveAuthenticated('create-organization', async (req, user) => {
       targetId: (parking as { id: string }).id,
       targetLabel: (parking as { name?: string }).name ?? null,
       metadata: { via: 'org_onboarding' },
+    });
+  }
+
+  await capturePostHogEvent('org_created', {
+    logPrefix: 'create-organization',
+    request: req,
+    distinctId: user.id,
+    properties: {
+      org_id: org.id,
+      with_property: Boolean(property),
+      with_parking: Boolean(parking),
+    },
+  });
+  if (property && typeof (property as { id?: string }).id === 'string') {
+    await capturePostHogEvent('property_created', {
+      logPrefix: 'create-organization',
+      request: req,
+      distinctId: user.id,
+      properties: {
+        org_id: org.id,
+        property_id: (property as { id: string }).id,
+        via: 'org_onboarding',
+      },
+    });
+  }
+  if (parking && typeof (parking as { id?: string }).id === 'string') {
+    await capturePostHogEvent('parking_created', {
+      logPrefix: 'create-organization',
+      request: req,
+      distinctId: user.id,
+      properties: {
+        org_id: org.id,
+        parking_id: (parking as { id: string }).id,
+        via: 'org_onboarding',
+      },
     });
   }
 

@@ -14,6 +14,7 @@ import { resolveParkingHostContact } from '../_shared/parkingBroadcast.ts';
 import { loadResolvedBrandColorByParkingId } from '../_shared/parkingBranding.ts';
 import { resolveParkingPlatformSettings } from '../_shared/parkingPlatformSettings.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
+import { publicGetRateLimitGate } from '../_shared/publicEndpointRateLimit.ts';
 
 function readParkingCoverImage(
   settings: Record<string, unknown> | null | undefined
@@ -33,6 +34,10 @@ servePublic('get-parking-booking-status', async (req) => {
   if (req.method !== 'GET') {
     return jsonError(req, `Method ${req.method} not allowed`, 405);
   }
+
+
+  const limited = await publicGetRateLimitGate(req, 'get-parking-booking-status', { maxPerMin: 30 });
+  if (limited) return limited;
 
   const url = new URL(req.url);
   const bookingId = url.searchParams.get('bookingId')?.trim();

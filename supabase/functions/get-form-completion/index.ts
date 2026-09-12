@@ -14,9 +14,14 @@
 import { resolveGuestFormCompletion } from '../_shared/guestFormCompletion.ts';
 import { jsonError, jsonSuccess, requireHttpMethod } from '../_shared/httpResponse.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
+import { publicGetRateLimitGate } from '../_shared/publicEndpointRateLimit.ts';
 
 servePublic('get-form-completion', async (req) => {
   requireHttpMethod(req, 'GET');
+
+
+  const limited = await publicGetRateLimitGate(req, 'get-form-completion');
+  if (limited) return limited;
 
   const url = new URL(req.url);
   const token = url.searchParams.get('complete') ?? url.searchParams.get('token') ?? '';

@@ -43,6 +43,7 @@ import { loadPublicListingRows } from '../_shared/publicListingRows.ts';
 import { batchLoadIsSuperhostByPropertyId } from '../_shared/orgSuperhost.ts';
 import { mapPropertySearchSummary, postgrestOrIlikeValue } from '../_shared/publicSearch.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
+import { publicGetRateLimitGate } from '../_shared/publicEndpointRateLimit.ts';
 
 type SortKey = 'recommended' | 'rating' | 'reviews' | 'newest';
 
@@ -151,6 +152,10 @@ servePublic('list-public-properties', async (req) => {
   if (req.method !== 'GET') {
     return jsonError(req, 'Method not allowed', 405);
   }
+
+
+  const limited = await publicGetRateLimitGate(req, 'list-public-properties');
+  if (limited) return limited;
 
   const url = new URL(req.url);
   const where = (url.searchParams.get('where') ?? '').trim();

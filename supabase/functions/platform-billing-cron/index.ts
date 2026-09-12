@@ -3,13 +3,14 @@
  */
 
 import { runPlatformBillingCycle } from '../_shared/subscriptionOrchestrator.ts';
+import { verifyCronSecret } from '../_shared/cronSecretGate.ts';
 import { serveCronPost } from '../_shared/serveEdge.ts';
 
 function verifyPlatformBillingCronSecret(req: Request): boolean {
-  const expected = Deno.env.get('PLATFORM_BILLING_CRON_SECRET')?.trim();
-  if (!expected) return true;
-  const got = req.headers.get('X-Platform-Billing-Cron-Secret')?.trim();
-  return got === expected;
+  return verifyCronSecret(req, {
+    envKey: 'PLATFORM_BILLING_CRON_SECRET',
+    headerName: 'x-platform-billing-cron-secret',
+  });
 }
 
 serveCronPost('platform-billing-cron', verifyPlatformBillingCronSecret, runPlatformBillingCycle);

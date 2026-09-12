@@ -26,6 +26,7 @@ import { createNotification } from '../_shared/notificationService.ts';
 import { bookingNotificationMetadata } from '../_shared/notificationEnrichment.ts';
 import { resolveOrganizationIdForProperty } from '../_shared/propertyScope.ts';
 import { verifyResendWebhookSignature } from '../_shared/resendWebhookVerify.ts';
+import { identityFromRequest, rateLimitGate } from '../_shared/rateLimit.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
@@ -427,6 +428,13 @@ servePublic('approval-email-webhook', async (req) => {
     secret
   );
   if (!valid) {
+    const limited = await rateLimitGate(req, {
+      scope: 'approval-email-webhook-bad-signature',
+      identity: identityFromRequest(req),
+      limit: 30,
+      windowSec: 60,
+    });
+    if (limited) return limited;
     return jsonError(req, 'Invalid signature', 403);
   }
 

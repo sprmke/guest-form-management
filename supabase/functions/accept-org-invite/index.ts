@@ -11,6 +11,7 @@ import {
 } from '../_shared/httpResponse.ts';
 import { acceptOrgInvitation } from '../_shared/orgTeamService.ts';
 import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
+import { capturePostHogEvent } from '../_shared/posthog.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('accept-org-invite', async (req, user) => {
@@ -35,6 +36,15 @@ serveAuthenticated('accept-org-invite', async (req, user) => {
       targetType: 'member',
       targetId: result.memberId,
       targetLabel: user.email,
+    });
+    await capturePostHogEvent('team_invite_accepted', {
+      logPrefix: 'accept-org-invite',
+      request: req,
+      distinctId: user.id,
+      properties: {
+        org_id: result.organizationId,
+        scope: 'org',
+      },
     });
     return jsonSuccess(req, result);
   } catch (e) {

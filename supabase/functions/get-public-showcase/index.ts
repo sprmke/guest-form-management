@@ -27,11 +27,16 @@ import {
 } from '../_shared/publicPropertyService.ts';
 import { readPropertyIdFromUrl, readPropertySlugFromUrl } from '../_shared/propertyScope.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
+import { publicGetRateLimitGate } from '../_shared/publicEndpointRateLimit.ts';
 
 servePublic('get-public-showcase', async (req) => {
   if (req.method !== 'GET') {
     return jsonError(req, `Method ${req.method} not allowed`, 405);
   }
+
+
+  const limited = await publicGetRateLimitGate(req, 'get-public-showcase');
+  if (limited) return limited;
 
   const url = new URL(req.url);
   const propertyIdParam = readPropertyIdFromUrl(url);

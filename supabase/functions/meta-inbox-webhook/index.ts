@@ -12,6 +12,7 @@ import {
 } from '../_shared/metaInboxWebhookHandler.ts';
 import { verifyMetaWebhookSignatureAsync } from '../_shared/metaInboxGraph.ts';
 import { handleEdgeError, jsonError } from '../_shared/httpResponse.ts';
+import { identityFromRequest, rateLimitGate } from '../_shared/rateLimit.ts';
 import { buildDmThreadId, getConnectionForMetaWebhook } from '../_shared/socialInboxService.ts';
 
 serve(async (req) => {
@@ -43,6 +44,13 @@ serve(async (req) => {
     const signature = req.headers.get('X-Hub-Signature-256');
     const valid = await verifyMetaWebhookSignatureAsync(rawBody, signature);
     if (!valid) {
+      const limited = await rateLimitGate(req, {
+        scope: 'meta-inbox-webhook-bad-signature',
+        identity: identityFromRequest(req),
+        limit: 30,
+        windowSec: 60,
+      });
+      if (limited) return limited;
       return jsonError(req, 'Invalid signature', 403);
     }
 

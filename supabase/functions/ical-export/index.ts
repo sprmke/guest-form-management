@@ -20,6 +20,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { readPropertySlugFromUrl, resolvePropertyIdBySlug } from '../_shared/propertyScope.ts';
 import { capturePostHogException } from '../_shared/posthog.ts';
+import { publicGetRateLimitGate } from '../_shared/publicEndpointRateLimit.ts';
 
 const PROVIDERS: readonly CalendarFeedProvider[] = ['airbnb', 'booking_com', 'vrbo', 'other'];
 
@@ -49,6 +50,14 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders(req) });
   }
   if (req.method !== 'GET') return notFound(req);
+
+  const limited = await publicGetRateLimitGate(req, 'ical-export', { maxPerMin: 30 });
+  if (limited) {
+    return new Response('Too many requests', {
+      status: 429,
+      headers: { ...corsHeaders(req), 'Content-Type': 'text/plain; charset=utf-8' },
+    });
+  }
 
   try {
     const url = new URL(req.url);

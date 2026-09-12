@@ -12,6 +12,7 @@ import {
 } from '../_shared/bookingDocumentShareToken.ts';
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
+import { publicGetRateLimitGate } from '../_shared/publicEndpointRateLimit.ts';
 
 const NOT_AVAILABLE = {
   success: false,
@@ -28,6 +29,10 @@ servePublic('get-guest-booking-document', async (req) => {
   if (req.method !== 'GET') {
     return jsonError(req, `Method ${req.method} not allowed`, 405);
   }
+
+
+  const limited = await publicGetRateLimitGate(req, 'get-guest-booking-document');
+  if (limited) return limited;
 
   const url = new URL(req.url);
   const token = (url.searchParams.get('token') ?? '').trim();

@@ -55,8 +55,7 @@ serveAuthenticated('dashboard-stats', async (req) => {
       scopedParkingIds = assigned.parkingIds;
     }
   } else {
-    const { property } = await resolveScopedPropertyAccess(req, 'bookings:view');
-    propertyId = property.id;
+    return jsonError(req, 'property_id, parking_id, or org_slug is required', 400);
   }
 
   const data = await computeDashboardStats({

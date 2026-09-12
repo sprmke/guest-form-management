@@ -27,9 +27,14 @@ import {
 import { normalizeCityPlace, toLocationSlug } from '../_shared/listingPlace.ts';
 import { computePriceFacet, computeStringCountFacet } from '../_shared/publicListingFacets.ts';
 import { loadPublicListingRows } from '../_shared/publicListingRows.ts';
-import { mapParkingSearchSummary, postgrestOrIlikeValue } from '../_shared/publicSearch.ts';
+import {
+  escapeIlikePattern,
+  mapParkingSearchSummary,
+  postgrestOrIlikeValue,
+} from '../_shared/publicSearch.ts';
 import { slugifyName } from '../_shared/slugUtils.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
+import { publicGetRateLimitGate } from '../_shared/publicEndpointRateLimit.ts';
 
 type ParkingLocation = 'inside_tower' | 'outside_tower' | 'motorcycle';
 type SortKey = 'tower';
@@ -117,6 +122,9 @@ servePublic('list-public-parkings', async (req) => {
     return jsonError(req, 'Method not allowed', 405);
   }
 
+  const limited = await publicGetRateLimitGate(req, 'list-public-parkings');
+  if (limited) return limited;
+
   const url = new URL(req.url);
   const where = (url.searchParams.get('where') ?? '').trim();
   const locations = parseLocations(url);
@@ -130,6 +138,7 @@ servePublic('list-public-parkings', async (req) => {
   const page = parsePage(url.searchParams.get('page'));
   const pageSize = parsePageSize(url.searchParams.get('pageSize'));
   const locationSlug = (url.searchParams.get('locationSlug') ?? '').trim().toLowerCase();
+  const developmentSlug = (url.searchParams.get('developmentSlug') ?? '').trim().toLowerCase();
   const origin = readGeoOrigin(url.searchParams);
   const mapBbox = readMapBbox(url.searchParams);
 
@@ -138,6 +147,17 @@ servePublic('list-public-parkings', async (req) => {
   try {
     const supabase = createServiceClient();
 
+    let developmentResidenceName: string | null = null;
+    if (developmentSlug) {
+      const { data: developmentRow } = await supabase
+        .from('developments')
+        .select('name')
+        .eq('status', 'ACTIVE')
+        .ilike('slug', escapeIlikePattern(developmentSlug))
+        .maybeSingle();
+      developmentResidenceName = (developmentRow?.name as string | null)?.trim() || null;
+    }
+
     const buildCandidateQuery = () => {
       let query = supabase
         .from('parkings')
@@ -145,6 +165,9 @@ servePublic('list-public-parkings', async (req) => {
           'id, slug, name, residence_name, tower, level, slot_label, parking_type, rate_per_night, settings'
         )
         .eq('status', 'ACTIVE');
+      if (developmentResidenceName) {
+        query = query.ilike('residence_name', escapeIlikePattern(developmentResidenceName));
+      }
       if (where) {
         const pattern = postgrestOrIlikeValue(where);
         query = query.or(
@@ -158,14 +181,16 @@ servePublic('list-public-parkings', async (req) => {
       loadPublicListingRows('parkings', (from, to) =>
         buildCandidateQuery().order('id').range(from, to)
       ),
-      loadPublicListingRows('parking developments', (from, to) =>
-        supabase
-          .from('developments')
-          .select('slug, name')
-          .eq('status', 'ACTIVE')
-          .order('id')
-          .range(from, to)
-      ),
+      developmentResidenceName && developmentSlug
+        ? Promise.resolve([{ slug: developmentSlug, name: developmentResidenceName }])
+        : loadPublicListingRows('parking developments', (from, to) =>
+            supabase
+              .from('developments')
+              .select('slug, name')
+              .eq('status', 'ACTIVE')
+              .order('id')
+              .range(from, to)
+          ),
     ]);
 
     const developmentByName = new Map<string, { slug: string; name: string }>();
@@ -213,6 +238,12 @@ servePublic('list-public-parkings', async (req) => {
         settings: row.settings,
       };
     });
+
+    if (developmentSlug) {
+      working = working.filter(
+        (row) => (row.developmentSlug ?? '').toLowerCase() === developmentSlug
+      );
+    }
 
     if (locationSlug) {
       working = working.filter(

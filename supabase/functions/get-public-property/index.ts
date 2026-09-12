@@ -18,6 +18,9 @@ servePublic('get-public-property', async (req) => {
     return jsonError(req, `Method ${req.method} not allowed`, 405);
   }
 
+  const limited = await publicGetRateLimitGate(req, 'get-public-property');
+  if (limited) return limited;
+
   const url = new URL(req.url);
   const propertyId = readPropertyIdFromUrl(url);
   const slug = readPropertySlugFromUrl(url);

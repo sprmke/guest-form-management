@@ -12,6 +12,7 @@ import {
 } from '../_shared/planPricing.ts';
 import { jsonError, jsonSuccess, requireHttpMethod } from '../_shared/httpResponse.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
+import { publicGetRateLimitGate } from '../_shared/publicEndpointRateLimit.ts';
 
 function serializePlan(row: Record<string, unknown>) {
   return {
@@ -33,6 +34,10 @@ function serializePlan(row: Record<string, unknown>) {
 
 servePublic('list-public-pricing-plans', async (req) => {
   requireHttpMethod(req, 'GET');
+
+
+  const limited = await publicGetRateLimitGate(req, 'list-public-pricing-plans');
+  if (limited) return limited;
   const supabase = createServiceClient();
 
   const { data, error } = await supabase

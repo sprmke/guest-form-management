@@ -6,11 +6,16 @@
 import { getTeamInvitePreview } from '../_shared/teamInvitePreview.ts';
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
+import { publicGetRateLimitGate } from '../_shared/publicEndpointRateLimit.ts';
 
 servePublic('get-team-invite-preview', async (req) => {
   if (req.method !== 'GET') {
     return jsonError(req, 'Method not allowed', 405);
   }
+
+
+  const limited = await publicGetRateLimitGate(req, 'get-team-invite-preview');
+  if (limited) return limited;
 
   const url = new URL(req.url);
   const token = url.searchParams.get('token')?.trim() ?? '';

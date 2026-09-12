@@ -2,7 +2,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { jsonError, jsonResponse } from '../_shared/httpResponse.ts';
 import { loadBlockedRanges } from '../_shared/propertyBlockedDates.ts';
 import { resolvePublicPropertyId } from '../_shared/propertyScope.ts';
-import { checkIpRateLimit, clientIpFromRequest } from '../_shared/publicRateLimit.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
 
 servePublic('get-booked-dates', async (req) => {
@@ -10,11 +9,8 @@ servePublic('get-booked-dates', async (req) => {
     throw new Error(`Method ${req.method} not allowed`);
   }
 
-  const ip = clientIpFromRequest(req);
-  const rate = checkIpRateLimit('get-booked-dates', ip, 60, 60_000);
-  if (!rate.allowed) {
-    return jsonError(req, 'Too many requests. Please wait a moment.', 429);
-  }
+  const limited = await publicGetRateLimitGate(req, 'get-booked-dates');
+  if (limited) return limited;
 
   const url = new URL(req.url);
   const propertyId = await resolvePublicPropertyId(url);

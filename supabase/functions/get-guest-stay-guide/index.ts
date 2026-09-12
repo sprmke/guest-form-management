@@ -8,6 +8,7 @@
 import { loadGuestStayGuideByToken } from '../_shared/guestStayGuide.ts';
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
+import { publicGetRateLimitGate } from '../_shared/publicEndpointRateLimit.ts';
 
 const NOT_AVAILABLE = {
   success: false,
@@ -19,6 +20,10 @@ servePublic('get-guest-stay-guide', async (req) => {
   if (req.method !== 'GET') {
     return jsonError(req, `Method ${req.method} not allowed`, 405);
   }
+
+
+  const limited = await publicGetRateLimitGate(req, 'get-guest-stay-guide');
+  if (limited) return limited;
 
   const url = new URL(req.url);
   const token = (url.searchParams.get('token') ?? '').trim();

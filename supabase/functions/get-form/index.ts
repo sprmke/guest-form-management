@@ -1,21 +1,18 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { DatabaseService } from '../_shared/databaseService.ts';
+import { signGuestFormDataStorageUrls } from '../_shared/storageSignedUrl.ts';
 import { canGuestPublicUpdateForm } from '../_shared/statusMachine.ts';
 import { extractRouteParam } from '../_shared/utils.ts';
+import { authorizeGuestBookingAccess } from '../_shared/guestBookingAccessToken.ts';
 import { jsonError, jsonResponse, requireHttpMethod } from '../_shared/httpResponse.ts';
-import { checkIpRateLimit, clientIpFromRequest } from '../_shared/publicRateLimit.ts';
+import { publicGetRateLimitGate } from '../_shared/publicEndpointRateLimit.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
 
 servePublic('get-form', async (req) => {
   requireHttpMethod(req, 'GET');
 
-  // This returns full guest PII by bookingId alone — throttle brute-force/enumeration
-  // attempts. Not a substitute for the token-based access control tracked separately
-  // (docs/workflow/in-progress/production-readiness-hardening.md Phase 2).
-  const ip = clientIpFromRequest(req);
-  const rate = checkIpRateLimit('get-form', ip, 30, 60_000);
-  if (!rate.allowed) {
-    return jsonError(req, 'Too many requests. Please wait a moment.', 429);
-  }
+  const limited = await publicGetRateLimitGate(req, 'get-form', { maxPerMin: 30 });
+  if (limited) return limited;
 
   const url = new URL(req.url);
   const bookingId = extractRouteParam(url.pathname, '/get-form/');
@@ -24,7 +21,18 @@ servePublic('get-form', async (req) => {
     throw new Error('bookingId is required');
   }
 
-  const formData = await DatabaseService.getFormData(bookingId);
+  const access = url.searchParams.get('access')?.trim() ?? null;
+  const bookingRow = await DatabaseService.getBookingById(bookingId);
+  const authz = await authorizeGuestBookingAccess({
+    bookingIdFromPath: bookingId,
+    accessTokenFromQuery: access,
+    bookingCreatedAt: (bookingRow?.created_at as string | null | undefined) ?? null,
+  });
+  if (!authz.ok) {
+    return jsonError(req, authz.message, authz.status);
+  }
+
+  let formData = await DatabaseService.getFormData(bookingId);
 
   if (!formData) {
     return jsonResponse(
@@ -38,13 +46,19 @@ servePublic('get-form', async (req) => {
     );
   }
 
-  const row = await DatabaseService.getBookingById(bookingId);
-  const guestCanUpdate = canGuestPublicUpdateForm(row?.status);
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  if (supabaseUrl && serviceKey) {
+    const supabase = createClient(supabaseUrl, serviceKey);
+    formData = await signGuestFormDataStorageUrls(formData, supabase);
+  }
+
+  const guestCanUpdate = canGuestPublicUpdateForm(bookingRow?.status);
 
   return jsonResponse(req, {
     success: true,
     data: formData,
-    status: row?.status ?? null,
+    status: bookingRow?.status ?? null,
     guestCanUpdate,
     message: 'Form data retrieved successfully.',
   });

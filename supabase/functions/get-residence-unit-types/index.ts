@@ -6,12 +6,17 @@
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { jsonError, jsonSuccess } from '../_shared/httpResponse.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
+import { publicGetRateLimitGate } from '../_shared/publicEndpointRateLimit.ts';
 import { mergeUnitTypes } from '../_shared/unitTypes.ts';
 
 servePublic('get-residence-unit-types', async (req) => {
   if (req.method !== 'GET') {
     return jsonError(req, `Method ${req.method} not allowed`, 405);
   }
+
+
+  const limited = await publicGetRateLimitGate(req, 'get-residence-unit-types');
+  if (limited) return limited;
 
   const url = new URL(req.url);
   const residenceName = url.searchParams.get('residenceName')?.trim() ?? '';

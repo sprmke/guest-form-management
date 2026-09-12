@@ -36,6 +36,10 @@ run_step "type-check" bun run type-check
 run_step "lint (ESLint errors block CD — warnings OK)" bun run lint
 run_step "check:filenames" bun run check:filenames
 run_step "unit tests (Vitest)" bun run test
+run_step "edge unit tests (Deno _shared)" bun run test:edge
+run_step "servePublic rate-limit coverage" bash scripts/dev/check-serve-public-rate-limit.sh
+run_step "edge handler tests (Deno)" bun run test:edge:handlers
+run_step "playwright smoke (@smoke)" bun run test:e2e:smoke
 run_step "build UI" bun run build
 run_step "assert image optimizer stays lazy (plan §10.6)" \
   node scripts/media/assert-lazy-optimizer.mjs

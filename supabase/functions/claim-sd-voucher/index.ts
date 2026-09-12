@@ -22,9 +22,14 @@ import {
   readJsonBody,
   requireHttpMethod,
 } from '../_shared/httpResponse.ts';
+import { capturePostHogEvent } from '../_shared/posthog.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
 import { antiSpamGate } from '../_shared/antiSpam.ts';
 import { logGuestActivity } from '../_shared/guestActivity.ts';
+import {
+  authorizeGuestBookingAccess,
+  guestBookingAccessTokenFromRequest,
+} from '../_shared/guestBookingAccessToken.ts';
 
 servePublic('claim-sd-voucher', async (req) => {
   requireHttpMethod(req, 'POST');
@@ -45,6 +50,14 @@ servePublic('claim-sd-voucher', async (req) => {
 
   const guestUser = await tryGetAuthenticatedUser(req);
   const row = await DatabaseService.getBookingById(bookingId);
+  const authz = await authorizeGuestBookingAccess({
+    bookingIdFromPath: bookingId,
+    accessTokenFromQuery: guestBookingAccessTokenFromRequest(req, body),
+    bookingCreatedAt: (row?.created_at as string | null | undefined) ?? null,
+  });
+  if (!authz.ok) {
+    return jsonResponse(req, { success: false, error: authz.message }, authz.status);
+  }
   if (!row || !canClaimGuestReviewVoucher(row)) {
     return jsonResponse(
       req,
@@ -141,6 +154,11 @@ servePublic('claim-sd-voucher', async (req) => {
           409
         );
       }
+      await capturePostHogEvent('sd_voucher_claimed', {
+        logPrefix: 'claim-sd-voucher',
+        request: req,
+        properties: { booking_id: bookingId, won: false, already_awarded: true },
+      });
       return jsonSuccess(req, { code, amount, alreadyAwarded: true });
     }
 
@@ -156,8 +174,18 @@ servePublic('claim-sd-voucher', async (req) => {
       targetLabel: (row.primary_guest_name as string | null) ?? null,
       metadata: { amount },
     });
+    await capturePostHogEvent('sd_voucher_claimed', {
+      logPrefix: 'claim-sd-voucher',
+      request: req,
+      properties: { booking_id: bookingId, won: true, already_awarded: false },
+    });
     return jsonSuccess(req, { code, amount, alreadyAwarded: false });
   }
 
+  await capturePostHogEvent('sd_voucher_claimed', {
+    logPrefix: 'claim-sd-voucher',
+    request: req,
+    properties: { booking_id: bookingId, won: false, already_awarded: true },
+  });
   return jsonSuccess(req, { code, amount, alreadyAwarded });
 });

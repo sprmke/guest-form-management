@@ -12,6 +12,7 @@ import {
 import { acceptParkingInvitation } from '../_shared/parkingTeamService.ts';
 import { resolveOrganizationIdForParking } from '../_shared/parkingScope.ts';
 import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
+import { capturePostHogEvent } from '../_shared/posthog.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('accept-parking-invite', async (req, user) => {
@@ -43,6 +44,15 @@ serveAuthenticated('accept-parking-invite', async (req, user) => {
     } catch (activityErr) {
       console.error('[accept-parking-invite] activity log failed (non-fatal):', activityErr);
     }
+    await capturePostHogEvent('team_invite_accepted', {
+      logPrefix: 'accept-parking-invite',
+      request: req,
+      distinctId: user.id,
+      properties: {
+        parking_id: result.parkingId,
+        scope: 'parking',
+      },
+    });
     return jsonSuccess(req, result);
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Accept failed';

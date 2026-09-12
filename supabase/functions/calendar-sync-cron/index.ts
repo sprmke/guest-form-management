@@ -42,9 +42,10 @@ function json(req: Request, body: unknown, status = 200): Response {
 }
 
 function cronSecretOk(req: Request): boolean {
-  const expected = Deno.env.get('CALENDAR_SYNC_CRON_SECRET')?.trim();
-  if (!expected) return true;
-  return req.headers.get('x-calendar-sync-cron-secret')?.trim() === expected;
+  return verifyCronSecret(req, {
+    envKey: 'CALENDAR_SYNC_CRON_SECRET',
+    headerName: 'x-calendar-sync-cron-secret',
+  });
 }
 
 async function parseBody(req: Request): Promise<{ feedId?: string; propertyId?: string }> {
@@ -78,7 +79,21 @@ serve(async (req) => {
       if (propertyId && !UUID_RE.test(propertyId))
         return json(req, { success: false, error: 'Invalid propertyId' }, 400);
 
-      const { property } = await resolveScopedPropertyAccess(req, 'pricing.channels:edit');
+      let scopedFeed: CalendarFeedRow | null = null;
+      let scopedPropertyId = propertyId;
+      if (!scopedPropertyId && feedId) {
+        scopedFeed = await loadCalendarFeed(supabase, feedId);
+        scopedPropertyId = scopedFeed?.property_id;
+      }
+      if (!scopedPropertyId) {
+        return json(req, { success: false, error: 'property_id is required' }, 400);
+      }
+
+      const { property } = await resolveScopedPropertyAccess(
+        req,
+        'pricing.channels:edit',
+        scopedPropertyId
+      );
       try {
         await requirePropertyFeature(property.id, 'calendarSync');
       } catch (err) {
@@ -89,7 +104,7 @@ serve(async (req) => {
 
       let feeds: CalendarFeedRow[] = [];
       if (feedId) {
-        const feed = await loadCalendarFeed(supabase, feedId);
+        const feed = scopedFeed ?? (await loadCalendarFeed(supabase, feedId));
         if (!feed || feed.property_id !== property.id) {
           return json(req, { success: false, error: 'Feed not found' }, 404);
         }

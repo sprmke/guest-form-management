@@ -7,12 +7,21 @@ import { jsonError, jsonResponse, jsonSuccess, readJsonBody } from '../_shared/h
 import { isAiPlatformDisabledError, isAiQuotaError } from '../_shared/aiUsageService.ts';
 import { createServiceClient, requirePropertyPermissionAndFeature } from '../_shared/orgAuth.ts';
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
+import { identityFromRequest, rateLimitGate } from '../_shared/rateLimit.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
-serveAuthenticated('generate-marketing-caption', async (req) => {
+serveAuthenticated('generate-marketing-caption', async (req, user) => {
   if (req.method !== 'POST') {
     return jsonError(req, 'Method not allowed', 405);
   }
+
+  const limited = await rateLimitGate(req, {
+    scope: 'generate-marketing-caption',
+    identity: identityFromRequest(req, user),
+    limit: 20,
+    windowSec: 3600,
+  });
+  if (limited) return limited;
 
   let propertyId: string;
   let actorUserId: string;

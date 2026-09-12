@@ -24,8 +24,13 @@ import {
 import { normalizeCityPlace, toLocationSlug } from '../_shared/listingPlace.ts';
 import { computePriceFacet, computeStringCountFacet } from '../_shared/publicListingFacets.ts';
 import { loadPublicListingRows } from '../_shared/publicListingRows.ts';
-import { mapDevelopmentSearchSummary, postgrestOrIlikeValue } from '../_shared/publicSearch.ts';
+import {
+  escapeIlikePattern,
+  mapDevelopmentSearchSummary,
+  postgrestOrIlikeValue,
+} from '../_shared/publicSearch.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
+import { publicGetRateLimitGate } from '../_shared/publicEndpointRateLimit.ts';
 
 type SortKey = 'recommended' | 'newest';
 
@@ -115,6 +120,9 @@ servePublic('list-public-developments', async (req) => {
     return jsonError(req, 'Method not allowed', 405);
   }
 
+  const limited = await publicGetRateLimitGate(req, 'list-public-developments');
+  if (limited) return limited;
+
   const url = new URL(req.url);
   const where = (url.searchParams.get('where') ?? '').trim();
   const types = parseCsv(url.searchParams.get('type')).map((t) => t.toUpperCase());
@@ -128,6 +136,7 @@ servePublic('list-public-developments', async (req) => {
   const page = parsePage(url.searchParams.get('page'));
   const pageSize = parsePageSize(url.searchParams.get('pageSize'));
   const locationSlug = (url.searchParams.get('locationSlug') ?? '').trim().toLowerCase();
+  const slug = (url.searchParams.get('slug') ?? '').trim().toLowerCase();
   const origin = readGeoOrigin(url.searchParams);
   const mapBbox = readMapBbox(url.searchParams);
 
@@ -141,6 +150,9 @@ servePublic('list-public-developments', async (req) => {
           'id, slug, name, developer_name, type, location, city, description, cover_image_url, settings, created_at'
         )
         .eq('status', 'ACTIVE');
+      if (slug) {
+        query = query.ilike('slug', escapeIlikePattern(slug));
+      }
       if (where) {
         const pattern = postgrestOrIlikeValue(where);
         query = query.or(
@@ -179,6 +191,10 @@ servePublic('list-public-developments', async (req) => {
         established: establishedFromSettings ?? (Number.isFinite(createdYear) ? createdYear : null),
       };
     });
+
+    if (slug) {
+      working = working.filter((row) => row.slug.toLowerCase() === slug);
+    }
 
     if (locationSlug) {
       working = working.filter(

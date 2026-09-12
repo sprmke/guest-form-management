@@ -115,6 +115,7 @@ import {
 } from '../_shared/planEntitlements.ts';
 import { createServiceClient, verifyOrgAccess, verifyPropertyAccess } from '../_shared/orgAuth.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
+import { identityFromRequest, rateLimitGate } from '../_shared/rateLimit.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 const MAX_TOOL_ROUNDS = 4;
@@ -362,6 +363,15 @@ async function resolveEffectivePermissions(
 serveAuthenticated('dashboard-assistant-chat', async (req, user) => {
   try {
     requireHttpMethod(req, 'POST');
+
+    const limited = await rateLimitGate(req, {
+      scope: 'dashboard-assistant-chat',
+      identity: identityFromRequest(req, user),
+      limit: 30,
+      windowSec: 600,
+    });
+    if (limited) return limited;
+
     const body = await readJsonBody(req);
     const orgSlug = String(body.orgSlug ?? '').trim();
     const message = String(body.message ?? '').trim();

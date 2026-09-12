@@ -33,6 +33,19 @@ const MEDIA_BUCKETS = [
 ];
 
 const asJson = process.argv.includes('--json');
+const keyShapesOnly = process.argv.includes('--key-shapes');
+
+/** Guest PII buckets — cost/abuse §2.2 key-shape audit. */
+const GUEST_DOC_BUCKETS = new Set([
+  'valid-ids',
+  'payment-receipts',
+  'pet-images',
+  'pet-vaccinations',
+  'parking-endorsements',
+]);
+
+const UUID_PREFIX_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\//i;
 
 const url = process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321';
 const key =
@@ -52,8 +65,8 @@ interface BucketStat {
   error?: string;
 }
 
-async function listAll(bucket: string): Promise<number[]> {
-  const sizes: number[] = [];
+async function listBucketObjects(bucket: string): Promise<{ path: string; size: number }[]> {
+  const objects: { path: string; size: number }[] = [];
   const stack = [''];
   while (stack.length) {
     const prefix = stack.pop() as string;
@@ -67,18 +80,81 @@ async function listAll(bucket: string): Promise<number[]> {
       if (!data || data.length === 0) break;
       for (const entry of data) {
         const size = (entry.metadata as { size?: number } | null)?.size;
+        const fullPath = prefix ? `${prefix}/${entry.name}` : entry.name;
         if (typeof size === 'number') {
-          sizes.push(size);
+          objects.push({ path: fullPath, size });
         } else {
-          // A folder — recurse.
-          stack.push(prefix ? `${prefix}/${entry.name}` : entry.name);
+          stack.push(fullPath);
         }
       }
       if (data.length < 1000) break;
       offset += data.length;
     }
   }
-  return sizes;
+  return objects;
+}
+
+async function listAll(bucket: string): Promise<number[]> {
+  const objects = await listBucketObjects(bucket);
+  return objects.map((o) => o.size);
+}
+
+function classifyGuestDocKey(path: string): 'property_scoped' | 'flat' | 'other' {
+  if (UUID_PREFIX_RE.test(path)) return 'property_scoped';
+  if (!path.includes('/')) return 'flat';
+  return 'other';
+}
+
+async function printGuestDocKeyShapes() {
+  const report: Record<
+    string,
+    { total: number; propertyScoped: number; flat: number; other: number; samples: string[] }
+  > = {};
+
+  for (const bucket of GUEST_DOC_BUCKETS) {
+    try {
+      const objects = await listBucketObjects(bucket);
+      const row = {
+        total: objects.length,
+        propertyScoped: 0,
+        flat: 0,
+        other: 0,
+        samples: [] as string[],
+      };
+      for (const obj of objects) {
+        const kind = classifyGuestDocKey(obj.path);
+        if (kind === 'property_scoped') row.propertyScoped += 1;
+        else if (kind === 'flat') row.flat += 1;
+        else row.other += 1;
+        if (row.samples.length < 5) row.samples.push(obj.path);
+      }
+      report[bucket] = row;
+    } catch (err) {
+      report[bucket] = {
+        total: 0,
+        propertyScoped: 0,
+        flat: 0,
+        other: 0,
+        samples: [err instanceof Error ? err.message : String(err)],
+      };
+    }
+  }
+
+  if (asJson) {
+    console.log(JSON.stringify({ generatedAt: new Date().toISOString(), url, report }, null, 2));
+    return;
+  }
+
+  console.log(`\nGuest-doc storage key shapes — ${url}   ${new Date().toISOString()}\n`);
+  for (const [bucket, row] of Object.entries(report)) {
+    console.log(
+      `${bucket}: ${row.total} objects — property-scoped ${row.propertyScoped}, flat ${row.flat}, other ${row.other}`
+    );
+    for (const sample of row.samples) {
+      console.log(`  sample: ${sample}`);
+    }
+  }
+  console.log('');
 }
 
 function percentile(sorted: number[], p: number): number {
@@ -92,6 +168,11 @@ function mb(bytes: number): string {
 }
 
 async function main() {
+  if (keyShapesOnly) {
+    await printGuestDocKeyShapes();
+    return;
+  }
+
   const stats: BucketStat[] = [];
   for (const bucket of MEDIA_BUCKETS) {
     try {

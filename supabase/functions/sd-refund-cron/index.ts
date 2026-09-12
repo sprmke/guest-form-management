@@ -50,6 +50,8 @@ import { DatabaseService } from '../_shared/databaseService.ts';
 import { sendSdRefundFormRequest } from '../_shared/emailService.ts';
 import { propertyAutomationEnabled } from '../_shared/propertyAutomationToggles.ts';
 import { capturePostHogException } from '../_shared/posthog.ts';
+import { evaluateSdRefundLeadWindow, parseCheckoutManila } from '../_shared/sdRefundCronLead.ts';
+import { verifyCronSecret } from '../_shared/cronSecretGate.ts';
 
 const MANILA_TZ = 'Asia/Manila';
 
@@ -62,12 +64,13 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
  * crons, etc.) — if the operator hasn't set `SD_REFUND_CRON_SECRET` yet, the sweep keeps
  * working exactly as before; once set, only the pg_cron job's Vault-sourced header
  * (`sync_sd_refund_cron_job` migration) or another caller who knows the secret can trigger it.
+ * Production (`ENVIRONMENT=production`) rejects when the secret is unset.
  */
 function verifySdRefundCronSecret(req: Request): boolean {
-  const expected = Deno.env.get('SD_REFUND_CRON_SECRET')?.trim();
-  if (!expected) return true;
-  const got = req.headers.get('x-sd-refund-cron-secret')?.trim();
-  return got === expected;
+  return verifyCronSecret(req, {
+    envKey: 'SD_REFUND_CRON_SECRET',
+    headerName: 'x-sd-refund-cron-secret',
+  });
 }
 
 // ─── Date/time helpers ─────────────────────────────────────────────────────────
@@ -77,60 +80,6 @@ function verifySdRefundCronSecret(req: Request): boolean {
  */
 function nowManila(): Date {
   return new Date(new Date().toLocaleString('en-US', { timeZone: MANILA_TZ }));
-}
-
-/**
- * Parse a booking's check-out date + time into a Date in Asia/Manila.
- *
- * check_out_date is stored as MM-DD-YYYY text.
- * check_out_time is stored as HH:MM AM/PM (e.g. "11:00 AM") or 24h (e.g. "11:00").
- *
- * Returns a Date whose numeric value matches Asia/Manila wall-clock time.
- */
-function parseCheckoutManila(checkOutDate: string, checkOutTime: string): Date | null {
-  try {
-    // Normalize MM-DD-YYYY → YYYY-MM-DD
-    let isoDate: string;
-    if (/^\d{2}-\d{2}-\d{4}$/.test(checkOutDate)) {
-      const [m, d, y] = checkOutDate.split('-');
-      isoDate = `${y}-${m}-${d}`;
-    } else if (/^\d{4}-\d{2}-\d{2}$/.test(checkOutDate)) {
-      isoDate = checkOutDate;
-    } else {
-      return null;
-    }
-
-    // Normalize time → 24h HH:MM
-    let hour24 = 0;
-    let minute = 0;
-
-    const ampm = checkOutTime?.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-    if (ampm) {
-      let h = parseInt(ampm[1], 10);
-      const m = parseInt(ampm[2], 10);
-      const period = ampm[3].toUpperCase();
-      if (period === 'PM' && h !== 12) h += 12;
-      if (period === 'AM' && h === 12) h = 0;
-      hour24 = h;
-      minute = m;
-    } else {
-      const plain = checkOutTime?.match(/(\d{1,2}):(\d{2})/);
-      if (plain) {
-        hour24 = parseInt(plain[1], 10);
-        minute = parseInt(plain[2], 10);
-      }
-    }
-
-    // Build local Manila datetime string and parse via toLocaleString trick
-    const localStr = `${isoDate}T${String(hour24).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
-
-    // Parse as if it were UTC, then adjust for Manila offset (+8h)
-    // Instead, use Intl to get the Manila-aware date
-    const utc = new Date(`${localStr}+08:00`);
-    return utc;
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -206,7 +155,19 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
         );
       }
-      const { property } = await resolveScopedPropertyAccess(req, 'bookings.detail.workflow:edit');
+      const scopedBooking = await DatabaseService.getBookingById(scopedBookingId);
+      const scopedPropertyId = (scopedBooking?.property_id as string | undefined)?.trim();
+      if (!scopedPropertyId) {
+        return new Response(JSON.stringify({ success: false, error: 'Booking not found' }), {
+          status: 404,
+          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+        });
+      }
+      const { property } = await resolveScopedPropertyAccess(
+        req,
+        'bookings.detail.workflow:edit',
+        scopedPropertyId
+      );
       adminPropertyId = property.id;
       await verifyBookingBelongsToProperty(scopedBookingId, adminPropertyId);
       scoped = true;
@@ -291,9 +252,14 @@ serve(async (req) => {
       const checkOutDate = (booking.check_out_date as string) ?? '';
       const checkOutTime = (booking.check_out_time as string) || defaultCheckoutTime();
 
-      const checkoutDt = parseCheckoutManila(checkOutDate, checkOutTime);
+      const leadWindow = evaluateSdRefundLeadWindow({
+        checkOutDate,
+        checkOutTime,
+        leadMinutes,
+        nowMs,
+      });
 
-      if (!checkoutDt) {
+      if (!leadWindow.checkoutDt) {
         console.warn(
           `[sd-refund-cron] Cannot parse checkout datetime for booking ${bookingId}: date="${checkOutDate}" time="${checkOutTime}"`
         );
@@ -302,11 +268,10 @@ serve(async (req) => {
         continue;
       }
 
-      const eligibleAtMs = checkoutDt.getTime() - leadMinutes * 60 * 1000;
-      const isDue = nowMs >= eligibleAtMs;
+      const checkoutDt = leadWindow.checkoutDt;
 
-      if (!isDue) {
-        const minutesRemaining = Math.max(1, Math.ceil((eligibleAtMs - nowMs) / 60000));
+      if (!leadWindow.due) {
+        const minutesRemaining = leadWindow.minutesRemaining;
         console.log(
           `[sd-refund-cron] Booking ${bookingId} (${booking.guest_facebook_name}) not yet due ` +
             `(${minutesRemaining} min until lead window opens)`

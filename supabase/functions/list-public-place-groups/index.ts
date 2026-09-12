@@ -31,6 +31,7 @@ import {
   mapPropertySearchSummary,
 } from '../_shared/publicSearch.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
+import { publicGetRateLimitGate } from '../_shared/publicEndpointRateLimit.ts';
 
 type ListingFamily = 'properties' | 'developments' | 'parkings';
 
@@ -100,6 +101,10 @@ function titleForFamily(family: ListingFamily, place: string): string {
 servePublic('list-public-place-groups', async (req) => {
   if (req.method !== 'GET') return jsonError(req, 'Method not allowed', 405);
 
+
+
+  const limited = await publicGetRateLimitGate(req, 'list-public-place-groups');
+  if (limited) return limited;
   const url = new URL(req.url);
   const family = url.searchParams.get('family') as ListingFamily | null;
   if (family !== 'properties' && family !== 'developments' && family !== 'parkings') {

@@ -76,8 +76,11 @@ serveAuthenticated('list-bookings', async (req) => {
     );
     propertyId = property.id;
   } else {
-    const { property } = await resolveScopedPropertyAccess(req, 'bookings:view');
-    propertyId = property.id;
+    return jsonResponse(
+      req,
+      { success: false, error: 'property_id, parking_id, or org_slug is required' },
+      400
+    );
   }
 
   const q = p.get('q') ?? '';

@@ -12,6 +12,7 @@ import {
 import { acceptPropertyInvitation } from '../_shared/propertyTeamService.ts';
 import { resolveOrganizationIdForProperty } from '../_shared/propertyScope.ts';
 import { buildActorContext, logActivity } from '../_shared/activityLog.ts';
+import { capturePostHogEvent } from '../_shared/posthog.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('accept-property-invite', async (req, user) => {
@@ -43,6 +44,15 @@ serveAuthenticated('accept-property-invite', async (req, user) => {
     } catch (activityErr) {
       console.error('[accept-property-invite] activity log failed (non-fatal):', activityErr);
     }
+    await capturePostHogEvent('team_invite_accepted', {
+      logPrefix: 'accept-property-invite',
+      request: req,
+      distinctId: user.id,
+      properties: {
+        property_id: result.propertyId,
+        scope: 'property',
+      },
+    });
     return jsonSuccess(req, result);
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Accept failed';

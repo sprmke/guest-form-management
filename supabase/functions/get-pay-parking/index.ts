@@ -17,6 +17,7 @@ import {
 import { resolvePropertySlugById } from '../_shared/propertyScope.ts';
 import { jsonResponse, jsonSuccess } from '../_shared/httpResponse.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
+import { publicGetRateLimitGate } from '../_shared/publicEndpointRateLimit.ts';
 
 const NOT_FOUND = {
   success: false,
@@ -50,6 +51,10 @@ servePublic('get-pay-parking', async (req) => {
   if (req.method !== 'GET') {
     throw new Error(`Method ${req.method} not allowed`);
   }
+
+
+  const limited = await publicGetRateLimitGate(req, 'get-pay-parking', { maxPerMin: 30 });
+  if (limited) return limited;
 
   const url = new URL(req.url);
   const bookingId = (url.searchParams.get('bookingId') ?? '').trim();

@@ -9,6 +9,7 @@ import {
   handlePaymongoWebhookEvent,
   paymongoLivemodeFromEnv,
 } from '../_shared/subscriptionOrchestrator.ts';
+import { identityFromRequest, rateLimitGate } from '../_shared/rateLimit.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
 
 servePublic('paymongo-webhook', async (req) => {
@@ -29,7 +30,16 @@ servePublic('paymongo-webhook', async (req) => {
   const valid = await verifyPaymongoWebhookSignature(rawBody, signature, secret, {
     livemode: paymongoLivemodeFromEnv(),
   });
-  if (!valid) return jsonError(req, 'Invalid signature', 401);
+  if (!valid) {
+    const limited = await rateLimitGate(req, {
+      scope: 'paymongo-webhook-bad-signature',
+      identity: identityFromRequest(req),
+      limit: 30,
+      windowSec: 60,
+    });
+    if (limited) return limited;
+    return jsonError(req, 'Invalid signature', 401);
+  }
 
   let payload: Record<string, unknown>;
   try {
