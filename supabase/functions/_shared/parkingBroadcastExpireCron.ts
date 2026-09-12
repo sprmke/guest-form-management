@@ -5,6 +5,7 @@
  */
 
 import { createServiceClient } from './orgAuth.ts';
+import { verifyCronSecret } from './cronSecretGate.ts';
 import {
   fanOutParkingBroadcast,
   parkingBroadcastTtlMs,
@@ -17,10 +18,10 @@ import { buildActorContext } from './activityLog.ts';
 import { logParkingStatusChange } from './parkingActivity.ts';
 
 export function verifyParkingBroadcastExpireCronSecret(req: Request): boolean {
-  const expected = Deno.env.get('PARKING_BROADCAST_EXPIRE_CRON_SECRET')?.trim();
-  if (!expected) return true;
-  const got = req.headers.get('x-parking-broadcast-expire-cron-secret')?.trim();
-  return got === expected;
+  return verifyCronSecret(req, {
+    envKey: 'PARKING_BROADCAST_EXPIRE_CRON_SECRET',
+    headerName: 'x-parking-broadcast-expire-cron-secret',
+  });
 }
 
 function mmDdYyyyToYyyyMmDd(value: string): string {

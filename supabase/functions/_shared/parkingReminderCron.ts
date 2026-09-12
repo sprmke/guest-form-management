@@ -9,6 +9,7 @@
  */
 
 import {
+import { verifyCronSecret } from './cronSecretGate.ts';
   calendarDaysBetween,
   manilaTodayYmd,
   normalizeBookingDateToYmd,
@@ -22,10 +23,10 @@ import { formatResendFromAddress, loadPropertyEmailBranding } from './propertyEm
 import { escapeHtml } from './renderEmailHtml.ts';
 
 export function verifyParkingReminderCronSecret(req: Request): boolean {
-  const expected = Deno.env.get('PARKING_REMINDER_CRON_SECRET')?.trim();
-  if (!expected) return true;
-  const got = req.headers.get('x-parking-reminder-cron-secret')?.trim();
-  return got === expected;
+  return verifyCronSecret(req, {
+    envKey: 'PARKING_REMINDER_CRON_SECRET',
+    headerName: 'x-parking-reminder-cron-secret',
+  });
 }
 
 /** Send the one-time reminder this many days (or fewer) before check-in. */

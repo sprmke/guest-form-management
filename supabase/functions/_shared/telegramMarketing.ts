@@ -4,6 +4,7 @@
  */
 
 import { DatabaseService } from './databaseService.ts';
+import { verifyCronSecret } from './cronSecretGate.ts';
 import { listAllPropertyIds } from './propertyCron.ts';
 import {
   addDaysYmd,
@@ -641,10 +642,10 @@ export async function notifyTelegramCancellation(
 
 /** Optional gate for cron: if TELEGRAM_CRON_SECRET is set, header must match. */
 export function verifyTelegramCronSecret(req: Request): boolean {
-  const expected = Deno.env.get('TELEGRAM_CRON_SECRET')?.trim();
-  if (!expected) return true;
-  const got = req.headers.get('x-telegram-cron-secret')?.trim();
-  return got === expected;
+  return verifyCronSecret(req, {
+    envKey: 'TELEGRAM_CRON_SECRET',
+    headerName: 'x-telegram-cron-secret',
+  });
 }
 
 function dailySlotsFromRow(row: TelegramMarketingSettings): ManilaReminderSlot[] {

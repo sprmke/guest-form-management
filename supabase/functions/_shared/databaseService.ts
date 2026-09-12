@@ -670,19 +670,27 @@ export class DatabaseService {
    * Update `status` + `status_updated_at` for a booking.
    * Only the orchestrator should call this — no side effects here.
    */
-  static async updateBookingStatus(bookingId: string, status: string) {
-    const { data, error } = await this.supabase
+  static async updateBookingStatus(bookingId: string, status: string, expectedFrom?: string) {
+    let query = this.supabase
       .from('guest_submissions')
       .update({
         status,
         status_updated_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq('id', bookingId)
-      .select()
-      .single();
+      .eq('id', bookingId);
+
+    const fromStatus = expectedFrom?.trim();
+    if (fromStatus) {
+      query = query.eq('status', fromStatus);
+    }
+
+    const { data, error } = await query.select().maybeSingle();
 
     if (error) throw new Error(`Failed to update booking status: ${error.message}`);
+    if (!data) {
+      throw new Error('STATUS_CONFLICT: Booking status changed. Refresh and try again.');
+    }
     return data;
   }
 

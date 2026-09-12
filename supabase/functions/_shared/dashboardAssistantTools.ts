@@ -3828,7 +3828,7 @@ export async function executeConfirmedAction(
       return { ok: false, error: `Cannot transition from ${fromStatus} to ${toStatus}` };
     }
 
-    const updated = await DatabaseService.updateBookingStatus(bookingId, toStatus);
+    const updated = await DatabaseService.updateBookingStatus(bookingId, toStatus, fromStatus);
     return {
       ok: true,
       riskTier: 'tier2_confirmed',

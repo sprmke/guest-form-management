@@ -80,7 +80,11 @@ export async function errorMessageFromThrown(
       .catch(() => unauthorizedFallback);
     return { status, message };
   }
-  return { status: 400, message: (error as Error).message };
+  const message = (error as Error).message ?? 'Request failed';
+  if (message.startsWith('STATUS_CONFLICT:')) {
+    return { status: 409, message: message.replace(/^STATUS_CONFLICT:\s*/, '') };
+  }
+  return { status: 400, message };
 }
 
 export async function handleEdgeError(

@@ -8,6 +8,7 @@
  */
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { verifyCronSecret } from './cronSecretGate.ts';
 
 import { manilaTodayYmd } from './calendarAvailabilityManila.ts';
 import {
@@ -33,10 +34,10 @@ import {
 import { resolveSupabaseServiceRoleKey, resolveSupabaseUrl } from './supabaseRuntimeEnv.ts';
 
 export function verifyContractExpiryCronSecret(req: Request): boolean {
-  const expected = Deno.env.get('CONTRACT_EXPIRY_CRON_SECRET')?.trim();
-  if (!expected) return true;
-  const got = req.headers.get('x-contract-expiry-cron-secret')?.trim();
-  return got === expected;
+  return verifyCronSecret(req, {
+    envKey: 'CONTRACT_EXPIRY_CRON_SECRET',
+    headerName: 'x-contract-expiry-cron-secret',
+  });
 }
 
 type OrgRow = {

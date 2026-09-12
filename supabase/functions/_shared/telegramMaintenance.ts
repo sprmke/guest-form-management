@@ -3,6 +3,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { verifyCronSecret } from './cronSecretGate.ts';
 import { DatabaseService } from './databaseService.ts';
 import { listAllPropertyIds } from './propertyCron.ts';
 import { addDaysToIso, daysBetweenIso } from './financeRecurrence.ts';
@@ -353,10 +354,10 @@ async function sendMaintenanceTelegramMessage(
 }
 
 export function verifyMaintenanceCronSecret(req: Request): boolean {
-  const expected = Deno.env.get('TELEGRAM_MAINTENANCE_CRON_SECRET')?.trim();
-  if (!expected) return true;
-  const got = req.headers.get('X-Telegram-Cron-Secret')?.trim();
-  return got === expected;
+  return verifyCronSecret(req, {
+    envKey: 'TELEGRAM_MAINTENANCE_CRON_SECRET',
+    headerName: 'x-telegram-cron-secret',
+  });
 }
 
 export async function verifyMaintenanceTelegramEnv(

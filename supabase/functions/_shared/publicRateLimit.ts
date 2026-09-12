@@ -54,17 +54,21 @@ export function checkIpRateLimit(
   };
 }
 
-/** Best-effort client IP from common proxy headers. */
+/**
+ * Best-effort client IP from edge-trusted headers first.
+ * Prefer `cf-connecting-ip` / `x-real-ip` (set by Supabase/Kong/Cloudflare) over
+ * `x-forwarded-for`, which clients can spoof when it is the only signal.
+ */
 export function clientIpFromRequest(req: Request): string {
+  const cf = req.headers.get('cf-connecting-ip')?.trim();
+  if (cf) return cf;
+  const realIp = req.headers.get('x-real-ip')?.trim();
+  if (realIp) return realIp;
   const forwarded = req.headers.get('x-forwarded-for');
   if (forwarded) {
     const first = forwarded.split(',')[0]?.trim();
     if (first) return first;
   }
-  const realIp = req.headers.get('x-real-ip')?.trim();
-  if (realIp) return realIp;
-  const cf = req.headers.get('cf-connecting-ip')?.trim();
-  if (cf) return cf;
   return 'unknown';
 }
 

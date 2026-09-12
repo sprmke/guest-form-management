@@ -10,6 +10,7 @@ import { linkGuestBookingsByEmail } from './guestProfileService.ts';
 import type { AuthenticatedUser } from './orgAuth.ts';
 import { manilaTodayYmd, normalizeBookingDateToYmd } from './calendarAvailabilityManila.ts';
 import { resolveStayGuideTemplateKey } from './customPages.ts';
+import { guestBookingEmailLinkPlaceholderExtras } from './guestBookingEmailLinks.ts';
 import { loadGuestFacingContactInfo } from './guestContactInfo.ts';
 import { getPublicPageConfigOrDefault, type StayGuideConfig } from './publicPageConfigs.ts';
 import { loadPropertyEmailBranding } from './propertyEmailBranding.ts';
@@ -354,12 +355,21 @@ async function resolveSectionHtml(
   );
   const settings = await resolveAppSettings(propertyId);
   const branding = await loadPropertyEmailBranding(propertyId);
-  const propertySlug = await resolvePropertySlugById(propertyId);
+  const propertySlug = (await resolvePropertySlugById(propertyId)) ?? '';
+  const bookingId = String(booking.id ?? '').trim();
+  const guestLinkExtras =
+    bookingId && propertySlug
+      ? await guestBookingEmailLinkPlaceholderExtras({
+          origin: settings.publicGuestAppOrigin,
+          propertySlug,
+          bookingId,
+        })
+      : { property_slug: propertySlug, form_url: '', sd_form_url: '', review_url: '' };
 
   const placeholderVars = buildBookingPlaceholderVars(
     booking,
     settings,
-    { property_slug: propertySlug ?? '' },
+    guestLinkExtras,
     branding
   );
 

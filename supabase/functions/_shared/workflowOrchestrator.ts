@@ -34,7 +34,8 @@ import {
 import { createNotification } from './notificationService.ts';
 import { bookingNotificationMetadata } from './notificationEnrichment.ts';
 import { resolveOrganizationIdForProperty } from './propertyScope.ts';
-import { type ActorContext, logActivity } from './activityLog.ts';
+import { type ActivityActorType, type ActorContext, logActivity } from './activityLog.ts';
+import { capturePostHogEvent } from './posthog.ts';
 import {
   BookingStatus,
   canTransition,
@@ -730,7 +731,7 @@ export class WorkflowOrchestrator {
         await DatabaseService.setWorkflowFields(bookingId, workflowFields);
       }
       if (fromStatus !== toStatus) {
-        await DatabaseService.updateBookingStatus(bookingId, toStatus);
+        await DatabaseService.updateBookingStatus(bookingId, toStatus, fromStatus);
       }
     }
 
@@ -1147,6 +1148,16 @@ export class WorkflowOrchestrator {
         actor,
         resolveOrgId: resolveNotificationOrgId,
       });
+      await this.logTransitionPostHog({
+        booking: updatedBooking,
+        propertyId,
+        fromStatus,
+        toStatus: String(updatedBooking.status ?? toStatus) as BookingStatus,
+        completionTarget: payload.document_completion_target ?? null,
+        completionsChanged,
+        manual,
+        actor,
+      });
     }
 
     return {
@@ -1166,6 +1177,75 @@ export class WorkflowOrchestrator {
    * (logActivity swallows) and never blocks — a logging gap must not fail a
    * booking transition.
    */
+  private static mapActorTypeForAnalytics(actor?: ActorContext): string {
+    const t: ActivityActorType = actor?.actorType ?? 'system';
+    if (t === 'guest' || t === 'public') return 'guest';
+    if (t === 'cron') return 'cron';
+    if (t === 'webhook' || t === 'email_inbound') return 'webhook';
+    if (t === 'ai_assistant') return 'ai_assistant';
+    if (t === 'team_member' || t === 'super_admin') return 'host';
+    return 'system';
+  }
+
+  private static async logTransitionPostHog(args: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    booking: any;
+    propertyId: string | null;
+    fromStatus: BookingStatus;
+    toStatus: BookingStatus;
+    completionTarget: string | null;
+    completionsChanged: boolean;
+    manual: boolean;
+    actor?: ActorContext;
+  }): Promise<void> {
+    try {
+      const statusChanged = args.fromStatus !== args.toStatus;
+      const isDocSubstep = !statusChanged && (args.completionsChanged || !!args.completionTarget);
+      if (!statusChanged && !isDocSubstep) return;
+
+      const actorType = this.mapActorTypeForAnalytics(args.actor);
+      const baseProps = {
+        property_id: args.propertyId ?? undefined,
+        from_status: args.fromStatus,
+        to_status: args.toStatus,
+        actor_type: actorType,
+        manual: args.manual,
+      };
+
+      if (isDocSubstep) {
+        await capturePostHogEvent('booking_document_step_completed', {
+          logPrefix: 'orchestrator',
+          system: true,
+          properties: {
+            ...baseProps,
+            document_step: args.completionTarget ?? 'unknown',
+          },
+        });
+        return;
+      }
+
+      if (args.toStatus === 'CANCELLED') {
+        await capturePostHogEvent('booking_cancelled', {
+          logPrefix: 'orchestrator',
+          system: true,
+          properties: {
+            ...baseProps,
+            previous_status: args.fromStatus,
+          },
+        });
+        return;
+      }
+
+      await capturePostHogEvent('booking_workflow_transitioned', {
+        logPrefix: 'orchestrator',
+        system: true,
+        properties: baseProps,
+      });
+    } catch (err) {
+      console.error('[orchestrator] logTransitionPostHog failed (non-fatal):', err);
+    }
+  }
+
   private static async logTransitionActivity(args: {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     booking: any;
@@ -1280,3 +1360,12 @@ function buildGuestFormData(booking: any): any {
 function bookingFlagTrue(v: unknown): boolean {
   return v === true || v === 'true';
 }
+
+/** @internal Exported for Deno unit tests only — do not import from production handlers. */
+export const __workflowOrchestratorTesting = {
+  computeBalance,
+  flag,
+  resolveDocTarget,
+  resolveLegacyCompletionId,
+  assertParkingPaymentReceiptIfRequired,
+};

@@ -9,7 +9,7 @@ import {
   resolveEmailUnitLabel,
   type PropertyEmailBranding,
 } from './propertyEmailBranding.ts';
-import { guestSdFormPath } from './publicGuestPaths.ts';
+import { guestFormPath, guestGuestReviewPath, guestSdFormPath } from './publicGuestPaths.ts';
 import {
   escapeHtml,
   loadEmailTemplate,
@@ -152,7 +152,14 @@ export function buildBookingPlaceholderVars(
   const bookingId = String(booking.id ?? '').trim();
   const propertySlug = (extras.property_slug ?? extras.propertySlug ?? '').trim();
   const bookingLink = bookingId ? `${appOrigin}/bookings/${encodeURIComponent(bookingId)}` : '';
-  const sdFormUrl = bookingId ? guestSdFormPath(appOrigin, propertySlug, bookingId) : '';
+  const sdFormUrl =
+    extras.sd_form_url?.trim() ||
+    (bookingId ? guestSdFormPath(appOrigin, propertySlug, bookingId) : '');
+  const formUrl =
+    extras.form_url?.trim() || (bookingId ? guestFormPath(appOrigin, propertySlug, bookingId) : '');
+  const reviewUrl =
+    extras.review_url?.trim() ||
+    (bookingId ? guestGuestReviewPath(appOrigin, propertySlug, bookingId) : '');
   const totalBalance =
     computeTotalGuestBalanceFromBooking(booking as unknown as Record<string, unknown>) ?? 0;
 
@@ -185,6 +192,8 @@ export function buildBookingPlaceholderVars(
     car_plate_number: escapeHtml(String(booking.car_plate_number ?? '')),
     total_guest_balance: escapeHtml(formatPeso(totalBalance)),
     sd_form_url: escapeHtml(sdFormUrl),
+    form_url: escapeHtml(formUrl),
+    review_url: escapeHtml(reviewUrl),
     security_deposit: escapeHtml(formatPeso(booking.security_deposit as number | null)),
     ...Object.fromEntries(Object.entries(flags).map(([k, v]) => [k, escapeHtml(v)])),
     ...extras,

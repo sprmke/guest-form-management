@@ -1,5 +1,48 @@
 /** Property-scoped public guest URLs shared by edge functions and emails. */
 
+export function appendGuestBookingAccessQuery(
+  url: string,
+  accessToken: string | null | undefined
+): string {
+  const token = accessToken?.trim();
+  if (!token) return url;
+  const parsed = new URL(url);
+  parsed.searchParams.set('access', token);
+  return parsed.toString();
+}
+
+export function guestFormPath(
+  origin: string,
+  propertySlug: string,
+  bookingId: string,
+  accessToken?: string | null
+): string {
+  const base = origin.replace(/\/+$/, '');
+  const slug = propertySlug.trim();
+  const id = bookingId.trim();
+  if (!id) return base;
+  const path = slug
+    ? `${base}/properties/${encodeURIComponent(slug)}/form?bookingId=${encodeURIComponent(id)}`
+    : `${base}/form?bookingId=${encodeURIComponent(id)}`;
+  return appendGuestBookingAccessQuery(path, accessToken);
+}
+
+export function guestGuestReviewPath(
+  origin: string,
+  propertySlug: string,
+  bookingId: string,
+  accessToken?: string | null
+): string {
+  const base = origin.replace(/\/+$/, '');
+  const slug = propertySlug.trim();
+  const id = bookingId.trim();
+  if (!id) return base;
+  const path = slug
+    ? `${base}/properties/${encodeURIComponent(slug)}/guest-review?bookingId=${encodeURIComponent(id)}`
+    : `${base}/guest-review?bookingId=${encodeURIComponent(id)}`;
+  return appendGuestBookingAccessQuery(path, accessToken);
+}
+
 export function guestStayGuidePath(origin: string, propertySlug: string, token: string): string {
   const base = origin.replace(/\/+$/, '');
   const slug = propertySlug.trim();
@@ -23,11 +66,19 @@ export function guestBookingDocumentPath(
   return `${base}/properties/${encodeURIComponent(slug)}/document?${params.toString()}`;
 }
 
-export function guestSdFormPath(origin: string, propertySlug: string, bookingId: string): string {
+export function guestSdFormPath(
+  origin: string,
+  propertySlug: string,
+  bookingId: string,
+  accessToken?: string | null
+): string {
   const base = origin.replace(/\/+$/, '');
   const slug = propertySlug.trim();
-  if (!slug) return `${base}/sd-form?bookingId=${encodeURIComponent(bookingId)}`;
-  return `${base}/properties/${encodeURIComponent(slug)}/sd-form?bookingId=${encodeURIComponent(bookingId)}`;
+  const id = bookingId.trim();
+  const path = !slug
+    ? `${base}/sd-form?bookingId=${encodeURIComponent(id)}`
+    : `${base}/properties/${encodeURIComponent(slug)}/sd-form?bookingId=${encodeURIComponent(id)}`;
+  return appendGuestBookingAccessQuery(path, accessToken);
 }
 
 export function guestPayParkingPath(

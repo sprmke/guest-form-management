@@ -3,6 +3,7 @@
  */
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { verifyCronSecret } from './cronSecretGate.ts';
 
 import { manilaNowIso, manilaTodayYmd } from './calendarAvailabilityManila.ts';
 import { readOrgSuperhostFromSettings, type OrgSuperhostSettings } from './orgSuperhost.ts';
@@ -234,10 +235,10 @@ export async function runSuperhostAssessmentCron(
 }
 
 export function verifySuperhostAssessmentCronSecret(req: Request): boolean {
-  const expected = Deno.env.get('SUPERHOST_ASSESSMENT_CRON_SECRET')?.trim();
-  if (!expected) return true;
-  const got = req.headers.get('x-superhost-assessment-cron-secret')?.trim();
-  return got === expected;
+  return verifyCronSecret(req, {
+    envKey: 'SUPERHOST_ASSESSMENT_CRON_SECRET',
+    headerName: 'x-superhost-assessment-cron-secret',
+  });
 }
 
 /** pg_cron secret header, or super-admin JWT (Org subscriptions → Run Superhost cron). */

@@ -58,6 +58,8 @@ const DEFAULT_VOICE_RECEPTIONIST_COST_PER_MINUTE_USD = 0.023;
 /** Deliberately generous working defaults — see migration 20261022150000 header comment. */
 const DEFAULT_DAILY_CREDIT_LIMIT = 100000;
 const DEFAULT_MONTHLY_CREDIT_LIMIT = 1000000;
+/** Platform-wide daily USD ceiling (cost-abuse / AI plan Phase 2). 0 = disabled. */
+const DEFAULT_PLATFORM_DAILY_COST_USD_CAP = 150;
 
 function db() {
   const url = Deno.env.get('SUPABASE_URL');
@@ -73,6 +75,23 @@ function todayUtcDate(): string {
 function monthStartUtcDate(): string {
   const now = new Date();
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01`;
+}
+
+export function platformDailyCostUsdCap(): number {
+  const raw = Deno.env.get('AI_PLATFORM_DAILY_COST_USD_CAP')?.trim();
+  if (!raw) return DEFAULT_PLATFORM_DAILY_COST_USD_CAP;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : DEFAULT_PLATFORM_DAILY_COST_USD_CAP;
+}
+
+async function sumPlatformDailyCostUsd(): Promise<number> {
+  const sb = db();
+  const { data, error } = await sb
+    .from('ai_platform_usage_daily')
+    .select('estimated_cost_usd')
+    .eq('usage_date', todayUtcDate());
+  if (error) throw new Error(error.message);
+  return (data ?? []).reduce((sum, row) => sum + Number(row.estimated_cost_usd ?? 0), 0);
 }
 
 export type AiPlatformGlobalSettings = {
@@ -756,6 +775,14 @@ export async function assertOrgAndPropertyAiQuota(
   }
 
   if (!global.enforceQuotas) return;
+
+  const platformCap = platformDailyCostUsdCap();
+  if (platformCap > 0) {
+    const platformCostToday = await sumPlatformDailyCostUsd();
+    if (platformCostToday >= platformCap) {
+      throw new AiQuotaExceededError('Platform daily AI spend limit reached');
+    }
+  }
 
   const orgSummary = await getOrgAiUsageSummary(organizationId);
   if (orgSummary.dailyRemaining <= 0) {

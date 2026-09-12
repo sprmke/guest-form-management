@@ -1,4 +1,4 @@
-import { guestSdFormPath } from './publicGuestPaths.ts';
+import { guestBookingEmailLinkPlaceholderExtras } from './guestBookingEmailLinks.ts';
 import { resolveGuestParkingCtaAbsoluteUrl } from './ownerDefaultParking.ts';
 import { buildGuestStayGuideUrl } from './guestStayGuide.ts';
 import { buildApprovalInboundAddress } from './approvalInboundAddress.ts';
@@ -665,6 +665,23 @@ function pesoFormat(amount: number | null | undefined): string {
   return `₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+async function loadGuestBookingEmailLinkExtras(
+  booking: GuestSubmission,
+  settings: Awaited<ReturnType<typeof resolveAppSettings>>
+): Promise<Record<string, string>> {
+  const bookingId = String(booking.id ?? '').trim();
+  if (!bookingId) return {};
+
+  const propertyId = resolveEmailPropertyId(booking);
+  const propertySlug = propertyId ? ((await resolvePropertySlugById(propertyId)) ?? '') : '';
+
+  return await guestBookingEmailLinkPlaceholderExtras({
+    origin: settings.publicGuestAppOrigin,
+    propertySlug,
+    bookingId,
+  });
+}
+
 async function getResendNewBookingNotifyCredentials(propertyId?: string | null) {
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
   const settings = await resolveAppSettings(propertyId);
@@ -774,6 +791,7 @@ export async function sendBookingAcknowledgement(booking: GuestSubmission) {
   const guestName = String(booking.guest_facebook_name ?? '').trim() || 'Guest';
 
   const guestContact = await loadGuestFacingContactInfo(propertyId, settings);
+  const guestLinkExtras = await loadGuestBookingEmailLinkExtras(booking, settings);
 
   const parkingUrl = booking.need_parking
     ? await resolveGuestParkingCtaAbsoluteUrl({
@@ -790,6 +808,7 @@ export async function sendBookingAcknowledgement(booking: GuestSubmission) {
       booking,
       settings,
       {
+        ...guestLinkExtras,
         ...buildGuestFacingPlaceholderVars(guestContact),
         booking_acknowledgement_flow_section: buildBookingAcknowledgementFlowSectionHtml({
           unitLabel,
@@ -861,6 +880,7 @@ export async function sendReadyForCheckin(booking: GuestSubmission) {
   }
 
   const guestContact = await loadGuestFacingContactInfo(propertyId, settings);
+  const guestLinkExtras = await loadGuestBookingEmailLinkExtras(booking, settings);
 
   const stayGuideToken = String(
     (booking as { stay_guide_token?: string | null }).stay_guide_token ?? ''
@@ -907,6 +927,7 @@ export async function sendReadyForCheckin(booking: GuestSubmission) {
       booking,
       settings,
       {
+        ...guestLinkExtras,
         ...buildGuestFacingPlaceholderVars(guestContact),
         ...dynamicSections,
       },
@@ -1145,8 +1166,8 @@ export async function sendSdRefundFormRequest(booking: GuestSubmission) {
   const bookingId = booking.id as string;
   if (!bookingId) throw new Error('sendSdRefundFormRequest: booking.id is required');
 
-  const propertySlug = propertyId && (await resolvePropertySlugById(propertyId));
-  const sdFormUrl = guestSdFormPath(settings.publicGuestAppOrigin, propertySlug ?? '', bookingId);
+  const guestLinkExtras = await loadGuestBookingEmailLinkExtras(booking, settings);
+  const sdFormUrl = guestLinkExtras.sd_form_url ?? '';
 
   const guestContact = await loadGuestFacingContactInfo(propertyId, settings);
 
@@ -1177,8 +1198,7 @@ export async function sendSdRefundFormRequest(booking: GuestSubmission) {
       booking,
       settings,
       {
-        property_slug: propertySlug ?? '',
-        sd_form_url: escapeHtml(sdFormUrl),
+        ...guestLinkExtras,
         ...buildGuestFacingPlaceholderVars(guestContact),
         ...sdRefundSections,
       },

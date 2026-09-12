@@ -3,6 +3,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { verifyCronSecret } from './cronSecretGate.ts';
 import { DatabaseService } from './databaseService.ts';
 import { listAllParkingIds, listAllPropertyIds } from './propertyCron.ts';
 import { addDaysToIso, daysBetweenIso } from './financeRecurrence.ts';
@@ -415,10 +416,10 @@ async function sendFinanceTelegramMessage(
 }
 
 export function verifyFinanceCronSecret(req: Request): boolean {
-  const expected = Deno.env.get('TELEGRAM_FINANCE_CRON_SECRET')?.trim();
-  if (!expected) return true;
-  const got = req.headers.get('X-Telegram-Cron-Secret')?.trim();
-  return got === expected;
+  return verifyCronSecret(req, {
+    envKey: 'TELEGRAM_FINANCE_CRON_SECRET',
+    headerName: 'x-telegram-cron-secret',
+  });
 }
 
 export async function verifyFinanceTelegramEnv(

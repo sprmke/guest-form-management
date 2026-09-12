@@ -3,15 +3,16 @@
  */
 
 import {
+import { verifyCronSecret } from './cronSecretGate.ts';
   listConnectedFacebookMetaPagesForHealthcheck,
   reconcileMetaConnectionWebhook,
 } from './metaInboxWebhookHealth.ts';
 
 export function verifyMetaInboxWebhookHealthcheckCronSecret(req: Request): boolean {
-  const expected = Deno.env.get('META_INBOX_WEBHOOK_HEALTHCHECK_CRON_SECRET')?.trim();
-  if (!expected) return true;
-  const got = req.headers.get('x-meta-inbox-webhook-healthcheck-cron-secret')?.trim();
-  return got === expected;
+  return verifyCronSecret(req, {
+    envKey: 'META_INBOX_WEBHOOK_HEALTHCHECK_CRON_SECRET',
+    headerName: 'x-meta-inbox-webhook-healthcheck-cron-secret',
+  });
 }
 
 export async function runMetaInboxWebhookHealthcheck(): Promise<Record<string, unknown>> {

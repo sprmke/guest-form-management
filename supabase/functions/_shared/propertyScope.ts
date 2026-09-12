@@ -78,9 +78,20 @@ async function getFirstMemberPropertyId(userId: string): Promise<string | null> 
   return (data?.property_id as string | undefined) ?? null;
 }
 
+export function requireExplicitPropertyId(propertyId: string | null | undefined): string {
+  const id = propertyId?.trim() ?? '';
+  if (!id) {
+    throw new Response(JSON.stringify({ success: false, error: 'property_id is required' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  return id;
+}
+
 /**
- * Resolve property scope with RBAC — requires property_id for members;
- * owners may fall back to first owned property, then deployment default.
+ * Resolve property scope with RBAC. Requires an explicit property id
+ * (`property_id` query / body) — never falls back to first owned listing.
  */
 export async function resolveScopedPropertyAccess(
   req: Request,
@@ -88,25 +99,10 @@ export async function resolveScopedPropertyAccess(
   explicitPropertyId?: string | null
 ): Promise<PropertyAccessContext> {
   const url = new URL(req.url);
-  const propertyId = explicitPropertyId?.trim() || readPropertyIdFromUrl(url);
-
-  if (propertyId) {
-    return verifyPropertyAccess(req, propertyId, requiredPermission);
-  }
-
-  const user = await verifyAuthenticatedUser(req);
-  const owned = await getFirstPropertyIdForUser(user.id);
-  if (owned) {
-    return verifyPropertyAccess(req, owned, requiredPermission);
-  }
-
-  const memberProp = await getFirstMemberPropertyId(user.id);
-  if (memberProp) {
-    return verifyPropertyAccess(req, memberProp, requiredPermission);
-  }
-
-  const defaultId = await getDefaultPropertyId();
-  return verifyPropertyAccess(req, defaultId, requiredPermission);
+  const propertyId = requireExplicitPropertyId(
+    explicitPropertyId?.trim() || readPropertyIdFromUrl(url)
+  );
+  return verifyPropertyAccess(req, propertyId, requiredPermission);
 }
 
 /** Read access without a specific permission gate (any active member / owner). */
@@ -251,7 +247,14 @@ export async function resolvePropertyIdBySlug(slug: string): Promise<string | nu
   return data?.id ?? null;
 }
 
-/** Public guest endpoints — optional ?property= slug or ?property_id= UUID. */
+function throwPropertyRequired(status = 400): never {
+  throw new Response(JSON.stringify({ success: false, error: 'property is required' }), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+/** Public guest endpoints — require `?property=` slug or `?property_id=` UUID. */
 export async function resolvePublicPropertyId(url: URL): Promise<string> {
   const explicitId = readPropertyIdFromUrl(url);
   if (explicitId) return explicitId;
@@ -260,32 +263,30 @@ export async function resolvePublicPropertyId(url: URL): Promise<string> {
   if (slug) {
     const id = await resolvePropertyIdBySlug(slug);
     if (id) return id;
+    throw new Response(JSON.stringify({ success: false, error: 'Property not found' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
-  return getDefaultPropertyId();
+  throwPropertyRequired();
 }
 
 /**
- * Admin endpoints — validates ownership when property_id is explicit;
- * otherwise first owned property, then global default.
+ * Legacy owner helper. New admin writes must use `resolveScopedPropertyAccess`.
+ * Requires an explicit property id — never first-owned or DEFAULT_PROPERTY.
  */
 export async function resolveAdminPropertyId(
   req: Request,
-  adminUserId: string,
+  _adminUserId: string,
   explicitPropertyId?: string | null
 ): Promise<string> {
   const url = new URL(req.url);
-  const propertyId = explicitPropertyId?.trim() || readPropertyIdFromUrl(url);
-
-  if (propertyId) {
-    await verifyPropertyOwner(req, propertyId);
-    return propertyId;
-  }
-
-  const owned = await getFirstPropertyIdForUser(adminUserId);
-  if (owned) return owned;
-
-  return getDefaultPropertyId();
+  const propertyId = requireExplicitPropertyId(
+    explicitPropertyId?.trim() || readPropertyIdFromUrl(url)
+  );
+  await verifyPropertyOwner(req, propertyId);
+  return propertyId;
 }
 
 export function applyPropertyIdFilter<T extends { eq: (col: string, val: string) => T }>(
